@@ -366,7 +366,9 @@ const PhotoComponent = ({ photo, moment, onClick }) => {
     const resolveAndSetUrl = async () => {
       if (!photo) { if (isMounted) setStatus('error'); return; }
       try {
-        const thumbnailUrl = await window.photoDataV2.resolveImageUrl(photo, true); 
+        console.log('PhotoComponent: Tentative de résolution pour l\'objet photo suivant :', photo);
+        const thumbnailUrl = await window.photoDataV2.resolveImageUrl(photo, true);
+        console.log('PhotoComponent: URL retournée :', thumbnailUrl);
         if (isMounted) {
           if (thumbnailUrl && !thumbnailUrl.startsWith('data:image/svg+xml')) {
             setImageUrl(thumbnailUrl);
