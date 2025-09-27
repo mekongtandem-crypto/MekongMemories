@@ -1,14 +1,12 @@
 /**
- * ChatPage.jsx v1.2 - Intégré dans l'architecture B
- * Gère l'interface de conversation d'une session.
- * Basé sur le code de ChatPage_A.jsx
+ * ChatPage.jsx v1.3 - Correction de l'édition des messages
+ * - La condition pour afficher les boutons d'édition est corrigée.
+ * - Basé sur le code de ChatPage_A.jsx
  */
-
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
-import { userManager } from '../../core/UserManager.js';
 import { ArrowLeft, Send, Edit, Trash2, Check, X } from 'lucide-react';
+
 
 export default function ChatPage() {
   const app = useAppState();
@@ -24,7 +22,6 @@ export default function ChatPage() {
   
   const messagesEndRef = useRef(null);
 
-  // Auto-scroll vers le bas quand des messages sont ajoutés
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -370,36 +367,34 @@ export default function ChatPage() {
                     {message.edited && (
                       <div className="text-xs opacity-70 italic mt-1">modifié</div>
                     )}
-                    
-                    {/* Boutons d'action (visibles au hover, seulement pour ses propres messages) */}
-                    {message.author === app.currentUser && (
+
+					{/* ================================================================== */}
+                    {/* LA CORRECTION EST ICI */}
+                    {/* On compare les IDs : app.currentUser.id */}
+                    {/* ================================================================== */}
+                    {app.currentUser && message.author === app.currentUser.id && (
                       <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded shadow-lg p-1 -mr-2 -mt-2">
-                        <button
-                          onClick={() => handleEditMessage(message)}
-                          className="p-1 hover:bg-gray-100 rounded"
-                          title="Modifier"
-                        >
+                        <button onClick={() => handleEditMessage(message)} className="p-1 hover:bg-gray-100 rounded" title="Modifier">
                           <Edit className="w-3 h-3 text-gray-600" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteMessage(message.id)}
-                          className="p-1 hover:bg-red-100 rounded ml-1"
-                          title="Supprimer"
-                        >
+                        <button onClick={() => handleDeleteMessage(message.id)} className="p-1 hover:bg-red-100 rounded ml-1" title="Supprimer">
                           <Trash2 className="w-3 h-3 text-red-600" />
                         </button>
                       </div>
                     )}
+                    
+                    
                   </>
                 )}
               </div>
             </div>
           </div>
         ))}
-        
-        {/* Ref pour auto-scroll */}
         <div ref={messagesEndRef} />
       </div>
+
+
+                    
 
       {/* Zone de saisie avec raccourcis inversés */}
       <div className="bg-white border-t border-gray-200 p-4">
