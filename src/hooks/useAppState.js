@@ -1,4 +1,4 @@
-// useAppState.js - CORRIGÉ ET ROBUSTESSE ACCRUE
+// useAppState.js - Connecté à la nouvelle logique de session
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { dataManager } from '../core/dataManager.js';
@@ -31,9 +31,9 @@ export function useAppState() {
     };
   }, []);
 
-  const connect = useCallback(() => connectionManager.connect(), []);
+const connect = useCallback(() => connectionManager.connect(), []);
   const disconnect = useCallback(() => connectionManager.disconnect(), []);
-  const updateCurrentPage = useCallback(async (pageId) => dataManager.updateCurrentPage(pageId), []);
+  const updateCurrentPage = useCallback((pageId) => dataManager.updateCurrentPage(pageId), []);
 
   useEffect(() => {
     // Pas de changement ici, c'est déjà correct.
@@ -61,11 +61,14 @@ export function useAppState() {
 
 
   // --- FONCTIONS DE SESSION (SIMULÉES POUR L'INSTANT) ---
-  const createSession = useCallback(async (sessionData) => { /* ... */ }, []);
-  const updateSession = useCallback(async (session) => { /* ... */ }, []);
-  const openChatSession = useCallback(async (session) => { /* ... */ }, []);
+  const createSession = useCallback(async (gameData) => dataManager.createSession(gameData), []);
+  const updateSession = useCallback(async (session) => dataManager.updateSession(session), []);
+  const deleteSession = useCallback(async (sessionId) => dataManager.deleteSession(sessionId), []);
+  const openChatSession = useCallback(async (session) => dataManager.openChatSession(session), []);
+  const closeChatSession = useCallback(async () => dataManager.closeChatSession(), []);
+  const addMessageToSession = useCallback(async (sessionId, content) => dataManager.addMessageToSession(sessionId, content), []);
 
-  // --- CORRECTION 3 : L'objet retourné est maintenant toujours sûr ---
+  // --- L'objet retourné est maintenant enrichi des nouvelles fonctions ---
   return {
     ...appState.data,
     ...derivedUserState,
@@ -73,8 +76,12 @@ export function useAppState() {
     connect,
     disconnect,
     updateCurrentPage,
+    // Fonctions de session
     createSession,
     updateSession,
+    deleteSession,
     openChatSession,
+    closeChatSession,
+    addMessageToSession,
   };
 }

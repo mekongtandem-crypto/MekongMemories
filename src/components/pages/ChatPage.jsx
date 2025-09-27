@@ -1,3 +1,10 @@
+/**
+ * ChatPage.jsx v1.2 - Intégré dans l'architecture B
+ * Gère l'interface de conversation d'une session.
+ * Basé sur le code de ChatPage_A.jsx
+ */
+
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';

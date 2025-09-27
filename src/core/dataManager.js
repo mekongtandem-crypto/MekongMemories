@@ -1,5 +1,5 @@
 /**
- * DataManager v2.5 - Final & Intelligent
+ * DataManager v2.6 - gestion des sessions directement dans l'état principal et implémenté les méthodes nécessaires pour les manipuler.
  * This module orchestrates all application data.
  * It now correctly loads the masterIndex from Drive on startup if it exists,
  * and provides a method to instantly refresh it after regeneration.
@@ -14,8 +14,9 @@ class DataManager {
     this.appState = {
       isInitialized: false,
       isLoading: true,
-      sessions: [],
       masterIndex: null,
+      sessions: [],             // Pour stocker la liste de toutes les sessions
+      currentChatSession: null, // Pour suivre la session de chat actuellement ouverte
       currentUser: '',
       currentPage: 'memories', // Default to memories page
       error: null,
@@ -38,7 +39,7 @@ class DataManager {
     this.notify();
   }
 
-  async handleConnectionChange(connectionState) {
+async handleConnectionChange(connectionState) {
     if (connectionState.hasError) {
       this.setState({
         isLoading: false,
@@ -51,39 +52,36 @@ class DataManager {
     }
   }
 
+
   async synchronizeInitialData() {
-  console.log('🚀 DataManager: Synchronisation initiale...');
-  this.setState({ isLoading: true });
+    console.log('🚀 DataManager: Synchronisation initiale...');
+    this.setState({ isLoading: true });
 
-  try {
-    // CORRECTION : On ne déstructure pas { data }, on prend l'objet entier.
-    const loadedFiles = await this.driveSync.loadAllData();
+    try {
+      const loadedFiles = await this.driveSync.loadAllData();
 
-    // On vérifie si l'index maître a bien été chargé.
-    if (loadedFiles && loadedFiles.masterIndex) {
-      console.log('Index maître trouvé sur Drive, chargement...');
+      // --- MISE À JOUR POUR CHARGER LES SESSIONS ---
+      const masterIndex = (loadedFiles && loadedFiles.masterIndex) 
+          ? (typeof loadedFiles.masterIndex === 'string' ? JSON.parse(loadedFiles.masterIndex) : loadedFiles.masterIndex)
+          : null;
+      
+      const sessions = loadedFiles.sessions || []; // On récupère les sessions chargées par driveSync
+      // ---------------------------------------------
 
-      // La version B de DriveSync ne parse plus le JSON, on le fait ici.
-      const parsedIndex = typeof loadedFiles.masterIndex === 'string' 
-        ? JSON.parse(loadedFiles.masterIndex) 
-        : loadedFiles.masterIndex;
+      this.setState({
+        masterIndex: masterIndex,
+        sessions: sessions, // On stocke les sessions dans l'état
+        isLoading: false,
+        isInitialized: true,
+        error: null
+      });
+      console.log(`✅ DataManager: Synchro terminée. ${sessions.length} session(s) chargée(s).`);
 
-      this.setState({ masterIndex: parsedIndex });
+    } catch (error) {
+      console.error("❌ DataManager: Erreur de synchronisation.", error);
+      this.setState({ error: `Sync Error: ${error.message}`, isLoading: false, isInitialized: true });
     }
-
-    this.setState({
-      isLoading: false,
-      isInitialized: true,
-      error: null // On efface les erreurs précédentes si la synchro réussit
-    });
-    console.log('✅ DataManager: Synchronisation initiale terminée.');
-
-  } catch (error) {
-    console.error("❌ DataManager: Erreur de synchronisation.", error);
-    this.setState({ error: `Sync Error: ${error.message}`, isLoading: false, isInitialized: true });
   }
-}
-
   /**
    * Instantly reloads the masterIndex into the app's state after generation.
    * This is called by SettingsPage.
@@ -119,6 +117,108 @@ async reloadMasterIndex() {
     return { success: false, error };
   }
 }
+
+// --- NOUVELLE API PUBLIQUE POUR LES SESSIONS ---
+
+  /** Crée une nouvelle session de chat */
+  async createSession(gameData) {
+    console.log('Logic: Création de session pour', gameData.title);
+    const newSession = {
+      id: `sid_${Date.now()}`,
+      gameId: gameData.id,
+      gameTitle: gameData.title,
+      subtitle: `Conversation sur ${gameData.title}`,
+      createdAt: new Date().toISOString(),
+      user: this.appState.currentUser,
+      notes: [], // Le tableau des messages du chat
+    };
+
+    try {
+      await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
+      this.setState({ sessions: [...this.appState.sessions, newSession] });
+      return newSession;
+    } catch (error) {
+      console.error("❌ Erreur de création de session:", error);
+      this.setState({ error: `Session Create Error: ${error.message}` });
+    }
+  }
+
+  /** Met à jour une session existante (pour ajout/modif de message, etc.) */
+  async updateSession(sessionToUpdate) {
+    try {
+      await this.driveSync.saveFile(`session_${sessionToUpdate.id}.json`, sessionToUpdate);
+      
+      const updatedSessions = this.appState.sessions.map(s => 
+        s.id === sessionToUpdate.id ? sessionToUpdate : s
+      );
+
+      // Si la session mise à jour est celle qui est ouverte, on met aussi à jour currentChatSession
+      const updatedCurrentChat = this.appState.currentChatSession?.id === sessionToUpdate.id 
+        ? sessionToUpdate 
+        : this.appState.currentChatSession;
+
+      this.setState({ 
+        sessions: updatedSessions,
+        currentChatSession: updatedCurrentChat
+      });
+    } catch (error) {
+      console.error("❌ Erreur de mise à jour de session:", error);
+      this.setState({ error: `Session Update Error: ${error.message}` });
+    }
+  }
+
+  /** Supprime une session */
+  async deleteSession(sessionId) {
+    try {
+      await this.driveSync.deleteFile(`session_${sessionId}.json`);
+      const filteredSessions = this.appState.sessions.filter(s => s.id !== sessionId);
+      this.setState({ sessions: filteredSessions });
+    } catch (error) {
+      console.error("❌ Erreur de suppression de session:", error);
+      this.setState({ error: `Session Delete Error: ${error.message}` });
+    }
+  }
+
+  /** Ajoute un message à une session (basé sur la logique de ChatPage_A) */
+  async addMessageToSession(sessionId, messageContent) {
+    const session = this.appState.sessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    const newMessage = {
+      id: `msg_${Date.now()}`,
+      author: this.appState.currentUser,
+      content: messageContent,
+      timestamp: new Date().toISOString(),
+      edited: false
+    };
+
+    const updatedSession = {
+      ...session,
+      notes: [...session.notes, newMessage]
+    };
+    
+    // updateSession s'occupe de sauvegarder et de mettre à jour l'état
+    await this.updateSession(updatedSession);
+  }
+
+  /** Ouvre une session dans l'interface de chat */
+  async openChatSession(session) {
+    this.setState({ 
+      currentChatSession: session,
+      currentPage: 'chat' // On change de page pour afficher le chat
+    });
+  }
+
+  /** Ferme la session de chat et retourne à la liste */
+  async closeChatSession() {
+    this.setState({ 
+      currentChatSession: null,
+      currentPage: 'sessions' // On retourne à la page des sessions
+    });
+  }
+
+  // --- Fin de la nouvelle API ---
+
 
   // --- Public API for UI ---
 
