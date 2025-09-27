@@ -17,12 +17,10 @@ export const GOOGLE_DRIVE_CONFIG = {
   APP_FOLDER_NAME: 'MemoireDuMekong-Data',
 
   // Liste des fichiers que l'application gère
-  FILES: {
-    sessions: 'mekong_sessions_v2.json',
-    appState: 'mekong_app_state_v2.json',
-    mastodonData: 'mekong_mastodon_data_v2.json',
-    masterIndex: 'mekong_master_index_v3_moments.json',
-  },
+  // APRÈS
+	FILES: {
+  		masterIndex: 'mekong_master_index_v3_moments.json',
+	},
 
   // Configuration pour les tentatives de reconnexion
   RETRY_CONFIG: { 

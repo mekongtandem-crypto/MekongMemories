@@ -34,26 +34,25 @@
 
   async importFromGoogleDrive() {
         try {
-          console.log('📥 Import outbox.json...');
+          console.log('📥 Import outbox.json...depuis /Medias/Mastodon/...');
           
-          // ✅ On appelle la fonction qui marche maintenant en simulation
-          const outboxData = await driveSync.loadFileFromRoot('outbox.json');
-          
-          if (!outboxData) {
-            throw new Error('Fichier outbox.json non trouvé (simulation ou réel)');
-          }
-          
-          const parsedPosts = this.parseOutboxData(outboxData);
-          await this.savePosts(parsedPosts);
-          
-          console.log(`✅ Import terminé: ${parsedPosts.length} posts importés`);
-          return { success: true, postsCount: parsedPosts.length };
-          
-        } catch (error) {
-          console.error('❌ Erreur import Mastodon:', error);
-          throw error; // On propage l'erreur pour que SettingsPage l'affiche
-        }
+                const outboxData = await driveSync.loadFileFromPath('outbox.json', ['Medias', 'Mastodon']);
+      
+      if (!outboxData) {
+        throw new Error('Fichier outbox.json introuvable dans /Medias/Mastodon/');
       }
+      
+      const parsedPosts = this.parseOutboxData(outboxData);
+      await this.savePosts(parsedPosts);
+      
+      console.log(`✅ Import terminé: ${parsedPosts.length} posts importés`);
+      return { success: true, postsCount: parsedPosts.length };
+      
+    } catch (error) {
+      console.error('❌ Erreur import Mastodon:', error);
+      throw error;
+    }
+}
 
   // ========================================
   // NOUVELLE MÉTHODE : Import automatique au démarrage
