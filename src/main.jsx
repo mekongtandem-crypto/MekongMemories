@@ -32,6 +32,8 @@ masterIndexGenerator.initialize({
   mastodonData,
 });
 
+connectionManager.initialize();
+
 console.log('✅ Dépendances injectées. Prêt à démarrer.');
 
 // --- Démarrage de React ---
