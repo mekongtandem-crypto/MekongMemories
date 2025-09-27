@@ -1,47 +1,47 @@
 /**
- * DataManager v2.6 - gestion des sessions directement dans l'état principal et implémenté les méthodes nécessaires pour les manipuler.
+ * DataManager v2.9 - User lifecycle management
  * This module orchestrates all application data.
- * It now correctly loads the masterIndex from Drive on startup if it exists,
- * and provides a method to instantly refresh it after regeneration.
+ * It now handles user selection, persistence via StateManager,
+ * and restoration on startup.
  */
-import { photoDataV2 } from './PhotoDataV2.js';
-
 class DataManager {
   constructor() {
     this.connectionManager = null;
     this.driveSync = null;
-    
+    this.stateManager = null; // Ajout pour la mémorisation
+
     this.appState = {
       isInitialized: false,
       isLoading: true,
       masterIndex: null,
-      sessions: [],             // Pour stocker la liste de toutes les sessions
-      currentChatSession: null, // Pour suivre la session de chat actuellement ouverte
-      currentUser: '',
-      currentPage: 'memories', // Default to memories page
+      sessions: [],
+      currentChatSession: null,
+      currentUser: null, // Initialisé à null
+      currentPage: 'memories',
       error: null,
       connection: { hasError: false, lastError: null },
     };
 
     this.listeners = new Set();
-    console.log('📦 DataManager v2.5: Ready.');
+    console.log('📦 DataManager v2.9: Ready.');
   }
 
   initializeDependencies(dependencies) {
     this.connectionManager = dependencies.connectionManager;
     this.driveSync = dependencies.driveSync;
+    this.stateManager = dependencies.stateManager; // Injection de stateManager
     this.connectionManager.subscribe(this.handleConnectionChange.bind(this));
     console.log('📦 DataManager: Dependencies injected.');
   }
 
-  setState(newState) {
+  updateState(newState) {
     this.appState = { ...this.appState, ...newState };
     this.notify();
   }
 
-async handleConnectionChange(connectionState) {
+  async handleConnectionChange(connectionState) {
     if (connectionState.hasError) {
-      this.setState({
+      this.updateState({
         isLoading: false,
         error: `Connection Error: ${connectionState.lastError}`,
         connection: { hasError: true, lastError: connectionState.lastError }
@@ -52,25 +52,29 @@ async handleConnectionChange(connectionState) {
     }
   }
 
-
   async synchronizeInitialData() {
     console.log('🚀 DataManager: Synchronisation initiale...');
-    this.setState({ isLoading: true });
+    this.updateState({ isLoading: true });
 
     try {
-      const loadedFiles = await this.driveSync.loadAllData();
+      // 1. On restaure l'utilisateur depuis le cache
+      const cachedUser = await this.stateManager.get('mekong_currentUser');
+      if (cachedUser) {
+        console.log(`👤 Utilisateur en cache trouvé : ${cachedUser}`);
+      }
 
-      // --- MISE À JOUR POUR CHARGER LES SESSIONS ---
+      // 2. On charge les données depuis Drive
+      const loadedFiles = await this.driveSync.loadAllData();
       const masterIndex = (loadedFiles && loadedFiles.masterIndex) 
           ? (typeof loadedFiles.masterIndex === 'string' ? JSON.parse(loadedFiles.masterIndex) : loadedFiles.masterIndex)
           : null;
-      
-      const sessions = loadedFiles.sessions || []; // On récupère les sessions chargées par driveSync
-      // ---------------------------------------------
+      const sessions = loadedFiles.sessions || [];
 
-      this.setState({
+      // 3. On met à jour l'état final
+      this.updateState({
         masterIndex: masterIndex,
-        sessions: sessions, // On stocke les sessions dans l'état
+        sessions: sessions,
+        currentUser: cachedUser || null, // On applique l'utilisateur du cache
         isLoading: false,
         isInitialized: true,
         error: null
@@ -79,9 +83,25 @@ async handleConnectionChange(connectionState) {
 
     } catch (error) {
       console.error("❌ DataManager: Erreur de synchronisation.", error);
-      this.setState({ error: `Sync Error: ${error.message}`, isLoading: false, isInitialized: true });
+      this.updateState({ error: `Sync Error: ${error.message}`, isLoading: false, isInitialized: true });
     }
   }
+
+
+// --- API PUBLIQUE ---
+
+  setCurrentUser(userId) {
+    console.log(`👤 Changement d'utilisateur -> ${userId}`);
+    this.stateManager.set('mekong_currentUser', userId); 
+    this.updateState({ currentUser: userId });
+  }
+
+  async updateCurrentPage(pageId) {
+    if (this.appState.currentPage !== pageId) {
+      this.updateState({ currentPage: pageId });
+    }
+  }
+  
   /**
    * Instantly reloads the masterIndex into the app's state after generation.
    * This is called by SettingsPage.
@@ -236,6 +256,16 @@ async reloadMasterIndex() {
     this.listeners.add(callback);
     callback(this.appState);
     return () => this.listeners.delete(callback);
+  }
+
+setCurrentUser(userId) {
+    console.log(`👤 Changement d'utilisateur -> ${userId}`);
+    // Mémorise le choix pour les prochaines visites
+    // Note: Assure-toi que stateManager est injecté dans les dépendances de dataManager.
+    this.stateManager.set('currentUser', userId); 
+    
+    // Met à jour l'état et notifie l'UI via le subscribe
+    this.updateState({ ...this.state, currentUser: userId });
   }
 
   notify() {

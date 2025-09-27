@@ -11,6 +11,7 @@ import MemoriesPage from './pages/MemoriesPage.jsx';
 // --- AJOUTS : Import des nouvelles pages ---
 import SessionsPage from './pages/SessionsPage.jsx';
 import ChatPage from './pages/ChatPage.jsx';
+import UserSelectionPage from './pages/UserSelectionPage.jsx';
 // ------------------------------------------
 
 class ErrorBoundary extends React.Component {
@@ -68,6 +69,13 @@ export default function App() {
     );
   }
 
+  // 2. AJOUTER CETTE CONDITION : Si l'app est prête MAIS qu'il n'y a pas d'ID utilisateur
+  // On vérifie app.currentUser (l'ID) plutôt que l'objet complet pour plus de sûreté
+  if (!app.currentUser) {
+    return <UserSelectionPage />;
+  }
+  
+  // 3. Si tout va bien, on affiche l'application normale
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50">
@@ -77,9 +85,10 @@ export default function App() {
           <PageRenderer currentPage={app.currentPage} />
         </main>
         
-        {/* --- AJOUT de la barre de navigation inférieure --- */}
         <BottomNavigation currentPage={app.currentPage} onPageChange={app.updateCurrentPage} />
       </div>
     </ErrorBoundary>
   );
 }
+  
+  

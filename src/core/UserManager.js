@@ -1,27 +1,27 @@
 /**
- * UserManager v0.7.1 - Gestion centralisée des utilisateurs
+ * UserManager v0.8 - Gestion centralisée des utilisateurs
  */
 
 export const USERS = {
-  tom: { 
+  tom: {
     id: 'tom',
-    name: 'Tom le jeune éléphantiau', 
-    color: 'blue', 
-    emoji: '🐘',
+    name: 'Tom', // Nom simplifié pour l'affichage
+    color: 'blue',
+    emoji: '👨‍💻', // <-- AJOUT
     description: 'Le jeune aventurier'
   },
-  lambert: { 
+  lambert: {
     id: 'lambert',
-    name: 'Lambert, le vieux pachiderme', 
-    color: 'green', 
-    emoji: '🐘',
+    name: 'Lambert', // Nom simplifié
+    color: 'green',
+    emoji: '👨‍🚀', // <-- AJOUT
     description: 'Le sage guide'
   },
-  duo: { 
+  duo: {
     id: 'duo',
-    name: 'Duo Mekong Tandem', 
-    color: 'amber', 
-    emoji: '🐘🐘',
+    name: 'Duo', // Nom simplifié
+    color: 'amber',
+    emoji: '🧑‍🤝‍🧑', // <-- AJOUT
     description: 'Session père-fils'
   }
 };

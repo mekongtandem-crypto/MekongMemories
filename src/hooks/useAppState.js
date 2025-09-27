@@ -1,4 +1,4 @@
-// useAppState.js - Connecté à la nouvelle logique de session
+// hooks/useAppState.js
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { dataManager } from '../core/dataManager.js';
@@ -6,18 +6,13 @@ import { connectionManager } from '../core/ConnectionManager.js';
 import { userManager } from '../core/UserManager.js';
 
 export function useAppState() {
-  const [appState, setAppState] = useState(() => {
-    // --- CORRECTION 1 : On fournit un objet vide par défaut ---
-    // Si getState() renvoie undefined au début, on utilise {} pour éviter le crash.
-    const initialData = dataManager.getState() || {};
-    const initialConnection = connectionManager.getState() || {};
+  // HOOK 1: useState
+  const [appState, setAppState] = useState(() => ({
+    data: dataManager.getState() || {},
+    connection: connectionManager.getState() || {},
+  }));
 
-    return {
-      data: initialData,
-      connection: initialConnection,
-    };
-  });
-
+  // HOOK 2: useEffect (pour les abonnements)
   useEffect(() => {
     const unsubDataManager = dataManager.subscribe(newDataState => {
       setAppState(prevState => ({ ...prevState, data: newDataState || {} }));
@@ -29,46 +24,40 @@ export function useAppState() {
       unsubDataManager();
       unsubConnectionManager();
     };
-  }, []);
+  }, []); // Dépendances vides, ne s'exécute qu'une fois
 
-const connect = useCallback(() => connectionManager.connect(), []);
-  const disconnect = useCallback(() => connectionManager.disconnect(), []);
-  const updateCurrentPage = useCallback((pageId) => dataManager.updateCurrentPage(pageId), []);
+  // HOOK 3: useCallback (pour la connexion)
+  const connect = useCallback(() => connectionManager.connect(), []);
 
+  // HOOK 4: useEffect (pour la connexion automatique)
   useEffect(() => {
-    // Pas de changement ici, c'est déjà correct.
-    if (appState.connection.isOffline) {
+    if (connectionManager.getState().isOffline) {
       connect();
     }
-  }, [appState.connection.isOffline, connect]);
-  
+  }, [connect]);
+
+  // HOOK 5: useMemo (pour dériver l'état de l'utilisateur)
   const derivedUserState = useMemo(() => {
-    try {
-      // --- CORRECTION 2 : On ajoute une sécurité ici aussi ---
-      // On s'assure que appState.data existe avant de lire currentUser.
-      const userId = appState.data?.currentUser || '';
-      const currentUser = userManager.getUser(userId);
-      const userStyle = userManager.getUserStyle(userId);
-      return { currentUser, userStyle };
-    } catch (error) {
-      console.error("ERREUR CRITIQUE DANS useAppState :", error);
-      return { 
-        currentUser: null, 
-        userStyle: { bg: 'bg-gray-100', border: 'border-gray-300', text: 'text-gray-800' }
-      };
-    }
+    const userId = appState.data?.currentUser || null;
+    const currentUserObject = userManager.getUser(userId);
+    const userStyle = userManager.getUserStyle(userId);
+    return { currentUser: currentUserObject, userStyle };
   }, [appState.data?.currentUser]);
 
+  // --- Actions exposées à l'UI (toutes avec useCallback) ---
+  const disconnect = useCallback(() => connectionManager.disconnect(), []);
+  const updateCurrentPage = useCallback((pageId) => dataManager.updateCurrentPage(pageId), []);
+  const setCurrentUser = useCallback((userId) => dataManager.setCurrentUser(userId), []);
+  
+  // Actions de session
+  const createSession = useCallback((gameData) => dataManager.createSession(gameData), []);
+  const updateSession = useCallback((session) => dataManager.updateSession(session), []);
+  const deleteSession = useCallback((sessionId) => dataManager.deleteSession(sessionId), []);
+  const openChatSession = useCallback((session) => dataManager.openChatSession(session), []);
+  const closeChatSession = useCallback(() => dataManager.closeChatSession(), []);
+  const addMessageToSession = useCallback((sessionId, content) => dataManager.addMessageToSession(sessionId, content), []);
 
-  // --- FONCTIONS DE SESSION (SIMULÉES POUR L'INSTANT) ---
-  const createSession = useCallback(async (gameData) => dataManager.createSession(gameData), []);
-  const updateSession = useCallback(async (session) => dataManager.updateSession(session), []);
-  const deleteSession = useCallback(async (sessionId) => dataManager.deleteSession(sessionId), []);
-  const openChatSession = useCallback(async (session) => dataManager.openChatSession(session), []);
-  const closeChatSession = useCallback(async () => dataManager.closeChatSession(), []);
-  const addMessageToSession = useCallback(async (sessionId, content) => dataManager.addMessageToSession(sessionId, content), []);
-
-  // --- L'objet retourné est maintenant enrichi des nouvelles fonctions ---
+  // On fusionne l'état brut, l'état dérivé et les actions
   return {
     ...appState.data,
     ...derivedUserState,
@@ -76,7 +65,7 @@ const connect = useCallback(() => connectionManager.connect(), []);
     connect,
     disconnect,
     updateCurrentPage,
-    // Fonctions de session
+    setCurrentUser,
     createSession,
     updateSession,
     deleteSession,

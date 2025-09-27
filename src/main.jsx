@@ -1,7 +1,9 @@
+// src/main.jsx
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './components/App.jsx';
-import './index.css'; // Assurez-vous que c'est le bon fichier CSS
+import './index.css';
 
 // --- Import de TOUS les modules ---
 import { connectionManager } from './core/ConnectionManager.js';
@@ -10,19 +12,21 @@ import { dataManager } from './core/dataManager.js';
 import { photoDataV2 } from './core/PhotoDataV2.js';
 import { mastodonData } from './core/MastodonData.js';
 import { masterIndexGenerator } from './core/MasterIndexGenerator.js';
-import { stateManager } from './core/StateManager.js'; // Importer StateManager
+import { stateManager } from './core/StateManager.js';
 
 console.log('🚀 Démarrage de Mémoire du Mékong (Version Stable)...');
 
 // --- Injection de TOUTES les dépendances ---
 driveSync.initialize({ connectionManager });
-// ✅ CORRECTION : On passe StateManager à PhotoDataV2
 photoDataV2.initializeDependencies({ stateManager });
+
+// Le bloc corrigé pour dataManager
 dataManager.initializeDependencies({
   connectionManager,
   driveSync,
-  photoDataV2
+  stateManager // On injecte stateManager ici
 });
+
 masterIndexGenerator.initialize({
   driveSync,
   mastodonData,
@@ -38,4 +42,3 @@ root.render(
     <App />
   </React.StrictMode>
 );
-
