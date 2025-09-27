@@ -2,15 +2,64 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
+import { userManager } from '../../core/UserManager';
+import { CheckCircle } from 'lucide-react';
+
 import { masterIndexGenerator } from '../../core/MasterIndexGenerator.js';
 import { mastodonData } from '../../core/MastodonData.js';
 import { dataManager } from '../../core/dataManager.js';
 import { RefreshCw, Wrench, Database, BookOpen, HardDrive, Camera, ImageIcon } from 'lucide-react';
 
 export default function SettingsPage() {
-  const app = useAppState();
-  const [operations, setOperations] = useState({ generating: false, currentStep: '' });
+  const { currentUser, setCurrentUser, updateCurrentPage } = useAppState();
+  const allUsers = userManager.getAllUsers();
   
+  const handleSelectUser = (userId) => {
+    // 1. On change l'utilisateur actif
+    setCurrentUser(userId);
+    
+    // 2. Pour une meilleure expérience, on retourne à la page principale
+    updateCurrentPage('memories'); 
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto py-8">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Profils</h1>
+        <p className="text-gray-600 mt-2">Sélectionnez le profil actif pour la session.</p>
+      </div>
+
+      <div className="space-y-4">
+        {allUsers.map((user) => {
+          const style = userManager.getUserStyle(user.id);
+          const isActive = currentUser && currentUser.id === user.id;
+
+          return (
+            <button
+              key={user.id}
+              onClick={() => handleSelectUser(user.id)}
+              className={`w-full flex items-center justify-between p-4 border rounded-lg transition-all transform hover:scale-105 ${isActive ? 'ring-2 ring-offset-2 ring-amber-500' : ''} ${style.bg} ${style.border}`}
+            >
+              <div className="flex items-center space-x-4">
+                <span className="text-4xl">{user.emoji}</span>
+                <div>
+                  <span className={`text-xl font-bold ${style.text}`}>{user.name}</span>
+                  <p className={`text-sm ${style.text} opacity-80`}>{user.description}</p>
+                </div>
+              </div>
+              
+              {isActive && (
+                <CheckCircle className="w-6 h-6 text-green-500" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  
+
   // L'état va maintenant contenir les stats détaillées
   const [dataStatus, setDataStatus] = useState({
     mastodonCount: 0,

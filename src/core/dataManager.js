@@ -1,29 +1,22 @@
 /**
- * DataManager v2.9 - User lifecycle management
- * This module orchestrates all application data.
- * It now handles user selection, persistence via StateManager,
- * and restoration on startup.
+ * DataManager v3.0 - FINAL STABLE
+ * This version uses arrow functions for all public methods to
+ * permanently fix `this` context issues when called from React.
  */
 class DataManager {
   constructor() {
     this.connectionManager = null;
     this.driveSync = null;
-    this.stateManager = null; // Ajout pour la mémorisation
+    this.stateManager = null;
 
     this.appState = {
-      isInitialized: false,
-      isLoading: true,
-      masterIndex: null,
-      sessions: [],
-      currentChatSession: null,
-      currentUser: null, // Initialisé à null
-      currentPage: 'memories',
-      error: null,
-      connection: { hasError: false, lastError: null },
+      isInitialized: false, isLoading: true, masterIndex: null, sessions: [],
+      currentChatSession: null, currentUser: null, currentPage: 'memories',
+      error: null, connection: { hasError: false, lastError: null },
     };
 
     this.listeners = new Set();
-    console.log('📦 DataManager v2.9: Ready.');
+    console.log('📦 DataManager v3.0 (Stable): Ready.');
   }
 
   initializeDependencies(dependencies) {
@@ -34,16 +27,18 @@ class DataManager {
     console.log('📦 DataManager: Dependencies injected.');
   }
 
-  updateState(newState) {
+  // Renommée en updateState pour la clarté, et privée
+  updateState = (newState) => {
     this.appState = { ...this.appState, ...newState };
     this.notify();
   }
 
-  async handleConnectionChange(connectionState) {
+  // --- Fonctions de cycle de vie ---
+
+  handleConnectionChange = async (connectionState) => {
     if (connectionState.hasError) {
       this.updateState({
-        isLoading: false,
-        error: `Connection Error: ${connectionState.lastError}`,
+        isLoading: false, error: `Connection Error: ${connectionState.lastError}`,
         connection: { hasError: true, lastError: connectionState.lastError }
       });
     }
@@ -52,52 +47,39 @@ class DataManager {
     }
   }
 
-  async synchronizeInitialData() {
+  synchronizeInitialData = async () => {
     console.log('🚀 DataManager: Synchronisation initiale...');
     this.updateState({ isLoading: true });
-
     try {
-      // 1. On restaure l'utilisateur depuis le cache
       const cachedUser = await this.stateManager.get('mekong_currentUser');
-      if (cachedUser) {
-        console.log(`👤 Utilisateur en cache trouvé : ${cachedUser}`);
-      }
-
-      // 2. On charge les données depuis Drive
+      if (cachedUser) console.log(`👤 Utilisateur en cache trouvé : ${cachedUser}`);
+      
       const loadedFiles = await this.driveSync.loadAllData();
-      const masterIndex = (loadedFiles && loadedFiles.masterIndex) 
-          ? (typeof loadedFiles.masterIndex === 'string' ? JSON.parse(loadedFiles.masterIndex) : loadedFiles.masterIndex)
-          : null;
+      const masterIndex = (loadedFiles?.masterIndex) ? (typeof loadedFiles.masterIndex === 'string' ? JSON.parse(loadedFiles.masterIndex) : loadedFiles.masterIndex) : null;
       const sessions = loadedFiles.sessions || [];
 
-      // 3. On met à jour l'état final
       this.updateState({
-        masterIndex: masterIndex,
-        sessions: sessions,
-        currentUser: cachedUser || null, // On applique l'utilisateur du cache
-        isLoading: false,
-        isInitialized: true,
-        error: null
+        masterIndex, sessions, currentUser: cachedUser || null,
+        isLoading: false, isInitialized: true, error: null
       });
       console.log(`✅ DataManager: Synchro terminée. ${sessions.length} session(s) chargée(s).`);
-
     } catch (error) {
       console.error("❌ DataManager: Erreur de synchronisation.", error);
       this.updateState({ error: `Sync Error: ${error.message}`, isLoading: false, isInitialized: true });
     }
   }
 
-
-// --- API PUBLIQUE ---
-
-  setCurrentUser(userId) {
+  // --- API PUBLIQUE (toutes en fonctions fléchées) ---
+  
+  setCurrentUser = (userId) => {
     console.log(`👤 Changement d'utilisateur -> ${userId}`);
-    this.stateManager.set('mekong_currentUser', userId); 
+    this.stateManager.set('mekong_currentUser', userId);
     this.updateState({ currentUser: userId });
   }
 
-  async updateCurrentPage(pageId) {
+  updateCurrentPage = (pageId) => {
     if (this.appState.currentPage !== pageId) {
+      console.log(`📄 Changement de page -> ${pageId}`);
       this.updateState({ currentPage: pageId });
     }
   }
@@ -141,102 +123,48 @@ async reloadMasterIndex() {
 // --- NOUVELLE API PUBLIQUE POUR LES SESSIONS ---
 
   /** Crée une nouvelle session de chat */
-  async createSession(gameData) {
-    console.log('Logic: Création de session pour', gameData.title);
+  createSession = async (gameData) => {
     const newSession = {
-      id: `sid_${Date.now()}`,
-      gameId: gameData.id,
-      gameTitle: gameData.title,
-      subtitle: `Conversation sur ${gameData.title}`,
-      createdAt: new Date().toISOString(),
-      user: this.appState.currentUser,
-      notes: [], // Le tableau des messages du chat
+      id: `sid_${Date.now()}`, gameId: gameData.id, gameTitle: gameData.title,
+      subtitle: `Conversation sur ${gameData.title}`, createdAt: new Date().toISOString(),
+      user: this.appState.currentUser, notes: [],
     };
-
-    try {
-      await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
-      this.setState({ sessions: [...this.appState.sessions, newSession] });
-      return newSession;
-    } catch (error) {
-      console.error("❌ Erreur de création de session:", error);
-      this.setState({ error: `Session Create Error: ${error.message}` });
-    }
+    await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
+    this.updateState({ sessions: [...this.appState.sessions, newSession] });
+    return newSession;
   }
 
-  /** Met à jour une session existante (pour ajout/modif de message, etc.) */
-  async updateSession(sessionToUpdate) {
-    try {
-      await this.driveSync.saveFile(`session_${sessionToUpdate.id}.json`, sessionToUpdate);
-      
-      const updatedSessions = this.appState.sessions.map(s => 
-        s.id === sessionToUpdate.id ? sessionToUpdate : s
-      );
-
-      // Si la session mise à jour est celle qui est ouverte, on met aussi à jour currentChatSession
-      const updatedCurrentChat = this.appState.currentChatSession?.id === sessionToUpdate.id 
-        ? sessionToUpdate 
-        : this.appState.currentChatSession;
-
-      this.setState({ 
-        sessions: updatedSessions,
-        currentChatSession: updatedCurrentChat
-      });
-    } catch (error) {
-      console.error("❌ Erreur de mise à jour de session:", error);
-      this.setState({ error: `Session Update Error: ${error.message}` });
-    }
+  updateSession = async (sessionToUpdate) => {
+    await this.driveSync.saveFile(`session_${sessionToUpdate.id}.json`, sessionToUpdate);
+    const updatedSessions = this.appState.sessions.map(s => s.id === sessionToUpdate.id ? sessionToUpdate : s);
+    const updatedCurrentChat = this.appState.currentChatSession?.id === sessionToUpdate.id ? sessionToUpdate : this.appState.currentChatSession;
+    this.updateState({ sessions: updatedSessions, currentChatSession: updatedCurrentChat });
   }
 
-  /** Supprime une session */
-  async deleteSession(sessionId) {
-    try {
-      await this.driveSync.deleteFile(`session_${sessionId}.json`);
-      const filteredSessions = this.appState.sessions.filter(s => s.id !== sessionId);
-      this.setState({ sessions: filteredSessions });
-    } catch (error) {
-      console.error("❌ Erreur de suppression de session:", error);
-      this.setState({ error: `Session Delete Error: ${error.message}` });
-    }
+  deleteSession = async (sessionId) => {
+    await this.driveSync.deleteFile(`session_${sessionId}.json`);
+    const filteredSessions = this.appState.sessions.filter(s => s.id !== sessionId);
+    this.updateState({ sessions: filteredSessions });
   }
 
-  /** Ajoute un message à une session (basé sur la logique de ChatPage_A) */
-  async addMessageToSession(sessionId, messageContent) {
+  addMessageToSession = async (sessionId, messageContent) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
     if (!session) return;
-
     const newMessage = {
-      id: `msg_${Date.now()}`,
-      author: this.appState.currentUser,
-      content: messageContent,
-      timestamp: new Date().toISOString(),
-      edited: false
+      id: `msg_${Date.now()}`, author: this.appState.currentUser,
+      content: messageContent, timestamp: new Date().toISOString(), edited: false
     };
-
-    const updatedSession = {
-      ...session,
-      notes: [...session.notes, newMessage]
-    };
-    
-    // updateSession s'occupe de sauvegarder et de mettre à jour l'état
+    const updatedSession = { ...session, notes: [...session.notes, newMessage] };
     await this.updateSession(updatedSession);
   }
 
-  /** Ouvre une session dans l'interface de chat */
-  async openChatSession(session) {
-    this.setState({ 
-      currentChatSession: session,
-      currentPage: 'chat' // On change de page pour afficher le chat
-    });
+  openChatSession = (session) => {
+    this.updateState({ currentChatSession: session, currentPage: 'chat' });
   }
 
-  /** Ferme la session de chat et retourne à la liste */
-  async closeChatSession() {
-    this.setState({ 
-      currentChatSession: null,
-      currentPage: 'sessions' // On retourne à la page des sessions
-    });
+  closeChatSession = () => {
+    this.updateState({ currentChatSession: null, currentPage: 'sessions' });
   }
-
   // --- Fin de la nouvelle API ---
 
 
@@ -248,31 +176,14 @@ async reloadMasterIndex() {
     }
   }
 
-  getState() {
-    return this.appState;
-  }
-
-  subscribe(callback) {
+  // --- Gestion de l'état et des abonnements (inchangé) ---
+  getState = () => this.appState;
+  subscribe = (callback) => {
     this.listeners.add(callback);
     callback(this.appState);
     return () => this.listeners.delete(callback);
   }
-
-setCurrentUser(userId) {
-    console.log(`👤 Changement d'utilisateur -> ${userId}`);
-    // Mémorise le choix pour les prochaines visites
-    // Note: Assure-toi que stateManager est injecté dans les dépendances de dataManager.
-    this.stateManager.set('currentUser', userId); 
-    
-    // Met à jour l'état et notifie l'UI via le subscribe
-    this.updateState({ ...this.state, currentUser: userId });
-  }
-
-  notify() {
-    for (const listener of this.listeners) {
-      listener(this.getState());
-    }
-  }
+  notify = () => { for (const listener of this.listeners) { listener(this.getState()); } }
 }
 
 export const dataManager = new DataManager();
