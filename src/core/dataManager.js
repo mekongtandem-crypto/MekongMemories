@@ -1,7 +1,6 @@
 /**
- * DataManager v3.0 - FINAL STABLE
- * This version uses arrow functions for all public methods to
- * permanently fix `this` context issues when called from React.
+ * DataManager v3.1 - FIX: Cohérence utilisateurs
+ * CORRECTION: Utilisation cohérente des IDs utilisateur dans les messages
  */
 class DataManager {
   constructor() {
@@ -16,18 +15,17 @@ class DataManager {
     };
 
     this.listeners = new Set();
-    console.log('📦 DataManager v3.0 (Stable): Ready.');
+    console.log('📦 DataManager v3.1 (User Fix): Ready.');
   }
 
   initializeDependencies(dependencies) {
     this.connectionManager = dependencies.connectionManager;
     this.driveSync = dependencies.driveSync;
-    this.stateManager = dependencies.stateManager; // Injection de stateManager
+    this.stateManager = dependencies.stateManager;
     this.connectionManager.subscribe(this.handleConnectionChange.bind(this));
     console.log('📦 DataManager: Dependencies injected.');
   }
 
-  // Renommée en updateState pour la clarté, et privée
   updateState = (newState) => {
     this.appState = { ...this.appState, ...newState };
     this.notify();
@@ -85,49 +83,44 @@ class DataManager {
   }
   
   /**
-   * Instantly reloads the masterIndex into the app's state after generation.
-   * This is called by SettingsPage.
+   * Recharge le masterIndex après génération
    */
-  // Nouvelle version corrigée de la fonction
-async reloadMasterIndex() {
-  try {
-    console.log('🔄 DataManager: Rechargement manuel du masterIndex...');
-    const masterIndexData = await this.driveSync.loadFile('mekong_master_index_v3_moments.json');
-    
-    if (masterIndexData) {
-      // Étape 1 : Mettre à jour la sauvegarde à long terme (ce qui fonctionne déjà)
-      await stateManager.set('master_index_v3', masterIndexData);
-      await stateManager.set('master_index_loaded_at', new Date().toISOString());
-
-      // --- LA CORRECTION CRUCIALE EST ICI ---
-      // Étape 2 : Mettre à jour l'état interne "en direct" du DataManager
-      this.setState({ masterIndex: masterIndexData });
+  reloadMasterIndex = async () => {
+    try {
+      console.log('🔄 DataManager: Rechargement manuel du masterIndex...');
+      const masterIndexData = await this.driveSync.loadFile('mekong_master_index_v3_moments.json');
       
-      console.log('✅ MasterIndex rechargé et appliqué !');
-      
-      // Étape 3 : Notifier l'interface, qui recevra maintenant le nouvel état
-      // (Cette ligne était déjà là, mais elle notifiera maintenant avec les BONNES données)
-      this.notify();
-
-      return { success: true };
-    } else {
-      throw new Error("Le fichier masterIndex n'a pas pu être rechargé depuis Drive.");
+      if (masterIndexData) {
+        await this.stateManager.set('master_index_v3', masterIndexData);
+        await this.stateManager.set('master_index_loaded_at', new Date().toISOString());
+        
+        // CORRECTION: Utiliser updateState au lieu de setState
+        this.updateState({ masterIndex: masterIndexData });
+        
+        console.log('✅ MasterIndex rechargé et appliqué !');
+        return { success: true };
+      } else {
+        throw new Error("Le fichier masterIndex n'a pas pu être rechargé depuis Drive.");
+      }
+    } catch (error) {
+      console.error('❌ Echec du rechargement du master index:', error);
+      this.updateState({ error: `Reload Error: ${error.message}` });
+      return { success: false, error };
     }
-  } catch (error) {
-    console.error('❌ Echec du rechargement du master index:', error);
-    this.setState({ error: `Reload Error: ${error.message}` }); // Informer l'UI de l'erreur
-    return { success: false, error };
   }
-}
 
-// --- NOUVELLE API PUBLIQUE POUR LES SESSIONS ---
+  // --- API SESSIONS ---
 
   /** Crée une nouvelle session de chat */
   createSession = async (gameData) => {
     const newSession = {
-      id: `sid_${Date.now()}`, gameId: gameData.id, gameTitle: gameData.title,
-      subtitle: `Conversation sur ${gameData.title}`, createdAt: new Date().toISOString(),
-      user: this.appState.currentUser, notes: [],
+      id: `sid_${Date.now()}`, 
+      gameId: gameData.id, 
+      gameTitle: gameData.title,
+      subtitle: `Conversation sur ${gameData.title}`, 
+      createdAt: new Date().toISOString(),
+      user: this.appState.currentUser, // ID string 
+      notes: [],
     };
     await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
     this.updateState({ sessions: [...this.appState.sessions, newSession] });
@@ -147,13 +140,19 @@ async reloadMasterIndex() {
     this.updateState({ sessions: filteredSessions });
   }
 
+  // ✅ CORRECTION CRITIQUE: Utiliser l'ID utilisateur au lieu de l'objet
   addMessageToSession = async (sessionId, messageContent) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
     if (!session) return;
+    
     const newMessage = {
-      id: `msg_${Date.now()}`, author: this.appState.currentUser,
-      content: messageContent, timestamp: new Date().toISOString(), edited: false
+      id: `msg_${Date.now()}`, 
+      author: this.appState.currentUser, // ← Maintenant c'est cohérent (ID string)
+      content: messageContent, 
+      timestamp: new Date().toISOString(), 
+      edited: false
     };
+    
     const updatedSession = { ...session, notes: [...session.notes, newMessage] };
     await this.updateSession(updatedSession);
   }
@@ -165,18 +164,8 @@ async reloadMasterIndex() {
   closeChatSession = () => {
     this.updateState({ currentChatSession: null, currentPage: 'sessions' });
   }
-  // --- Fin de la nouvelle API ---
 
-
-  // --- Public API for UI ---
-
-  async updateCurrentPage(pageId) {
-    if (this.appState.currentPage !== pageId) {
-      this.setState({ currentPage: pageId });
-    }
-  }
-
-  // --- Gestion de l'état et des abonnements (inchangé) ---
+  // --- Gestion de l'état et des abonnements ---
   getState = () => this.appState;
   subscribe = (callback) => {
     this.listeners.add(callback);
@@ -187,4 +176,3 @@ async reloadMasterIndex() {
 }
 
 export const dataManager = new DataManager();
-
