@@ -1,195 +1,211 @@
 /**
- * ConnectionManager v0.9.1 - Utiliser l'URL Authentique Google + Modification Minimale
- * Ne plus construire l'URL manuellement, utiliser GIS avec des workarounds iOS
+ * ConnectionManager v0.8.2 - Logique d'abonnement ajoutée
+ * Ajout des méthodes subscribe/notify/getState pour permettre aux autres
+ * modules d'écouter les changements d'état de la connexion de manière propre.
  */
 
-// ConnectionManager.js - Intercepter l'URL Google et la modifier pour iOS
+import { stateManager } from './StateManager.js';
+import { GOOGLE_DRIVE_CONFIG, validateCredentials } from '../config/googleDrive.js';
 
-async connect() {
-  console.log('🔌 Démarrage connexion...');
-  this.setState(this.states.CONNECTING);
-  
-  try {
-    if (!this.gisInitialized) {
-      await this.initializeGoogleIdentityServices();
-    }
+class ConnectionManager {
+  constructor() {
+    this.states = { OFFLINE: 'offline', CONNECTING: 'connecting', ONLINE: 'online', ERROR: 'error' };
+    this.currentState = this.states.OFFLINE;
+    this.userInfo = null;
+    this.lastError = null;
+    this.listeners = new Set();
+    this.gisInitialized = false;
+    this.tokenClient = null;
+    this.accessToken = null;
     
-    // 🆕 iOS : Intercepter l'URL Google Identity Services
-    if (this.isIOS) {
-      return this.connectIOSWithUrlInterception();
-    } else {
-      // Desktop : méthode normale
+    console.log('🔌 ConnectionManager: Construction (v0.8.2)...');
+    this.init();
+  }
+
+  async init() {
+    try {
+      console.log('🔌 ConnectionManager: Initialisation...');
+      await this.initializeGoogleIdentityServices();
+      console.log('✅ ConnectionManager: Initialisé');
+    } catch (error) {
+      console.error('❌ ConnectionManager: Erreur initialisation:', error);
+      this.setState(this.states.ERROR);
+      this.lastError = error.message;
+    }
+  }
+
+  async connect() {
+    console.log('🔌 Démarrage connexion...');
+    this.setState(this.states.CONNECTING);
+    try {
+      if (!this.gisInitialized) {
+        await this.initializeGoogleIdentityServices();
+      }
       this.tokenClient.requestAccessToken({ prompt: 'consent select_account' });
       return new Promise((resolve) => { this._connectionResolve = resolve; });
-    }
-    
-  } catch (error) {
-    console.error('❌ Erreur connexion:', error);
-    this.setState(this.states.ERROR);
-    this.lastError = error.message;
-    return { success: false, error: error.message };
-  }
-}
-
-// 🆕 MÉTHODE iOS : Intercepter et modifier l'URL Google
-async connectIOSWithUrlInterception() {
-  console.log('📱 iOS - Interception URL Google Identity Services...');
-  
-  const userConfirm = confirm(
-    'Vous allez être redirigé vers Google pour l\'authentification.\n\n' +
-    'Après connexion, vous reviendrez automatiquement à l\'application.'
-  );
-  
-  if (!userConfirm) {
-    this.setState(this.states.OFFLINE);
-    return { success: false, error: 'Connexion annulée' };
-  }
-  
-  // Intercepter les tentatives d'ouverture de popup pour capturer l'URL
-  const originalWindowOpen = window.open;
-  let interceptedUrl = null;
-  
-  window.open = function(url, target, features) {
-    if (url && url.includes('accounts.google.com/o/oauth2')) {
-      console.log('📱 URL Google interceptée:', url);
-      interceptedUrl = url;
-      return null; // Empêcher l'ouverture du popup
-    }
-    return originalWindowOpen.call(this, url, target, features);
-  };
-  
-  try {
-    // Déclencher Google Identity Services (va tenter d'ouvrir popup)
-    this.tokenClient.requestAccessToken({ prompt: 'consent select_account' });
-    
-    // Attendre que l'URL soit interceptée
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Restaurer window.open
-    window.open = originalWindowOpen;
-    
-    if (interceptedUrl) {
-      // 🆕 Modifier l'URL pour iOS
-      const modifiedUrl = this.modifyUrlForIOS(interceptedUrl);
-      console.log('📱 URL modifiée pour iOS:', modifiedUrl);
-      
-      // Sauvegarder l'état avant redirection
-      localStorage.setItem('ios_auth_in_progress', JSON.stringify({
-        timestamp: Date.now(),
-        originalUrl: interceptedUrl
-      }));
-      
-      // Redirection directe avec l'URL modifiée
-      window.location.href = modifiedUrl;
-    } else {
-      throw new Error('Impossible d\'intercepter l\'URL Google');
-    }
-    
-  } catch (error) {
-    console.error('❌ Erreur interception URL:', error);
-    // Restaurer window.open en cas d'erreur
-    window.open = originalWindowOpen;
-    throw error;
-  }
-  
-  return new Promise(() => {}); // Pas de résolution car on redirige
-}
-
-// 🆕 MÉTHODE : Modifier l'URL Google pour iOS
-modifyUrlForIOS(originalUrl) {
-  try {
-    const url = new URL(originalUrl);
-    
-    // Remplacer storagerelay:// par une vraie URL de redirection
-    const currentAppUrl = window.location.origin + window.location.pathname;
-    url.searchParams.set('redirect_uri', currentAppUrl);
-    
-    // Optionnel : ajuster d'autres paramètres si nécessaire
-    // url.searchParams.set('ux_mode', 'redirect'); // Pas nécessaire car on redirige déjà
-    
-    return url.toString();
-  } catch (error) {
-    console.error('❌ Erreur modification URL:', error);
-    return originalUrl; // Fallback
-  }
-}
-
-// 🆕 MÉTHODE : Vérifier retour OAuth au démarrage (constructor)
-constructor() {
-  // ... code existant ...
-  
-  // Vérifier retour OAuth iOS
-  if (this.isIOS) {
-    this.checkForIOSAuthReturn();
-  }
-}
-
-// 🆕 MÉTHODE : Gérer retour OAuth iOS
-checkForIOSAuthReturn() {
-  const hash = window.location.hash;
-  const params = new URLSearchParams(window.location.search);
-  
-  // Vérifier si on revient d'une auth OAuth
-  const isAuthInProgress = localStorage.getItem('ios_auth_in_progress');
-  
-  if (!isAuthInProgress) return; // Pas d'auth en cours
-  
-  console.log('📱 Retour auth iOS détecté...');
-  
-  // Chercher token dans hash (#access_token=...)
-  if (hash.includes('access_token=')) {
-    const hashParams = new URLSearchParams(hash.replace('#', '?'));
-    const token = hashParams.get('access_token');
-    const error = hashParams.get('error');
-    
-    if (error) {
-      console.error('📱 Erreur OAuth hash:', error);
+    } catch (error) {
+      console.error('❌ Erreur connexion:', error);
       this.setState(this.states.ERROR);
-      this.lastError = `Erreur OAuth: ${error}`;
-    } else if (token) {
-      console.log('📱 Token OAuth trouvé:', token.substring(0, 20) + '...');
-      this.handleIOSAuthSuccess(token);
+      this.lastError = error.message;
+      return { success: false, error: error.message };
     }
-    
-    // Nettoyer
-    window.history.replaceState({}, document.title, window.location.pathname);
-    localStorage.removeItem('ios_auth_in_progress');
-    return;
+  }
+
+  async disconnect() {
+    try {
+      console.log('🔌 Déconnexion...');
+      if (this.accessToken) {
+        window.google.accounts.oauth2.revoke(this.accessToken);
+        this.accessToken = null;
+      }
+      this.userInfo = null;
+      this.lastError = null;
+      this.setState(this.states.OFFLINE);
+      console.log('✅ Déconnexion réussie');
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Erreur déconnexion:', error);
+      this.lastError = error.message;
+      return { success: false, error: error.message };
+    }
+  }
+
+  // --- Logique interne Google ---
+
+  async initializeGoogleIdentityServices() {
+    try {
+      validateCredentials();
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Impossible de charger le script Google GSI'));
+        document.head.appendChild(script);
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 50)); // Petit délai pour garantir que `google` est sur window
+
+      this.tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_DRIVE_CONFIG.CLIENT_ID,
+        scope: GOOGLE_DRIVE_CONFIG.SCOPES,
+        callback: (tokenResponse) => {
+          if (tokenResponse.error) {
+            this.setState(this.states.ERROR);
+            this.lastError = `Erreur OAuth: ${tokenResponse.error}`;
+            return;
+          }
+          this.accessToken = tokenResponse.access_token;
+          this.finalizeConnection();
+        }
+      });
+      this.gisInitialized = true;
+      console.log('✅ Google Identity Services (GIS) initialisé');
+    } catch (error) {
+      console.error('❌ Erreur initialisation GIS:', error);
+      throw new Error(`Initialisation GIS échouée: ${error.message}`);
+    }
   }
   
-  // Chercher code dans params (?code=...)
-  const code = params.get('code');
-  const error = params.get('error');
-  
-  if (error) {
-    console.error('📱 Erreur OAuth params:', error);
-    this.setState(this.states.ERROR);
-    this.lastError = `Erreur OAuth: ${error}`;
-  } else if (code) {
-    console.log('📱 Code OAuth trouvé:', code.substring(0, 20) + '...');
-    // Pour un code, il faudrait un backend pour l'échanger
-    // Pour l'instant, on simule un token
-    this.handleIOSAuthSuccess('token_from_code_' + code);
+  async finalizeConnection() {
+    try {
+      // Pour utiliser l'API gapi, nous devons l'initialiser avec le token
+      await this.initializeGapiClient();
+      this.userInfo = await this.getUserInfo();
+      this.setState(this.states.ONLINE);
+
+      console.log('✅ Connexion Google Drive finalisée. DataManager va maintenant synchroniser.');
+
+      const result = { success: true, userInfo: this.userInfo };
+      if (this._connectionResolve) this._connectionResolve(result);
+      return result;
+    } catch (error) {
+      this.setState(this.states.ERROR);
+      this.lastError = `Finalisation échouée: ${error.message}`;
+      const errorResult = { success: false, error: this.lastError };
+      if (this._connectionResolve) this._connectionResolve(errorResult);
+      return errorResult;
+    }
   }
   
-  if (code || error) {
-    window.history.replaceState({}, document.title, window.location.pathname);
-    localStorage.removeItem('ios_auth_in_progress');
+  async initializeGapiClient() {
+    await new Promise((resolve, reject) => {
+        const gapiScript = document.createElement('script');
+        gapiScript.src = 'https://apis.google.com/js/api.js';
+        gapiScript.onload = () => window.gapi.load('client', resolve);
+        gapiScript.onerror = reject;
+        document.head.appendChild(gapiScript);
+    });
+
+    await window.gapi.client.init({
+      apiKey: GOOGLE_DRIVE_CONFIG.API_KEY,
+      discoveryDocs: [GOOGLE_DRIVE_CONFIG.DISCOVERY_DOC],
+    });
+    window.gapi.client.setToken({ access_token: this.accessToken });
+    console.log('✅ Google API Client (gapi) initialisé et authentifié.');
+  }
+
+  async getUserInfo() {
+    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { 'Authorization': `Bearer ${this.accessToken}` }
+    });
+    if (!response.ok) throw new Error('Erreur récupération profil utilisateur');
+    const profile = await response.json();
+    return { id: profile.id, name: profile.name, email: profile.email, imageUrl: profile.picture };
+  }
+
+  // --- Gestion de l'état et des abonnements ---
+
+  subscribe(callback) {
+    this.listeners.add(callback);
+    callback(this.getState()); 
+    return () => this.listeners.delete(callback);
+  }
+
+  notify() {
+    const state = this.getState();
+    for (const listener of this.listeners) {
+      listener(state);
+    }
+  }
+
+  getState() {
+    return {
+      state: this.currentState,
+      isOnline: this.currentState === this.states.ONLINE,
+      isConnecting: this.currentState === this.states.CONNECTING,
+      isOffline: this.currentState === this.states.OFFLINE,
+      hasError: this.currentState === this.states.ERROR,
+      userInfo: this.userInfo,
+      lastError: this.lastError,
+    };
+  }
+  
+  // NOTE: Ceci est maintenant la SEULE et UNIQUE définition de setState
+  setState(newState) {
+    if (this.currentState !== newState) {
+      const oldState = this.currentState;
+      this.currentState = newState;
+      console.log(`🔄 État connexion: ${oldState} → ${newState}`);
+      this.notify();
+    }
+  }
+
+  getDebugInfo() {
+      // Méthode pour le débogage, si `useAppState` l'utilise encore.
+      return {
+          currentState: this.currentState,
+          userInfo: this.userInfo,
+          lastError: this.lastError,
+          gisInitialized: this.gisInitialized,
+          hasToken: !!this.accessToken,
+      };
   }
 }
 
-// 🆕 MÉTHODE : Traiter succès auth iOS
-async handleIOSAuthSuccess(token) {
-  try {
-    console.log('📱 Traitement succès auth iOS...');
-    this.setState(this.states.CONNECTING);
-    
-    this.accessToken = token;
-    await this.finalizeConnection();
-    
-  } catch (error) {
-    console.error('❌ Erreur finalisation iOS:', error);
-    this.setState(this.states.ERROR);
-    this.lastError = `Erreur finalisation: ${error.message}`;
-  }
+export const connectionManager = new ConnectionManager();
+
+if (typeof window !== 'undefined') {
+  window.connectionManager = connectionManager;
 }
