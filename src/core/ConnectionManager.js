@@ -1,6 +1,6 @@
 /**
- * ConnectionManager v0.8.3 - Fix iOS Redirect 
- * Solution : Redirect au lieu de popup sur iOS Safari
+ * ConnectionManager v0.8.5 - Solution iOS avec nouvel onglet
+ * Contourne les limitations Safari iOS en ouvrant Google dans un nouvel onglet
  */
 
 import { stateManager } from './StateManager.js';
@@ -19,13 +19,16 @@ class ConnectionManager {
     
     // 🆕 DÉTECTION iOS
     this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    // 🆕 Variables pour gérer l'onglet iOS
+    this.iosAuthWindow = null;
+    this.iosAuthCheckInterval = null;
     
-    console.log('🔌 ConnectionManager: Construction (v0.8.3)...');
+    console.log('🔌 ConnectionManager: Construction (v0.8.5)...');
     this.init();
     
-    // 🆕 GÉRER REDIRECT OAUTH AU CHARGEMENT (iOS)
+    // 🆕 Écouter le retour de l'authentification iOS
     if (this.isIOS) {
-      this.handleOAuthRedirectOnLoad();
+      this.setupIOSAuthListener();
     }
   }
 
@@ -41,69 +44,109 @@ class ConnectionManager {
     }
   }
 
-  // 🆕 NOUVELLE MÉTHODE : Gérer le retour de redirection OAuth iOS
-  handleOAuthRedirectOnLoad() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const error = urlParams.get('error');
-    const state = urlParams.get('state');
+  // 🆕 MÉTHODE iOS : Écouter le retour d'authentification
+  setupIOSAuthListener() {
+    // Écouter les messages postMessage depuis l'onglet d'auth
+    window.addEventListener('message', (event) => {
+      if (event.origin !== window.location.origin) return;
+      
+      if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+        console.log('📱 Message de succès reçu:', event.data);
+        this.handleIOSAuthSuccess(event.data.token);
+      } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+        console.error('📱 Erreur auth reçue:', event.data.error);
+        this.handleIOSAuthError(event.data.error);
+      }
+    });
     
-    // Vérifier si on revient d'une auth OAuth
-    if (code || error) {
-      console.log('📱 Retour OAuth détecté sur iOS');
+    // Vérifier si on revient d'une auth (URL contient token)
+    this.checkForAuthToken();
+  }
+
+  // 🆕 MÉTHODE iOS : Vérifier token dans l'URL
+  checkForAuthToken() {
+    const hash = window.location.hash;
+    const params = new URLSearchParams(window.location.search);
+    
+    // Vérifier hash fragment (implicit flow)
+    if (hash.includes('access_token=')) {
+      const hashParams = new URLSearchParams(hash.replace('#', '?'));
+      const token = hashParams.get('access_token');
+      const error = hashParams.get('error');
       
       if (error) {
-        console.error('❌ Erreur OAuth:', error);
-        this.setState(this.states.ERROR);
-        this.lastError = `OAuth Error: ${error}`;
-        
+        console.error('📱 Erreur OAuth dans hash:', error);
+        this.handleIOSAuthError(error);
+      } else if (token) {
+        console.log('📱 Token trouvé dans hash');
+        this.handleIOSAuthSuccess(token);
         // Nettoyer l'URL
         window.history.replaceState({}, document.title, window.location.pathname);
-        return;
       }
-      
-      if (code) {
-        console.log('📱 Code OAuth reçu, finalisation...');
-        this.handleSuccessfulOAuthCode(code);
-        
-        // Nettoyer l'URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-        return;
-      }
+    }
+    
+    // Vérifier query params (authorization code flow)
+    const code = params.get('code');
+    const error = params.get('error');
+    
+    if (error) {
+      console.error('📱 Erreur OAuth dans params:', error);
+      this.handleIOSAuthError(error);
+    } else if (code) {
+      console.log('📱 Code auth trouvé dans params');
+      // Pour un code, on aurait besoin d'un backend pour l'échanger
+      // Pour l'instant, simulons un succès
+      this.handleIOSAuthSuccess('code_' + code);
+      // Nettoyer l'URL
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }
 
-  // 🆕 NOUVELLE MÉTHODE : Traiter le code OAuth de succès
-  async handleSuccessfulOAuthCode(code) {
+  // 🆕 MÉTHODE iOS : Gérer succès authentification
+  async handleIOSAuthSuccess(token) {
     try {
+      console.log('📱 Traitement succès auth iOS...');
       this.setState(this.states.CONNECTING);
       
-      // Pour iOS : simuler un token d'accès (nécessiterait un backend pour échanger le code)
-      // En attendant, on simule une connexion réussie
-      console.log('📱 Simulation connexion réussie avec code:', code);
+      this.accessToken = token;
       
-      this.accessToken = `ios_code_${code.substring(0, 10)}`;
-      
-      // Simuler les infos utilisateur
-      this.userInfo = {
-        id: 'ios_user',
-        name: 'Utilisateur iOS',
-        email: 'ios@example.com',
-        imageUrl: null
-      };
-      
-      this.setState(this.states.ONLINE);
-      console.log('✅ Connexion iOS simulée réussie');
-      
-      // Important : Notifier le succès à DataManager
-      if (this._connectionResolve) {
-        this._connectionResolve({ success: true, userInfo: this.userInfo });
+      // Fermer l'onglet d'auth s'il est ouvert
+      if (this.iosAuthWindow && !this.iosAuthWindow.closed) {
+        this.iosAuthWindow.close();
       }
       
+      // Arrêter la surveillance
+      if (this.iosAuthCheckInterval) {
+        clearInterval(this.iosAuthCheckInterval);
+        this.iosAuthCheckInterval = null;
+      }
+      
+      // Finaliser la connexion
+      await this.finalizeConnection();
+      
     } catch (error) {
-      console.error('❌ Erreur traitement code OAuth:', error);
-      this.setState(this.states.ERROR);
-      this.lastError = error.message;
+      console.error('❌ Erreur traitement succès iOS:', error);
+      this.handleIOSAuthError(error.message);
+    }
+  }
+
+  // 🆕 MÉTHODE iOS : Gérer erreur authentification  
+  handleIOSAuthError(error) {
+    console.error('📱 Erreur auth iOS:', error);
+    this.setState(this.states.ERROR);
+    this.lastError = `Erreur authentification iOS: ${error}`;
+    
+    // Nettoyer
+    if (this.iosAuthWindow && !this.iosAuthWindow.closed) {
+      this.iosAuthWindow.close();
+    }
+    if (this.iosAuthCheckInterval) {
+      clearInterval(this.iosAuthCheckInterval);
+      this.iosAuthCheckInterval = null;
+    }
+    
+    if (this._connectionResolve) {
+      this._connectionResolve({ success: false, error: this.lastError });
     }
   }
 
@@ -116,9 +159,9 @@ class ConnectionManager {
         await this.initializeGoogleIdentityServices();
       }
       
-      // 🆕 GESTION SPÉCIALE iOS : Redirect au lieu de popup
+      // 🆕 GESTION iOS : Nouvel onglet au lieu de popup/redirect
       if (this.isIOS) {
-        return this.connectWithRedirect();
+        return this.connectWithNewTab();
       } else {
         return this.connectWithPopup();
       }
@@ -131,14 +174,14 @@ class ConnectionManager {
     }
   }
 
-  // 🆕 NOUVELLE MÉTHODE : Connexion par redirect (iOS)
-  async connectWithRedirect() {
-    console.log('📱 iOS - Connexion par redirect');
+  // 🆕 MÉTHODE iOS : Connexion via nouvel onglet
+  async connectWithNewTab() {
+    console.log('📱 iOS - Connexion via nouvel onglet');
     
-    // Confirmer avec l'utilisateur
     const userConfirm = confirm(
-      'Vous allez être redirigé vers Google pour l\'authentification.\n\n' +
-      'Après connexion, vous reviendrez automatiquement à l\'application.'
+      'L\'authentification va s\'ouvrir dans un nouvel onglet.\n\n' +
+      'Après avoir autorisé l\'accès à Google Drive, ' +
+      'fermez l\'onglet et revenez ici.'
     );
     
     if (!userConfirm) {
@@ -146,49 +189,81 @@ class ConnectionManager {
       return { success: false, error: 'Connexion annulée par l\'utilisateur' };
     }
     
-    // Construire l'URL de redirection OAuth
-    const redirectUri = window.location.origin + window.location.pathname;
-    const clientId = GOOGLE_DRIVE_CONFIG.CLIENT_ID;
-    const scope = encodeURIComponent(GOOGLE_DRIVE_CONFIG.SCOPES);
-    const state = `ios_auth_${Date.now()}`;
+    // Construire URL OAuth avec implicit flow (plus simple pour iOS)
+    const authUrl = this.buildIOSAuthUrl();
+    console.log('📱 Ouverture onglet auth:', authUrl);
     
-    const authUrl = `https://accounts.google.com/oauth/authorize?` +
-      `client_id=${clientId}&` +
-      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-      `scope=${scope}&` +
-      `response_type=code&` +
-      `access_type=offline&` +
-      `state=${state}&` +
-      `prompt=consent`;
+    // Ouvrir dans un nouvel onglet
+    this.iosAuthWindow = window.open(authUrl, '_blank', 'width=600,height=700');
     
-    console.log('📱 Redirection vers:', authUrl);
+    if (!this.iosAuthWindow) {
+      throw new Error('Impossible d\'ouvrir l\'onglet d\'authentification. Popups bloqués ?');
+    }
     
-    // Sauvegarder l'état avant redirect
-    localStorage.setItem('ios_auth_in_progress', 'true');
+    // Surveiller la fermeture de l'onglet
+    this.iosAuthCheckInterval = setInterval(() => {
+      if (this.iosAuthWindow.closed) {
+        console.log('📱 Onglet fermé par l\'utilisateur');
+        clearInterval(this.iosAuthCheckInterval);
+        this.iosAuthCheckInterval = null;
+        
+        // Vérifier si on a reçu un token
+        setTimeout(() => {
+          if (this.currentState === this.states.CONNECTING) {
+            console.log('📱 Pas de token reçu, connexion annulée');
+            this.setState(this.states.OFFLINE);
+            if (this._connectionResolve) {
+              this._connectionResolve({ 
+                success: false, 
+                error: 'Authentification non terminée ou annulée' 
+              });
+            }
+          }
+        }, 1000);
+      }
+    }, 1000);
     
-    // Redirection immédiate
-    window.location.href = authUrl;
-    
-    // Cette promise ne sera jamais résolue car on redirige
-    return new Promise(() => {});
-  }
-
-  // 🆕 NOUVELLE MÉTHODE : Connexion par popup (Desktop)
-  async connectWithPopup() {
-    console.log('🖥️ Desktop - Connexion par popup');
-    
-    this.tokenClient.requestAccessToken({ prompt: 'consent select_account' });
     return new Promise((resolve) => { 
       this._connectionResolve = resolve; 
     });
   }
 
+  // 🆕 MÉTHODE iOS : Construire URL OAuth
+  buildIOSAuthUrl() {
+    const params = new URLSearchParams({
+      client_id: GOOGLE_DRIVE_CONFIG.CLIENT_ID,
+      redirect_uri: window.location.origin + window.location.pathname,
+      scope: GOOGLE_DRIVE_CONFIG.SCOPES,
+      response_type: 'token', // Implicit flow pour iOS
+      include_granted_scopes: 'true',
+      prompt: 'consent'
+    });
+    
+    return `https://accounts.google.com/oauth/authorize?${params.toString()}`;
+  }
+
+  // MÉTHODE Desktop : Connexion popup normale
+  async connectWithPopup() {
+    console.log('🖥️ Desktop - Connexion par popup');
+    this.tokenClient.requestAccessToken({ prompt: 'consent select_account' });
+    return new Promise((resolve) => { this._connectionResolve = resolve; });
+  }
+
   async disconnect() {
     try {
       console.log('🔌 Déconnexion...');
+      
+      // Nettoyer iOS
+      if (this.iosAuthWindow && !this.iosAuthWindow.closed) {
+        this.iosAuthWindow.close();
+      }
+      if (this.iosAuthCheckInterval) {
+        clearInterval(this.iosAuthCheckInterval);
+        this.iosAuthCheckInterval = null;
+      }
+      
       if (this.accessToken) {
-        // Sur iOS, pas besoin de révoquer via Google API
-        if (!this.isIOS && window.google?.accounts?.oauth2) {
+        if (window.google?.accounts?.oauth2) {
           window.google.accounts.oauth2.revoke(this.accessToken);
         }
         this.accessToken = null;
@@ -196,10 +271,6 @@ class ConnectionManager {
       this.userInfo = null;
       this.lastError = null;
       this.setState(this.states.OFFLINE);
-      
-      // Nettoyer localStorage iOS
-      localStorage.removeItem('ios_auth_in_progress');
-      
       console.log('✅ Déconnexion réussie');
       return { success: true };
     } catch (error) {
@@ -209,7 +280,7 @@ class ConnectionManager {
     }
   }
 
-  // --- Logique interne Google (reste identique) ---
+  // --- Reste du code identique ---
 
   async initializeGoogleIdentityServices() {
     try {
@@ -226,7 +297,7 @@ class ConnectionManager {
 
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      // Configuration token client (pour desktop uniquement)
+      // Configuration pour desktop uniquement (iOS utilise URL manuelle)
       if (!this.isIOS) {
         this.tokenClient = window.google.accounts.oauth2.initTokenClient({
           client_id: GOOGLE_DRIVE_CONFIG.CLIENT_ID,
@@ -253,17 +324,6 @@ class ConnectionManager {
   
   async finalizeConnection() {
     try {
-      // Sur iOS en mode redirect, on a déjà les infos utilisateur simulées
-      if (this.isIOS && this.userInfo) {
-        this.setState(this.states.ONLINE);
-        console.log('✅ Connexion iOS finalisée');
-        
-        const result = { success: true, userInfo: this.userInfo };
-        if (this._connectionResolve) this._connectionResolve(result);
-        return result;
-      }
-      
-      // Desktop : logique normale
       await this.initializeGapiClient();
       this.userInfo = await this.getUserInfo();
       this.setState(this.states.ONLINE);
@@ -308,7 +368,7 @@ class ConnectionManager {
     return { id: profile.id, name: profile.name, email: profile.email, imageUrl: profile.picture };
   }
 
-  // --- Gestion de l'état et des abonnements (reste identique) ---
+  // --- Gestion de l'état et des abonnements (identique) ---
 
   subscribe(callback) {
     this.listeners.add(callback);
