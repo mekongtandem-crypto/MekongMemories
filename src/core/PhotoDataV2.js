@@ -1,7 +1,8 @@
 /**
- * PhotoDataV2.js v3.4 - FIX SAFARI MOBILE
- * ✅ CORRECTION: URLs Google Drive compatibles Safari ITP
- * ✅ DÉTECTION: User agent Safari pour utiliser le bon format
+ * PhotoDataV2.js v3.5 - DEBUG MOBILE + FALLBACKS
+ * ✅ DEBUG: Logging étendu pour diagnostiquer les problèmes mobile
+ * ✅ FALLBACKS: Multiples formats d'URL Google Drive pour mobile
+ * ✅ DETECTION: User agent détaillé et tests de connectivité
  */
 
 import { stateManager } from './StateManager.js';
@@ -13,21 +14,32 @@ class PhotoDataV2 {
     this.loadedAt = null;
     this.urlCache = new Map();
     this.debugMode = true;
-    this.isSafari = this.detectSafari();
+    this.deviceInfo = this.detectDevice();
     
-    console.log(`📸 PhotoDataV2 v3.4 (Safari Fix): ${this.isSafari ? 'Safari détecté' : 'Autre navigateur'}`);
+    console.log(`📸 PhotoDataV2 v3.5 (Mobile Debug):`, this.deviceInfo);
     this.init();
   }
 
-  // ✅ NOUVEAU: Détection Safari pour adapter les URLs
-  detectSafari() {
-    if (typeof navigator === 'undefined') return false;
+  // ✅ AMÉLIORATION: Détection device complète
+  detectDevice() {
+    if (typeof navigator === 'undefined') return { type: 'server', isMobile: false };
     
     const userAgent = navigator.userAgent;
-    const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent) && !/Chromium/.test(userAgent);
+    const isMobile = /iPhone|iPad|iPod|Android|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
     const isIOS = /iPhone|iPad|iPod/.test(userAgent);
+    const isAndroid = /Android/.test(userAgent);
+    const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
+    const isChrome = /Chrome/.test(userAgent);
     
-    return isSafari || isIOS;
+    return {
+      type: isMobile ? 'mobile' : 'desktop',
+      isMobile,
+      isIOS,
+      isAndroid,
+      isSafari,
+      isChrome,
+      userAgent: userAgent.substring(0, 100), // Tronqué pour logs
+    };
   }
 
   async init() {
@@ -52,6 +64,29 @@ class PhotoDataV2 {
     if (this.debugMode) {
       console.log(`📸 PhotoDataV2 DEBUG: ${message}`, data || '');
     }
+  }
+
+  // ✅ NOUVEAU: Test de connectivité URL
+  async testImageUrl(url, timeout = 5000) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const timer = setTimeout(() => {
+        img.onload = img.onerror = null;
+        resolve({ success: false, error: 'timeout' });
+      }, timeout);
+      
+      img.onload = () => {
+        clearTimeout(timer);
+        resolve({ success: true, width: img.width, height: img.height });
+      };
+      
+      img.onerror = (e) => {
+        clearTimeout(timer);
+        resolve({ success: false, error: 'load_error', event: e });
+      };
+      
+      img.src = url;
+    });
   }
 
   async loadMasterIndexFromData(masterData) {
@@ -91,18 +126,17 @@ class PhotoDataV2 {
     };
   }
 
-  // ✅ CORRECTION PRINCIPALE: URLs compatibles Safari
+  // ✅ SOLUTION PRINCIPALE: Multiples fallbacks d'URL
   async resolveImageUrl(photo, isThumbnail = false) {
     if (!photo) return this.getPlaceholderImageUrl();
 
     const size = isThumbnail ? 'w400' : 'w800';
-    const cacheKey = `${this.getPhotoCacheKey(photo)}_${size}`;
+    const cacheKey = `${this.getPhotoCacheKey(photo)}_${size}_${this.deviceInfo.type}`;
     
     if (this.urlCache.has(cacheKey)) {
       return this.urlCache.get(cacheKey);
     }
 
-    let url = null;
     let fileId = photo.google_drive_id;
     let filename = photo.filename;
 
@@ -112,44 +146,85 @@ class PhotoDataV2 {
     }
 
     if (fileId) {
-      // ✅ CORRECTION: Format d'URL adapté selon le navigateur
-      if (this.isSafari) {
-        // Format spécial pour Safari (évite l'ITP)
-        url = `https://drive.google.com/thumbnail?sz=${size}&id=${fileId}`;
-      } else {
-        // Format standard pour les autres navigateurs
-        url = `https://drive.google.com/thumbnail?id=${fileId}&sz=${size}`;
-      }
+      const finalUrl = await this.tryMultipleUrlFormats(fileId, size, photo);
+      this.urlCache.set(cacheKey, finalUrl);
+      return finalUrl;
     } else if (filename) {
       // Recherche par nom de fichier
       this.logDebug(`🔍 Photo sans ID, recherche par nom: ${filename}`);
       const foundId = await this.fallbackImageSearch(filename);
       if (foundId) {
-        if (this.isSafari) {
-          url = `https://drive.google.com/thumbnail?sz=${size}&id=${foundId}`;
-        } else {
-          url = `https://drive.google.com/thumbnail?id=${foundId}&sz=${size}`;
-        }
+        const finalUrl = await this.tryMultipleUrlFormats(foundId, size, photo);
+        this.urlCache.set(cacheKey, finalUrl);
+        return finalUrl;
       }
     }
 
-    const finalUrl = url || this.getPlaceholderImageUrl();
-    this.urlCache.set(cacheKey, finalUrl);
-    
-    // ✅ AMÉLIORATION: Log pour debug Safari
-    if (this.isSafari && url) {
-      this.logDebug(`🍎 Safari URL générée: ${url}`);
-    }
-    
-    return finalUrl;
+    const placeholderUrl = this.getPlaceholderImageUrl();
+    this.urlCache.set(cacheKey, placeholderUrl);
+    return placeholderUrl;
   }
 
-  // ✅ AMÉLIORATION: Fallback search avec retry pour Safari
+  // ✅ NOUVEAU: Test multiple formats d'URL avec debugging
+  async tryMultipleUrlFormats(fileId, size, photo) {
+    this.logDebug(`🧪 Test multiple formats pour ${photo.filename || 'photo'} (${this.deviceInfo.type})`);
+    
+    // Différents formats d'URL à tester
+    const urlFormats = [
+      // Format 1: Standard Google Drive thumbnail
+      `https://drive.google.com/thumbnail?id=${fileId}&sz=${size}`,
+      
+      // Format 2: Ordre des paramètres inversé (pour Safari)
+      `https://drive.google.com/thumbnail?sz=${size}&id=${fileId}`,
+      
+      // Format 3: Format uc export pour mobile
+      `https://drive.google.com/uc?export=view&id=${fileId}`,
+      
+      // Format 4: Format lh3 (utilisé parfois par Google)
+      `https://lh3.googleusercontent.com/d/${fileId}=w${size.replace('w', '')}-h${size.replace('w', '')}`,
+      
+      // Format 5: Si mobile, tentative sans authentification
+      ...(this.deviceInfo.isMobile ? [
+        `https://drive.google.com/file/d/${fileId}/view`,
+        `https://docs.google.com/uc?export=download&id=${fileId}`
+      ] : [])
+    ];
+
+    // Test chaque format
+    for (let i = 0; i < urlFormats.length; i++) {
+      const url = urlFormats[i];
+      this.logDebug(`📱 Test format ${i + 1}/${urlFormats.length}: ${url.substring(0, 80)}...`);
+      
+      const testResult = await this.testImageUrl(url, 3000);
+      
+      if (testResult.success) {
+        this.logDebug(`✅ Format ${i + 1} SUCCÈS (${testResult.width}x${testResult.height})`);
+        return url;
+      } else {
+        this.logDebug(`❌ Format ${i + 1} échec: ${testResult.error}`);
+      }
+    }
+
+    // Si aucun format ne fonctionne
+    this.logDebug(`🚨 AUCUN format ne fonctionne pour ${photo.filename || fileId}`);
+    
+    // Log détaillé pour debug
+    console.group('📱 DEBUG Mobile Image Loading');
+    console.log('Device Info:', this.deviceInfo);
+    console.log('Photo:', photo);
+    console.log('FileID:', fileId);
+    console.log('Tested URLs:', urlFormats);
+    console.groupEnd();
+    
+    return this.getPlaceholderImageUrl();
+  }
+
+  // ✅ AMÉLIORATION: Fallback search avec retry adaptatif
   async fallbackImageSearch(filename) {
     try {
       if (!window.gapi?.client?.drive || !filename) return null;
       
-      this.logDebug(`Recherche Drive API pour: name='${filename}'`);
+      this.logDebug(`🔍 Recherche Drive API pour: name='${filename}' (${this.deviceInfo.type})`);
       
       const response = await window.gapi.client.drive.files.list({
         q: `name='${filename}' and trashed=false and mimeType contains 'image'`,
@@ -169,10 +244,10 @@ class PhotoDataV2 {
     } catch (error) {
       console.error(`❌ Erreur recherche fallback pour ${filename}:`, error);
       
-      // ✅ NOUVEAU: Retry pour Safari si erreur réseau
-      if (this.isSafari && error.status === 403) {
-        console.log('🍎 Retry recherche pour Safari...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Retry spécial pour mobile
+      if (this.deviceInfo.isMobile && error.status === 403) {
+        console.log('📱 Retry spécial mobile...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
         try {
           const retryResponse = await window.gapi.client.drive.files.list({
             q: `name='${filename}' and trashed=false`,
@@ -183,7 +258,7 @@ class PhotoDataV2 {
             return retryResponse.result.files[0].id;
           }
         } catch (retryError) {
-          console.error('❌ Retry aussi échoué:', retryError);
+          console.error('❌ Retry mobile aussi échoué:', retryError);
         }
       }
       
@@ -199,26 +274,51 @@ class PhotoDataV2 {
      return `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNlMGUwZTAiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1zaXplPSIxMiIgZmlsbD0iI2FhYSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPj9JbWFnZT88L3RleHQ+PC9zdmc+`;
   }
 
-  // ✅ NOUVEAU: Méthode pour forcer le rechargement du cache Safari
-  clearCacheForSafari() {
-    if (this.isSafari) {
-      this.urlCache.clear();
-      console.log('🍎 Cache Safari vidé pour forcer le rechargement');
+  // ✅ NOUVEAU: Debug stats pour mobile
+  getDebugStats() {
+    return {
+      device: this.deviceInfo,
+      cacheSize: this.urlCache.size,
+      isLoaded: this.isLoaded,
+      masterIndexVersion: this.masterIndex?.version,
+      authStatus: !!window.gapi?.client?.getToken(),
+    };
+  }
+
+  // ✅ NOUVEAU: Forcer test d'une photo spécifique
+  async debugPhoto(photo) {
+    console.group(`🔬 DEBUG PHOTO: ${photo.filename || 'Unknown'}`);
+    console.log('Photo object:', photo);
+    console.log('Device info:', this.deviceInfo);
+    
+    if (photo.google_drive_id) {
+      const url = await this.tryMultipleUrlFormats(photo.google_drive_id, 'w400', photo);
+      console.log('Resolved URL:', url);
+    } else {
+      console.log('No google_drive_id, searching...');
+      const foundId = await this.fallbackImageSearch(photo.filename);
+      console.log('Found ID:', foundId);
     }
+    
+    console.groupEnd();
   }
 
   getStats() {
       if (!this.isLoaded) return { isLoaded: false };
       return { 
         isLoaded: true, 
-        isSafari: this.isSafari,
+        device: this.deviceInfo,
         ...this.masterIndex.metadata 
       };
   }
 }
 
-// Export et exposition sur window
+// Export et exposition sur window avec debug
 export const photoDataV2 = new PhotoDataV2();
 if (typeof window !== 'undefined') { 
-  window.photoDataV2 = photoDataV2; 
+  window.photoDataV2 = photoDataV2;
+  
+  // ✅ NOUVEAU: Fonction de debug globale
+  window.debugPhoto = (photo) => photoDataV2.debugPhoto(photo);
+  window.photoDebugStats = () => photoDataV2.getDebugStats();
 }
