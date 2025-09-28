@@ -1,13 +1,17 @@
 /**
- * SettingsPage.jsx v3.0 - COMPLET avec régénération d'index
- * ✅ AJOUT: Bouton de régénération d'index master
- * ✅ CORRECTION: Gestion d'état cohérente avec les opérations longues
+ * SettingsPage.jsx v4.0 - SECTIONS COLLAPSIBLES
+ * ✅ AMÉLIORATION: Organisation en sections pliables/dépliables
+ * ✅ UX: Interface plus compacte et organisée
+ * ✅ ÉTAT: Mémorisation des sections ouvertes/fermées
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
-import { CheckCircle, RefreshCw, Wrench, Database, BookOpen, HardDrive, Camera, ImageIcon, Zap, AlertTriangle } from 'lucide-react';
+import { 
+  CheckCircle, RefreshCw, Wrench, Database, BookOpen, HardDrive, Camera, ImageIcon, 
+  Zap, AlertTriangle, ChevronDown, Users, Cloud, BarChart3
+} from 'lucide-react';
 
 // Import des modules nécessaires pour la régénération
 import { masterIndexGenerator } from '../../core/MasterIndexGenerator.js';
@@ -18,6 +22,14 @@ export default function SettingsPage() {
   const app = useAppState();
   const { currentUser, setCurrentUser, updateCurrentPage } = app;
   const allUsers = userManager.getAllUsers();
+  
+  // ✅ État des sections (ouvertes/fermées)
+  const [openSections, setOpenSections] = useState({
+    profiles: true,    // Profils toujours ouverts par défaut
+    connection: false, // Connexion fermée par défaut
+    data: false,       // Données fermées par défaut
+    regeneration: false // Régénération fermée par défaut
+  });
   
   // États pour les opérations longues
   const [operations, setOperations] = useState({
@@ -55,6 +67,14 @@ export default function SettingsPage() {
   const handleSelectUser = (userId) => {
     setCurrentUser(userId);
     updateCurrentPage('memories'); 
+  };
+
+  // ✅ FONCTION: Toggle section
+  const toggleSection = (sectionKey) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey]
+    }));
   };
 
   // ✅ FONCTION PRINCIPALE: Régénération complète de l'index
@@ -140,85 +160,97 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-8 space-y-8">
+    <div className="max-w-2xl mx-auto py-6 space-y-4">
       
-      {/* Section Profils */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Profils</h1>
-        <p className="text-gray-600 mt-2">Sélectionnez le profil actif pour la session.</p>
+      {/* En-tête */}
+      <div className="text-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">⚙️ Réglages</h1>
+        <p className="text-gray-600 mt-1">Configuration et synchronisation de l'application</p>
       </div>
 
-      <div className="space-y-4">
-        {allUsers.map((user) => {
-          const style = userManager.getUserStyle(user.id);
-          const isActive = currentUser && currentUser.id === user.id;
+      {/* ✅ SECTION 1: PROFILS (toujours visible) */}
+      <CollapsibleSection
+        title="Profils Utilisateurs"
+        icon={Users}
+        isOpen={openSections.profiles}
+        onToggle={() => toggleSection('profiles')}
+        color="text-blue-500"
+        badge={currentUser ? currentUser.name : 'Aucun'}
+      >
+        <div className="space-y-3">
+          {allUsers.map((user) => {
+            const style = userManager.getUserStyle(user.id);
+            const isActive = currentUser && currentUser.id === user.id;
 
-          return (
-            <button
-              key={user.id}
-              onClick={() => handleSelectUser(user.id)}
-              className={`w-full flex items-center justify-between p-4 border rounded-lg transition-all transform hover:scale-105 ${
-                isActive ? 'ring-2 ring-offset-2 ring-amber-500' : ''
-              } ${style.bg} ${style.border}`}
-            >
-              <div className="flex items-center space-x-4">
-                <span className="text-4xl">{user.emoji}</span>
-                <div>
-                  <span className={`text-xl font-bold ${style.text}`}>{user.name}</span>
-                  <p className={`text-sm ${style.text} opacity-80`}>{user.description}</p>
+            return (
+              <button
+                key={user.id}
+                onClick={() => handleSelectUser(user.id)}
+                className={`w-full flex items-center justify-between p-3 border rounded-lg transition-all transform hover:scale-[1.02] ${
+                  isActive ? 'ring-2 ring-offset-2 ring-amber-500' : ''
+                } ${style.bg} ${style.border}`}
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">{user.emoji}</span>
+                  <div>
+                    <span className={`text-lg font-bold ${style.text}`}>{user.name}</span>
+                    <p className={`text-sm ${style.text} opacity-80`}>{user.description}</p>
+                  </div>
                 </div>
-              </div>
-              
-              {isActive && (
-                <CheckCircle className="w-6 h-6 text-green-500" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Section Statut des Données */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-          <Database className="w-6 h-6 mr-3 text-purple-500" /> 
-          Statut des Données
-        </h2>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard icon={BookOpen} color="text-blue-500" title="Posts Mastodon" value={dataStatus.mastodonCount} />
-          <StatCard icon={HardDrive} color="text-gray-500" title="Moments Unifiés" value={dataStatus.momentCount} />
-          <StatCard icon={ImageIcon} color="text-purple-500" title="Photos d'Article" value={dataStatus.photosFromPosts} />
-          <StatCard icon={Camera} color="text-green-500" title="Photos de Moment" value={dataStatus.photosFromDays} />
-          <div className="lg:col-span-3">
-            <StatCard icon={Database} color="text-red-500" title="Total Photos" value={dataStatus.totalPhotos} isLarge={true} />
-          </div>
+                
+                {isActive && (
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                )}
+              </button>
+            );
+          })}
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* ✅ SECTION PRINCIPALE: Régénération d'Index */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-          <Zap className="w-6 h-6 mr-3 text-amber-500" />
-          Régénération de l'Index Master
-        </h2>
-        
+      {/* ✅ SECTION 2: DONNÉES */}
+      <CollapsibleSection
+        title="Statut des Données"
+        icon={BarChart3}
+        isOpen={openSections.data}
+        onToggle={() => toggleSection('data')}
+        color="text-purple-500"
+        badge={`${dataStatus.totalPhotos} photos`}
+      >
+        <div className="grid md:grid-cols-2 gap-3">
+          <StatCard icon={BookOpen} color="text-blue-500" title="Posts Mastodon" value={dataStatus.mastodonCount} />
+          <StatCard icon={HardDrive} color="text-gray-500" title="Moments" value={dataStatus.momentCount} />
+          <StatCard icon={ImageIcon} color="text-purple-500" title="Photos articles" value={dataStatus.photosFromPosts} />
+          <StatCard icon={Camera} color="text-green-500" title="Photos moments" value={dataStatus.photosFromDays} />
+        </div>
+        <div className="mt-3">
+          <StatCard icon={Database} color="text-red-500" title="Total Photos" value={dataStatus.totalPhotos} isLarge={true} />
+        </div>
+      </CollapsibleSection>
+
+      {/* ✅ SECTION 3: RÉGÉNÉRATION */}
+      <CollapsibleSection
+        title="Régénération de l'Index"
+        icon={Zap}
+        isOpen={openSections.regeneration}
+        onToggle={() => toggleSection('regeneration')}
+        color="text-amber-500"
+        badge={operations.regenerating ? 'En cours...' : 'Prêt'}
+        urgent={operations.error}
+      >
         <div className="space-y-4">
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h3 className="font-semibold text-amber-900 mb-2">Processus complet de synchronisation</h3>
-                <p className="text-amber-700 text-sm mb-3">
-                  Cette opération va :
-                </p>
+                <h3 className="font-semibold text-amber-900 mb-2">Synchronisation complète</h3>
                 <ul className="text-amber-700 text-sm space-y-1 list-disc list-inside">
-                  <li>Importer les derniers posts depuis Mastodon</li>
-                  <li>Scanner tous les dossiers de photos sur Google Drive</li>
-                  <li>Générer un nouvel index unifié des moments</li>
-                  <li>Recharger les données dans l'application</li>
+                  <li>Import des posts Mastodon</li>
+                  <li>Scan des dossiers photos Drive</li>
+                  <li>Génération de l'index unifié</li>
+                  <li>Rechargement de l'application</li>
                 </ul>
-                <p className="text-amber-600 text-xs mt-3 font-medium">
-                  ⏱️ Durée estimée : 2-5 minutes selon la taille des données
+                <p className="text-amber-600 text-xs mt-2 font-medium">
+                  ⏱️ Durée : 2-5 minutes
                 </p>
               </div>
             </div>
@@ -227,7 +259,7 @@ export default function SettingsPage() {
           <button
             onClick={handleIndexRegeneration}
             disabled={operations.regenerating || !app.connection?.isOnline}
-            className={`w-full font-bold py-4 px-6 rounded-lg text-lg transition-all flex items-center justify-center space-x-3 ${
+            className={`w-full font-bold py-3 px-6 rounded-lg text-lg transition-all flex items-center justify-center space-x-3 ${
               operations.regenerating 
                 ? 'bg-amber-400 text-amber-900 cursor-not-allowed' 
                 : app.connection?.isOnline
@@ -235,85 +267,143 @@ export default function SettingsPage() {
                   : 'bg-gray-400 text-gray-600 cursor-not-allowed'
             }`}
           >
-            <RefreshCw className={`w-6 h-6 ${operations.regenerating ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${operations.regenerating ? 'animate-spin' : ''}`} />
             <span>
               {operations.regenerating 
-                ? 'Régénération en cours...' 
+                ? 'Régénération...' 
                 : !app.connection?.isOnline
-                  ? 'Connexion Google Drive requise'
-                  : 'Lancer la Régénération Complète'
+                  ? 'Connexion requise'
+                  : 'Lancer la Régénération'
               }
             </span>
           </button>
 
           {/* Affichage de l'état */}
           {(operations.currentStep || operations.error) && (
-            <div className={`p-4 rounded-lg text-center ${
+            <div className={`p-3 rounded-lg text-center text-sm ${
               operations.error 
-                ? 'bg-red-50 border border-red-200' 
+                ? 'bg-red-50 border border-red-200 text-red-800' 
                 : operations.currentStep.includes('✅')
-                  ? 'bg-green-50 border border-green-200'
-                  : 'bg-blue-50 border border-blue-200'
+                  ? 'bg-green-50 border border-green-200 text-green-800'
+                  : 'bg-blue-50 border border-blue-200 text-blue-800'
             }`}>
-              <p className={`font-medium ${
-                operations.error 
-                  ? 'text-red-800' 
-                  : operations.currentStep.includes('✅')
-                    ? 'text-green-800'
-                    : 'text-blue-800'
-              }`}>
+              <p className="font-medium">
                 {operations.error || operations.currentStep}
               </p>
             </div>
           )}
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* Section État de la Connexion */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-          <Wrench className="w-6 h-6 mr-3 text-blue-500" />
-          État de la Connexion
-        </h2>
-        
+      {/* ✅ SECTION 4: CONNEXION */}
+      <CollapsibleSection
+        title="État de la Connexion"
+        icon={Cloud}
+        isOpen={openSections.connection}
+        onToggle={() => toggleSection('connection')}
+        color="text-blue-500"
+        badge={app.connection?.isOnline ? 'Connecté' : 'Déconnecté'}
+        urgent={!app.connection?.isOnline}
+      >
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <span className="font-medium text-gray-700">Statut Google Drive</span>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              app.connection?.isOnline 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
-            }`}>
-              {app.connection?.isOnline ? '✅ Connecté' : '❌ Déconnecté'}
-            </span>
-          </div>
+          <InfoRow 
+            label="Statut Google Drive"
+            value={app.connection?.isOnline ? '✅ Connecté' : '❌ Déconnecté'}
+            status={app.connection?.isOnline ? 'success' : 'error'}
+          />
           
           {app.connection?.userInfo && (
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="font-medium text-gray-700">Utilisateur connecté</span>
-              <span className="text-sm text-gray-600">{app.connection.userInfo.email}</span>
-            </div>
+            <InfoRow 
+              label="Utilisateur connecté"
+              value={app.connection.userInfo.email}
+              status="neutral"
+            />
           )}
           
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <span className="font-medium text-gray-700">Sessions actives</span>
-            <span className="text-sm text-gray-600">{app.sessions?.length || 0} session(s)</span>
-          </div>
+          <InfoRow 
+            label="Sessions actives"
+            value={`${app.sessions?.length || 0} session(s)`}
+            status="neutral"
+          />
+          
+          {app.connection?.lastError && (
+            <InfoRow 
+              label="Dernière erreur"
+              value={app.connection.lastError}
+              status="error"
+            />
+          )}
         </div>
-      </div>
+      </CollapsibleSection>
     </div>
   );
 }
 
 // ====================================================================
-// COMPOSANT UTILITAIRE: Carte de statistique
+// COMPOSANT : SECTION COLLAPSIBLE
+// ====================================================================
+const CollapsibleSection = ({ 
+  title, icon: Icon, isOpen, onToggle, children, color, badge, urgent 
+}) => (
+  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+    <button
+      onClick={onToggle}
+      className={`w-full p-4 flex items-center justify-between text-left transition-colors ${
+        isOpen ? 'bg-gray-50' : 'hover:bg-gray-50'
+      }`}
+    >
+      <div className="flex items-center space-x-3">
+        <Icon className={`w-5 h-5 ${color}`} />
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+        {badge && (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            urgent 
+              ? 'bg-red-100 text-red-800' 
+              : 'bg-gray-100 text-gray-600'
+          }`}>
+            {badge}
+          </span>
+        )}
+      </div>
+      
+      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${
+        isOpen ? 'rotate-180' : ''
+      }`} />
+    </button>
+    
+    {isOpen && (
+      <div className="p-4 border-t border-gray-100">
+        {children}
+      </div>
+    )}
+  </div>
+);
+
+// ====================================================================
+// COMPOSANT : CARTE DE STATISTIQUE
 // ====================================================================
 const StatCard = ({ icon: Icon, color, title, value, isLarge = false }) => (
-  <div className={`bg-gray-50 p-4 rounded-lg ${isLarge ? 'text-center' : ''}`}>
-    <h3 className={`font-semibold flex items-center ${isLarge ? 'justify-center' : ''}`}>
-      <Icon className={`w-5 h-5 mr-2 ${color}`} />
+  <div className={`bg-gray-50 p-3 rounded-lg ${isLarge ? 'text-center' : ''}`}>
+    <h3 className={`font-semibold flex items-center text-sm ${isLarge ? 'justify-center' : ''}`}>
+      <Icon className={`w-4 h-4 mr-2 ${color}`} />
       {title}
     </h3>
-    <p className={`font-bold ${isLarge ? 'text-3xl mt-1' : 'text-2xl'}`}>{value}</p>
+    <p className={`font-bold ${isLarge ? 'text-2xl mt-1' : 'text-xl'}`}>{value}</p>
+  </div>
+);
+
+// ====================================================================
+// COMPOSANT : LIGNE D'INFORMATION
+// ====================================================================
+const InfoRow = ({ label, value, status }) => (
+  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+    <span className="font-medium text-gray-700 text-sm">{label}</span>
+    <span className={`text-sm font-medium ${
+      status === 'success' ? 'text-green-700' :
+      status === 'error' ? 'text-red-700' :
+      'text-gray-600'
+    }`}>
+      {value}
+    </span>
   </div>
 );
