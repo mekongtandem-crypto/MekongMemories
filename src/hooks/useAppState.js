@@ -1,4 +1,4 @@
-// hooks/useAppState.js
+// hooks/useAppState.js - VERSION AVEC FIX iOS
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { dataManager } from '../core/dataManager.js';
@@ -11,6 +11,9 @@ export function useAppState() {
     data: dataManager.getState() || {},
     connection: connectionManager.getState() || {},
   }));
+
+  // 🆕 DÉTECTION iOS
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   // HOOK 2: useEffect (pour les abonnements)
   useEffect(() => {
@@ -29,12 +32,48 @@ export function useAppState() {
   // HOOK 3: useCallback (pour la connexion)
   const connect = useCallback(() => connectionManager.connect(), []);
 
-  // HOOK 4: useEffect (pour la connexion automatique)
+  // 🆕 HOOK iOS : Timeout pour débloquer l'application sur iOS
   useEffect(() => {
-    if (connectionManager.getState().isOffline) {
+    if (isIOS) {
+      console.log('📱 iOS détecté - Timeout de sécurité activé (5s)');
+      
+      const timeoutId = setTimeout(() => {
+        if (!appState.data.isInitialized) {
+          console.log('📱 iOS Timeout déclenché - Force initialisation offline');
+          
+          // Forcer l'état initialisé avec données minimales
+          dataManager.updateState({
+            isInitialized: true,
+            isLoading: false,
+            masterIndex: { 
+              moments: [], 
+              metadata: { 
+                total_moments: 0,
+                total_photos: 0,
+                ios_offline_mode: true
+              } 
+            },
+            sessions: [],
+            currentUser: null,
+            error: null,
+            connection: { 
+              isOffline: true, 
+              offlineReason: 'iOS - Authentification Google Drive non disponible sur mobile'
+            }
+          });
+        }
+      }, 5000); // 5 secondes
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isIOS, appState.data.isInitialized]);
+
+  // HOOK 4: useEffect (pour la connexion automatique - SAUF iOS)
+  useEffect(() => {
+    if (connectionManager.getState().isOffline && !isIOS) {
       connect();
     }
-  }, [connect]);
+  }, [connect, isIOS]);
 
   // HOOK 5: useMemo (pour dériver l'état de l'utilisateur)
   const derivedUserState = useMemo(() => {
