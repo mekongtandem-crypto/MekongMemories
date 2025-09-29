@@ -1,7 +1,8 @@
 /**
- * MemoriesPage.jsx v4.0 - REFACTORISÉ EN MODULES
- * ✅ AMÉLIORATION: Division en composants logiques réutilisables
- * ✅ PERFORMANCE: Lazy loading et mémoisation optimisée
+ * MemoriesPage.jsx v5.0 - AUTO-HIDE SUR SCROLL
+ * ✅ NOUVEAU: Timeline et filtres disparaissent au scroll vers le bas
+ * ✅ UX: Réapparaissent au scroll vers le haut
+ * ✅ PERFORMANCE: Debounced scroll detection
  */
 
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
@@ -14,12 +15,13 @@ import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
 
 // ====================================================================
-// COMPOSANT PRINCIPAL - SIMPLIFIÉ
+// COMPOSANT PRINCIPAL AVEC AUTO-HIDE
 // ====================================================================
 export default function MemoriesPage() {
   const app = useAppState();
   const [selectedMoment, setSelectedMoment] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [autoScroll, setAutoScroll] = useState(true);
   const [displayOptions, setDisplayOptions] = useState({
     showPostText: true,
     showPostPhotos: true,
@@ -29,7 +31,72 @@ export default function MemoriesPage() {
     isOpen: false, photo: null, gallery: [], contextMoment: null 
   });
 
+  // ✅ NOUVEAU: État pour l'auto-hide
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const scrollContainerRef = useRef(null);
+
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
+  const momentRefs = useRef({});
+
+  // ✅ NOUVEAU: Gestion du scroll avec debounce
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = scrollContainer.scrollTop;
+          
+          // Seuil minimum de scroll avant de cacher (50px)
+          if (Math.abs(currentScrollY - lastScrollY) < 50) {
+            ticking = false;
+            return;
+          }
+
+          // Scroll vers le bas → cacher
+          if (currentScrollY > lastScrollY && currentScrollY > 100) {
+            setIsHeaderVisible(false);
+          } 
+          // Scroll vers le haut → afficher
+          else if (currentScrollY < lastScrollY) {
+            setIsHeaderVisible(true);
+          }
+
+          // Toujours afficher si proche du haut
+          if (currentScrollY < 50) {
+            setIsHeaderVisible(true);
+          }
+
+          setLastScrollY(currentScrollY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
+
+  // Scroll automatique vers le moment sélectionné
+  useEffect(() => {
+    if (selectedMoment && autoScroll) {
+      scrollToMoment(selectedMoment.id, 'start');
+    }
+  }, [selectedMoment, autoScroll]);
+
+  const scrollToMoment = useCallback((momentId, blockPosition = 'start') => {
+    const element = momentRefs.current[momentId];
+    if (element) {
+        setTimeout(() => {
+            element.scrollIntoView({ behavior: 'smooth', block: blockPosition });
+        }, 50);
+    }
+  }, []);
 
   const openPhotoViewer = useCallback((clickedPhoto, contextMoment, photoList) => {
     setViewerState({ 
@@ -49,7 +116,6 @@ export default function MemoriesPage() {
   }, []);
 
   const handleCreateAndOpenSession = useCallback(async (source, contextMoment) => {
-    // Logique création session (extraite du composant original)
     if (!source) return;
     let sessionData = {};
     let initialMessage = '';
@@ -110,24 +176,36 @@ export default function MemoriesPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 font-sans">
-      <TimelineRuleV2 
-        selectedMoment={selectedMoment}
-        onMomentSelect={handleSelectMoment}
-      />
+    <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden">
       
-      <SearchAndFilters 
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        displayOptions={displayOptions}
-        setDisplayOptions={setDisplayOptions}
-        selectedMoment={selectedMoment}
-        setSelectedMoment={setSelectedMoment}
-        momentsData={momentsData}
-      />
+      {/* ✅ NOUVEAU: Headers avec animation auto-hide */}
+      <div className={`transition-transform duration-300 ease-in-out ${
+        isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
+      }`}>
+        <TimelineRuleV2 
+          selectedMoment={selectedMoment}
+          onMomentSelect={handleSelectMoment}
+        />
+        
+        <SearchAndFilters 
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          displayOptions={displayOptions}
+          setDisplayOptions={setDisplayOptions}
+          selectedMoment={selectedMoment}
+          setSelectedMoment={setSelectedMoment}
+          momentsData={momentsData}
+          autoScroll={autoScroll}
+          setAutoScroll={setAutoScroll}
+        />
+      </div>
 
+      {/* ✅ NOUVEAU: Zone de contenu avec ref pour le scroll */}
       <main className="flex-1 overflow-hidden">
-        <div className="container mx-auto h-full flex flex-col p-4">
+        <div 
+          ref={scrollContainerRef}
+          className="container mx-auto h-full flex flex-col p-4 overflow-y-auto"
+        >
           <MomentsList 
             moments={filteredMoments}
             selectedMoment={selectedMoment}
@@ -135,9 +213,24 @@ export default function MemoriesPage() {
             onMomentSelect={handleSelectMoment}
             onPhotoClick={openPhotoViewer}
             onCreateSession={handleCreateAndOpenSession}
+            momentRefs={momentRefs}
           />
         </div>
       </main>
+
+      {/* ✅ NOUVEAU: Indicateur de scroll (optionnel) */}
+      {!isHeaderVisible && (
+        <button
+          onClick={() => {
+            scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+            setIsHeaderVisible(true);
+          }}
+          className="fixed top-4 right-4 z-40 bg-amber-500 text-white p-3 rounded-full shadow-lg hover:bg-amber-600 transition-all"
+          title="Retour en haut"
+        >
+          <ChevronDown className="w-5 h-5 rotate-180" />
+        </button>
+      )}
 
       {viewerState.isOpen && (
         <PhotoViewer 
@@ -157,7 +250,7 @@ export default function MemoriesPage() {
 // ====================================================================
 const SearchAndFilters = memo(({ 
   searchQuery, setSearchQuery, displayOptions, setDisplayOptions,
-  selectedMoment, setSelectedMoment, momentsData 
+  selectedMoment, setSelectedMoment, momentsData, autoScroll, setAutoScroll 
 }) => {
   const [dayInput, setDayInput] = useState('');
 
@@ -186,7 +279,7 @@ const SearchAndFilters = memo(({
   };
 
   return (
-    <div className="sticky top-0 z-30 bg-gray-50/80 backdrop-blur-sm pt-4 pb-3 border-b border-gray-200">
+    <div className="bg-gray-50/95 backdrop-blur-sm pt-4 pb-3 border-b border-gray-200">
       <div className="container mx-auto px-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-x-4">
           <form onSubmit={handleDayJump} className="flex items-center gap-2">
@@ -230,6 +323,14 @@ const SearchAndFilters = memo(({
           >
             <X className="w-5 h-5 text-gray-700" />
           </button>
+          
+          <button 
+            onClick={() => setAutoScroll(!autoScroll)} 
+            className={`p-2 rounded-lg border ${autoScroll ? 'bg-blue-100 text-blue-700' : 'bg-white'}`} 
+            title="Scroll automatique"
+          >
+            <Play className="w-5 h-5" />
+          </button>
         </div>
       </div>
     </div>
@@ -269,12 +370,10 @@ const DisplayOptionsButtons = memo(({ displayOptions, onToggle }) => (
 // COMPOSANT : LISTE DES MOMENTS
 // ====================================================================
 const MomentsList = memo(({ 
-  moments, selectedMoment, displayOptions, onMomentSelect, onPhotoClick, onCreateSession 
+  moments, selectedMoment, displayOptions, onMomentSelect, onPhotoClick, onCreateSession, momentRefs 
 }) => {
-  const momentRefs = useRef({});
-
   return (
-    <div className="flex-1 overflow-y-auto space-y-3 pr-2 scroll-smooth">
+    <div className="space-y-3 pr-2">
       {moments.map((moment) => (
         <MomentCard
           key={moment.id} 
@@ -332,9 +431,13 @@ const MomentCard = memo(React.forwardRef(({
   );
 }));
 
+// Les autres composants restent identiques (MomentHeader, MomentContent, PostArticle, etc.)
+// [Je n'ai pas réécrit tout le code pour rester concis, mais tous les composants précédents sont conservés]
+
 // ====================================================================
-// COMPOSANT : EN-TÊTE DE MOMENT
+// COMPOSANTS RESTANTS (identiques à la version précédente)
 // ====================================================================
+
 const MomentHeader = memo(({ moment, isSelected, onSelect, onCreateSession }) => (
   <>
     <div onClick={() => onSelect(moment)} className="cursor-pointer flex items-start justify-between">
@@ -382,15 +485,11 @@ const MomentHeader = memo(({ moment, isSelected, onSelect, onCreateSession }) =>
   </>
 ));
 
-// ====================================================================
-// COMPOSANT : CONTENU DE MOMENT
-// ====================================================================
 const MomentContent = memo(({ 
   moment, displayOptions, visibleDayPhotos, photosPerLoad, 
   onPhotoClick, onCreateSession, onLoadMorePhotos 
 }) => (
   <div className="px-3 pb-3">
-    {/* Articles */}
     {moment.posts?.map(post => (
       <PostArticle 
         key={post.id}
@@ -402,7 +501,6 @@ const MomentContent = memo(({
       />
     ))}
     
-    {/* Photos du moment */}
     {displayOptions.showMomentPhotos && moment.dayPhotoCount > 0 && (
       <DayPhotosSection 
         moment={moment}
@@ -415,9 +513,6 @@ const MomentContent = memo(({
   </div>
 ));
 
-// ====================================================================
-// COMPOSANT : ARTICLE
-// ====================================================================
 const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreateSession }) => {
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
@@ -480,9 +575,6 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
   );
 });
 
-// ====================================================================
-// COMPOSANT : SECTION PHOTOS DU JOUR
-// ====================================================================
 const DayPhotosSection = memo(({ 
   moment, visibleDayPhotos, photosPerLoad, onPhotoClick, onLoadMorePhotos 
 }) => (
@@ -512,9 +604,6 @@ const DayPhotosSection = memo(({
   </div>
 ));
 
-// ====================================================================
-// COMPOSANT : GRILLE DE PHOTOS
-// ====================================================================
 const PhotoGrid = memo(({ photos, moment, onPhotoClick, allPhotos, gridCols }) => (
   <div className="mt-2">
     <div className={`grid ${gridCols} gap-2`}>
@@ -530,9 +619,6 @@ const PhotoGrid = memo(({ photos, moment, onPhotoClick, allPhotos, gridCols }) =
   </div>
 ));
 
-// ====================================================================
-// COMPOSANT : MINIATURE PHOTO
-// ====================================================================
 const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [status, setStatus] = useState('loading');
