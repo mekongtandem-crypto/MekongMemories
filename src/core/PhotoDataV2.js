@@ -1,8 +1,8 @@
 /**
- * PhotoDataV2.js v3.5 - DEBUG MOBILE + FALLBACKS
- * ✅ DEBUG: Logging étendu pour diagnostiquer les problèmes mobile
- * ✅ FALLBACKS: Multiples formats d'URL Google Drive pour mobile
- * ✅ DETECTION: User agent détaillé et tests de connectivité
+ * PhotoDataV2.js v3.6 - OPTIMISÉ MOBILE (lh3 priorité)
+ * ✅ FIX: Format lh3.googleusercontent.com en priorité pour mobile
+ * ✅ PERFORMANCE: Moins de tests d'URL, résolution plus rapide
+ * ✅ FALLBACKS: Autres formats en cas d'échec
  */
 
 import { stateManager } from './StateManager.js';
@@ -13,14 +13,13 @@ class PhotoDataV2 {
     this.isLoaded = false;
     this.loadedAt = null;
     this.urlCache = new Map();
-    this.debugMode = true;
+    this.debugMode = false; // Désactivé en production
     this.deviceInfo = this.detectDevice();
     
-    console.log(`📸 PhotoDataV2 v3.5 (Mobile Debug):`, this.deviceInfo);
+    console.log(`📸 PhotoDataV2 v3.6 (Mobile Optimized): ${this.deviceInfo.type}`);
     this.init();
   }
 
-  // ✅ AMÉLIORATION: Détection device complète
   detectDevice() {
     if (typeof navigator === 'undefined') return { type: 'server', isMobile: false };
     
@@ -29,17 +28,8 @@ class PhotoDataV2 {
     const isIOS = /iPhone|iPad|iPod/.test(userAgent);
     const isAndroid = /Android/.test(userAgent);
     const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
-    const isChrome = /Chrome/.test(userAgent);
     
-    return {
-      type: isMobile ? 'mobile' : 'desktop',
-      isMobile,
-      isIOS,
-      isAndroid,
-      isSafari,
-      isChrome,
-      userAgent: userAgent.substring(0, 100), // Tronqué pour logs
-    };
+    return { type: isMobile ? 'mobile' : 'desktop', isMobile, isIOS, isAndroid, isSafari };
   }
 
   async init() {
@@ -64,29 +54,6 @@ class PhotoDataV2 {
     if (this.debugMode) {
       console.log(`📸 PhotoDataV2 DEBUG: ${message}`, data || '');
     }
-  }
-
-  // ✅ NOUVEAU: Test de connectivité URL
-  async testImageUrl(url, timeout = 5000) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      const timer = setTimeout(() => {
-        img.onload = img.onerror = null;
-        resolve({ success: false, error: 'timeout' });
-      }, timeout);
-      
-      img.onload = () => {
-        clearTimeout(timer);
-        resolve({ success: true, width: img.width, height: img.height });
-      };
-      
-      img.onerror = (e) => {
-        clearTimeout(timer);
-        resolve({ success: false, error: 'load_error', event: e });
-      };
-      
-      img.src = url;
-    });
   }
 
   async loadMasterIndexFromData(masterData) {
@@ -126,12 +93,12 @@ class PhotoDataV2 {
     };
   }
 
-  // ✅ SOLUTION PRINCIPALE: Multiples fallbacks d'URL
+  // ✅ SOLUTION OPTIMISÉE: Format mobile en priorité
   async resolveImageUrl(photo, isThumbnail = false) {
     if (!photo) return this.getPlaceholderImageUrl();
 
     const size = isThumbnail ? 'w400' : 'w800';
-    const cacheKey = `${this.getPhotoCacheKey(photo)}_${size}_${this.deviceInfo.type}`;
+    const cacheKey = `${this.getPhotoCacheKey(photo)}_${size}_v36`;
     
     if (this.urlCache.has(cacheKey)) {
       return this.urlCache.get(cacheKey);
@@ -146,7 +113,7 @@ class PhotoDataV2 {
     }
 
     if (fileId) {
-      const finalUrl = await this.tryMultipleUrlFormats(fileId, size, photo);
+      const finalUrl = this.buildOptimalUrl(fileId, size);
       this.urlCache.set(cacheKey, finalUrl);
       return finalUrl;
     } else if (filename) {
@@ -154,7 +121,7 @@ class PhotoDataV2 {
       this.logDebug(`🔍 Photo sans ID, recherche par nom: ${filename}`);
       const foundId = await this.fallbackImageSearch(filename);
       if (foundId) {
-        const finalUrl = await this.tryMultipleUrlFormats(foundId, size, photo);
+        const finalUrl = this.buildOptimalUrl(foundId, size);
         this.urlCache.set(cacheKey, finalUrl);
         return finalUrl;
       }
@@ -165,66 +132,112 @@ class PhotoDataV2 {
     return placeholderUrl;
   }
 
-  // ✅ NOUVEAU: Test multiple formats d'URL avec debugging
-  async tryMultipleUrlFormats(fileId, size, photo) {
-    this.logDebug(`🧪 Test multiple formats pour ${photo.filename || 'photo'} (${this.deviceInfo.type})`);
-    
-    // Différents formats d'URL à tester
-    const urlFormats = [
-      // Format 1: Standard Google Drive thumbnail
-      `https://drive.google.com/thumbnail?id=${fileId}&sz=${size}`,
-      
-      // Format 2: Ordre des paramètres inversé (pour Safari)
-      `https://drive.google.com/thumbnail?sz=${size}&id=${fileId}`,
-      
-      // Format 3: Format uc export pour mobile
-      `https://drive.google.com/uc?export=view&id=${fileId}`,
-      
-      // Format 4: Format lh3 (utilisé parfois par Google)
-      `https://lh3.googleusercontent.com/d/${fileId}=w${size.replace('w', '')}-h${size.replace('w', '')}`,
-      
-      // Format 5: Si mobile, tentative sans authentification
-      ...(this.deviceInfo.isMobile ? [
-        `https://drive.google.com/file/d/${fileId}/view`,
-        `https://docs.google.com/uc?export=download&id=${fileId}`
-      ] : [])
-    ];
+  // ✅ NOUVEAU: Construction d'URL optimale selon le device
+  buildOptimalUrl(fileId, size) {
+    const sizeNumber = size.replace('w', ''); // w400 -> 400
 
-    // Test chaque format
-    for (let i = 0; i < urlFormats.length; i++) {
-      const url = urlFormats[i];
-      this.logDebug(`📱 Test format ${i + 1}/${urlFormats.length}: ${url.substring(0, 80)}...`);
+    if (this.deviceInfo.isMobile) {
+      // ✅ MOBILE: Format lh3 en priorité (celui qui fonctionne)
+      return `https://lh3.googleusercontent.com/d/${fileId}=w${sizeNumber}-h${sizeNumber}`;
+    } else {
+      // ✅ DESKTOP: Format standard Drive
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=${size}`;
+    }
+  }
+
+  // ✅ FALLBACK: Version avec test si l'URL optimale échoue
+  async resolveImageUrlWithFallback(photo, isThumbnail = false) {
+    const primaryUrl = await this.resolveImageUrl(photo, isThumbnail);
+    
+    // Si c'est déjà un placeholder, pas besoin de test
+    if (primaryUrl.startsWith('data:image/svg+xml')) {
+      return primaryUrl;
+    }
+
+    // Test rapide de l'URL primaire
+    const testResult = await this.testImageUrl(primaryUrl, 2000);
+    
+    if (testResult.success) {
+      return primaryUrl;
+    }
+
+    // Si échec, essayer les formats alternatifs
+    this.logDebug(`⚠️ URL primaire échouée, test des fallbacks...`);
+    
+    let fileId = photo.google_drive_id;
+    if (!fileId && photo.url) {
+      const foundId = await this.fallbackImageSearch(photo.url.split('/').pop());
+      if (foundId) fileId = foundId;
+    }
+
+    if (fileId) {
+      const size = isThumbnail ? 'w400' : 'w800';
+      const fallbackUrls = this.getFallbackUrls(fileId, size);
       
-      const testResult = await this.testImageUrl(url, 3000);
-      
-      if (testResult.success) {
-        this.logDebug(`✅ Format ${i + 1} SUCCÈS (${testResult.width}x${testResult.height})`);
-        return url;
-      } else {
-        this.logDebug(`❌ Format ${i + 1} échec: ${testResult.error}`);
+      for (const url of fallbackUrls) {
+        const test = await this.testImageUrl(url, 2000);
+        if (test.success) {
+          this.logDebug(`✅ Fallback réussi: ${url.substring(0, 50)}...`);
+          // Mettre à jour le cache avec l'URL qui fonctionne
+          const cacheKey = `${this.getPhotoCacheKey(photo)}_${size}_v36`;
+          this.urlCache.set(cacheKey, url);
+          return url;
+        }
       }
     }
 
-    // Si aucun format ne fonctionne
-    this.logDebug(`🚨 AUCUN format ne fonctionne pour ${photo.filename || fileId}`);
-    
-    // Log détaillé pour debug
-    console.group('📱 DEBUG Mobile Image Loading');
-    console.log('Device Info:', this.deviceInfo);
-    console.log('Photo:', photo);
-    console.log('FileID:', fileId);
-    console.log('Tested URLs:', urlFormats);
-    console.groupEnd();
-    
     return this.getPlaceholderImageUrl();
   }
 
-  // ✅ AMÉLIORATION: Fallback search avec retry adaptatif
+  // ✅ NOUVEAU: URLs de fallback selon le device
+  getFallbackUrls(fileId, size) {
+    const sizeNumber = size.replace('w', '');
+    
+    if (this.deviceInfo.isMobile) {
+      return [
+        // Autres formats pour mobile
+        `https://drive.google.com/uc?export=view&id=${fileId}`,
+        `https://drive.google.com/thumbnail?sz=${size}&id=${fileId}`,
+        `https://drive.google.com/thumbnail?id=${fileId}&sz=${size}`,
+      ];
+    } else {
+      return [
+        // Autres formats pour desktop
+        `https://lh3.googleusercontent.com/d/${fileId}=w${sizeNumber}-h${sizeNumber}`,
+        `https://drive.google.com/thumbnail?sz=${size}&id=${fileId}`,
+        `https://drive.google.com/uc?export=view&id=${fileId}`,
+      ];
+    }
+  }
+
+  // ✅ Test rapide d'URL
+  async testImageUrl(url, timeout = 3000) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const timer = setTimeout(() => {
+        img.onload = img.onerror = null;
+        resolve({ success: false, error: 'timeout' });
+      }, timeout);
+      
+      img.onload = () => {
+        clearTimeout(timer);
+        resolve({ success: true, width: img.width, height: img.height });
+      };
+      
+      img.onerror = () => {
+        clearTimeout(timer);
+        resolve({ success: false, error: 'load_error' });
+      };
+      
+      img.src = url;
+    });
+  }
+
   async fallbackImageSearch(filename) {
     try {
       if (!window.gapi?.client?.drive || !filename) return null;
       
-      this.logDebug(`🔍 Recherche Drive API pour: name='${filename}' (${this.deviceInfo.type})`);
+      this.logDebug(`🔍 Recherche Drive API pour: name='${filename}'`);
       
       const response = await window.gapi.client.drive.files.list({
         q: `name='${filename}' and trashed=false and mimeType contains 'image'`,
@@ -234,34 +247,14 @@ class PhotoDataV2 {
       
       if (response.result.files && response.result.files.length > 0) {
         const fileId = response.result.files[0].id;
-        this.logDebug(`✅ Fichier trouvé par recherche fallback : ${filename} -> ${fileId}`);
+        this.logDebug(`✅ Fichier trouvé: ${filename} -> ${fileId}`);
         return fileId;
       }
       
-      this.logDebug(`❌ Fichier non trouvé par recherche fallback : ${filename}`);
       return null;
       
     } catch (error) {
       console.error(`❌ Erreur recherche fallback pour ${filename}:`, error);
-      
-      // Retry spécial pour mobile
-      if (this.deviceInfo.isMobile && error.status === 403) {
-        console.log('📱 Retry spécial mobile...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        try {
-          const retryResponse = await window.gapi.client.drive.files.list({
-            q: `name='${filename}' and trashed=false`,
-            fields: 'files(id)', 
-            pageSize: 1
-          });
-          if (retryResponse.result.files && retryResponse.result.files.length > 0) {
-            return retryResponse.result.files[0].id;
-          }
-        } catch (retryError) {
-          console.error('❌ Retry mobile aussi échoué:', retryError);
-        }
-      }
-      
       return null;
     }
   }
@@ -274,30 +267,27 @@ class PhotoDataV2 {
      return `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNlMGUwZTAiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1zaXplPSIxMiIgZmlsbD0iI2FhYSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPj9JbWFnZT88L3RleHQ+PC9zdmc+`;
   }
 
-  // ✅ NOUVEAU: Debug stats pour mobile
-  getDebugStats() {
-    return {
-      device: this.deviceInfo,
-      cacheSize: this.urlCache.size,
-      isLoaded: this.isLoaded,
-      masterIndexVersion: this.masterIndex?.version,
-      authStatus: !!window.gapi?.client?.getToken(),
-    };
-  }
-
-  // ✅ NOUVEAU: Forcer test d'une photo spécifique
+  // ✅ NOUVEAU: Méthode pour forcer l'utilisation des fallbacks (debug)
   async debugPhoto(photo) {
     console.group(`🔬 DEBUG PHOTO: ${photo.filename || 'Unknown'}`);
     console.log('Photo object:', photo);
     console.log('Device info:', this.deviceInfo);
     
     if (photo.google_drive_id) {
-      const url = await this.tryMultipleUrlFormats(photo.google_drive_id, 'w400', photo);
-      console.log('Resolved URL:', url);
-    } else {
-      console.log('No google_drive_id, searching...');
-      const foundId = await this.fallbackImageSearch(photo.filename);
-      console.log('Found ID:', foundId);
+      const primaryUrl = this.buildOptimalUrl(photo.google_drive_id, 'w400');
+      console.log('Primary URL (optimal):', primaryUrl);
+      
+      const primaryTest = await this.testImageUrl(primaryUrl, 3000);
+      console.log('Primary test result:', primaryTest);
+      
+      if (!primaryTest.success) {
+        console.log('Testing fallbacks...');
+        const fallbacks = this.getFallbackUrls(photo.google_drive_id, 'w400');
+        for (let i = 0; i < fallbacks.length; i++) {
+          const fallbackTest = await this.testImageUrl(fallbacks[i], 3000);
+          console.log(`Fallback ${i + 1} (${fallbacks[i]}):`, fallbackTest);
+        }
+      }
     }
     
     console.groupEnd();
@@ -308,17 +298,24 @@ class PhotoDataV2 {
       return { 
         isLoaded: true, 
         device: this.deviceInfo,
+        cacheSize: this.urlCache.size,
         ...this.masterIndex.metadata 
       };
   }
+
+  // ✅ NOUVEAU: Vider le cache pour forcer le rechargement avec la nouvelle logique
+  clearUrlCache() {
+    this.urlCache.clear();
+    console.log('📸 Cache URL vidé, prochaines images utiliseront la nouvelle logique');
+  }
 }
 
-// Export et exposition sur window avec debug
+// Export et exposition sur window
 export const photoDataV2 = new PhotoDataV2();
 if (typeof window !== 'undefined') { 
   window.photoDataV2 = photoDataV2;
   
-  // ✅ NOUVEAU: Fonction de debug globale
+  // Fonctions de debug
   window.debugPhoto = (photo) => photoDataV2.debugPhoto(photo);
-  window.photoDebugStats = () => photoDataV2.getDebugStats();
+  window.clearPhotoCache = () => photoDataV2.clearUrlCache();
 }
