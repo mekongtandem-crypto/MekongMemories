@@ -1,27 +1,26 @@
 /**
- * MemoriesPage.jsx v5.0 - AUTO-HIDE SUR SCROLL
- * ✅ NOUVEAU: Timeline et filtres disparaissent au scroll vers le bas
- * ✅ UX: Réapparaissent au scroll vers le haut
- * ✅ PERFORMANCE: Debounced scroll detection
+ * MemoriesPage.jsx v5.1 - HEADERS FIXED + BARRE COMPACTE
+ * ✅ FIX: Headers en position fixed, disparaissent complètement
+ * ✅ UX: Une seule zone de scroll (le contenu)
+ * ✅ COMPACT: Barre simplifiée (loupe, dés, options uniquement)
  */
 
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown, Play, Search, X, Dices, PlusCircle, Type
+  AlertCircle, ChevronDown, Search, Dices, PlusCircle, Type
 } from 'lucide-react';
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
 
 // ====================================================================
-// COMPOSANT PRINCIPAL AVEC AUTO-HIDE
+// COMPOSANT PRINCIPAL - FIXED HEADERS + UNE ZONE DE SCROLL
 // ====================================================================
 export default function MemoriesPage() {
   const app = useAppState();
   const [selectedMoment, setSelectedMoment] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [autoScroll, setAutoScroll] = useState(true);
   const [displayOptions, setDisplayOptions] = useState({
     showPostText: true,
     showPostPhotos: true,
@@ -31,15 +30,16 @@ export default function MemoriesPage() {
     isOpen: false, photo: null, gallery: [], contextMoment: null 
   });
 
-  // ✅ NOUVEAU: État pour l'auto-hide
+  // ✅ États pour l'auto-hide et la recherche
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
   const scrollContainerRef = useRef(null);
 
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const momentRefs = useRef({});
 
-  // ✅ NOUVEAU: Gestion du scroll avec debounce
+  // ✅ Gestion du scroll avec une seule zone
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) return;
@@ -51,8 +51,8 @@ export default function MemoriesPage() {
         window.requestAnimationFrame(() => {
           const currentScrollY = scrollContainer.scrollTop;
           
-          // Seuil minimum de scroll avant de cacher (50px)
-          if (Math.abs(currentScrollY - lastScrollY) < 50) {
+          // Seuil minimum de scroll avant de cacher
+          if (Math.abs(currentScrollY - lastScrollY) < 30) {
             ticking = false;
             return;
           }
@@ -82,12 +82,12 @@ export default function MemoriesPage() {
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
-  // Scroll automatique vers le moment sélectionné
+  // Scroll automatique vers le moment sélectionné (toujours actif)
   useEffect(() => {
-    if (selectedMoment && autoScroll) {
+    if (selectedMoment) {
       scrollToMoment(selectedMoment.id, 'start');
     }
-  }, [selectedMoment, autoScroll]);
+  }, [selectedMoment]);
 
   const scrollToMoment = useCallback((momentId, blockPosition = 'start') => {
     const element = momentRefs.current[momentId];
@@ -121,7 +121,6 @@ export default function MemoriesPage() {
     let initialMessage = '';
     
     if (source.filename) {
-        const type = source.type === 'day_photo' ? 'photo du moment' : 'photo d\'article';
         sessionData = { 
           id: source.google_drive_id || source.url, 
           title: `Souvenirs de ${contextMoment.displayTitle}`, 
@@ -172,14 +171,14 @@ export default function MemoriesPage() {
   }
 
   if (momentsData.length === 0) {
-    return <div className="p-12 text-center text-red-500">Aucun moment à afficher. Vérifiez le master_index.</div>;
+    return <div className="p-12 text-center text-red-500">Aucun moment à afficher.</div>;
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden">
+    <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden relative">
       
-      {/* ✅ NOUVEAU: Headers avec animation auto-hide */}
-      <div className={`transition-transform duration-300 ease-in-out ${
+      {/* ✅ NOUVEAU: Headers en position FIXED (sortent complètement de l'écran) */}
+      <div className={`fixed top-0 left-0 right-0 z-30 transition-transform duration-300 ease-in-out ${
         isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
       }`}>
         <TimelineRuleV2 
@@ -187,25 +186,27 @@ export default function MemoriesPage() {
           onMomentSelect={handleSelectMoment}
         />
         
-        <SearchAndFilters 
+        <CompactFilters 
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          isSearchOpen={isSearchOpen}
+          setIsSearchOpen={setIsSearchOpen}
           displayOptions={displayOptions}
           setDisplayOptions={setDisplayOptions}
           selectedMoment={selectedMoment}
           setSelectedMoment={setSelectedMoment}
           momentsData={momentsData}
-          autoScroll={autoScroll}
-          setAutoScroll={setAutoScroll}
         />
       </div>
 
-      {/* ✅ NOUVEAU: Zone de contenu avec ref pour le scroll */}
-      <main className="flex-1 overflow-hidden">
-        <div 
-          ref={scrollContainerRef}
-          className="container mx-auto h-full flex flex-col p-4 overflow-y-auto"
-        >
+      {/* ✅ NOUVEAU: Contenu avec padding-top dynamique */}
+      <main 
+        ref={scrollContainerRef}
+        className={`flex-1 overflow-y-auto transition-all duration-300 ${
+          isHeaderVisible ? 'pt-[200px]' : 'pt-0'
+        }`}
+      >
+        <div className="container mx-auto px-4 py-4">
           <MomentsList 
             moments={filteredMoments}
             selectedMoment={selectedMoment}
@@ -218,7 +219,7 @@ export default function MemoriesPage() {
         </div>
       </main>
 
-      {/* ✅ NOUVEAU: Indicateur de scroll (optionnel) */}
+      {/* Bouton retour en haut (quand headers cachés) */}
       {!isHeaderVisible && (
         <button
           onClick={() => {
@@ -246,13 +247,21 @@ export default function MemoriesPage() {
 }
 
 // ====================================================================
-// COMPOSANT : RECHERCHE ET FILTRES
+// COMPOSANT : BARRE DE FILTRES COMPACTE
 // ====================================================================
-const SearchAndFilters = memo(({ 
-  searchQuery, setSearchQuery, displayOptions, setDisplayOptions,
-  selectedMoment, setSelectedMoment, momentsData, autoScroll, setAutoScroll 
+const CompactFilters = memo(({ 
+  searchQuery, setSearchQuery, isSearchOpen, setIsSearchOpen,
+  displayOptions, setDisplayOptions, selectedMoment, setSelectedMoment, momentsData 
 }) => {
   const [dayInput, setDayInput] = useState('');
+  const searchInputRef = useRef(null);
+
+  // Focus automatique quand la recherche s'ouvre
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
 
   const handleDayJump = (e) => {
     e.preventDefault();
@@ -261,6 +270,7 @@ const SearchAndFilters = memo(({
       const targetMoment = momentsData.find(m => day >= m.dayStart && day <= m.dayEnd);
       if (targetMoment) {
         setSelectedMoment(targetMoment);
+        setDayInput(''); // Reset après sélection
       } else {
         alert(`Aucun moment trouvé pour le jour ${day}`);
       }
@@ -278,102 +288,141 @@ const SearchAndFilters = memo(({
     setDisplayOptions(prev => ({...prev, [option]: !prev[option]}));
   };
 
+  const handleCollapseAll = () => {
+    setSelectedMoment(null);
+  };
+
   return (
-    <div className="bg-gray-50/95 backdrop-blur-sm pt-4 pb-3 border-b border-gray-200">
-      <div className="container mx-auto px-4">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-x-4">
-          <form onSubmit={handleDayJump} className="flex items-center gap-2">
+    <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200">
+      <div className="container mx-auto px-4 py-2">
+        
+        {/* ✅ Barre principale compacte */}
+        <div className="flex items-center gap-3">
+          
+          {/* Input jour */}
+          <form onSubmit={handleDayJump} className="flex items-center">
             <input 
               type="number" 
               value={dayInput} 
               onChange={(e) => setDayInput(e.target.value)}
-              className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm" 
-              placeholder="Jour..."
+              className="w-16 px-2 py-1.5 border border-gray-300 rounded-lg text-sm" 
+              placeholder="J..."
             />
-            <button 
-              type="button" 
-              onClick={jumpToRandomMoment} 
-              className="p-2 rounded-lg border bg-white hover:bg-gray-100" 
-              title="Moment au hasard"
-            >
-              <Dices className="w-5 h-5 text-gray-700" />
-            </button>
           </form>
           
-          <div className="flex-1 min-w-[200px] relative">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input 
-              type="text" 
-              value={searchQuery} 
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-1.5 border border-gray-300 rounded-lg" 
-              placeholder="Rechercher un texte, un titre..."
-            />
-          </div>
+          {/* Dés (moment aléatoire) */}
+          <button 
+            onClick={jumpToRandomMoment} 
+            className="p-1.5 rounded-lg border bg-white hover:bg-gray-100" 
+            title="Moment au hasard"
+          >
+            <Dices className="w-5 h-5 text-gray-700" />
+          </button>
           
+          {/* ✅ Loupe (ouvre la recherche) */}
+          <button 
+            onClick={() => setIsSearchOpen(!isSearchOpen)} 
+            className={`p-1.5 rounded-lg border ${isSearchOpen ? 'bg-blue-100 text-blue-700' : 'bg-white hover:bg-gray-100'}`}
+            title="Rechercher"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+          
+          {/* Séparateur visuel */}
+          <div className="h-6 w-px bg-gray-300" />
+          
+          {/* Options d'affichage */}
           <DisplayOptionsButtons 
             displayOptions={displayOptions}
             onToggle={handleDisplayOptionToggle}
           />
           
-          <button 
-            onClick={() => setSelectedMoment(null)} 
-            className="p-2 rounded-lg border bg-white hover:bg-gray-100" 
-            title="Fermer tous les moments"
-          >
-            <X className="w-5 h-5 text-gray-700" />
-          </button>
+          {/* Spacer */}
+          <div className="flex-1" />
           
+          {/* ✅ Chevron down (replier tous) */}
           <button 
-            onClick={() => setAutoScroll(!autoScroll)} 
-            className={`p-2 rounded-lg border ${autoScroll ? 'bg-blue-100 text-blue-700' : 'bg-white'}`} 
-            title="Scroll automatique"
+            onClick={handleCollapseAll} 
+            className="p-1.5 rounded-lg border bg-white hover:bg-gray-100" 
+            title="Replier tous les moments"
           >
-            <Play className="w-5 h-5" />
+            <ChevronDown className="w-5 h-5 text-gray-700" />
           </button>
         </div>
+
+        {/* ✅ Champ de recherche extensible */}
+        {isSearchOpen && (
+          <div className="mt-2 animate-slideDown">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                ref={searchInputRef}
+                type="text" 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setIsSearchOpen(false);
+                    setSearchQuery('');
+                  }
+                }}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                placeholder="Rechercher un texte, un titre... (Echap pour fermer)"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <ChevronDown className="w-4 h-4 rotate-45" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 });
 
 // ====================================================================
-// COMPOSANT : BOUTONS D'OPTIONS D'AFFICHAGE
+// COMPOSANT : BOUTONS D'OPTIONS D'AFFICHAGE (inchangé)
 // ====================================================================
 const DisplayOptionsButtons = memo(({ displayOptions, onToggle }) => (
   <div className="flex items-center gap-2">
     <button 
       onClick={() => onToggle('showPostText')} 
-      className={`p-2 rounded-lg border ${displayOptions.showPostText ? 'bg-blue-100 text-blue-700' : 'bg-white'}`} 
+      className={`p-1.5 rounded-lg border ${displayOptions.showPostText ? 'bg-blue-100 text-blue-700' : 'bg-white'}`} 
       title="Afficher/Masquer le texte"
     >
-      <Type className="w-5 h-5" />
+      <Type className="w-4 h-4" />
     </button>
     <button 
       onClick={() => onToggle('showPostPhotos')} 
-      className={`p-2 rounded-lg border ${displayOptions.showPostPhotos ? 'bg-blue-100 text-blue-700' : 'bg-white'}`} 
+      className={`p-1.5 rounded-lg border ${displayOptions.showPostPhotos ? 'bg-blue-100 text-blue-700' : 'bg-white'}`} 
       title="Afficher/Masquer les photos des articles"
     >
-      <ImageIcon className="w-5 h-5" />
+      <ImageIcon className="w-4 h-4" />
     </button>
     <button 
       onClick={() => onToggle('showMomentPhotos')} 
-      className={`p-2 rounded-lg border ${displayOptions.showMomentPhotos ? 'bg-blue-100 text-blue-700' : 'bg-white'}`} 
+      className={`p-1.5 rounded-lg border ${displayOptions.showMomentPhotos ? 'bg-blue-100 text-blue-700' : 'bg-white'}`} 
       title="Afficher/Masquer les photos du moment"
     >
-      <Camera className="w-5 h-5" />
+      <Camera className="w-4 h-4" />
     </button>
   </div>
 ));
 
 // ====================================================================
-// COMPOSANT : LISTE DES MOMENTS
+// COMPOSANTS RESTANTS (identiques à avant)
 // ====================================================================
+
 const MomentsList = memo(({ 
   moments, selectedMoment, displayOptions, onMomentSelect, onPhotoClick, onCreateSession, momentRefs 
 }) => {
   return (
-    <div className="space-y-3 pr-2">
+    <div className="space-y-3">
       {moments.map((moment) => (
         <MomentCard
           key={moment.id} 
@@ -390,9 +439,6 @@ const MomentsList = memo(({
   );
 });
 
-// ====================================================================
-// COMPOSANT : CARTE DE MOMENT
-// ====================================================================
 const MomentCard = memo(React.forwardRef(({ 
   moment, isSelected, displayOptions, onSelect, onPhotoClick, onCreateSession 
 }, ref) => {  
@@ -430,13 +476,6 @@ const MomentCard = memo(React.forwardRef(({
     </div>
   );
 }));
-
-// Les autres composants restent identiques (MomentHeader, MomentContent, PostArticle, etc.)
-// [Je n'ai pas réécrit tout le code pour rester concis, mais tous les composants précédents sont conservés]
-
-// ====================================================================
-// COMPOSANTS RESTANTS (identiques à la version précédente)
-// ====================================================================
 
 const MomentHeader = memo(({ moment, isSelected, onSelect, onCreateSession }) => (
   <>
@@ -681,6 +720,25 @@ const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
     </div>
   );
 });
+
+// Animation CSS pour le slideDown
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-slideDown {
+    animation: slideDown 0.2s ease-out;
+  }
+`;
+document.head.appendChild(style);
 
 // ====================================================================
 // FONCTIONS UTILITAIRES
