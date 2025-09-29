@@ -1,21 +1,21 @@
 /**
- * MemoriesPage.jsx v5.1 - HEADERS FIXED + BARRE COMPACTE
- * ✅ FIX: Headers en position fixed, disparaissent complètement
- * ✅ UX: Une seule zone de scroll (le contenu)
- * ✅ COMPACT: Barre simplifiée (loupe, dés, options uniquement)
+ * MemoriesPage.jsx v5.2 - TIMELINE MASQUABLE + JOUR FONCTIONNEL
+ * ✅ NOUVEAU: Timeline peut être cachée/affichée
+ * ✅ AMÉLIORATION: Sélecteur de jour avec navigation fléchées
+ * ✅ UX: Scroll automatique vers le jour sélectionné
  */
 
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown, Search, Dices, PlusCircle, Type
+  AlertCircle, ChevronDown, ChevronUp, Search, Dices, PlusCircle, Type, Map, Minimize2
 } from 'lucide-react';
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
 
 // ====================================================================
-// COMPOSANT PRINCIPAL - FIXED HEADERS + UNE ZONE DE SCROLL
+// COMPOSANT PRINCIPAL
 // ====================================================================
 export default function MemoriesPage() {
   const app = useAppState();
@@ -30,16 +30,56 @@ export default function MemoriesPage() {
     isOpen: false, photo: null, gallery: [], contextMoment: null 
   });
 
-  // ✅ États pour l'auto-hide et la recherche
+  // ✅ NOUVEAU: États pour timeline et jour
+  const [isTimelineVisible, setIsTimelineVisible] = useState(true);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [currentDay, setCurrentDay] = useState(1);
   const [lastScrollY, setLastScrollY] = useState(0);
   const scrollContainerRef = useRef(null);
 
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const momentRefs = useRef({});
 
-  // ✅ Gestion du scroll avec une seule zone
+  // ✅ Raccourcis clavier
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignorer si on est dans un input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      switch(e.key) {
+        case 't':
+        case 'T':
+          setIsTimelineVisible(prev => !prev);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          navigateDay(-1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          navigateDay(1);
+          break;
+        case 'PageUp':
+          e.preventDefault();
+          navigateDay(-5);
+          break;
+        case 'PageDown':
+          e.preventDefault();
+          navigateDay(5);
+          break;
+        case '/':
+          e.preventDefault();
+          setIsSearchOpen(true);
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [currentDay, momentsData]);
+
+  // Gestion du scroll avec auto-hide
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) return;
@@ -51,22 +91,17 @@ export default function MemoriesPage() {
         window.requestAnimationFrame(() => {
           const currentScrollY = scrollContainer.scrollTop;
           
-          // Seuil minimum de scroll avant de cacher
           if (Math.abs(currentScrollY - lastScrollY) < 30) {
             ticking = false;
             return;
           }
 
-          // Scroll vers le bas → cacher
           if (currentScrollY > lastScrollY && currentScrollY > 100) {
             setIsHeaderVisible(false);
-          } 
-          // Scroll vers le haut → afficher
-          else if (currentScrollY < lastScrollY) {
+          } else if (currentScrollY < lastScrollY) {
             setIsHeaderVisible(true);
           }
 
-          // Toujours afficher si proche du haut
           if (currentScrollY < 50) {
             setIsHeaderVisible(true);
           }
@@ -82,7 +117,7 @@ export default function MemoriesPage() {
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
-  // Scroll automatique vers le moment sélectionné (toujours actif)
+  // Scroll automatique vers le moment sélectionné
   useEffect(() => {
     if (selectedMoment) {
       scrollToMoment(selectedMoment.id, 'start');
@@ -97,6 +132,21 @@ export default function MemoriesPage() {
         }, 50);
     }
   }, []);
+
+  // ✅ NOUVEAU: Navigation par jour
+  const navigateDay = useCallback((delta) => {
+    const newDay = Math.max(0, Math.min(currentDay + delta, 200)); // Max J200
+    setCurrentDay(newDay);
+    jumpToDay(newDay);
+  }, [currentDay, momentsData]);
+
+  const jumpToDay = useCallback((day) => {
+    const targetMoment = momentsData.find(m => day >= m.dayStart && day <= m.dayEnd);
+    if (targetMoment) {
+      setSelectedMoment(targetMoment);
+      setCurrentDay(day);
+    }
+  }, [momentsData]);
 
   const openPhotoViewer = useCallback((clickedPhoto, contextMoment, photoList) => {
     setViewerState({ 
@@ -113,6 +163,10 @@ export default function MemoriesPage() {
 
   const handleSelectMoment = useCallback((moment) => {
     setSelectedMoment(prev => (prev && prev.id === moment.id) ? null : moment);
+    // ✅ Mettre à jour le jour courant
+    if (moment) {
+      setCurrentDay(moment.dayStart);
+    }
   }, []);
 
   const handleCreateAndOpenSession = useCallback(async (source, contextMoment) => {
@@ -174,17 +228,28 @@ export default function MemoriesPage() {
     return <div className="p-12 text-center text-red-500">Aucun moment à afficher.</div>;
   }
 
+  // ✅ Calculer la hauteur dynamique du header
+  const headerHeight = isTimelineVisible ? 200 : 60;
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden relative">
       
-      {/* ✅ NOUVEAU: Headers en position FIXED (sortent complètement de l'écran) */}
-      <div className={`fixed top-0 left-0 right-0 z-30 transition-transform duration-300 ease-in-out ${
-        isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
-      }`}>
-        <TimelineRuleV2 
-          selectedMoment={selectedMoment}
-          onMomentSelect={handleSelectMoment}
-        />
+      {/* ✅ Headers avec timeline masquable */}
+      <div 
+        className={`fixed top-0 left-0 right-0 z-30 transition-all duration-300 ease-in-out ${
+          isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
+        }`}
+        style={{ height: `${headerHeight}px` }}
+      >
+        {/* ✅ Timeline conditionnelle */}
+        {isTimelineVisible && (
+          <div className="transition-all duration-300">
+            <TimelineRuleV2 
+              selectedMoment={selectedMoment}
+              onMomentSelect={handleSelectMoment}
+            />
+          </div>
+        )}
         
         <CompactFilters 
           searchQuery={searchQuery}
@@ -196,15 +261,20 @@ export default function MemoriesPage() {
           selectedMoment={selectedMoment}
           setSelectedMoment={setSelectedMoment}
           momentsData={momentsData}
+          currentDay={currentDay}
+          setCurrentDay={setCurrentDay}
+          jumpToDay={jumpToDay}
+          navigateDay={navigateDay}
+          isTimelineVisible={isTimelineVisible}
+          setIsTimelineVisible={setIsTimelineVisible}
         />
       </div>
 
-      {/* ✅ NOUVEAU: Contenu avec padding-top dynamique */}
+      {/* Contenu avec padding dynamique */}
       <main 
         ref={scrollContainerRef}
-        className={`flex-1 overflow-y-auto transition-all duration-300 ${
-          isHeaderVisible ? 'pt-[200px]' : 'pt-0'
-        }`}
+        className="flex-1 overflow-y-auto transition-all duration-300"
+        style={{ paddingTop: isHeaderVisible ? `${headerHeight}px` : '0' }}
       >
         <div className="container mx-auto px-4 py-4">
           <MomentsList 
@@ -219,7 +289,7 @@ export default function MemoriesPage() {
         </div>
       </main>
 
-      {/* Bouton retour en haut (quand headers cachés) */}
+      {/* Bouton retour en haut */}
       {!isHeaderVisible && (
         <button
           onClick={() => {
@@ -229,9 +299,12 @@ export default function MemoriesPage() {
           className="fixed top-4 right-4 z-40 bg-amber-500 text-white p-3 rounded-full shadow-lg hover:bg-amber-600 transition-all"
           title="Retour en haut"
         >
-          <ChevronDown className="w-5 h-5 rotate-180" />
+          <ChevronUp className="w-5 h-5" />
         </button>
       )}
+
+      {/* ✅ NOUVEAU: Indicateur de raccourcis (apparaît 2s au chargement) */}
+      <KeyboardHints />
 
       {viewerState.isOpen && (
         <PhotoViewer 
@@ -247,40 +320,48 @@ export default function MemoriesPage() {
 }
 
 // ====================================================================
-// COMPOSANT : BARRE DE FILTRES COMPACTE
+// COMPOSANT : BARRE DE FILTRES AVEC TIMELINE TOGGLE
 // ====================================================================
 const CompactFilters = memo(({ 
   searchQuery, setSearchQuery, isSearchOpen, setIsSearchOpen,
-  displayOptions, setDisplayOptions, selectedMoment, setSelectedMoment, momentsData 
+  displayOptions, setDisplayOptions, selectedMoment, setSelectedMoment, momentsData,
+  currentDay, setCurrentDay, jumpToDay, navigateDay,
+  isTimelineVisible, setIsTimelineVisible
 }) => {
-  const [dayInput, setDayInput] = useState('');
   const searchInputRef = useRef(null);
+  const dayInputRef = useRef(null);
 
-  // Focus automatique quand la recherche s'ouvre
   useEffect(() => {
     if (isSearchOpen && searchInputRef.current) {
       searchInputRef.current.focus();
     }
   }, [isSearchOpen]);
 
-  const handleDayJump = (e) => {
-    e.preventDefault();
-    const day = parseInt(dayInput, 10);
+  const handleDayChange = (e) => {
+    const day = parseInt(e.target.value, 10);
     if (!isNaN(day)) {
-      const targetMoment = momentsData.find(m => day >= m.dayStart && day <= m.dayEnd);
-      if (targetMoment) {
-        setSelectedMoment(targetMoment);
-        setDayInput(''); // Reset après sélection
-      } else {
-        alert(`Aucun moment trouvé pour le jour ${day}`);
-      }
+      setCurrentDay(day);
     }
+  };
+
+  const handleDaySubmit = (e) => {
+    e.preventDefault();
+    jumpToDay(currentDay);
+  };
+
+  // ✅ NOUVEAU: Gestion molette sur l'input jour
+  const handleDayWheel = (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 1 : -1;
+    navigateDay(delta);
   };
 
   const jumpToRandomMoment = () => {
     if (momentsData.length > 0) {
       const randomIndex = Math.floor(Math.random() * momentsData.length);
-      setSelectedMoment(momentsData[randomIndex]);
+      const randomMoment = momentsData[randomIndex];
+      setSelectedMoment(randomMoment);
+      setCurrentDay(randomMoment.dayStart);
     }
   };
 
@@ -296,18 +377,56 @@ const CompactFilters = memo(({
     <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200">
       <div className="container mx-auto px-4 py-2">
         
-        {/* ✅ Barre principale compacte */}
+        {/* Barre principale */}
         <div className="flex items-center gap-3">
           
-          {/* Input jour */}
-          <form onSubmit={handleDayJump} className="flex items-center">
-            <input 
-              type="number" 
-              value={dayInput} 
-              onChange={(e) => setDayInput(e.target.value)}
-              className="w-16 px-2 py-1.5 border border-gray-300 rounded-lg text-sm" 
-              placeholder="J..."
-            />
+          {/* ✅ NOUVEAU: Bouton toggle timeline */}
+          <button
+            onClick={() => setIsTimelineVisible(!isTimelineVisible)}
+            className={`p-1.5 rounded-lg border transition-all ${
+              isTimelineVisible 
+                ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                : 'bg-white hover:bg-gray-100 border-gray-300'
+            }`}
+            title={isTimelineVisible ? 'Masquer la timeline (T)' : 'Afficher la timeline (T)'}
+          >
+            {isTimelineVisible ? <Map className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}
+          </button>
+          
+          {/* ✅ AMÉLIORATION: Input jour avec contrôles */}
+          <form onSubmit={handleDaySubmit} className="flex items-center gap-1">
+            <div className="relative group">
+              <input 
+                ref={dayInputRef}
+                type="number" 
+                value={currentDay} 
+                onChange={handleDayChange}
+                onWheel={handleDayWheel}
+                className="w-16 pl-2 pr-6 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                placeholder="J..."
+                min="0"
+                max="200"
+              />
+              {/* Flèches de navigation */}
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex flex-col">
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); navigateDay(-1); }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Jour précédent (↑)"
+                >
+                  <ChevronUp className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); navigateDay(1); }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Jour suivant (↓)"
+                >
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
           </form>
           
           {/* Dés (moment aléatoire) */}
@@ -319,16 +438,16 @@ const CompactFilters = memo(({
             <Dices className="w-5 h-5 text-gray-700" />
           </button>
           
-          {/* ✅ Loupe (ouvre la recherche) */}
+          {/* Loupe (recherche) */}
           <button 
             onClick={() => setIsSearchOpen(!isSearchOpen)} 
             className={`p-1.5 rounded-lg border ${isSearchOpen ? 'bg-blue-100 text-blue-700' : 'bg-white hover:bg-gray-100'}`}
-            title="Rechercher"
+            title="Rechercher (/)"
           >
             <Search className="w-5 h-5" />
           </button>
           
-          {/* Séparateur visuel */}
+          {/* Séparateur */}
           <div className="h-6 w-px bg-gray-300" />
           
           {/* Options d'affichage */}
@@ -340,7 +459,7 @@ const CompactFilters = memo(({
           {/* Spacer */}
           <div className="flex-1" />
           
-          {/* ✅ Chevron down (replier tous) */}
+          {/* Replier tous */}
           <button 
             onClick={handleCollapseAll} 
             className="p-1.5 rounded-lg border bg-white hover:bg-gray-100" 
@@ -350,7 +469,7 @@ const CompactFilters = memo(({
           </button>
         </div>
 
-        {/* ✅ Champ de recherche extensible */}
+        {/* Champ de recherche extensible */}
         {isSearchOpen && (
           <div className="mt-2 animate-slideDown">
             <div className="relative">
@@ -386,8 +505,34 @@ const CompactFilters = memo(({
 });
 
 // ====================================================================
-// COMPOSANT : BOUTONS D'OPTIONS D'AFFICHAGE (inchangé)
+// COMPOSANT : INDICATEUR DE RACCOURCIS CLAVIER
 // ====================================================================
+const KeyboardHints = () => {
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(false), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed bottom-4 left-4 z-40 bg-gray-900/90 backdrop-blur-sm text-white text-xs rounded-lg p-3 shadow-xl animate-fadeIn">
+      <div className="font-semibold mb-1">⌨️ Raccourcis</div>
+      <div className="space-y-0.5 text-gray-300">
+        <div><kbd className="bg-gray-700 px-1 rounded">T</kbd> Timeline</div>
+        <div><kbd className="bg-gray-700 px-1 rounded">↑↓</kbd> Jour ±1</div>
+        <div><kbd className="bg-gray-700 px-1 rounded">/</kbd> Recherche</div>
+      </div>
+    </div>
+  );
+};
+
+// ====================================================================
+// COMPOSANTS RESTANTS (identiques)
+// ====================================================================
+
 const DisplayOptionsButtons = memo(({ displayOptions, onToggle }) => (
   <div className="flex items-center gap-2">
     <button 
@@ -413,10 +558,6 @@ const DisplayOptionsButtons = memo(({ displayOptions, onToggle }) => (
     </button>
   </div>
 ));
-
-// ====================================================================
-// COMPOSANTS RESTANTS (identiques à avant)
-// ====================================================================
 
 const MomentsList = memo(({ 
   moments, selectedMoment, displayOptions, onMomentSelect, onPhotoClick, onCreateSession, momentRefs 
@@ -721,21 +862,29 @@ const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
   );
 });
 
-// Animation CSS pour le slideDown
+// CSS pour animations
 const style = document.createElement('style');
 style.textContent = `
   @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
   .animate-slideDown {
     animation: slideDown 0.2s ease-out;
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+  }
+  kbd {
+    display: inline-block;
+    padding: 2px 4px;
+    font-size: 11px;
+    line-height: 1;
+    font-family: monospace;
   }
 `;
 document.head.appendChild(style);
