@@ -1,15 +1,20 @@
 /**
- * MemoriesPage.jsx v5.2 - TIMELINE MASQUABLE + JOUR FONCTIONNEL
- * ✅ NOUVEAU: Timeline peut être cachée/affichée
- * ✅ AMÉLIORATION: Sélecteur de jour avec navigation fléchées
- * ✅ UX: Scroll automatique vers le jour sélectionné
+ * MemoriesPage.jsx v5.5 - ÉTAPE 2 FINALISÉE : Ouverture intelligente
+ * ✅ Moment fermé : localDisplay = {showPosts: false, showDayPhotos: false}
+ * ✅ Clic "posts" fermé → ouvre avec SEULEMENT posts
+ * ✅ Clic "photos" fermé → ouvre avec SEULEMENT photos  
+ * ✅ Clic chevron fermé → ouvre avec TOUT (posts + photos)
+ * ✅ Fermeture moment → reset localDisplay à false
+ * ✅ Mode Focus/Multi fonctionnel
+ * ✅ Icônes grises quand masqué
  */
 
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown, ChevronUp, Search, Dices, PlusCircle, Type, Map, Minimize2
+  AlertCircle, ChevronDown, ChevronUp, Search, Dices, PlusCircle, Type, Map, Minimize2,
+  Focus, Layers
 } from 'lucide-react';
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
@@ -19,7 +24,8 @@ import PhotoViewer from '../PhotoViewer.jsx';
 // ====================================================================
 export default function MemoriesPage() {
   const app = useAppState();
-  const [selectedMoment, setSelectedMoment] = useState(null);
+  const [selectedMoments, setSelectedMoments] = useState([]); // ✅ Maintenant un tableau
+  const [displayMode, setDisplayMode] = useState('focus'); // ✅ 'focus' ou 'multi'
   const [searchQuery, setSearchQuery] = useState('');
   const [displayOptions, setDisplayOptions] = useState({
     showPostText: true,
@@ -30,7 +36,6 @@ export default function MemoriesPage() {
     isOpen: false, photo: null, gallery: [], contextMoment: null 
   });
 
-  // ✅ NOUVEAU: États pour timeline et jour
   const [isTimelineVisible, setIsTimelineVisible] = useState(true);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -41,10 +46,8 @@ export default function MemoriesPage() {
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const momentRefs = useRef({});
 
-  // ✅ Raccourcis clavier
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ignorer si on est dans un input
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       
       switch(e.key) {
@@ -72,6 +75,10 @@ export default function MemoriesPage() {
           e.preventDefault();
           setIsSearchOpen(true);
           break;
+        case 'f':
+        case 'F':
+          setDisplayMode(prev => prev === 'focus' ? 'multi' : 'focus');
+          break;
       }
     };
 
@@ -79,7 +86,6 @@ export default function MemoriesPage() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [currentDay, momentsData]);
 
-  // Gestion du scroll avec auto-hide
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) return;
@@ -117,12 +123,12 @@ export default function MemoriesPage() {
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
-  // Scroll automatique vers le moment sélectionné
   useEffect(() => {
-    if (selectedMoment) {
-      scrollToMoment(selectedMoment.id, 'start');
+    if (selectedMoments.length > 0) {
+      const lastSelected = selectedMoments[selectedMoments.length - 1];
+      scrollToMoment(lastSelected.id, 'start');
     }
-  }, [selectedMoment]);
+  }, [selectedMoments]);
 
   const scrollToMoment = useCallback((momentId, blockPosition = 'start') => {
     const element = momentRefs.current[momentId];
@@ -133,9 +139,8 @@ export default function MemoriesPage() {
     }
   }, []);
 
-  // ✅ NOUVEAU: Navigation par jour
   const navigateDay = useCallback((delta) => {
-    const newDay = Math.max(0, Math.min(currentDay + delta, 200)); // Max J200
+    const newDay = Math.max(0, Math.min(currentDay + delta, 200));
     setCurrentDay(newDay);
     jumpToDay(newDay);
   }, [currentDay, momentsData]);
@@ -143,10 +148,10 @@ export default function MemoriesPage() {
   const jumpToDay = useCallback((day) => {
     const targetMoment = momentsData.find(m => day >= m.dayStart && day <= m.dayEnd);
     if (targetMoment) {
-      setSelectedMoment(targetMoment);
+      handleSelectMoment(targetMoment);
       setCurrentDay(day);
     }
-  }, [momentsData]);
+  }, [momentsData, displayMode]);
 
   const openPhotoViewer = useCallback((clickedPhoto, contextMoment, photoList) => {
     setViewerState({ 
@@ -161,13 +166,26 @@ export default function MemoriesPage() {
     setViewerState({ isOpen: false, photo: null, gallery: [], contextMoment: null });
   }, []);
 
+  // ✅ NOUVEAU : Gestion Focus vs Multi
   const handleSelectMoment = useCallback((moment) => {
-    setSelectedMoment(prev => (prev && prev.id === moment.id) ? null : moment);
-    // ✅ Mettre à jour le jour courant
-    if (moment) {
-      setCurrentDay(moment.dayStart);
-    }
-  }, []);
+    setSelectedMoments(prev => {
+      const isAlreadySelected = prev.some(m => m.id === moment.id);
+      
+      if (displayMode === 'focus') {
+        // Mode Focus : un seul moment ouvert
+        if (isAlreadySelected && prev.length === 1) {
+          return []; // Fermer si c'est le seul ouvert
+        }
+        return [moment]; // Ouvrir uniquement celui-ci
+      } else {
+        // Mode Multi : toggle individuel
+        if (isAlreadySelected) {
+          return prev.filter(m => m.id !== moment.id); // Retirer
+        }
+        return [...prev, moment]; // Ajouter
+      }
+    });
+  }, [displayMode]);
 
   const handleCreateAndOpenSession = useCallback(async (source, contextMoment) => {
     if (!source) return;
@@ -228,24 +246,21 @@ export default function MemoriesPage() {
     return <div className="p-12 text-center text-red-500">Aucun moment à afficher.</div>;
   }
 
-  // ✅ Calculer la hauteur dynamique du header
   const headerHeight = isTimelineVisible ? 200 : 60;
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden relative">
       
-      {/* ✅ Headers avec timeline masquable */}
       <div 
         className={`fixed top-0 left-0 right-0 z-30 transition-all duration-300 ease-in-out ${
           isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
         }`}
         style={{ height: `${headerHeight}px` }}
       >
-        {/* ✅ Timeline conditionnelle */}
         {isTimelineVisible && (
           <div className="transition-all duration-300">
             <TimelineRuleV2 
-              selectedMoment={selectedMoment}
+              selectedMoment={selectedMoments[0] || null}
               onMomentSelect={handleSelectMoment}
             />
           </div>
@@ -258,8 +273,10 @@ export default function MemoriesPage() {
           setIsSearchOpen={setIsSearchOpen}
           displayOptions={displayOptions}
           setDisplayOptions={setDisplayOptions}
-          selectedMoment={selectedMoment}
-          setSelectedMoment={setSelectedMoment}
+          selectedMoments={selectedMoments}
+          setSelectedMoments={setSelectedMoments}
+          displayMode={displayMode}
+          setDisplayMode={setDisplayMode}
           momentsData={momentsData}
           currentDay={currentDay}
           setCurrentDay={setCurrentDay}
@@ -270,7 +287,6 @@ export default function MemoriesPage() {
         />
       </div>
 
-      {/* Contenu avec padding dynamique */}
       <main 
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto transition-all duration-300"
@@ -279,7 +295,7 @@ export default function MemoriesPage() {
         <div className="container mx-auto px-4 py-4">
           <MomentsList 
             moments={filteredMoments}
-            selectedMoment={selectedMoment}
+            selectedMoments={selectedMoments}
             displayOptions={displayOptions}
             onMomentSelect={handleSelectMoment}
             onPhotoClick={openPhotoViewer}
@@ -289,7 +305,6 @@ export default function MemoriesPage() {
         </div>
       </main>
 
-      {/* Bouton retour en haut */}
       {!isHeaderVisible && (
         <button
           onClick={() => {
@@ -303,7 +318,6 @@ export default function MemoriesPage() {
         </button>
       )}
 
-      {/* ✅ NOUVEAU: Indicateur de raccourcis (apparaît 2s au chargement) */}
       <KeyboardHints />
 
       {viewerState.isOpen && (
@@ -320,12 +334,13 @@ export default function MemoriesPage() {
 }
 
 // ====================================================================
-// COMPOSANT : BARRE DE FILTRES AVEC TIMELINE TOGGLE
+// COMPOSANT : BARRE DE FILTRES
 // ====================================================================
 const CompactFilters = memo(({ 
   searchQuery, setSearchQuery, isSearchOpen, setIsSearchOpen,
-  displayOptions, setDisplayOptions, selectedMoment, setSelectedMoment, momentsData,
-  currentDay, setCurrentDay, jumpToDay, navigateDay,
+  displayOptions, setDisplayOptions, selectedMoments, setSelectedMoments, 
+  displayMode, setDisplayMode,
+  momentsData, currentDay, setCurrentDay, jumpToDay, navigateDay,
   isTimelineVisible, setIsTimelineVisible
 }) => {
   const searchInputRef = useRef(null);
@@ -349,7 +364,6 @@ const CompactFilters = memo(({
     jumpToDay(currentDay);
   };
 
-  // ✅ NOUVEAU: Gestion molette sur l'input jour
   const handleDayWheel = (e) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 1 : -1;
@@ -360,7 +374,7 @@ const CompactFilters = memo(({
     if (momentsData.length > 0) {
       const randomIndex = Math.floor(Math.random() * momentsData.length);
       const randomMoment = momentsData[randomIndex];
-      setSelectedMoment(randomMoment);
+      setSelectedMoments([randomMoment]);
       setCurrentDay(randomMoment.dayStart);
     }
   };
@@ -369,18 +383,27 @@ const CompactFilters = memo(({
     setDisplayOptions(prev => ({...prev, [option]: !prev[option]}));
   };
 
-  const handleCollapseAll = () => {
-    setSelectedMoment(null);
+  // ✅ Toggle Focus/Multi
+  const handleToggleDisplayMode = () => {
+    setDisplayMode(prev => {
+      if (prev === 'multi') {
+        // Passer en mode Focus : garder seulement le dernier moment ouvert
+        if (selectedMoments.length > 0) {
+          setSelectedMoments([selectedMoments[selectedMoments.length - 1]]);
+        }
+        return 'focus';
+      } else {
+        return 'multi';
+      }
+    });
   };
 
   return (
     <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200">
       <div className="container mx-auto px-4 py-2">
         
-        {/* Barre principale */}
         <div className="flex items-center gap-3">
           
-          {/* ✅ NOUVEAU: Bouton toggle timeline */}
           <button
             onClick={() => setIsTimelineVisible(!isTimelineVisible)}
             className={`p-1.5 rounded-lg border transition-all ${
@@ -393,7 +416,6 @@ const CompactFilters = memo(({
             {isTimelineVisible ? <Map className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}
           </button>
           
-          {/* ✅ AMÉLIORATION: Input jour avec contrôles */}
           <form onSubmit={handleDaySubmit} className="flex items-center gap-1">
             <div className="relative group">
               <input 
@@ -407,7 +429,6 @@ const CompactFilters = memo(({
                 min="0"
                 max="200"
               />
-              {/* Flèches de navigation */}
               <div className="absolute right-1 top-1/2 -translate-y-1/2 flex flex-col">
                 <button
                   type="button"
@@ -429,7 +450,6 @@ const CompactFilters = memo(({
             </div>
           </form>
           
-          {/* Dés (moment aléatoire) */}
           <button 
             onClick={jumpToRandomMoment} 
             className="p-1.5 rounded-lg border bg-white hover:bg-gray-100" 
@@ -438,7 +458,6 @@ const CompactFilters = memo(({
             <Dices className="w-5 h-5 text-gray-700" />
           </button>
           
-          {/* Loupe (recherche) */}
           <button 
             onClick={() => setIsSearchOpen(!isSearchOpen)} 
             className={`p-1.5 rounded-lg border ${isSearchOpen ? 'bg-blue-100 text-blue-700' : 'bg-white hover:bg-gray-100'}`}
@@ -447,29 +466,32 @@ const CompactFilters = memo(({
             <Search className="w-5 h-5" />
           </button>
           
-          {/* Séparateur */}
           <div className="h-6 w-px bg-gray-300" />
           
-          {/* Options d'affichage */}
           <DisplayOptionsButtons 
             displayOptions={displayOptions}
             onToggle={handleDisplayOptionToggle}
           />
           
-          {/* Spacer */}
           <div className="flex-1" />
           
-          {/* Replier tous */}
+          {/* ✅ NOUVEAU : Bouton Focus/Multi */}
           <button 
-            onClick={handleCollapseAll} 
-            className="p-1.5 rounded-lg border bg-white hover:bg-gray-100" 
-            title="Replier tous les moments"
+            onClick={handleToggleDisplayMode}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border transition-all ${
+              displayMode === 'focus' 
+                ? 'bg-amber-100 text-amber-700 border-amber-300' 
+                : 'bg-purple-100 text-purple-700 border-purple-300'
+            }`}
+            title={displayMode === 'focus' ? 'Mode Focus (F pour changer)' : 'Mode Multi (F pour changer)'}
           >
-            <ChevronDown className="w-5 h-5 text-gray-700" />
+            {displayMode === 'focus' ? <Focus className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
+            <span className="text-xs font-medium hidden sm:inline">
+              {displayMode === 'focus' ? 'Focus' : 'Multi'}
+            </span>
           </button>
         </div>
 
-        {/* Champ de recherche extensible */}
         {isSearchOpen && (
           <div className="mt-2 animate-slideDown">
             <div className="relative">
@@ -522,6 +544,7 @@ const KeyboardHints = () => {
       <div className="font-semibold mb-1">⌨️ Raccourcis</div>
       <div className="space-y-0.5 text-gray-300">
         <div><kbd className="bg-gray-700 px-1 rounded">T</kbd> Timeline</div>
+        <div><kbd className="bg-gray-700 px-1 rounded">F</kbd> Focus/Multi</div>
         <div><kbd className="bg-gray-700 px-1 rounded">↑↓</kbd> Jour ±1</div>
         <div><kbd className="bg-gray-700 px-1 rounded">/</kbd> Recherche</div>
       </div>
@@ -530,9 +553,8 @@ const KeyboardHints = () => {
 };
 
 // ====================================================================
-// COMPOSANTS RESTANTS (identiques)
+// COMPOSANT : BOUTONS OPTIONS D'AFFICHAGE
 // ====================================================================
-
 const DisplayOptionsButtons = memo(({ displayOptions, onToggle }) => (
   <div className="flex items-center gap-2">
     <button 
@@ -559,8 +581,11 @@ const DisplayOptionsButtons = memo(({ displayOptions, onToggle }) => (
   </div>
 ));
 
+// ====================================================================
+// COMPOSANT : LISTE DES MOMENTS
+// ====================================================================
 const MomentsList = memo(({ 
-  moments, selectedMoment, displayOptions, onMomentSelect, onPhotoClick, onCreateSession, momentRefs 
+  moments, selectedMoments, displayOptions, onMomentSelect, onPhotoClick, onCreateSession, momentRefs
 }) => {
   return (
     <div className="space-y-3">
@@ -568,7 +593,7 @@ const MomentsList = memo(({
         <MomentCard
           key={moment.id} 
           moment={moment} 
-          isSelected={selectedMoment && selectedMoment.id === moment.id}
+          isSelected={selectedMoments.some(m => m.id === moment.id)}
           displayOptions={displayOptions}
           onSelect={onMomentSelect}
           onPhotoClick={onPhotoClick}
@@ -580,11 +605,49 @@ const MomentsList = memo(({
   );
 });
 
+// ====================================================================
+// COMPOSANT : CARTE MOMENT (avec logique d'ouverture intelligente)
+// ====================================================================
 const MomentCard = memo(React.forwardRef(({ 
-  moment, isSelected, displayOptions, onSelect, onPhotoClick, onCreateSession 
+  moment, isSelected, displayOptions, onSelect, onPhotoClick, onCreateSession
 }, ref) => {  
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
+  
+  // ✅ ÉTAT INITIAL : tout fermé quand moment fermé
+  const [localDisplay, setLocalDisplay] = useState({
+    showPosts: false,
+    showDayPhotos: false
+  });
+  
+  // ✅ Mémoriser l'état précédent pour détecter l'ouverture
+  const wasSelectedRef = useRef(isSelected);
+  
+  // ✅ Reset à fermé quand le moment se ferme
+  useEffect(() => {
+    if (wasSelectedRef.current && !isSelected) {
+      // Le moment vient de se fermer → reset
+      setLocalDisplay({
+        showPosts: false,
+        showDayPhotos: false
+      });
+    }
+    wasSelectedRef.current = isSelected;
+  }, [isSelected]);
+  
+  // ✅ Fonction pour ouvrir avec options spécifiques
+  const handleOpenWith = (options) => {
+    if (!isSelected) {
+      // Ouvrir le moment
+      onSelect(moment);
+    }
+    // Appliquer les options d'affichage
+    setLocalDisplay(options);
+  };
+  
+  const handleToggleLocal = (key) => {
+    setLocalDisplay(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   return (
     <div 
@@ -599,78 +662,140 @@ const MomentCard = memo(React.forwardRef(({
           moment={moment}
           isSelected={isSelected}
           onSelect={onSelect}
+          onOpenWith={handleOpenWith}
           onCreateSession={onCreateSession}
+          localDisplay={localDisplay}
+          onToggleLocal={handleToggleLocal}
         />
       </div>
 
       {isSelected && (
-        <MomentContent 
-          moment={moment}
-          displayOptions={displayOptions}
-          visibleDayPhotos={visibleDayPhotos}
-          photosPerLoad={photosPerLoad}
-          onPhotoClick={onPhotoClick}
-          onCreateSession={onCreateSession}
-          onLoadMorePhotos={() => setVisibleDayPhotos(prev => prev + photosPerLoad)}
-        />
-      )}
+  <MomentContent 
+    moment={moment}
+    displayOptions={displayOptions}
+    localDisplay={localDisplay}
+    visibleDayPhotos={visibleDayPhotos}
+    photosPerLoad={photosPerLoad}
+    onPhotoClick={onPhotoClick}
+    onCreateSession={onCreateSession}
+    onLoadMorePhotos={() => setVisibleDayPhotos(prev => prev + photosPerLoad)}
+    onToggleDayPhotos={() => handleToggleLocal('showDayPhotos')}  // ✅ AJOUT
+  />
+)}
     </div>
   );
 }));
 
-const MomentHeader = memo(({ moment, isSelected, onSelect, onCreateSession }) => (
-  <>
-    <div onClick={() => onSelect(moment)} className="cursor-pointer flex items-start justify-between">
-      <div className="flex-1">
-        <div className="flex items-center space-x-3">
-          <div className="px-2 py-1 rounded-lg font-bold text-xs bg-gray-100 text-gray-800">
-            {moment.displaySubtitle}
+// ====================================================================
+// COMPOSANT : EN-TÊTE MOMENT (avec logique d'ouverture intelligente)
+// ====================================================================
+const MomentHeader = memo(({ moment, isSelected, onSelect, onOpenWith, onCreateSession, localDisplay, onToggleLocal }) => {
+  
+  // ✅ SCÉNARIO A/B : Clic sur lien quand fermé → ouvre avec SEULEMENT ce contenu
+  const handleLinkClick = (e, contentType) => {
+    e.stopPropagation();
+    
+    if (!isSelected) {
+      // Moment fermé → ouvrir avec SEULEMENT ce type de contenu
+      if (contentType === 'posts') {
+        onOpenWith({ showPosts: true, showDayPhotos: false });
+      } else if (contentType === 'photos') {
+        onOpenWith({ showPosts: false, showDayPhotos: true });
+      }
+    } else {
+      // Moment ouvert → toggle normalement
+      onToggleLocal(contentType === 'posts' ? 'showPosts' : 'showDayPhotos');
+    }
+  };
+  
+  // ✅ SCÉNARIO C : Clic sur chevron → ouvre avec TOUT
+  const handleChevronClick = () => {
+    if (!isSelected) {
+      // Ouvrir avec tout affiché
+      onOpenWith({ showPosts: true, showDayPhotos: true });
+    } else {
+      // Fermer
+      onSelect(moment);
+    }
+  };
+
+  return (
+    <>
+      <div onClick={handleChevronClick} className="cursor-pointer flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center space-x-3">
+            <div className="px-2 py-1 rounded-lg font-bold text-xs bg-gray-100 text-gray-800">
+              {moment.displaySubtitle}
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 truncate">
+              {moment.displayTitle}
+            </h3>
           </div>
-          <h3 className="text-base font-semibold text-gray-900 truncate">
-            {moment.displayTitle}
-          </h3>
+          {moment.location && (
+            <span className="flex items-center text-xs text-gray-500 mt-1.5 ml-1">
+              <MapPin className="w-3 h-3 mr-1.5 text-gray-400" />
+              {moment.location}
+            </span>
+          )}
         </div>
-        {moment.location && (
-          <span className="flex items-center text-xs text-gray-500 mt-1.5 ml-1">
-            <MapPin className="w-3 h-3 mr-1.5 text-gray-400" />
-            {moment.location}
-          </span>
-        )}
+        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform flex-shrink-0 ml-2 ${
+          isSelected ? 'rotate-180' : ''
+        }`} />
       </div>
-      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform flex-shrink-0 ml-2 ${
-        isSelected ? 'rotate-180' : ''
-      }`} />
-    </div>
 
-    <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm mt-2 pt-2 border-t border-gray-100">
-      {moment.postCount > 0 && (
-        <div className="flex items-center font-medium text-blue-600">
-          <FileText className="w-4 h-4 mr-1.5" /> 
-          {moment.postCount} article(s)
-        </div>
-      )}
-      {moment.photoCount > 0 && (
-        <div className="flex items-center font-medium text-green-600">
-          <Camera className="w-4 h-4 mr-1.5" /> 
-          {moment.photoCount} photo(s)
-        </div>
-      )}
-      <button 
-        onClick={() => onCreateSession(moment)} 
-        className="flex items-center font-medium text-amber-600 hover:underline ml-auto pl-2"
-      >
-        <PlusCircle className="w-4 h-4 mr-1.5" /> Session
-      </button>
-    </div>
-  </>
-));
+      <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm mt-2 pt-2 border-t border-gray-100">
+        {/* ✅ BOUTON Posts : icône grise si masqué */}
+        {moment.postCount > 0 && (
+          <button
+            onClick={(e) => handleLinkClick(e, 'posts')}
+            className="flex items-center font-medium text-blue-600 hover:text-blue-700 transition-all"
+            title={localDisplay.showPosts ? "Masquer les posts" : "Afficher les posts"}
+          >
+            <FileText className={`w-4 h-4 mr-1.5 transition-colors ${
+              localDisplay.showPosts ? 'text-blue-600' : 'text-gray-400'
+            }`} /> 
+            {moment.postCount} post{moment.postCount > 1 ? 's' : ''}
+          </button>
+        )}
+        
+        {/* ✅ BOUTON Photos : icône grise si masqué */}
+        {moment.dayPhotoCount > 0 && (
+          <button
+            onClick={(e) => handleLinkClick(e, 'photos')}
+            className="flex items-center font-medium text-green-600 hover:text-green-700 transition-all"
+            title={localDisplay.showDayPhotos ? "Masquer les photos du moment" : "Afficher les photos du moment"}
+          >
+            <Camera className={`w-4 h-4 mr-1.5 transition-colors ${
+              localDisplay.showDayPhotos ? 'text-green-600' : 'text-gray-400'
+            }`} /> 
+            {moment.dayPhotoCount} photo{moment.dayPhotoCount > 1 ? 's' : ''}
+          </button>
+        )}
+        
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onCreateSession(moment);
+          }}
+          className="flex items-center font-medium text-amber-600 hover:underline ml-auto pl-2"
+        >
+          <PlusCircle className="w-4 h-4 mr-1.5" /> Session
+        </button>
+      </div>
+    </>
+  );
+});
 
+// ====================================================================
+// COMPOSANT : CONTENU MOMENT
+// ====================================================================
 const MomentContent = memo(({ 
-  moment, displayOptions, visibleDayPhotos, photosPerLoad, 
-  onPhotoClick, onCreateSession, onLoadMorePhotos 
+  moment, displayOptions, localDisplay, visibleDayPhotos, photosPerLoad, 
+  onPhotoClick, onCreateSession, onLoadMorePhotos, onToggleDayPhotos  
 }) => (
   <div className="px-3 pb-3">
-    {moment.posts?.map(post => (
+    {/* Posts existants */}
+    {localDisplay.showPosts && moment.posts?.map(post => (
       <PostArticle 
         key={post.id}
         post={post}
@@ -681,18 +806,65 @@ const MomentContent = memo(({
       />
     ))}
     
-    {displayOptions.showMomentPhotos && moment.dayPhotoCount > 0 && (
-      <DayPhotosSection 
-        moment={moment}
-        visibleDayPhotos={visibleDayPhotos}
-        photosPerLoad={photosPerLoad}
-        onPhotoClick={onPhotoClick}
-        onLoadMorePhotos={onLoadMorePhotos}
-      />
+    {/* ✅ NOUVEAU : Header photos du moment (toujours visible si photos existent) */}
+    {moment.dayPhotoCount > 0 && (
+      <div className="mt-2 border-b border-gray-100 pb-2">
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              // Toggle depuis MomentCard via prop
+              onToggleDayPhotos();
+            }}
+            className="w-full flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200 hover:bg-gray-100 transition-colors"
+          >
+            <div className="flex items-center gap-x-3 flex-1">
+              <Camera className={`w-4 h-4 transition-colors ${
+                localDisplay.showDayPhotos ? 'text-green-600' : 'text-gray-400'
+              }`} />
+              <h4 className="font-semibold text-gray-800 text-sm">
+                Photos de "{moment.displayTitle}"
+              </h4>
+            </div>
+            <div className="flex items-center gap-x-2 text-sm text-gray-600">
+              <span>{moment.dayPhotoCount} photo{moment.dayPhotoCount > 1 ? 's' : ''}</span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${
+                localDisplay.showDayPhotos ? 'rotate-180' : ''
+              }`} />
+            </div>
+          </button>
+        </div>
+      </div>
+    )}
+    
+    {/* Photos (si affichées) */}
+    {localDisplay.showDayPhotos && moment.dayPhotoCount > 0 && (
+      <div className="mt-2">
+        <PhotoGrid 
+          photos={moment.dayPhotos.slice(0, visibleDayPhotos)}
+          moment={moment}
+          onPhotoClick={onPhotoClick}
+          allPhotos={moment.dayPhotos}
+        />
+        
+        {visibleDayPhotos < moment.dayPhotoCount && (
+          <div className="text-center mt-3">
+            <button 
+              onClick={onLoadMorePhotos}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm font-medium"
+            >
+              Afficher {Math.min(photosPerLoad, moment.dayPhotoCount - visibleDayPhotos)} de plus
+            </button>
+          </div>
+        )}
+      </div>
     )}
   </div>
 ));
 
+// ====================================================================
+// COMPOSANT : ARTICLE POST
+// ====================================================================
 const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreateSession }) => {
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
@@ -715,78 +887,73 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
   return (
     <div className="mt-2 border-b border-gray-100 pb-2 last:border-b-0">
       <div className="border border-gray-200 rounded-lg overflow-hidden">
+        {/* ✅ NOUVEAU : Header unifié avec compteur photos */}
         <div className="flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200">
-          <div className="flex items-center gap-x-3 flex-1">
+          <div className="flex items-center gap-x-3 flex-1 min-w-0">
+            {/* Icône photos (si post a des photos) */}
             {hasPhotos && (
               <button 
                 onClick={() => setShowThisPostPhotos(!showThisPostPhotos)} 
-                className={`p-1 ${showThisPostPhotos ? 'text-blue-600' : 'text-gray-500'} hover:text-blue-600 flex-shrink-0`} 
+                className="p-1 flex-shrink-0"
                 title="Afficher/Masquer les photos"
               >
-                <ImageIcon className="w-4 h-4" />
+                <ImageIcon className={`w-4 h-4 transition-colors ${
+                  showThisPostPhotos ? 'text-blue-600' : 'text-gray-400'
+                }`} />
               </button>
             )}
-            <h4 className="font-semibold text-gray-800 text-sm truncate">{title}</h4>
+            
+            {/* Titre du post */}
+            <h4 className="font-semibold text-gray-800 text-sm truncate flex-1">
+              {title}
+            </h4>
           </div>
-          <button 
-            onClick={handleCreateSession} 
-            className="p-1 text-gray-500 hover:text-amber-600 ml-2" 
-            title="Créer une session"
-          >
-            <PlusCircle className="w-4 h-4" />
-          </button>
+          
+          {/* Partie droite : compteur photos + bouton session */}
+          <div className="flex items-center gap-x-3 flex-shrink-0 ml-2">
+            {/* ✅ NOUVEAU : Compteur photos */}
+            {hasPhotos && (
+              <span className="text-xs text-gray-600 whitespace-nowrap">
+                {post.photos.length} photo{post.photos.length > 1 ? 's' : ''}
+              </span>
+            )}
+            
+            {/* Bouton session */}
+            <button 
+              onClick={handleCreateSession} 
+              className="p-1 text-gray-500 hover:text-amber-600" 
+              title="Créer une session"
+            >
+              <PlusCircle className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         
+        {/* Texte du post */}
         {displayOptions.showPostText && (
           <div className="prose prose-sm max-w-none bg-white p-3" 
                dangerouslySetInnerHTML={{ __html: body }} />
         )}
       </div>
 
+      {/* Photos du post */}
       {photosAreVisible && (
         <PhotoGrid 
           photos={post.photos}
           moment={moment}
           onPhotoClick={onPhotoClick}
-          gridCols="grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10"
         />
       )}
     </div>
   );
 });
 
-const DayPhotosSection = memo(({ 
-  moment, visibleDayPhotos, photosPerLoad, onPhotoClick, onLoadMorePhotos 
-}) => (
+// ====================================================================
+// COMPOSANT : GRILLE PHOTOS (UNIFORME)
+// ====================================================================
+const PhotoGrid = memo(({ photos, moment, onPhotoClick, allPhotos }) => (
   <div className="mt-2">
-    <h4 className="font-semibold text-gray-800 mb-2 text-sm">
-      Photos de "{moment.displayTitle}"
-    </h4>
-    
-    <PhotoGrid 
-      photos={moment.dayPhotos.slice(0, visibleDayPhotos)}
-      moment={moment}
-      onPhotoClick={onPhotoClick}
-      allPhotos={moment.dayPhotos}
-      gridCols="grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"
-    />
-    
-    {visibleDayPhotos < moment.dayPhotoCount && (
-      <div className="text-center mt-3">
-        <button 
-          onClick={onLoadMorePhotos}
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm font-medium"
-        >
-          Afficher {Math.min(photosPerLoad, moment.dayPhotoCount - visibleDayPhotos)} de plus
-        </button>
-      </div>
-    )}
-  </div>
-));
-
-const PhotoGrid = memo(({ photos, moment, onPhotoClick, allPhotos, gridCols }) => (
-  <div className="mt-2">
-    <div className={`grid ${gridCols} gap-2`}>
+    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
       {photos.map((photo, idx) => (
         <PhotoThumbnail 
           key={photo.google_drive_id || photo.url || idx} 
@@ -799,6 +966,9 @@ const PhotoGrid = memo(({ photos, moment, onPhotoClick, allPhotos, gridCols }) =
   </div>
 ));
 
+// ====================================================================
+// COMPOSANT : VIGNETTE PHOTO
+// ====================================================================
 const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [status, setStatus] = useState('loading');
@@ -862,7 +1032,34 @@ const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
   );
 });
 
-// CSS pour animations
+// ====================================================================
+// FONCTIONS UTILITAIRES
+// ====================================================================
+function enrichMomentsWithData(rawMoments) {
+  if (!rawMoments) return [];
+  return rawMoments.map((moment, index) => ({
+    ...moment,
+    id: moment.id || `moment_${moment.dayStart}_${moment.dayEnd}_${index}`,
+    postCount: moment.posts?.length || 0,
+    dayPhotoCount: moment.dayPhotos?.length || 0,
+    postPhotoCount: moment.postPhotos?.length || 0,
+    photoCount: (moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0),
+    displayTitle: moment.title || `Moment du jour ${moment.dayStart}`,
+    displaySubtitle: moment.dayEnd > moment.dayStart ? `J${moment.dayStart}-J${moment.dayEnd}` : `J${moment.dayStart}`,
+    isEmpty: (moment.posts?.length || 0) === 0 && ((moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0)) === 0,
+  })).filter(moment => !moment.isEmpty);
+}
+
+function getFilteredMoments(momentsData, searchQuery) {
+  if (!searchQuery.trim()) return momentsData;
+  const query = searchQuery.toLowerCase();
+  return momentsData.filter(m => 
+    m.displayTitle.toLowerCase().includes(query) ||
+    m.posts?.some(p => p.content && p.content.toLowerCase().includes(query))
+  );
+}
+
+// CSS Animations
 const style = document.createElement('style');
 style.textContent = `
   @keyframes slideDown {
@@ -888,31 +1085,3 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
-
-// ====================================================================
-// FONCTIONS UTILITAIRES
-// ====================================================================
-function enrichMomentsWithData(rawMoments) {
-  if (!rawMoments) return [];
-  return rawMoments.map((moment, index) => ({
-    ...moment,
-    // ✅ Utiliser l'index pour garantir l'unicité
-    id: moment.id || `moment_${moment.dayStart}_${moment.dayEnd}_${index}`,
-    postCount: moment.posts?.length || 0,
-    dayPhotoCount: moment.dayPhotos?.length || 0,
-    postPhotoCount: moment.postPhotos?.length || 0,
-    photoCount: (moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0),
-    displayTitle: moment.title || `Moment du jour ${moment.dayStart}`,
-    displaySubtitle: moment.dayEnd > moment.dayStart ? `J${moment.dayStart}-J${moment.dayEnd}` : `J${moment.dayStart}`,
-    isEmpty: (moment.posts?.length || 0) === 0 && ((moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0)) === 0,
-  })).filter(moment => !moment.isEmpty);
-}
-
-function getFilteredMoments(momentsData, searchQuery) {
-  if (!searchQuery.trim()) return momentsData;
-  const query = searchQuery.toLowerCase();
-  return momentsData.filter(m => 
-    m.displayTitle.toLowerCase().includes(query) ||
-    m.posts?.some(p => p.content && p.content.toLowerCase().includes(query))
-  );
-}
