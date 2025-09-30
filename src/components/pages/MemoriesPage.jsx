@@ -894,9 +894,10 @@ document.head.appendChild(style);
 // ====================================================================
 function enrichMomentsWithData(rawMoments) {
   if (!rawMoments) return [];
-  return rawMoments.map(moment => ({
+  return rawMoments.map((moment, index) => ({
     ...moment,
-    id: moment.id || `moment_${moment.dayStart}_${moment.dayEnd}`,
+    // ✅ Utiliser l'index pour garantir l'unicité
+    id: moment.id || `moment_${moment.dayStart}_${moment.dayEnd}_${index}`,
     postCount: moment.posts?.length || 0,
     dayPhotoCount: moment.dayPhotos?.length || 0,
     postPhotoCount: moment.postPhotos?.length || 0,
