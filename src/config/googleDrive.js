@@ -12,7 +12,7 @@ export const GOOGLE_DRIVE_CONFIG = {
   // --- Configuration Standard ---
   // Le SCOPE inclut maintenant les infos utilisateur pour une connexion plus stable
   DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
-SCOPES: 'https://www.googleapis.com/auth/drive.file profile email openid',
+SCOPES: 'https://www.googleapis.com/auth/drive profile email openid',
   
   APP_FOLDER_NAME: 'MemoireDuMekong-Data',
 

@@ -165,6 +165,35 @@ class DriveSync {
     }
   }
 
+/**
+ * Recherche un fichier par son nom dans tout le Drive
+ */
+async searchFileByName(fileName, mimeType = null) {
+  if (!this.connectionManager.getState().isOnline) {
+    throw new Error('Non connecté.');
+  }
+  
+  try {
+    const query = mimeType 
+      ? `name='${fileName}' and mimeType='${mimeType}' and trashed=false`
+      : `name='${fileName}' and trashed=false`;
+    
+    const response = await this.listFiles({
+      q: query,
+      fields: 'files(id, name)',
+      pageSize: 10
+    });
+    
+    console.log(`🔍 Recherche "${fileName}": ${response.length} résultat(s)`);
+    return response;
+    
+  } catch (error) {
+    console.error(`❌ Erreur recherche "${fileName}":`, error);
+    throw error;
+  }
+}
+
+
   // --- Fonctions Utilitaires Internes ---
   async listFiles(options) {
     if (!this.connectionManager.getState().isOnline) throw new Error('Non connecté.');
