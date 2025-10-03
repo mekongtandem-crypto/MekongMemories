@@ -50,7 +50,8 @@ export function useAppState() {
   const setCurrentUser = useCallback((userId) => dataManager.setCurrentUser(userId), []);
   
   // Actions de session
-  const createSession = useCallback((gameData, initialText) => dataManager.createSession(gameData, initialText), []);
+  const createSession = useCallback((gameData, initialText, sourcePhoto) => 
+    dataManager.createSession(gameData, initialText, sourcePhoto), []);
   const updateSession = useCallback((session) => dataManager.updateSession(session), []);
   const deleteSession = useCallback((sessionId) => dataManager.deleteSession(sessionId), []);
   const openChatSession = useCallback((session) => dataManager.openChatSession(session), []);

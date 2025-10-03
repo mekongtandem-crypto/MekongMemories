@@ -185,10 +185,6 @@ export default function MemoriesPage() {
 const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
   if (!source) return;
   
-  // ✅ DEBUG
-  console.log('🔍 handleCreateAndOpenSession appelé avec options:', options);
-  console.log('🔍 initialText reçu:', options.initialText);
-  
   const sessionTitle = options.title || (
     source.filename 
       ? `Souvenirs de ${contextMoment.displayTitle}`
@@ -217,10 +213,9 @@ const handleCreateAndOpenSession = useCallback(async (source, contextMoment, opt
   }
   
   try {
-    // ✅ DEBUG
-    console.log('🔍 Appel createSession avec initialText:', options.initialText);
-    
-    const newSession = await app.createSession(sessionData, options.initialText);
+    // ✅ MODIFIÉ : Passer la photo comme 3e paramètre
+    const sourcePhoto = source.filename ? source : null;
+    const newSession = await app.createSession(sessionData, options.initialText, sourcePhoto);
     
     if (newSession) {
       if (viewerState.isOpen) closePhotoViewer();
