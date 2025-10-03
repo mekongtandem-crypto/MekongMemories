@@ -36,7 +36,7 @@ export default function MemoriesPage() {
     isOpen: false, photo: null, gallery: [], contextMoment: null 
   });
 
-  const [isTimelineVisible, setIsTimelineVisible] = useState(true);
+  const [isTimelineVisible, setIsTimelineVisible] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [currentDay, setCurrentDay] = useState(1);
