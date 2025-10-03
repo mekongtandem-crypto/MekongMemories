@@ -1,8 +1,6 @@
 /**
- * Navigation.jsx v3.1 - Intégré dans l'architecture B
- * Gère les barres de navigation supérieure et inférieure.
- * Entièrement piloté par l'état `app` fourni par `useAppState`.
- * Basé sur le code de Navigation_A.jsx
+ * Navigation.jsx v3.2 - Badge sessions en attente
+ * ✅ NOUVEAU : Compteur sessions créées par l'utilisateur
  */
 import React from 'react';
 import { Home, BookOpen, MessageSquareText, Settings, User, CloudOff, Cloud, Wifi } from 'lucide-react';
@@ -56,6 +54,61 @@ function UserDisplay({ currentUser, userStyle, onUserClick }) {
   );
 }
 
+export function BottomNavigation({ currentPage, onPageChange, app }) {
+  // ✅ NOUVEAU : Calculer le nombre de sessions en attente
+  const pendingSessionsCount = React.useMemo(() => {
+    if (!app.sessions || !app.currentUser) return 0;
+    
+    return app.sessions.filter(session => {
+      // Sessions créées par l'utilisateur actuel
+      if (session.user !== app.currentUser) return false;
+      
+      // Où le dernier message n'est PAS de lui (= en attente de réponse)
+      if (!session.notes || session.notes.length === 0) return true; // Session vide
+      
+      const lastMessage = session.notes[session.notes.length - 1];
+      return lastMessage.author !== app.currentUser;
+    }).length;
+  }, [app.sessions, app.currentUser]);
+
+  const navItems = [
+    { id: 'memories', icon: Home, label: 'Souvenirs' },
+    { id: 'sessions', icon: BookOpen, label: 'Sessions', badge: pendingSessionsCount },
+    { id: 'settings', icon: Settings, label: 'Réglages' }
+  ];
+
+  return (
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-amber-200 z-50">
+      <div className="flex justify-around py-2">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = currentPage === item.id;
+          return (
+            <button 
+              key={item.id} 
+              onClick={() => onPageChange(item.id)} 
+              className={`relative flex flex-col items-center py-2 px-3 transition-colors ${
+                isActive ? 'text-amber-600 font-semibold' : 'text-amber-500'
+              }`}
+            >
+              <div className="relative">
+                <Icon className="w-5 h-5 mb-1" />
+                {/* ✅ NOUVEAU : Badge */}
+                {item.badge > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {item.badge > 9 ? '9+' : item.badge}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs">{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function TopNavigation({ onPageChange, app }) {
   const { currentUser, userStyle } = app;
 
@@ -64,7 +117,9 @@ export function TopNavigation({ onPageChange, app }) {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center"><span className="text-lg">🐘</span></div>
+            <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+              <span className="text-lg">🐘</span>
+            </div>
             <h1 className="text-xl font-bold text-amber-900">Mémoire du Mékong</h1>
           </div>
           <div className="flex items-center space-x-3">
@@ -74,29 +129,5 @@ export function TopNavigation({ onPageChange, app }) {
         </div>
       </div>
     </nav>
-  );
-}
-
-export function BottomNavigation({ currentPage, onPageChange }) {
-  const navItems = [
-    { id: 'memories', icon: Home, label: 'Souvenirs' },
-    { id: 'sessions', icon: BookOpen, label: 'Sessions' },
-    { id: 'settings', icon: Settings, label: 'Réglages' }
-  ];
-  return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-amber-200 z-50">
-      <div className="flex justify-around py-2">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPage === item.id;
-          return (
-            <button key={item.id} onClick={() => onPageChange(item.id)} className={`flex flex-col items-center py-2 px-3 transition-colors ${isActive ? 'text-amber-600 font-semibold' : 'text-amber-500'}`}>
-              <Icon className="w-5 h-5 mb-1" />
-              <span className="text-xs">{item.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
   );
 }

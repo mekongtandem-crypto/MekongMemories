@@ -1,6 +1,7 @@
 /**
- * DataManager v3.2 - Spinner global création session
- * ✅ NOUVEAU : State isCreatingSession
+ * DataManager v3.3 - Support texte initial + retour session créée
+ * ✅ createSession retourne la session complète
+ * ✅ Support initialText optionnel
  */
 class DataManager {
   constructor() {
@@ -18,11 +19,11 @@ class DataManager {
       currentPage: 'memories',
       error: null, 
       connection: { hasError: false, lastError: null },
-      isCreatingSession: false, // ✅ NOUVEAU
+      isCreatingSession: false,
     };
 
     this.listeners = new Set();
-    console.log('📦 DataManager v3.2 (Spinner global): Ready.');
+    console.log('📦 DataManager v3.3 (Texte initial): Ready.');
   }
 
   initializeDependencies(dependencies) {
@@ -122,40 +123,71 @@ class DataManager {
     }
   }
 
-  // ✅ MODIFIÉ : Gestion spinner global
-  createSession = async (gameData) => {
-    this.updateState({ isCreatingSession: true });
+  // ✅ MODIFIÉ : Support texte initial + retour session
+  createSession = async (gameData, initialText = null) => {
+  // ✅ DEBUG
+  console.log('🔍 DataManager.createSession appelé');
+  console.log('🔍 gameData:', gameData);
+  console.log('🔍 initialText:', initialText);
+  console.log('🔍 currentUser:', this.appState.currentUser);
+  
+  this.updateState({ isCreatingSession: true });
+  
+  try {
+    const now = new Date().toISOString();
+    const baseTimestamp = Date.now();
     
-    try {
-      const newSession = {
-        id: `sid_${Date.now()}`, 
-        gameId: gameData.id, 
-        gameTitle: gameData.title,
-        subtitle: `Conversation sur ${gameData.title}`, 
-        createdAt: new Date().toISOString(),
-        user: this.appState.currentUser,
-        notes: [],
+    const newSession = {
+      id: `sid_${baseTimestamp}`, 
+      gameId: gameData.id, 
+      gameTitle: gameData.title,
+      subtitle: `Conversation sur ${gameData.title}`, 
+      createdAt: now,
+      user: this.appState.currentUser,
+      notes: [],
+    };
+    
+    // Message système (toujours présent)
+    const systemMessage = {
+      id: `${baseTimestamp}-system`,
+      content: gameData.systemMessage || `💬 Session initiée.`,
+      author: 'duo',
+      timestamp: now,
+      edited: false
+    };
+    
+    newSession.notes.push(systemMessage);
+    
+    // ✅ CORRECTION : Message utilisateur avec ID unique
+    if (initialText && initialText.trim()) {
+      const userMessage = {
+        id: `msg_${baseTimestamp + 1}`, // ✅ +1 pour garantir unicité
+        author: this.appState.currentUser,
+        content: initialText.trim(),
+        timestamp: now,
+        edited: false
       };
-      
-      await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
-      
-      // ✅ NOUVEAU : Petit délai pour transition fluide
-    await new Promise(resolve => setTimeout(resolve, 300));
-      
-      this.updateState({ 
-        sessions: [...this.appState.sessions, newSession],
-        isCreatingSession: false
-      });
-      
-      console.log('✅ Session créée avec succès');
-      return newSession;
-      
-    } catch (error) {
-      console.error('❌ Erreur création session:', error);
-      this.updateState({ isCreatingSession: false });
-      throw error;
+      newSession.notes.push(userMessage);
+      console.log('✅ Message utilisateur ajouté:', userMessage.content);
     }
+    
+    await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    this.updateState({ 
+      sessions: [...this.appState.sessions, newSession],
+      isCreatingSession: false
+    });
+    
+    console.log('✅ Session créée avec', newSession.notes.length, 'message(s)');
+    return newSession;
+    
+  } catch (error) {
+    console.error('❌ Erreur création session:', error);
+    this.updateState({ isCreatingSession: false });
+    throw error;
   }
+}
 
   updateSession = async (sessionToUpdate) => {
     await this.driveSync.saveFile(`session_${sessionToUpdate.id}.json`, sessionToUpdate);

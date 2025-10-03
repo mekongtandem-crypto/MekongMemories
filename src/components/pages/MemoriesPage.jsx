@@ -1,31 +1,28 @@
 /**
- * MemoriesPage.jsx v5.5 - ÉTAPE 2 FINALISÉE : Ouverture intelligente
- * ✅ Moment fermé : localDisplay = {showPosts: false, showDayPhotos: false}
- * ✅ Clic "posts" fermé → ouvre avec SEULEMENT posts
- * ✅ Clic "photos" fermé → ouvre avec SEULEMENT photos  
- * ✅ Clic chevron fermé → ouvre avec TOUT (posts + photos)
- * ✅ Fermeture moment → reset localDisplay à false
- * ✅ Mode Focus/Multi fonctionnel
- * ✅ Icônes grises quand masqué
+ * MemoriesPage.jsx v5.6 - Phase 13A : Modal création session + MessageCircle
+ * ✅ NOUVEAU : SessionCreationModal intégrée
+ * ✅ NOUVEAU : MessageCircle remplace PlusCircle
+ * ✅ NOUVEAU : Support texte initial + ouverture conditionnelle
  */
 
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown, ChevronUp, Search, Dices, PlusCircle, Type, Map, Minimize2,
+  AlertCircle, ChevronDown, ChevronUp, Search, Dices, MessageCircle, Type, Map, Minimize2,
   Focus, Layers
 } from 'lucide-react';
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
+import SessionCreationModal from '../SessionCreationModal.jsx';
 
 // ====================================================================
 // COMPOSANT PRINCIPAL
 // ====================================================================
 export default function MemoriesPage() {
   const app = useAppState();
-  const [selectedMoments, setSelectedMoments] = useState([]); // ✅ Maintenant un tableau
-  const [displayMode, setDisplayMode] = useState('focus'); // ✅ 'focus' ou 'multi'
+  const [selectedMoments, setSelectedMoments] = useState([]);
+  const [displayMode, setDisplayMode] = useState('focus');
   const [searchQuery, setSearchQuery] = useState('');
   const [displayOptions, setDisplayOptions] = useState({
     showPostText: true,
@@ -35,6 +32,7 @@ export default function MemoriesPage() {
   const [viewerState, setViewerState] = useState({ 
     isOpen: false, photo: null, gallery: [], contextMoment: null 
   });
+  const [sessionModal, setSessionModal] = useState(null);
 
   const [isTimelineVisible, setIsTimelineVisible] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -166,75 +164,82 @@ export default function MemoriesPage() {
     setViewerState({ isOpen: false, photo: null, gallery: [], contextMoment: null });
   }, []);
 
-  // ✅ NOUVEAU : Gestion Focus vs Multi
   const handleSelectMoment = useCallback((moment) => {
     setSelectedMoments(prev => {
       const isAlreadySelected = prev.some(m => m.id === moment.id);
       
       if (displayMode === 'focus') {
-        // Mode Focus : un seul moment ouvert
         if (isAlreadySelected && prev.length === 1) {
-          return []; // Fermer si c'est le seul ouvert
+          return [];
         }
-        return [moment]; // Ouvrir uniquement celui-ci
+        return [moment];
       } else {
-        // Mode Multi : toggle individuel
         if (isAlreadySelected) {
-          return prev.filter(m => m.id !== moment.id); // Retirer
+          return prev.filter(m => m.id !== moment.id);
         }
-        return [...prev, moment]; // Ajouter
+        return [...prev, moment];
       }
     });
   }, [displayMode]);
 
-  const handleCreateAndOpenSession = useCallback(async (source, contextMoment) => {
-    if (!source) return;
-    let sessionData = {};
-    let initialMessage = '';
+const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
+  if (!source) return;
+  
+  // ✅ DEBUG
+  console.log('🔍 handleCreateAndOpenSession appelé avec options:', options);
+  console.log('🔍 initialText reçu:', options.initialText);
+  
+  const sessionTitle = options.title || (
+    source.filename 
+      ? `Souvenirs de ${contextMoment.displayTitle}`
+      : source.content 
+        ? `Souvenirs de l'article : ${source.content.split('\n')[0].substring(0, 40)}...`
+        : `Souvenirs du moment : ${source.displayTitle}`
+  );
+  
+  let sessionData = {
+    id: source.google_drive_id || source.id || source.url,
+    title: sessionTitle,
+    description: source.filename 
+      ? `Basée sur la photo "${source.filename}"`
+      : source.content
+        ? `Basée sur un article`
+        : `Basée sur le moment "${source.displayTitle}"`,
+  };
+  
+  if (source.filename) {
+    sessionData.systemMessage = `📸 Session basée sur la photo : "${source.filename}".`;
+  } else if (source.content) {
+    const title = source.content.split('\n')[0].substring(0, 40);
+    sessionData.systemMessage = `📝 Session basée sur l'article : "${title}...".`;
+  } else {
+    sessionData.systemMessage = `💬 Session basée sur le moment : "${source.displayTitle}".`;
+  }
+  
+  try {
+    // ✅ DEBUG
+    console.log('🔍 Appel createSession avec initialText:', options.initialText);
     
-    if (source.filename) {
-        sessionData = { 
-          id: source.google_drive_id || source.url, 
-          title: `Souvenirs de ${contextMoment.displayTitle}`, 
-          description: `Basée sur la photo "${source.filename}"` 
-        };
-        initialMessage = `🖼️ Session initiée à partir de la photo : "${source.filename}".`;
-    } else if (source.content) {
-      const title = (source.content.trim().split('\n')[0] || `Article J${source.dayNumber}`).substring(0, 40);
-      sessionData = { 
-        id: source.id, 
-        title: `Souvenirs de l'article : ${title}...`, 
-        description: `Basée sur un article du moment "${contextMoment.displayTitle}"` 
-      };
-      initialMessage = `📝 Session initiée à partir de l'article : "${title}...".`;
-    } else {
-      sessionData = { 
-        id: source.id, 
-        title: `Souvenirs du moment : ${source.displayTitle}`, 
-        description: `Basée sur le moment du ${source.displaySubtitle}` 
-      };
-      initialMessage = `💬 Session initiée à partir du moment : "${source.displayTitle}".`;
-    }
+    const newSession = await app.createSession(sessionData, options.initialText);
     
-    try {
-      const newSession = await app.createSession(sessionData);
-      if (newSession) {
-        const initialNote = { 
-          id: `${Date.now()}-system`, 
-          content: initialMessage, 
-          author: 'duo', 
-          createdAt: new Date().toISOString() 
-        };
-        const sessionWithMessage = { ...newSession, notes: [initialNote] };
-        await app.updateSession(sessionWithMessage);
-        if (viewerState.isOpen) closePhotoViewer();
-        await app.openChatSession(sessionWithMessage);
+    if (newSession) {
+      if (viewerState.isOpen) closePhotoViewer();
+      
+      if (options.shouldOpen) {
+        await app.openChatSession(newSession);
+      } else {
+        console.log('✅ Session créée:', newSession.gameTitle);
       }
-    } catch (error) {
-      console.error('Erreur création de session:', error);
-      alert(`Impossible de créer la session : ${error.message}`);
     }
-  }, [app, viewerState.isOpen, closePhotoViewer]);
+  } catch (error) {
+    console.error('Erreur création de session:', error);
+    alert(`Impossible de créer la session : ${error.message}`);
+  }
+}, [app, viewerState.isOpen, closePhotoViewer]);
+
+  const handleOpenSessionModal = useCallback((source, contextMoment) => {
+    setSessionModal({ source, contextMoment });
+  }, []);
 
   const filteredMoments = getFilteredMoments(momentsData, searchQuery);
 
@@ -299,7 +304,7 @@ export default function MemoriesPage() {
             displayOptions={displayOptions}
             onMomentSelect={handleSelectMoment}
             onPhotoClick={openPhotoViewer}
-            onCreateSession={handleCreateAndOpenSession}
+            onCreateSession={handleOpenSessionModal}
             momentRefs={momentRefs}
           />
         </div>
@@ -318,6 +323,19 @@ export default function MemoriesPage() {
         </button>
       )}
 
+      {sessionModal && (
+        <SessionCreationModal
+          source={sessionModal.source}
+          contextMoment={sessionModal.contextMoment}
+          currentUser={app.currentUser}
+          onClose={() => setSessionModal(null)}
+          onConfirm={(options) => handleCreateAndOpenSession(
+            sessionModal.source, 
+            sessionModal.contextMoment,
+            options
+          )}
+        />
+      )}
 
       {viewerState.isOpen && (
         <PhotoViewer 
@@ -325,7 +343,7 @@ export default function MemoriesPage() {
           gallery={viewerState.gallery}
           contextMoment={viewerState.contextMoment}
           onClose={closePhotoViewer}
-          onCreateSession={handleCreateAndOpenSession}
+          onCreateSession={handleOpenSessionModal}
         />
       )}
     </div>
@@ -382,11 +400,9 @@ const CompactFilters = memo(({
     setDisplayOptions(prev => ({...prev, [option]: !prev[option]}));
   };
 
-  // ✅ Toggle Focus/Multi
   const handleToggleDisplayMode = () => {
     setDisplayMode(prev => {
       if (prev === 'multi') {
-        // Passer en mode Focus : garder seulement le dernier moment ouvert
         if (selectedMoments.length > 0) {
           setSelectedMoments([selectedMoments[selectedMoments.length - 1]]);
         }
@@ -474,7 +490,6 @@ const CompactFilters = memo(({
           
           <div className="flex-1" />
           
-          {/* ✅ NOUVEAU : Bouton Focus/Multi */}
           <button 
             onClick={handleToggleDisplayMode}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border transition-all ${
@@ -524,8 +539,6 @@ const CompactFilters = memo(({
     </div>
   );
 });
-
-
 
 // ====================================================================
 // COMPOSANT : BOUTONS OPTIONS D'AFFICHAGE
@@ -581,7 +594,7 @@ const MomentsList = memo(({
 });
 
 // ====================================================================
-// COMPOSANT : CARTE MOMENT (avec logique d'ouverture intelligente)
+// COMPOSANT : CARTE MOMENT
 // ====================================================================
 const MomentCard = memo(React.forwardRef(({ 
   moment, isSelected, displayOptions, onSelect, onPhotoClick, onCreateSession
@@ -589,19 +602,15 @@ const MomentCard = memo(React.forwardRef(({
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
   
-  // ✅ ÉTAT INITIAL : tout fermé quand moment fermé
   const [localDisplay, setLocalDisplay] = useState({
     showPosts: false,
     showDayPhotos: false
   });
   
-  // ✅ Mémoriser l'état précédent pour détecter l'ouverture
   const wasSelectedRef = useRef(isSelected);
   
-  // ✅ Reset à fermé quand le moment se ferme
   useEffect(() => {
     if (wasSelectedRef.current && !isSelected) {
-      // Le moment vient de se fermer → reset
       setLocalDisplay({
         showPosts: false,
         showDayPhotos: false
@@ -610,13 +619,10 @@ const MomentCard = memo(React.forwardRef(({
     wasSelectedRef.current = isSelected;
   }, [isSelected]);
   
-  // ✅ Fonction pour ouvrir avec options spécifiques
   const handleOpenWith = (options) => {
     if (!isSelected) {
-      // Ouvrir le moment
       onSelect(moment);
     }
-    // Appliquer les options d'affichage
     setLocalDisplay(options);
   };
   
@@ -645,51 +651,45 @@ const MomentCard = memo(React.forwardRef(({
       </div>
 
       {isSelected && (
-  <MomentContent 
-    moment={moment}
-    displayOptions={displayOptions}
-    localDisplay={localDisplay}
-    visibleDayPhotos={visibleDayPhotos}
-    photosPerLoad={photosPerLoad}
-    onPhotoClick={onPhotoClick}
-    onCreateSession={onCreateSession}
-    onLoadMorePhotos={() => setVisibleDayPhotos(prev => prev + photosPerLoad)}
-    onToggleDayPhotos={() => handleToggleLocal('showDayPhotos')}  // ✅ AJOUT
-  />
-)}
+        <MomentContent 
+          moment={moment}
+          displayOptions={displayOptions}
+          localDisplay={localDisplay}
+          visibleDayPhotos={visibleDayPhotos}
+          photosPerLoad={photosPerLoad}
+          onPhotoClick={onPhotoClick}
+          onCreateSession={onCreateSession}
+          onLoadMorePhotos={() => setVisibleDayPhotos(prev => prev + photosPerLoad)}
+          onToggleDayPhotos={() => handleToggleLocal('showDayPhotos')}
+        />
+      )}
     </div>
   );
 }));
 
 // ====================================================================
-// COMPOSANT : EN-TÊTE MOMENT (avec logique d'ouverture intelligente)
+// COMPOSANT : EN-TÊTE MOMENT
 // ====================================================================
 const MomentHeader = memo(({ moment, isSelected, onSelect, onOpenWith, onCreateSession, localDisplay, onToggleLocal }) => {
   
-  // ✅ SCÉNARIO A/B : Clic sur lien quand fermé → ouvre avec SEULEMENT ce contenu
   const handleLinkClick = (e, contentType) => {
     e.stopPropagation();
     
     if (!isSelected) {
-      // Moment fermé → ouvrir avec SEULEMENT ce type de contenu
       if (contentType === 'posts') {
         onOpenWith({ showPosts: true, showDayPhotos: false });
       } else if (contentType === 'photos') {
         onOpenWith({ showPosts: false, showDayPhotos: true });
       }
     } else {
-      // Moment ouvert → toggle normalement
       onToggleLocal(contentType === 'posts' ? 'showPosts' : 'showDayPhotos');
     }
   };
   
-  // ✅ SCÉNARIO C : Clic sur chevron → ouvre avec TOUT
   const handleChevronClick = () => {
     if (!isSelected) {
-      // Ouvrir avec tout affiché
       onOpenWith({ showPosts: true, showDayPhotos: true });
     } else {
-      // Fermer
       onSelect(moment);
     }
   };
@@ -719,7 +719,6 @@ const MomentHeader = memo(({ moment, isSelected, onSelect, onOpenWith, onCreateS
       </div>
 
       <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm mt-2 pt-2 border-t border-gray-100">
-        {/* ✅ BOUTON Posts : icône grise si masqué */}
         {moment.postCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'posts')}
@@ -733,7 +732,6 @@ const MomentHeader = memo(({ moment, isSelected, onSelect, onOpenWith, onCreateS
           </button>
         )}
         
-        {/* ✅ BOUTON Photos : icône grise si masqué */}
         {moment.dayPhotoCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'photos')}
@@ -750,11 +748,11 @@ const MomentHeader = memo(({ moment, isSelected, onSelect, onOpenWith, onCreateS
         <button 
           onClick={(e) => {
             e.stopPropagation();
-            onCreateSession(moment);
+            onCreateSession(moment, moment);
           }}
           className="flex items-center font-medium text-amber-600 hover:underline ml-auto pl-2"
         >
-          <PlusCircle className="w-4 h-4 mr-1.5" /> Session
+          <MessageCircle className="w-4 h-4 mr-1.5" /> Session
         </button>
       </div>
     </>
@@ -769,7 +767,6 @@ const MomentContent = memo(({
   onPhotoClick, onCreateSession, onLoadMorePhotos, onToggleDayPhotos  
 }) => (
   <div className="px-3 pb-3">
-    {/* Posts existants */}
     {localDisplay.showPosts && moment.posts?.map(post => (
       <PostArticle 
         key={post.id}
@@ -781,14 +778,12 @@ const MomentContent = memo(({
       />
     ))}
     
-    {/* ✅ NOUVEAU : Header photos du moment (toujours visible si photos existent) */}
     {moment.dayPhotoCount > 0 && (
       <div className="mt-2 border-b border-gray-100 pb-2">
         <div className="border border-gray-200 rounded-lg overflow-hidden">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // Toggle depuis MomentCard via prop
               onToggleDayPhotos();
             }}
             className="w-full flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200 hover:bg-gray-100 transition-colors"
@@ -812,7 +807,6 @@ const MomentContent = memo(({
       </div>
     )}
     
-    {/* Photos (si affichées) */}
     {localDisplay.showDayPhotos && moment.dayPhotoCount > 0 && (
       <div className="mt-2">
         <PhotoGrid 
@@ -862,10 +856,8 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
   return (
     <div className="mt-2 border-b border-gray-100 pb-2 last:border-b-0">
       <div className="border border-gray-200 rounded-lg overflow-hidden">
-        {/* ✅ NOUVEAU : Header unifié avec compteur photos */}
         <div className="flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200">
           <div className="flex items-center gap-x-3 flex-1 min-w-0">
-            {/* Icône photos (si post a des photos) */}
             {hasPhotos && (
               <button 
                 onClick={() => setShowThisPostPhotos(!showThisPostPhotos)} 
@@ -878,40 +870,34 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
               </button>
             )}
             
-            {/* Titre du post */}
             <h4 className="font-semibold text-gray-800 text-sm truncate flex-1">
               {title}
             </h4>
           </div>
           
-          {/* Partie droite : compteur photos + bouton session */}
           <div className="flex items-center gap-x-3 flex-shrink-0 ml-2">
-            {/* ✅ NOUVEAU : Compteur photos */}
             {hasPhotos && (
               <span className="text-xs text-gray-600 whitespace-nowrap">
                 {post.photos.length} photo{post.photos.length > 1 ? 's' : ''}
               </span>
             )}
             
-            {/* Bouton session */}
             <button 
               onClick={handleCreateSession} 
               className="p-1 text-gray-500 hover:text-amber-600" 
               title="Créer une session"
             >
-              <PlusCircle className="w-4 h-4" />
+              <MessageCircle className="w-4 h-4" />
             </button>
           </div>
         </div>
         
-        {/* Texte du post */}
         {displayOptions.showPostText && (
           <div className="prose prose-sm max-w-none bg-white p-3" 
                dangerouslySetInnerHTML={{ __html: body }} />
         )}
       </div>
 
-      {/* Photos du post */}
       {photosAreVisible && (
         <PhotoGrid 
           photos={post.photos}
@@ -924,7 +910,7 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
 });
 
 // ====================================================================
-// COMPOSANT : GRILLE PHOTOS (UNIFORME)
+// COMPOSANT : GRILLE PHOTOS
 // ====================================================================
 const PhotoGrid = memo(({ photos, moment, onPhotoClick, allPhotos }) => (
   <div className="mt-2">
@@ -1034,7 +1020,6 @@ function getFilteredMoments(momentsData, searchQuery) {
   );
 }
 
-// CSS Animations
 const style = document.createElement('style');
 style.textContent = `
   @keyframes slideDown {

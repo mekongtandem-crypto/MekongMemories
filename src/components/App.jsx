@@ -1,6 +1,6 @@
 /**
- * App.jsx v1.4 - vérification token en process invisible en cas de refresh
- * ✅ NOUVEAU : Affichage SessionCreationSpinner si isCreatingSession
+ * App.jsx v1.5 - Fix badge sessions
+ * ✅ CORRECTION : Passer app à BottomNavigation
  */
 import React from 'react';
 import { useAppState } from '../hooks/useAppState.js';
@@ -10,7 +10,7 @@ import MemoriesPage from './pages/MemoriesPage.jsx';
 import SessionsPage from './pages/SessionsPage.jsx';
 import ChatPage from './pages/ChatPage.jsx';
 import UserSelectionPage from './pages/UserSelectionPage.jsx';
-import SessionCreationSpinner from './SessionCreationSpinner.jsx'; // ✅ NOUVEAU
+import SessionCreationSpinner from './SessionCreationSpinner.jsx';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -59,13 +59,12 @@ export default function App() {
   const app = useAppState();
 
   if (!app.isInitialized) {
-  return (
-    <div className="flex items-center justify-center h-screen">
-      {/* ✅ CHANGEMENT : Pas d'indication "Connexion..." si token cache existe */}
-      <p className="animate-pulse text-lg">Chargement...</p>
-    </div>
-  );
-}
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="animate-pulse text-lg">Chargement...</p>
+      </div>
+    );
+  }
 
   if (!app.currentUser) {
     return <UserSelectionPage />;
@@ -80,9 +79,12 @@ export default function App() {
           <PageRenderer currentPage={app.currentPage} />
         </main>
         
-        <BottomNavigation currentPage={app.currentPage} onPageChange={app.updateCurrentPage} />
+        <BottomNavigation 
+          currentPage={app.currentPage} 
+          onPageChange={app.updateCurrentPage} 
+          app={app}
+        />
         
-        {/* ✅ NOUVEAU : Spinner global */}
         {app.isCreatingSession && <SessionCreationSpinner />}
       </div>
     </ErrorBoundary>
