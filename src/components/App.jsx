@@ -1,5 +1,5 @@
 /**
- * App.jsx v1.3 - Spinner global création session
+ * App.jsx v1.4 - vérification token en process invisible en cas de refresh
  * ✅ NOUVEAU : Affichage SessionCreationSpinner si isCreatingSession
  */
 import React from 'react';
@@ -59,12 +59,13 @@ export default function App() {
   const app = useAppState();
 
   if (!app.isInitialized) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="animate-pulse text-lg">Chargement des souvenirs du Mékong...</p>
-      </div>
-    );
-  }
+  return (
+    <div className="flex items-center justify-center h-screen">
+      {/* ✅ CHANGEMENT : Pas d'indication "Connexion..." si token cache existe */}
+      <p className="animate-pulse text-lg">Chargement...</p>
+    </div>
+  );
+}
 
   if (!app.currentUser) {
     return <UserSelectionPage />;

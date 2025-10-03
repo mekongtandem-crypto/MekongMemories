@@ -139,6 +139,9 @@ class DataManager {
       
       await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
       
+      // ✅ NOUVEAU : Petit délai pour transition fluide
+    await new Promise(resolve => setTimeout(resolve, 300));
+      
       this.updateState({ 
         sessions: [...this.appState.sessions, newSession],
         isCreatingSession: false

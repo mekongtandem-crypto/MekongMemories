@@ -318,7 +318,6 @@ export default function MemoriesPage() {
         </button>
       )}
 
-      <KeyboardHints />
 
       {viewerState.isOpen && (
         <PhotoViewer 
@@ -526,31 +525,7 @@ const CompactFilters = memo(({
   );
 });
 
-// ====================================================================
-// COMPOSANT : INDICATEUR DE RACCOURCIS CLAVIER
-// ====================================================================
-const KeyboardHints = () => {
-  const [isVisible, setIsVisible] = useState(true);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(false), 3000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (!isVisible) return null;
-
-  return (
-    <div className="fixed bottom-4 left-4 z-40 bg-gray-900/90 backdrop-blur-sm text-white text-xs rounded-lg p-3 shadow-xl animate-fadeIn">
-      <div className="font-semibold mb-1">⌨️ Raccourcis</div>
-      <div className="space-y-0.5 text-gray-300">
-        <div><kbd className="bg-gray-700 px-1 rounded">T</kbd> Timeline</div>
-        <div><kbd className="bg-gray-700 px-1 rounded">F</kbd> Focus/Multi</div>
-        <div><kbd className="bg-gray-700 px-1 rounded">↑↓</kbd> Jour ±1</div>
-        <div><kbd className="bg-gray-700 px-1 rounded">/</kbd> Recherche</div>
-      </div>
-    </div>
-  );
-};
 
 // ====================================================================
 // COMPOSANT : BOUTONS OPTIONS D'AFFICHAGE
