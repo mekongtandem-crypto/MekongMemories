@@ -1,21 +1,19 @@
 /**
- * ChatPage.jsx v2.0 - Header compact + Photos
- * ✅ Header réduit à 40px (une ligne)
- * ✅ Affichage photos avec photoData
- * ✅ Miniature cliquable → PhotoViewer
+ * ChatPage.jsx v2.1 - Intégration UnifiedTopBar
+ * ✅ Suppression du header local (géré par UnifiedTopBar)
+ * ✅ Affichage photos dans bulles utilisateur
+ * ✅ Focus sur les messages
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
-import { ArrowLeft, Send, Edit, Trash2, Check, X, MoreVertical } from 'lucide-react';
+import { Send, Edit, Trash2, Check, X } from 'lucide-react';
 import PhotoViewer from '../PhotoViewer.jsx';
 
-export default function ChatPage() {
+export default function ChatPage({ editingTitle, setEditingTitle }) {
   const app = useAppState();
   const [newMessage, setNewMessage] = useState('');
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
-  const [showMenu, setShowMenu] = useState(false);
-  const [editingTitle, setEditingTitle] = useState(false);
   const [titleContent, setTitleContent] = useState('');
   
   const [viewerState, setViewerState] = useState({ 
@@ -23,7 +21,6 @@ export default function ChatPage() {
   });
   
   const messagesEndRef = useRef(null);
-  const menuRef = useRef(null);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -31,15 +28,30 @@ export default function ChatPage() {
     }
   }, [app.currentChatSession?.notes]);
 
+  // Gestion édition titre depuis UnifiedTopBar
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    if (editingTitle && app.currentChatSession) {
+      setTitleContent(app.currentChatSession.gameTitle);
+    }
+  }, [editingTitle, app.currentChatSession]);
+
+  const handleSaveTitle = async () => {
+    if (!titleContent.trim()) {
+      setEditingTitle(false);
+      return;
+    }
+
+    try {
+      const updatedSession = {
+        ...app.currentChatSession,
+        gameTitle: titleContent.trim()
+      };
+      await app.updateSession(updatedSession);
+      setEditingTitle(false);
+    } catch (error) {
+      console.error('❌ Erreur modification titre:', error);
+    }
+  };
 
   if (!app.currentChatSession) {
     return (
@@ -49,13 +61,6 @@ export default function ChatPage() {
         <p className="text-gray-600 mb-6">
           Sélectionnez une session depuis la page Sessions pour commencer une conversation.
         </p>
-        <button
-          onClick={() => app.updateCurrentPage('sessions')}
-          className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium flex items-center space-x-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Retour aux Sessions</span>
-        </button>
       </div>
     );
   }
@@ -144,30 +149,6 @@ export default function ChatPage() {
     }
   };
 
-  const handleStartEditTitle = () => {
-    setTitleContent(app.currentChatSession.gameTitle);
-    setEditingTitle(true);
-    setShowMenu(false);
-  };
-
-  const handleSaveTitle = async () => {
-    if (!titleContent.trim()) {
-      setEditingTitle(false);
-      return;
-    }
-
-    try {
-      const updatedSession = {
-        ...app.currentChatSession,
-        gameTitle: titleContent.trim()
-      };
-      await app.updateSession(updatedSession);
-      setEditingTitle(false);
-    } catch (error) {
-      console.error('❌ Erreur modification titre:', error);
-    }
-  };
-
   const openPhotoViewer = (photo) => {
     setViewerState({ isOpen: true, photo });
   };
@@ -177,76 +158,41 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen max-h-[85vh]">
+    <div className="flex flex-col h-screen">
       
-      {/* ✅ NOUVEAU : Header compact 40px */}
-      <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between" style={{ height: '40px' }}>
-        <div className="flex items-center space-x-2 flex-1 min-w-0">
-          <button
-            onClick={() => app.closeChatSession()}
-            className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
-            title="Retour aux sessions"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          
-          {editingTitle ? (
-            <div className="flex items-center space-x-2 flex-1">
-              <input
-                type="text"
-                value={titleContent}
-                onChange={(e) => setTitleContent(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveTitle();
-                  if (e.key === 'Escape') setEditingTitle(false);
-                }}
-                className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                autoFocus
-              />
-              <button onClick={handleSaveTitle} className="p-1 text-green-600 hover:bg-green-100 rounded">
-                <Check className="w-4 h-4" />
-              </button>
-              <button onClick={() => setEditingTitle(false)} className="p-1 text-red-600 hover:bg-red-100 rounded">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <h1 className="text-sm font-semibold text-gray-900 truncate flex-1">
-              {app.currentChatSession.gameTitle}
-            </h1>
-          )}
-        </div>
-
-        {/* Menu */}
-        <div className="relative flex-shrink-0" ref={menuRef}>
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
-            title="Menu"
-          >
-            <MoreVertical className="w-5 h-5 text-gray-600" />
-          </button>
-          
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
+      {/* Modal édition titre (si activée depuis UnifiedTopBar) */}
+      {editingTitle && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold mb-4">Modifier le titre</h3>
+            <input
+              type="text"
+              value={titleContent}
+              onChange={(e) => setTitleContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveTitle();
+                if (e.key === 'Escape') setEditingTitle(false);
+              }}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+              autoFocus
+            />
+            <div className="flex space-x-2 mt-4">
               <button
-                onClick={handleStartEditTitle}
-                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+                onClick={handleSaveTitle}
+                className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
               >
-                <Edit className="w-4 h-4" />
-                <span>Modifier le titre</span>
+                Sauvegarder
               </button>
-              <div className="border-t border-gray-200 my-1"></div>
-              <div className="px-4 py-2 text-xs text-gray-500">
-                {app.currentChatSession.notes?.length || 0} messages
-              </div>
-              <div className="px-4 py-2 text-xs text-gray-500">
-                Créée le {new Date(app.currentChatSession.createdAt).toLocaleDateString()}
-              </div>
+              <button
+                onClick={() => setEditingTitle(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+              >
+                Annuler
+              </button>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Zone des messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
@@ -301,7 +247,7 @@ export default function ChatPage() {
                   </div>
                 ) : (
                   <>
-                    {/* ✅ NOUVEAU : Affichage photo si photoData existe */}
+                    {/* Photo si présente */}
                     {message.photoData && (
                       <PhotoMessage 
                         photo={message.photoData}
@@ -309,7 +255,7 @@ export default function ChatPage() {
                       />
                     )}
                     
-                    {/* Contenu texte */}
+                    {/* Texte */}
                     {message.content && (
                       <div className="text-sm whitespace-pre-wrap leading-relaxed">
                         {message.content}
@@ -370,7 +316,7 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* ✅ NOUVEAU : PhotoViewer pour messages avec photo */}
+      {/* PhotoViewer */}
       {viewerState.isOpen && viewerState.photo && (
         <PhotoViewer 
           photo={viewerState.photo}
@@ -384,7 +330,7 @@ export default function ChatPage() {
   );
 }
 
-// ✅ NOUVEAU : Composant PhotoMessage
+// Composant PhotoMessage
 function PhotoMessage({ photo, onPhotoClick }) {
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -443,7 +389,6 @@ function PhotoMessage({ photo, onPhotoClick }) {
         className="max-w-[200px] rounded-lg shadow-md hover:shadow-lg transition-shadow"
       />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-lg"></div>
-      <div className="text-xs text-gray-500 mt-1">{photo.filename}</div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 /**
- * DataManager v3.4 - Support photoData dans messages
- * ✅ Ajout photoData au message système si créé depuis photo
+ * DataManager v3.5 - Messages photo dans bulle utilisateur
+ * ✅ CHANGEMENT : Photo = message utilisateur, pas système
  */
 class DataManager {
   constructor() {
@@ -22,7 +22,7 @@ class DataManager {
     };
 
     this.listeners = new Set();
-    console.log('📦 DataManager v3.4 (PhotoData): Ready.');
+    console.log('📦 DataManager v3.5 (Photo user message): Ready.');
   }
 
   initializeDependencies(dependencies) {
@@ -122,7 +122,6 @@ class DataManager {
     }
   }
 
-  // ✅ MODIFIÉ : Ajout photoData si source est une photo
   createSession = async (gameData, initialText = null, sourcePhoto = null) => {
     this.updateState({ isCreatingSession: true });
     
@@ -140,40 +139,47 @@ class DataManager {
         notes: [],
       };
       
-      // Message système
-      const systemMessage = {
-        id: `${baseTimestamp}-system`,
-        content: gameData.systemMessage || `💬 Session initiée.`,
-        author: 'duo',
-        timestamp: now,
-        edited: false
-      };
-      
-      // ✅ NOUVEAU : Ajouter photoData si disponible
+      // ✅ NOUVEAU : Si photo, créer message utilisateur avec photo + texte
       if (sourcePhoto) {
-        systemMessage.photoData = {
-          filename: sourcePhoto.filename,
-          google_drive_id: sourcePhoto.google_drive_id,
-          width: sourcePhoto.width,
-          height: sourcePhoto.height,
-          mime_type: sourcePhoto.mime_type
-        };
-        console.log('📸 Photo attachée au message système:', systemMessage.photoData.filename);
-      }
-      
-      newSession.notes.push(systemMessage);
-      
-      // Message utilisateur
-      if (initialText && initialText.trim()) {
-        const userMessage = {
-          id: `msg_${baseTimestamp + 1}`,
+        const userPhotoMessage = {
+          id: `msg_${baseTimestamp}`,
           author: this.appState.currentUser,
-          content: initialText.trim(),
+          content: initialText?.trim() || '',
+          timestamp: now,
+          edited: false,
+          photoData: {
+            filename: sourcePhoto.filename,
+            google_drive_id: sourcePhoto.google_drive_id,
+            width: sourcePhoto.width,
+            height: sourcePhoto.height,
+            mime_type: sourcePhoto.mime_type
+          }
+        };
+        newSession.notes.push(userPhotoMessage);
+        console.log('📸 Message photo créé pour utilisateur:', userPhotoMessage.photoData.filename);
+      } else {
+        // Message système pour post/moment
+        const systemMessage = {
+          id: `${baseTimestamp}-system`,
+          content: gameData.systemMessage || `💬 Session initiée.`,
+          author: 'duo',
           timestamp: now,
           edited: false
         };
-        newSession.notes.push(userMessage);
-        console.log('✅ Message utilisateur ajouté:', userMessage.content);
+        newSession.notes.push(systemMessage);
+        
+        // Message utilisateur si texte fourni
+        if (initialText && initialText.trim()) {
+          const userMessage = {
+            id: `msg_${baseTimestamp + 1}`,
+            author: this.appState.currentUser,
+            content: initialText.trim(),
+            timestamp: now,
+            edited: false
+          };
+          newSession.notes.push(userMessage);
+          console.log('✅ Message utilisateur ajouté:', userMessage.content);
+        }
       }
       
       await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);

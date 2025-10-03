@@ -1,10 +1,12 @@
 /**
- * App.jsx v1.5 - Fix badge sessions
- * ✅ CORRECTION : Passer app à BottomNavigation
+ * App.jsx v2.0 - UnifiedTopBar intégrée
+ * ✅ Remplacement TopNavigation par UnifiedTopBar
+ * ✅ Gestion des props contextuelles par page
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppState } from '../hooks/useAppState.js';
-import { TopNavigation, BottomNavigation } from './Navigation.jsx';
+import UnifiedTopBar from './UnifiedTopBar.jsx';
+import { BottomNavigation } from './Navigation.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import MemoriesPage from './pages/MemoriesPage.jsx';
 import SessionsPage from './pages/SessionsPage.jsx';
@@ -41,22 +43,21 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-function PageRenderer({ currentPage }) {
-  switch (currentPage) {
-    case 'settings':
-      return <SettingsPage />;
-    case 'sessions':
-      return <SessionsPage />;
-    case 'chat':
-      return <ChatPage />;
-    case 'memories':
-    default:
-      return <MemoriesPage />;
-  }
-}
-
 export default function App() {
   const app = useAppState();
+  
+  // États pour MemoriesPage (partagés avec UnifiedTopBar)
+  const [isTimelineVisible, setIsTimelineVisible] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [currentDay, setCurrentDay] = useState(1);
+  const [displayOptions, setDisplayOptions] = useState({
+    showPostText: true,
+    showPostPhotos: true,
+    showMomentPhotos: true
+  });
+  
+  // États pour ChatPage
+  const [editingChatTitle, setEditingChatTitle] = useState(false);
 
   if (!app.isInitialized) {
     return (
@@ -69,14 +70,76 @@ export default function App() {
   if (!app.currentUser) {
     return <UserSelectionPage />;
   }
+
+  const renderPage = () => {
+    switch (app.currentPage) {
+      case 'settings':
+        return <SettingsPage />;
+      
+      case 'sessions':
+        return <SessionsPage />;
+      
+      case 'chat':
+        return (
+          <ChatPage 
+            editingTitle={editingChatTitle}
+            setEditingTitle={setEditingChatTitle}
+          />
+        );
+      
+      case 'memories':
+      default:
+        return (
+          <MemoriesPage 
+            isTimelineVisible={isTimelineVisible}
+            setIsTimelineVisible={setIsTimelineVisible}
+            isSearchOpen={isSearchOpen}
+            setIsSearchOpen={setIsSearchOpen}
+            currentDay={currentDay}
+            setCurrentDay={setCurrentDay}
+            displayOptions={displayOptions}
+          />
+        );
+    }
+  };
   
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50">
-        <TopNavigation onPageChange={app.updateCurrentPage} app={app} />
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <UnifiedTopBar 
+          currentPage={app.currentPage}
+          onPageChange={app.updateCurrentPage}
+          // Props MemoriesPage
+          isTimelineVisible={isTimelineVisible}
+          setIsTimelineVisible={setIsTimelineVisible}
+          isSearchOpen={isSearchOpen}
+          setIsSearchOpen={setIsSearchOpen}
+          currentDay={currentDay}
+          setCurrentDay={setCurrentDay}
+          jumpToDay={(day) => {
+            // Cette fonction sera appelée depuis MemoriesPage
+            // Pour l'instant, simple update
+            setCurrentDay(day);
+          }}
+          navigateDay={(delta) => {
+            const newDay = Math.max(0, Math.min(currentDay + delta, 200));
+            setCurrentDay(newDay);
+          }}
+          displayOptions={displayOptions}
+          setDisplayOptions={setDisplayOptions}
+          jumpToRandomMoment={() => {
+            // Fonction passée depuis MemoriesPage
+          }}
+          // Props ChatPage
+          chatSession={app.currentChatSession}
+          onEditChatTitle={() => setEditingChatTitle(true)}
+          onCloseChatSession={app.closeChatSession}
+        />
         
-        <main className="pb-20 md:pb-4 p-4 max-w-7xl mx-auto">
-          <PageRenderer currentPage={app.currentPage} />
+        <main className="flex-1 pb-16 md:pb-4 overflow-auto">
+          <div className="max-w-7xl mx-auto">
+            {renderPage()}
+          </div>
         </main>
         
         <BottomNavigation 

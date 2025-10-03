@@ -1,43 +1,39 @@
 /**
- * MemoriesPage.jsx v5.6 - Phase 13A : Modal création session + MessageCircle
- * ✅ NOUVEAU : SessionCreationModal intégrée
- * ✅ NOUVEAU : MessageCircle remplace PlusCircle
- * ✅ NOUVEAU : Support texte initial + ouverture conditionnelle
+ * MemoriesPage.jsx v6.0 - Intégration UnifiedTopBar
+ * ✅ States gérés par App.jsx
+ * ✅ Suppression CompactFilters
+ * ✅ Garde toute la logique moments/photos/sessions
  */
 
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown, ChevronUp, Search, Dices, MessageCircle, Type, Map, Minimize2,
-  Focus, Layers
+  AlertCircle, ChevronDown, MessageCircle
 } from 'lucide-react';
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
 import SessionCreationModal from '../SessionCreationModal.jsx';
 
-// ====================================================================
-// COMPOSANT PRINCIPAL
-// ====================================================================
-export default function MemoriesPage() {
+export default function MemoriesPage({ 
+  isTimelineVisible,
+  setIsTimelineVisible,
+  isSearchOpen,
+  setIsSearchOpen,
+  currentDay,
+  setCurrentDay,
+  displayOptions
+}) {
   const app = useAppState();
   const [selectedMoments, setSelectedMoments] = useState([]);
   const [displayMode, setDisplayMode] = useState('focus');
   const [searchQuery, setSearchQuery] = useState('');
-  const [displayOptions, setDisplayOptions] = useState({
-    showPostText: true,
-    showPostPhotos: true,
-    showMomentPhotos: true
-  });
   const [viewerState, setViewerState] = useState({ 
     isOpen: false, photo: null, gallery: [], contextMoment: null 
   });
   const [sessionModal, setSessionModal] = useState(null);
 
-  const [isTimelineVisible, setIsTimelineVisible] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [currentDay, setCurrentDay] = useState(1);
   const [lastScrollY, setLastScrollY] = useState(0);
   const scrollContainerRef = useRef(null);
 
@@ -53,22 +49,6 @@ export default function MemoriesPage() {
         case 'T':
           setIsTimelineVisible(prev => !prev);
           break;
-        case 'ArrowUp':
-          e.preventDefault();
-          navigateDay(-1);
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          navigateDay(1);
-          break;
-        case 'PageUp':
-          e.preventDefault();
-          navigateDay(-5);
-          break;
-        case 'PageDown':
-          e.preventDefault();
-          navigateDay(5);
-          break;
         case '/':
           e.preventDefault();
           setIsSearchOpen(true);
@@ -82,7 +62,7 @@ export default function MemoriesPage() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [currentDay, momentsData]);
+  }, [setIsTimelineVisible, setIsSearchOpen]);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -137,19 +117,13 @@ export default function MemoriesPage() {
     }
   }, []);
 
-  const navigateDay = useCallback((delta) => {
-    const newDay = Math.max(0, Math.min(currentDay + delta, 200));
-    setCurrentDay(newDay);
-    jumpToDay(newDay);
-  }, [currentDay, momentsData]);
-
   const jumpToDay = useCallback((day) => {
     const targetMoment = momentsData.find(m => day >= m.dayStart && day <= m.dayEnd);
     if (targetMoment) {
       handleSelectMoment(targetMoment);
       setCurrentDay(day);
     }
-  }, [momentsData, displayMode]);
+  }, [momentsData, setCurrentDay]);
 
   const openPhotoViewer = useCallback((clickedPhoto, contextMoment, photoList) => {
     setViewerState({ 
@@ -182,55 +156,54 @@ export default function MemoriesPage() {
     });
   }, [displayMode]);
 
-const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
-  if (!source) return;
-  
-  const sessionTitle = options.title || (
-    source.filename 
-      ? `Souvenirs de ${contextMoment.displayTitle}`
-      : source.content 
-        ? `Souvenirs de l'article : ${source.content.split('\n')[0].substring(0, 40)}...`
-        : `Souvenirs du moment : ${source.displayTitle}`
-  );
-  
-  let sessionData = {
-    id: source.google_drive_id || source.id || source.url,
-    title: sessionTitle,
-    description: source.filename 
-      ? `Basée sur la photo "${source.filename}"`
-      : source.content
-        ? `Basée sur un article`
-        : `Basée sur le moment "${source.displayTitle}"`,
-  };
-  
-  if (source.filename) {
-    sessionData.systemMessage = `📸 Session basée sur la photo : "${source.filename}".`;
-  } else if (source.content) {
-    const title = source.content.split('\n')[0].substring(0, 40);
-    sessionData.systemMessage = `📝 Session basée sur l'article : "${title}...".`;
-  } else {
-    sessionData.systemMessage = `💬 Session basée sur le moment : "${source.displayTitle}".`;
-  }
-  
-  try {
-    // ✅ MODIFIÉ : Passer la photo comme 3e paramètre
-    const sourcePhoto = source.filename ? source : null;
-    const newSession = await app.createSession(sessionData, options.initialText, sourcePhoto);
+  const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
+    if (!source) return;
     
-    if (newSession) {
-      if (viewerState.isOpen) closePhotoViewer();
-      
-      if (options.shouldOpen) {
-        await app.openChatSession(newSession);
-      } else {
-        console.log('✅ Session créée:', newSession.gameTitle);
-      }
+    const sessionTitle = options.title || (
+      source.filename 
+        ? `Souvenirs de ${contextMoment.displayTitle}`
+        : source.content 
+          ? `Souvenirs de l'article : ${source.content.split('\n')[0].substring(0, 40)}...`
+          : `Souvenirs du moment : ${source.displayTitle}`
+    );
+    
+    let sessionData = {
+      id: source.google_drive_id || source.id || source.url,
+      title: sessionTitle,
+      description: source.filename 
+        ? `Basée sur la photo "${source.filename}"`
+        : source.content
+          ? `Basée sur un article`
+          : `Basée sur le moment "${source.displayTitle}"`,
+    };
+    
+    if (source.filename) {
+      sessionData.systemMessage = `📸 Session basée sur la photo : "${source.filename}".`;
+    } else if (source.content) {
+      const title = source.content.split('\n')[0].substring(0, 40);
+      sessionData.systemMessage = `📝 Session basée sur l'article : "${title}...".`;
+    } else {
+      sessionData.systemMessage = `💬 Session basée sur le moment : "${source.displayTitle}".`;
     }
-  } catch (error) {
-    console.error('Erreur création de session:', error);
-    alert(`Impossible de créer la session : ${error.message}`);
-  }
-}, [app, viewerState.isOpen, closePhotoViewer]);
+    
+    try {
+      const sourcePhoto = source.filename ? source : null;
+      const newSession = await app.createSession(sessionData, options.initialText, sourcePhoto);
+      
+      if (newSession) {
+        if (viewerState.isOpen) closePhotoViewer();
+        
+        if (options.shouldOpen) {
+          await app.openChatSession(newSession);
+        } else {
+          console.log('✅ Session créée:', newSession.gameTitle);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur création de session:', error);
+      alert(`Impossible de créer la session : ${error.message}`);
+    }
+  }, [app, viewerState.isOpen, closePhotoViewer]);
 
   const handleOpenSessionModal = useCallback((source, contextMoment) => {
     setSessionModal({ source, contextMoment });
@@ -246,51 +219,43 @@ const handleCreateAndOpenSession = useCallback(async (source, contextMoment, opt
     return <div className="p-12 text-center text-red-500">Aucun moment à afficher.</div>;
   }
 
-  const headerHeight = isTimelineVisible ? 200 : 60;
-
   return (
     <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden relative">
       
-      <div 
-        className={`fixed top-0 left-0 right-0 z-30 transition-all duration-300 ease-in-out ${
-          isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
-        }`}
-        style={{ height: `${headerHeight}px` }}
-      >
-        {isTimelineVisible && (
-          <div className="transition-all duration-300">
-            <TimelineRuleV2 
-              selectedMoment={selectedMoments[0] || null}
-              onMomentSelect={handleSelectMoment}
-            />
-          </div>
-        )}
-        
-        <CompactFilters 
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          isSearchOpen={isSearchOpen}
-          setIsSearchOpen={setIsSearchOpen}
-          displayOptions={displayOptions}
-          setDisplayOptions={setDisplayOptions}
-          selectedMoments={selectedMoments}
-          setSelectedMoments={setSelectedMoments}
-          displayMode={displayMode}
-          setDisplayMode={setDisplayMode}
-          momentsData={momentsData}
-          currentDay={currentDay}
-          setCurrentDay={setCurrentDay}
-          jumpToDay={jumpToDay}
-          navigateDay={navigateDay}
-          isTimelineVisible={isTimelineVisible}
-          setIsTimelineVisible={setIsTimelineVisible}
-        />
-      </div>
+      {/* Timeline (si visible) */}
+      {isTimelineVisible && (
+        <div className="border-b border-gray-200 bg-white">
+          <TimelineRuleV2 
+            selectedMoment={selectedMoments[0] || null}
+            onMomentSelect={handleSelectMoment}
+          />
+        </div>
+      )}
 
+      {/* Barre de recherche (si ouverte) */}
+      {isSearchOpen && (
+        <div className="bg-white border-b border-gray-200 p-3">
+          <input 
+            type="text" 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setIsSearchOpen(false);
+                setSearchQuery('');
+              }
+            }}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+            placeholder="Rechercher un texte, un titre... (Echap pour fermer)"
+            autoFocus
+          />
+        </div>
+      )}
+
+      {/* Contenu principal */}
       <main 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto transition-all duration-300"
-        style={{ paddingTop: isHeaderVisible ? `${headerHeight}px` : '0' }}
+        className="flex-1 overflow-y-auto"
       >
         <div className="container mx-auto px-4 py-4">
           <MomentsList 
@@ -304,19 +269,6 @@ const handleCreateAndOpenSession = useCallback(async (source, contextMoment, opt
           />
         </div>
       </main>
-
-      {!isHeaderVisible && (
-        <button
-          onClick={() => {
-            scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-            setIsHeaderVisible(true);
-          }}
-          className="fixed top-4 right-4 z-40 bg-amber-500 text-white p-3 rounded-full shadow-lg hover:bg-amber-600 transition-all"
-          title="Retour en haut"
-        >
-          <ChevronUp className="w-5 h-5" />
-        </button>
-      )}
 
       {sessionModal && (
         <SessionCreationModal
@@ -346,227 +298,9 @@ const handleCreateAndOpenSession = useCallback(async (source, contextMoment, opt
 }
 
 // ====================================================================
-// COMPOSANT : BARRE DE FILTRES
+// COMPOSANTS (inchangés sauf suppression imports inutiles)
 // ====================================================================
-const CompactFilters = memo(({ 
-  searchQuery, setSearchQuery, isSearchOpen, setIsSearchOpen,
-  displayOptions, setDisplayOptions, selectedMoments, setSelectedMoments, 
-  displayMode, setDisplayMode,
-  momentsData, currentDay, setCurrentDay, jumpToDay, navigateDay,
-  isTimelineVisible, setIsTimelineVisible
-}) => {
-  const searchInputRef = useRef(null);
-  const dayInputRef = useRef(null);
 
-  useEffect(() => {
-    if (isSearchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [isSearchOpen]);
-
-  const handleDayChange = (e) => {
-    const day = parseInt(e.target.value, 10);
-    if (!isNaN(day)) {
-      setCurrentDay(day);
-    }
-  };
-
-  const handleDaySubmit = (e) => {
-    e.preventDefault();
-    jumpToDay(currentDay);
-  };
-
-  const handleDayWheel = (e) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 1 : -1;
-    navigateDay(delta);
-  };
-
-  const jumpToRandomMoment = () => {
-    if (momentsData.length > 0) {
-      const randomIndex = Math.floor(Math.random() * momentsData.length);
-      const randomMoment = momentsData[randomIndex];
-      setSelectedMoments([randomMoment]);
-      setCurrentDay(randomMoment.dayStart);
-    }
-  };
-
-  const handleDisplayOptionToggle = (option) => {
-    setDisplayOptions(prev => ({...prev, [option]: !prev[option]}));
-  };
-
-  const handleToggleDisplayMode = () => {
-    setDisplayMode(prev => {
-      if (prev === 'multi') {
-        if (selectedMoments.length > 0) {
-          setSelectedMoments([selectedMoments[selectedMoments.length - 1]]);
-        }
-        return 'focus';
-      } else {
-        return 'multi';
-      }
-    });
-  };
-
-  return (
-    <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200">
-      <div className="container mx-auto px-4 py-2">
-        
-        <div className="flex items-center gap-3">
-          
-          <button
-            onClick={() => setIsTimelineVisible(!isTimelineVisible)}
-            className={`p-1.5 rounded-lg border transition-all ${
-              isTimelineVisible 
-                ? 'bg-blue-100 text-blue-700 border-blue-300' 
-                : 'bg-white hover:bg-gray-100 border-gray-300'
-            }`}
-            title={isTimelineVisible ? 'Masquer la timeline (T)' : 'Afficher la timeline (T)'}
-          >
-            {isTimelineVisible ? <Map className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}
-          </button>
-          
-          <form onSubmit={handleDaySubmit} className="flex items-center gap-1">
-            <div className="relative group">
-              <input 
-                ref={dayInputRef}
-                type="number" 
-                value={currentDay} 
-                onChange={handleDayChange}
-                onWheel={handleDayWheel}
-                className="w-16 pl-2 pr-6 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                placeholder="J..."
-                min="0"
-                max="200"
-              />
-              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex flex-col">
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); navigateDay(-1); }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                  title="Jour précédent (↑)"
-                >
-                  <ChevronUp className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); navigateDay(1); }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                  title="Jour suivant (↓)"
-                >
-                  <ChevronDown className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          </form>
-          
-          <button 
-            onClick={jumpToRandomMoment} 
-            className="p-1.5 rounded-lg border bg-white hover:bg-gray-100" 
-            title="Moment au hasard"
-          >
-            <Dices className="w-5 h-5 text-gray-700" />
-          </button>
-          
-          <button 
-            onClick={() => setIsSearchOpen(!isSearchOpen)} 
-            className={`p-1.5 rounded-lg border ${isSearchOpen ? 'bg-blue-100 text-blue-700' : 'bg-white hover:bg-gray-100'}`}
-            title="Rechercher (/)"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-          
-          <div className="h-6 w-px bg-gray-300" />
-          
-          <DisplayOptionsButtons 
-            displayOptions={displayOptions}
-            onToggle={handleDisplayOptionToggle}
-          />
-          
-          <div className="flex-1" />
-          
-          <button 
-            onClick={handleToggleDisplayMode}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border transition-all ${
-              displayMode === 'focus' 
-                ? 'bg-amber-100 text-amber-700 border-amber-300' 
-                : 'bg-purple-100 text-purple-700 border-purple-300'
-            }`}
-            title={displayMode === 'focus' ? 'Mode Focus (F pour changer)' : 'Mode Multi (F pour changer)'}
-          >
-            {displayMode === 'focus' ? <Focus className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
-            <span className="text-xs font-medium hidden sm:inline">
-              {displayMode === 'focus' ? 'Focus' : 'Multi'}
-            </span>
-          </button>
-        </div>
-
-        {isSearchOpen && (
-          <div className="mt-2 animate-slideDown">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input 
-                ref={searchInputRef}
-                type="text" 
-                value={searchQuery} 
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setIsSearchOpen(false);
-                    setSearchQuery('');
-                  }
-                }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                placeholder="Rechercher un texte, un titre... (Echap pour fermer)"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <ChevronDown className="w-4 h-4 rotate-45" />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-});
-
-// ====================================================================
-// COMPOSANT : BOUTONS OPTIONS D'AFFICHAGE
-// ====================================================================
-const DisplayOptionsButtons = memo(({ displayOptions, onToggle }) => (
-  <div className="flex items-center gap-2">
-    <button 
-      onClick={() => onToggle('showPostText')} 
-      className={`p-1.5 rounded-lg border ${displayOptions.showPostText ? 'bg-blue-100 text-blue-700' : 'bg-white'}`} 
-      title="Afficher/Masquer le texte"
-    >
-      <Type className="w-4 h-4" />
-    </button>
-    <button 
-      onClick={() => onToggle('showPostPhotos')} 
-      className={`p-1.5 rounded-lg border ${displayOptions.showPostPhotos ? 'bg-blue-100 text-blue-700' : 'bg-white'}`} 
-      title="Afficher/Masquer les photos des articles"
-    >
-      <ImageIcon className="w-4 h-4" />
-    </button>
-    <button 
-      onClick={() => onToggle('showMomentPhotos')} 
-      className={`p-1.5 rounded-lg border ${displayOptions.showMomentPhotos ? 'bg-blue-100 text-blue-700' : 'bg-white'}`} 
-      title="Afficher/Masquer les photos du moment"
-    >
-      <Camera className="w-4 h-4" />
-    </button>
-  </div>
-));
-
-// ====================================================================
-// COMPOSANT : LISTE DES MOMENTS
-// ====================================================================
 const MomentsList = memo(({ 
   moments, selectedMoments, displayOptions, onMomentSelect, onPhotoClick, onCreateSession, momentRefs
 }) => {
@@ -588,9 +322,6 @@ const MomentsList = memo(({
   );
 });
 
-// ====================================================================
-// COMPOSANT : CARTE MOMENT
-// ====================================================================
 const MomentCard = memo(React.forwardRef(({ 
   moment, isSelected, displayOptions, onSelect, onPhotoClick, onCreateSession
 }, ref) => {  
@@ -662,9 +393,6 @@ const MomentCard = memo(React.forwardRef(({
   );
 }));
 
-// ====================================================================
-// COMPOSANT : EN-TÊTE MOMENT
-// ====================================================================
 const MomentHeader = memo(({ moment, isSelected, onSelect, onOpenWith, onCreateSession, localDisplay, onToggleLocal }) => {
   
   const handleLinkClick = (e, contentType) => {
@@ -754,9 +482,6 @@ const MomentHeader = memo(({ moment, isSelected, onSelect, onOpenWith, onCreateS
   );
 });
 
-// ====================================================================
-// COMPOSANT : CONTENU MOMENT
-// ====================================================================
 const MomentContent = memo(({ 
   moment, displayOptions, localDisplay, visibleDayPhotos, photosPerLoad, 
   onPhotoClick, onCreateSession, onLoadMorePhotos, onToggleDayPhotos  
@@ -826,9 +551,6 @@ const MomentContent = memo(({
   </div>
 ));
 
-// ====================================================================
-// COMPOSANT : ARTICLE POST
-// ====================================================================
 const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreateSession }) => {
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
@@ -904,9 +626,6 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
   );
 });
 
-// ====================================================================
-// COMPOSANT : GRILLE PHOTOS
-// ====================================================================
 const PhotoGrid = memo(({ photos, moment, onPhotoClick, allPhotos }) => (
   <div className="mt-2">
     <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
@@ -922,9 +641,6 @@ const PhotoGrid = memo(({ photos, moment, onPhotoClick, allPhotos }) => (
   </div>
 ));
 
-// ====================================================================
-// COMPOSANT : VIGNETTE PHOTO
-// ====================================================================
 const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [status, setStatus] = useState('loading');
@@ -988,9 +704,6 @@ const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
   );
 });
 
-// ====================================================================
-// FONCTIONS UTILITAIRES
-// ====================================================================
 function enrichMomentsWithData(rawMoments) {
   if (!rawMoments) return [];
   return rawMoments.map((moment, index) => ({
@@ -1014,29 +727,3 @@ function getFilteredMoments(momentsData, searchQuery) {
     m.posts?.some(p => p.content && p.content.toLowerCase().includes(query))
   );
 }
-
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  .animate-slideDown {
-    animation: slideDown 0.2s ease-out;
-  }
-  .animate-fadeIn {
-    animation: fadeIn 0.3s ease-out;
-  }
-  kbd {
-    display: inline-block;
-    padding: 2px 4px;
-    font-size: 11px;
-    line-height: 1;
-    font-family: monospace;
-  }
-`;
-document.head.appendChild(style);
