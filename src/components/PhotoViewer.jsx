@@ -1,10 +1,11 @@
 /**
- * PhotoViewer.jsx v2.2 - FIX: Navigation suivant/précédent
- * ✅ CORRECTION: Empêcher la propagation d'événements sur les boutons de navigation
- * ✅ AMÉLIORATION: Gestion des erreurs d'images et loading states
+ * PhotoViewer.jsx v2.4 - FIX: Boutons cliquables + Swipe mobile
+ * ✅ Structure corrigée (header au-dessus de tout)
+ * ✅ Gestures tactiles (swipe gauche/droite)
+ * ✅ z-index hiérarchisé
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, PlusCircle } from 'lucide-react';
 import { photoDataV2 } from '../core/PhotoDataV2.js';
 
@@ -14,6 +15,10 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  
+  // ✅ NOUVEAU : Gestion du swipe
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   useEffect(() => {
     const initialIndex = gallery.findIndex(p => (p.url || p.google_drive_id) === (photo.url || photo.google_drive_id));
@@ -46,10 +51,7 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
     resolveUrl();
   }, [currentPhoto]);
   
-  // ✅ CORRECTION: Empêcher la propagation d'événements
-  const navigate = (direction, event) => {
-    event.stopPropagation(); // ← Empêche la fermeture de la visionneuse
-    
+  const navigate = (direction) => {
     const newIndex = currentIndex + direction;
     if (newIndex >= 0 && newIndex < gallery.length) {
       setCurrentIndex(newIndex);
@@ -57,17 +59,41 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
     }
   };
 
-  const handleCreateSession = (e) => {
-    e.stopPropagation();
-    onCreateSession(currentPhoto, contextMoment); 
+  const handleCreateSession = () => {
+    if (onCreateSession && currentPhoto && contextMoment) {
+      onCreateSession(currentPhoto, contextMoment);
+    }
   };
 
-  // ✅ AMÉLIORATION: Gestion clavier
+  // ✅ NOUVEAU : Gestion des gestures tactiles
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    const diff = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50;
+    
+    if (Math.abs(diff) > minSwipeDistance) {
+      if (diff > 0) {
+        // Swipe gauche → photo suivante
+        navigate(1);
+      } else {
+        // Swipe droite → photo précédente
+        navigate(-1);
+      }
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowLeft' && currentIndex > 0) navigate(-1, e);
-      if (e.key === 'ArrowRight' && currentIndex < gallery.length - 1) navigate(1, e);
+      if (e.key === 'ArrowLeft') navigate(-1);
+      if (e.key === 'ArrowRight') navigate(1);
     };
     
     document.addEventListener('keydown', handleKeyDown);
@@ -75,81 +101,104 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
   }, [currentIndex, gallery.length, onClose]);
 
   return (
-  <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60 flex flex-col" // ← z-60 au lieu de z-50
-       onClick={onClose}>
-    
-    {/* NOUVEAU : Header avec contrôles (en haut) */}
-    <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-70"
-         onClick={(e) => e.stopPropagation()}>
+    <div 
+      className="fixed inset-0 bg-black/90"
+      style={{ zIndex: 9999 }}
+    >
       
-      {/* Bouton Session à gauche */}
-      <button 
-        onClick={handleCreateSession} 
-        className="flex items-center space-x-2 bg-amber-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-amber-600 shadow-lg"
-        title="Créer une session de chat"
+      {/* ✅ HEADER : z-index maximal, pointer-events garanti */}
+      <div 
+        className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between"
+        style={{ zIndex: 10001 }} // Au-dessus de l'image
       >
-        <PlusCircle className="w-5 h-5" /> 
-        <span className="hidden sm:inline">Session</span>
-      </button>
-      
-      {/* Compteur au centre */}
-      <div className="text-white bg-black/50 rounded-full px-4 py-2 text-sm font-medium">
-        {currentIndex + 1} / {gallery.length}
-      </div>
-      
-      {/* Bouton fermer à droite */}
-      <button 
-        onClick={onClose} 
-        className="text-white bg-black/50 rounded-full p-2 hover:bg-black/80 shadow-lg"
-        title="Fermer (Echap)"
-      >
-        <X className="w-6 h-6" />
-      </button>
-    </div>
-
-    {/* Zone image principale (reste identique) */}
-    <div className="relative w-full h-full flex items-center justify-center p-4" 
-         onClick={(e) => e.stopPropagation()}>
-      
-      {loading && (
-        <div className="animate-spin w-12 h-12 border-4 border-white border-t-transparent rounded-full"></div>
-      )}
-      
-      {error && (
-        <div className="text-white text-center">
-          <div className="text-6xl mb-4">⚠️</div>
-          <p>Erreur de chargement de l'image</p>
+        
+        {/* Bouton Session */}
+        <button 
+          onClick={handleCreateSession}
+          className="flex items-center space-x-2 bg-amber-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-amber-600 shadow-xl transition-colors"
+          title="Créer une session de chat"
+        >
+          <PlusCircle className="w-5 h-5" /> 
+          <span className="hidden sm:inline">Session</span>
+        </button>
+        
+        {/* Compteur */}
+        <div className="text-white bg-black/70 rounded-full px-4 py-2 text-sm font-medium shadow-lg">
+          {currentIndex + 1} / {gallery.length}
         </div>
+        
+        {/* Bouton fermer */}
+        <button 
+          onClick={onClose}
+          className="text-white bg-black/70 rounded-full p-3 hover:bg-black/90 shadow-xl transition-colors"
+          title="Fermer (Echap)"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* ✅ ZONE IMAGE : pointer-events auto uniquement sur l'image */}
+      <div 
+        className="absolute inset-0 flex items-center justify-center px-16"
+        style={{ pointerEvents: 'none', zIndex: 10000 }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        
+        {loading && (
+          <div className="animate-spin w-12 h-12 border-4 border-white border-t-transparent rounded-full" 
+               style={{ pointerEvents: 'auto' }} />
+        )}
+        
+        {error && (
+          <div className="text-white text-center" style={{ pointerEvents: 'auto' }}>
+            <div className="text-6xl mb-4">⚠️</div>
+            <p>Erreur de chargement</p>
+          </div>
+        )}
+        
+        {!loading && !error && imageUrl && (
+          <img 
+            src={imageUrl} 
+            alt="Photo de voyage" 
+            className="max-w-full max-h-full object-contain"
+            style={{ pointerEvents: 'auto' }}
+            onError={() => setError(true)}
+            onClick={onClose} // ✅ Clic sur l'image = fermer
+          />
+        )}
+      </div>
+
+      {/* ✅ BOUTONS NAVIGATION : z-index élevé */}
+      {gallery.length > 1 && currentIndex > 0 && (
+        <button 
+          onClick={() => navigate(-1)}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/70 rounded-full p-3 hover:bg-black/90 shadow-xl transition-colors"
+          style={{ zIndex: 10001 }}
+          title="Photo précédente (← ou swipe droite)"
+        >
+          <ChevronLeft className="w-8 h-8" />
+        </button>
       )}
       
-      {!loading && !error && imageUrl && (
-        <img 
-          src={imageUrl} 
-          alt="Photo de voyage" 
-          className="max-w-full max-h-full object-contain"
-          onError={() => setError(true)}
-        />
+      {gallery.length > 1 && currentIndex < gallery.length - 1 && (
+        <button 
+          onClick={() => navigate(1)}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/70 rounded-full p-3 hover:bg-black/90 shadow-xl transition-colors"
+          style={{ zIndex: 10001 }}
+          title="Photo suivante (→ ou swipe gauche)"
+        >
+          <ChevronRight className="w-8 h-8" />
+        </button>
       )}
-    </div>
 
-    {/* Boutons navigation (restent identiques) */}
-    {gallery.length > 1 && currentIndex > 0 && (
-      <button 
-        onClick={(e) => navigate(-1, e)} 
-        className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/50 rounded-full p-2 hover:bg-black/80"
-      >
-        <ChevronLeft className="w-8 h-8" />
-      </button>
-    )}
-    
-    {gallery.length > 1 && currentIndex < gallery.length - 1 && (
-      <button 
-        onClick={(e) => navigate(1, e)} 
-        className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/50 rounded-full p-2 hover:bg-black/80"
-      >
-        <ChevronRight className="w-8 h-8" />
-      </button>
-    )}
-  </div>
-);
+      {/* ✅ OVERLAY CLIQUABLE pour fermer (derrière tout) */}
+      <div 
+        className="absolute inset-0"
+        style={{ zIndex: 9999 }}
+        onClick={onClose}
+      />
+    </div>
+  );
 }
