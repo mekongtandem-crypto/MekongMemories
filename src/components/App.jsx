@@ -1,31 +1,31 @@
 /**
- * App.jsx v1.2 - Intégration de la navigation et des pages
- * - Ajout de BottomNavigation pour le menu principal.
- * - Le PageRenderer peut maintenant afficher les pages Sessions et Chat.
+ * App.jsx v1.3 - Spinner global création session
+ * ✅ NOUVEAU : Affichage SessionCreationSpinner si isCreatingSession
  */
 import React from 'react';
 import { useAppState } from '../hooks/useAppState.js';
-import { TopNavigation, BottomNavigation } from './Navigation.jsx'; // Mise à jour de l'import
+import { TopNavigation, BottomNavigation } from './Navigation.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import MemoriesPage from './pages/MemoriesPage.jsx';
-// --- AJOUTS : Import des nouvelles pages ---
 import SessionsPage from './pages/SessionsPage.jsx';
 import ChatPage from './pages/ChatPage.jsx';
 import UserSelectionPage from './pages/UserSelectionPage.jsx';
-// ------------------------------------------
+import SessionCreationSpinner from './SessionCreationSpinner.jsx'; // ✅ NOUVEAU
 
 class ErrorBoundary extends React.Component {
-  // ... (contenu de ErrorBoundary inchangé)
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null };
   }
+  
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
   }
+  
   componentDidCatch(error, errorInfo) {
     console.error("--- ERREUR DE RENDU ATTRAPÉE PAR L'ERROR BOUNDARY ---", error, errorInfo);
   }
+  
   render() {
     if (this.state.hasError) {
       return (
@@ -41,18 +41,15 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-/** Le PageRenderer mis à jour pour gérer toutes les pages */
 function PageRenderer({ currentPage }) {
   switch (currentPage) {
     case 'settings':
       return <SettingsPage />;
-    // --- AJOUTS ---
     case 'sessions':
       return <SessionsPage />;
     case 'chat':
       return <ChatPage />;
-    // --------------
-    case 'memories': // 'home' est maintenant 'memories'
+    case 'memories':
     default:
       return <MemoriesPage />;
   }
@@ -63,19 +60,16 @@ export default function App() {
 
   if (!app.isInitialized) {
     return (
-        <div className="flex items-center justify-center h-screen">
-            <p className="animate-pulse text-lg">Chargement des souvenirs du Mékong...</p>
-        </div>
+      <div className="flex items-center justify-center h-screen">
+        <p className="animate-pulse text-lg">Chargement des souvenirs du Mékong...</p>
+      </div>
     );
   }
 
-  // 2. AJOUTER CETTE CONDITION : Si l'app est prête MAIS qu'il n'y a pas d'ID utilisateur
-  // On vérifie app.currentUser (l'ID) plutôt que l'objet complet pour plus de sûreté
   if (!app.currentUser) {
     return <UserSelectionPage />;
   }
   
-  // 3. Si tout va bien, on affiche l'application normale
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50">
@@ -86,9 +80,10 @@ export default function App() {
         </main>
         
         <BottomNavigation currentPage={app.currentPage} onPageChange={app.updateCurrentPage} />
+        
+        {/* ✅ NOUVEAU : Spinner global */}
+        {app.isCreatingSession && <SessionCreationSpinner />}
       </div>
     </ErrorBoundary>
   );
 }
-  
-  

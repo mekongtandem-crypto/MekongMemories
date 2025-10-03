@@ -1,6 +1,6 @@
 /**
- * DataManager v3.1 - FIX: Cohérence utilisateurs
- * CORRECTION: Utilisation cohérente des IDs utilisateur dans les messages
+ * DataManager v3.2 - Spinner global création session
+ * ✅ NOUVEAU : State isCreatingSession
  */
 class DataManager {
   constructor() {
@@ -9,13 +9,20 @@ class DataManager {
     this.stateManager = null;
 
     this.appState = {
-      isInitialized: false, isLoading: true, masterIndex: null, sessions: [],
-      currentChatSession: null, currentUser: null, currentPage: 'memories',
-      error: null, connection: { hasError: false, lastError: null },
+      isInitialized: false, 
+      isLoading: true, 
+      masterIndex: null, 
+      sessions: [],
+      currentChatSession: null, 
+      currentUser: null, 
+      currentPage: 'memories',
+      error: null, 
+      connection: { hasError: false, lastError: null },
+      isCreatingSession: false, // ✅ NOUVEAU
     };
 
     this.listeners = new Set();
-    console.log('📦 DataManager v3.1 (User Fix): Ready.');
+    console.log('📦 DataManager v3.2 (Spinner global): Ready.');
   }
 
   initializeDependencies(dependencies) {
@@ -31,12 +38,11 @@ class DataManager {
     this.notify();
   }
 
-  // --- Fonctions de cycle de vie ---
-
   handleConnectionChange = async (connectionState) => {
     if (connectionState.hasError) {
       this.updateState({
-        isLoading: false, error: `Connection Error: ${connectionState.lastError}`,
+        isLoading: false, 
+        error: `Connection Error: ${connectionState.lastError}`,
         connection: { hasError: true, lastError: connectionState.lastError }
       });
     }
@@ -48,27 +54,38 @@ class DataManager {
   synchronizeInitialData = async () => {
     console.log('🚀 DataManager: Synchronisation initiale...');
     this.updateState({ isLoading: true });
+    
     try {
       const cachedUser = await this.stateManager.get('mekong_currentUser');
       if (cachedUser) console.log(`👤 Utilisateur en cache trouvé : ${cachedUser}`);
       
       const loadedFiles = await this.driveSync.loadAllData();
-      const masterIndex = (loadedFiles?.masterIndex) ? (typeof loadedFiles.masterIndex === 'string' ? JSON.parse(loadedFiles.masterIndex) : loadedFiles.masterIndex) : null;
+      const masterIndex = (loadedFiles?.masterIndex) ? 
+        (typeof loadedFiles.masterIndex === 'string' ? JSON.parse(loadedFiles.masterIndex) : loadedFiles.masterIndex) 
+        : null;
       const sessions = loadedFiles.sessions || [];
 
       this.updateState({
-        masterIndex, sessions, currentUser: cachedUser || null,
-        isLoading: false, isInitialized: true, error: null
+        masterIndex, 
+        sessions, 
+        currentUser: cachedUser || null,
+        isLoading: false, 
+        isInitialized: true, 
+        error: null
       });
+      
       console.log(`✅ DataManager: Synchro terminée. ${sessions.length} session(s) chargée(s).`);
+      
     } catch (error) {
       console.error("❌ DataManager: Erreur de synchronisation.", error);
-      this.updateState({ error: `Sync Error: ${error.message}`, isLoading: false, isInitialized: true });
+      this.updateState({ 
+        error: `Sync Error: ${error.message}`, 
+        isLoading: false, 
+        isInitialized: true 
+      });
     }
   }
 
-  // --- API PUBLIQUE (toutes en fonctions fléchées) ---
-  
   setCurrentUser = (userId) => {
     console.log(`👤 Changement d'utilisateur -> ${userId}`);
     this.stateManager.set('mekong_currentUser', userId);
@@ -82,9 +99,6 @@ class DataManager {
     }
   }
   
-  /**
-   * Recharge le masterIndex après génération
-   */
   reloadMasterIndex = async () => {
     try {
       console.log('🔄 DataManager: Rechargement manuel du masterIndex...');
@@ -94,7 +108,6 @@ class DataManager {
         await this.stateManager.set('master_index_v3', masterIndexData);
         await this.stateManager.set('master_index_loaded_at', new Date().toISOString());
         
-        // CORRECTION: Utiliser updateState au lieu de setState
         this.updateState({ masterIndex: masterIndexData });
         
         console.log('✅ MasterIndex rechargé et appliqué !');
@@ -109,28 +122,45 @@ class DataManager {
     }
   }
 
-  // --- API SESSIONS ---
-
-  /** Crée une nouvelle session de chat */
+  // ✅ MODIFIÉ : Gestion spinner global
   createSession = async (gameData) => {
-    const newSession = {
-      id: `sid_${Date.now()}`, 
-      gameId: gameData.id, 
-      gameTitle: gameData.title,
-      subtitle: `Conversation sur ${gameData.title}`, 
-      createdAt: new Date().toISOString(),
-      user: this.appState.currentUser, // ID string 
-      notes: [],
-    };
-    await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
-    this.updateState({ sessions: [...this.appState.sessions, newSession] });
-    return newSession;
+    this.updateState({ isCreatingSession: true });
+    
+    try {
+      const newSession = {
+        id: `sid_${Date.now()}`, 
+        gameId: gameData.id, 
+        gameTitle: gameData.title,
+        subtitle: `Conversation sur ${gameData.title}`, 
+        createdAt: new Date().toISOString(),
+        user: this.appState.currentUser,
+        notes: [],
+      };
+      
+      await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
+      
+      this.updateState({ 
+        sessions: [...this.appState.sessions, newSession],
+        isCreatingSession: false
+      });
+      
+      console.log('✅ Session créée avec succès');
+      return newSession;
+      
+    } catch (error) {
+      console.error('❌ Erreur création session:', error);
+      this.updateState({ isCreatingSession: false });
+      throw error;
+    }
   }
 
   updateSession = async (sessionToUpdate) => {
     await this.driveSync.saveFile(`session_${sessionToUpdate.id}.json`, sessionToUpdate);
-    const updatedSessions = this.appState.sessions.map(s => s.id === sessionToUpdate.id ? sessionToUpdate : s);
-    const updatedCurrentChat = this.appState.currentChatSession?.id === sessionToUpdate.id ? sessionToUpdate : this.appState.currentChatSession;
+    const updatedSessions = this.appState.sessions.map(s => 
+      s.id === sessionToUpdate.id ? sessionToUpdate : s
+    );
+    const updatedCurrentChat = this.appState.currentChatSession?.id === sessionToUpdate.id ? 
+      sessionToUpdate : this.appState.currentChatSession;
     this.updateState({ sessions: updatedSessions, currentChatSession: updatedCurrentChat });
   }
 
@@ -140,14 +170,13 @@ class DataManager {
     this.updateState({ sessions: filteredSessions });
   }
 
-  // ✅ CORRECTION CRITIQUE: Utiliser l'ID utilisateur au lieu de l'objet
   addMessageToSession = async (sessionId, messageContent) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
     if (!session) return;
     
     const newMessage = {
       id: `msg_${Date.now()}`, 
-      author: this.appState.currentUser, // ← Maintenant c'est cohérent (ID string)
+      author: this.appState.currentUser,
       content: messageContent, 
       timestamp: new Date().toISOString(), 
       edited: false
@@ -165,14 +194,19 @@ class DataManager {
     this.updateState({ currentChatSession: null, currentPage: 'sessions' });
   }
 
-  // --- Gestion de l'état et des abonnements ---
   getState = () => this.appState;
+  
   subscribe = (callback) => {
     this.listeners.add(callback);
     callback(this.appState);
     return () => this.listeners.delete(callback);
   }
-  notify = () => { for (const listener of this.listeners) { listener(this.getState()); } }
+  
+  notify = () => { 
+    for (const listener of this.listeners) { 
+      listener(this.getState()); 
+    } 
+  }
 }
 
 export const dataManager = new DataManager();

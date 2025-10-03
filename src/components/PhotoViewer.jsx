@@ -1,8 +1,6 @@
 /**
- * PhotoViewer.jsx v2.4 - FIX: Boutons cliquables + Swipe mobile
- * ✅ Structure corrigée (header au-dessus de tout)
- * ✅ Gestures tactiles (swipe gauche/droite)
- * ✅ z-index hiérarchisé
+ * PhotoViewer.jsx v2.5 - Spinner global (suppression state local)
+ * ✅ handleCreateSession simplifié (spinner géré par DataManager)
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -12,12 +10,10 @@ import { photoDataV2 } from '../core/PhotoDataV2.js';
 export default function PhotoViewer({ photo, gallery, contextMoment, onClose, onCreateSession }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentPhoto, setCurrentPhoto] = useState(photo);
-  const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   
-  // ✅ NOUVEAU : Gestion du swipe
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
@@ -60,21 +56,18 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
     }
   };
 
+  // ✅ SIMPLIFIÉ : Pas de state local, spinner global géré par DataManager
   const handleCreateSession = async () => {
-  if (onCreateSession && currentPhoto && contextMoment) {
-    setIsCreatingSession(true);
-    try {
-      await onCreateSession(currentPhoto, contextMoment);
-    } catch (error) {
-      console.error('Erreur création session:', error);
-      alert('Impossible de créer la session');
-    } finally {
-      setIsCreatingSession(false);
+    if (onCreateSession && currentPhoto && contextMoment) {
+      try {
+        await onCreateSession(currentPhoto, contextMoment);
+      } catch (error) {
+        console.error('Erreur création session:', error);
+        alert('Impossible de créer la session');
+      }
     }
-  }
-};
+  };
 
-  // ✅ NOUVEAU : Gestion des gestures tactiles
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
   };
@@ -89,10 +82,8 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
     
     if (Math.abs(diff) > minSwipeDistance) {
       if (diff > 0) {
-        // Swipe gauche → photo suivante
         navigate(1);
       } else {
-        // Swipe droite → photo précédente
         navigate(-1);
       }
     }
@@ -115,39 +106,25 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
       style={{ zIndex: 9999 }}
     >
       
-      {/* ✅ HEADER : z-index maximal, pointer-events garanti */}
       <div 
         className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between"
-        style={{ zIndex: 10001 }} // Au-dessus de l'image
+        style={{ zIndex: 10001 }}
       >
         
-        {/* Bouton Session */}
+        {/* ✅ Bouton simplifié (pas de spinner local) */}
         <button 
-  onClick={handleCreateSession}
-  disabled={isCreatingSession}
-  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold shadow-xl transition-colors ${
-    isCreatingSession 
-      ? 'bg-amber-400 cursor-wait' 
-      : 'bg-amber-500 hover:bg-amber-600'
-  } text-white`}
-  title={isCreatingSession ? "Création en cours..." : "Créer une session de chat"}
->
-  {isCreatingSession ? (
-    <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-  ) : (
-    <PlusCircle className="w-5 h-5" />
-  )}
-  <span className="hidden sm:inline">
-    {isCreatingSession ? 'Création...' : 'Session'}
-  </span>
-</button>
+          onClick={handleCreateSession}
+          className="flex items-center space-x-2 bg-amber-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-amber-600 shadow-xl transition-colors"
+          title="Créer une session de chat"
+        >
+          <PlusCircle className="w-5 h-5" /> 
+          <span className="hidden sm:inline">Session</span>
+        </button>
         
-        {/* Compteur */}
         <div className="text-white bg-black/70 rounded-full px-4 py-2 text-sm font-medium shadow-lg">
           {currentIndex + 1} / {gallery.length}
         </div>
         
-        {/* Bouton fermer */}
         <button 
           onClick={onClose}
           className="text-white bg-black/70 rounded-full p-3 hover:bg-black/90 shadow-xl transition-colors"
@@ -157,7 +134,6 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
         </button>
       </div>
 
-      {/* ✅ ZONE IMAGE : pointer-events auto uniquement sur l'image */}
       <div 
         className="absolute inset-0 flex items-center justify-center px-16"
         style={{ pointerEvents: 'none', zIndex: 10000 }}
@@ -185,12 +161,11 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
             className="max-w-full max-h-full object-contain"
             style={{ pointerEvents: 'auto' }}
             onError={() => setError(true)}
-            onClick={onClose} // ✅ Clic sur l'image = fermer
+            onClick={onClose}
           />
         )}
       </div>
 
-      {/* ✅ BOUTONS NAVIGATION : z-index élevé */}
       {gallery.length > 1 && currentIndex > 0 && (
         <button 
           onClick={() => navigate(-1)}
@@ -213,7 +188,6 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
         </button>
       )}
 
-      {/* ✅ OVERLAY CLIQUABLE pour fermer (derrière tout) */}
       <div 
         className="absolute inset-0"
         style={{ zIndex: 9999 }}
