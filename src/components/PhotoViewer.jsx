@@ -12,6 +12,7 @@ import { photoDataV2 } from '../core/PhotoDataV2.js';
 export default function PhotoViewer({ photo, gallery, contextMoment, onClose, onCreateSession }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentPhoto, setCurrentPhoto] = useState(photo);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -59,11 +60,19 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
     }
   };
 
-  const handleCreateSession = () => {
-    if (onCreateSession && currentPhoto && contextMoment) {
-      onCreateSession(currentPhoto, contextMoment);
+  const handleCreateSession = async () => {
+  if (onCreateSession && currentPhoto && contextMoment) {
+    setIsCreatingSession(true);
+    try {
+      await onCreateSession(currentPhoto, contextMoment);
+    } catch (error) {
+      console.error('Erreur création session:', error);
+      alert('Impossible de créer la session');
+    } finally {
+      setIsCreatingSession(false);
     }
-  };
+  }
+};
 
   // ✅ NOUVEAU : Gestion des gestures tactiles
   const handleTouchStart = (e) => {
@@ -114,13 +123,24 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
         
         {/* Bouton Session */}
         <button 
-          onClick={handleCreateSession}
-          className="flex items-center space-x-2 bg-amber-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-amber-600 shadow-xl transition-colors"
-          title="Créer une session de chat"
-        >
-          <PlusCircle className="w-5 h-5" /> 
-          <span className="hidden sm:inline">Session</span>
-        </button>
+  onClick={handleCreateSession}
+  disabled={isCreatingSession}
+  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold shadow-xl transition-colors ${
+    isCreatingSession 
+      ? 'bg-amber-400 cursor-wait' 
+      : 'bg-amber-500 hover:bg-amber-600'
+  } text-white`}
+  title={isCreatingSession ? "Création en cours..." : "Créer une session de chat"}
+>
+  {isCreatingSession ? (
+    <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+  ) : (
+    <PlusCircle className="w-5 h-5" />
+  )}
+  <span className="hidden sm:inline">
+    {isCreatingSession ? 'Création...' : 'Session'}
+  </span>
+</button>
         
         {/* Compteur */}
         <div className="text-white bg-black/70 rounded-full px-4 py-2 text-sm font-medium shadow-lg">
