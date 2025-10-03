@@ -1,9 +1,7 @@
 /**
- * App.jsx v2.0 - UnifiedTopBar intégrée
- * ✅ Remplacement TopNavigation par UnifiedTopBar
- * ✅ Gestion des props contextuelles par page
+ * App.jsx v2.1 - Fix jumpToRandomMoment
  */
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAppState } from '../hooks/useAppState.js';
 import UnifiedTopBar from './UnifiedTopBar.jsx';
 import { BottomNavigation } from './Navigation.jsx';
@@ -46,7 +44,6 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   const app = useAppState();
   
-  // États pour MemoriesPage (partagés avec UnifiedTopBar)
   const [isTimelineVisible, setIsTimelineVisible] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [currentDay, setCurrentDay] = useState(1);
@@ -56,8 +53,10 @@ export default function App() {
     showMomentPhotos: true
   });
   
-  // États pour ChatPage
   const [editingChatTitle, setEditingChatTitle] = useState(false);
+  
+  // ✅ NOUVEAU : Ref pour exposer jumpToRandomMoment de MemoriesPage
+  const memoriesPageRef = useRef(null);
 
   if (!app.isInitialized) {
     return (
@@ -91,6 +90,7 @@ export default function App() {
       default:
         return (
           <MemoriesPage 
+            ref={memoriesPageRef}
             isTimelineVisible={isTimelineVisible}
             setIsTimelineVisible={setIsTimelineVisible}
             isSearchOpen={isSearchOpen}
@@ -109,7 +109,6 @@ export default function App() {
         <UnifiedTopBar 
           currentPage={app.currentPage}
           onPageChange={app.updateCurrentPage}
-          // Props MemoriesPage
           isTimelineVisible={isTimelineVisible}
           setIsTimelineVisible={setIsTimelineVisible}
           isSearchOpen={isSearchOpen}
@@ -117,9 +116,10 @@ export default function App() {
           currentDay={currentDay}
           setCurrentDay={setCurrentDay}
           jumpToDay={(day) => {
-            // Cette fonction sera appelée depuis MemoriesPage
-            // Pour l'instant, simple update
             setCurrentDay(day);
+            if (memoriesPageRef.current?.jumpToDay) {
+              memoriesPageRef.current.jumpToDay(day);
+            }
           }}
           navigateDay={(delta) => {
             const newDay = Math.max(0, Math.min(currentDay + delta, 200));
@@ -128,9 +128,10 @@ export default function App() {
           displayOptions={displayOptions}
           setDisplayOptions={setDisplayOptions}
           jumpToRandomMoment={() => {
-            // Fonction passée depuis MemoriesPage
+            if (memoriesPageRef.current?.jumpToRandomMoment) {
+              memoriesPageRef.current.jumpToRandomMoment();
+            }
           }}
-          // Props ChatPage
           chatSession={app.currentChatSession}
           onEditChatTitle={() => setEditingChatTitle(true)}
           onCloseChatSession={app.closeChatSession}

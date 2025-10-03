@@ -1,13 +1,14 @@
 /**
- * UnifiedTopBar.jsx v1.0 - Barre contextuelle unifiée
- * ✅ Structure : [Action] [Contexte] [...] [Avatar]
- * ✅ S'adapte selon la page active
+ * UnifiedTopBar.jsx v1.1 - Corrections UI
+ * ✅ Icônes Activé/Désactivé au lieu de points
+ * ✅ Avatar utilisateur dynamique
+ * ✅ Contexte "Mémoire" en amber-600
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, Settings, Plus, Map, Search, Dices, 
   MoreVertical, Type, Image as ImageIcon, Camera,
-  CloudOff, Cloud, User
+  CloudOff, Cloud, Edit, Trash2, MessageCircle
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
@@ -15,7 +16,6 @@ import { userManager } from '../core/UserManager.js';
 export default function UnifiedTopBar({ 
   currentPage,
   onPageChange,
-  // Props spécifiques MemoriesPage
   isTimelineVisible,
   setIsTimelineVisible,
   isSearchOpen,
@@ -27,7 +27,6 @@ export default function UnifiedTopBar({
   displayOptions,
   setDisplayOptions,
   jumpToRandomMoment,
-  // Props spécifiques ChatPage
   chatSession,
   onEditChatTitle,
   onCloseChatSession
@@ -101,7 +100,7 @@ export default function UnifiedTopBar({
       case 'sessions':
         return (
           <button
-            onClick={() => {/* TODO: Créer session test */}}
+            onClick={() => {/* TODO */}}
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             title="Nouvelle session"
           >
@@ -126,7 +125,7 @@ export default function UnifiedTopBar({
       case 'memories':
         return (
           <div className="flex items-center space-x-3">
-            <span className="text-sm font-medium text-gray-900 hidden sm:inline">
+            <span className="text-sm font-semibold text-amber-600 hidden sm:inline">
               Mémoire
             </span>
             <button 
@@ -210,7 +209,13 @@ export default function UnifiedTopBar({
                 <Type className="w-4 h-4" />
                 <span>Texte des articles</span>
               </span>
-              <span className={displayOptions.showPostText ? 'text-blue-600' : 'text-gray-400'}>●</span>
+              <span className="text-xs font-medium">
+                {displayOptions.showPostText ? (
+                  <span className="text-green-600">✓ Activé</span>
+                ) : (
+                  <span className="text-gray-400">Désactivé</span>
+                )}
+              </span>
             </button>
             <button
               onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))}
@@ -220,7 +225,13 @@ export default function UnifiedTopBar({
                 <ImageIcon className="w-4 h-4" />
                 <span>Photos des articles</span>
               </span>
-              <span className={displayOptions.showPostPhotos ? 'text-blue-600' : 'text-gray-400'}>●</span>
+              <span className="text-xs font-medium">
+                {displayOptions.showPostPhotos ? (
+                  <span className="text-green-600">✓ Activé</span>
+                ) : (
+                  <span className="text-gray-400">Désactivé</span>
+                )}
+              </span>
             </button>
             <button
               onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))}
@@ -230,32 +241,67 @@ export default function UnifiedTopBar({
                 <Camera className="w-4 h-4" />
                 <span>Photos des moments</span>
               </span>
-              <span className={displayOptions.showMomentPhotos ? 'text-blue-600' : 'text-gray-400'}>●</span>
+              <span className="text-xs font-medium">
+                {displayOptions.showMomentPhotos ? (
+                  <span className="text-green-600">✓ Activé</span>
+                ) : (
+                  <span className="text-gray-400">Désactivé</span>
+                )}
+              </span>
             </button>
           </div>
         );
       
       case 'chat':
-        return (
-          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
-            <button
-              onClick={() => {
-                setShowMenu(false);
-                onEditChatTitle();
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-            >
-              Modifier le titre
-            </button>
-            <div className="border-t border-gray-200 my-1"></div>
-            <div className="px-4 py-2 text-xs text-gray-500">
-              {chatSession?.notes?.length || 0} messages
-            </div>
-            <div className="px-4 py-2 text-xs text-gray-500">
-              {chatSession?.createdAt && new Date(chatSession.createdAt).toLocaleDateString()}
-            </div>
-          </div>
-        );
+  return (
+    <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-56">
+      <button
+        onClick={() => {
+          setShowMenu(false);
+          onEditChatTitle();
+        }}
+        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+      >
+        <Edit className="w-4 h-4" />
+        <span>Modifier le titre</span>
+      </button>
+      
+      <button
+        onClick={async () => {
+          setShowMenu(false);
+          if (chatSession && confirm(`Supprimer la session "${chatSession.gameTitle}" ?`)) {
+            await app.deleteSession(chatSession.id);
+            // Retour automatique à la page sessions après suppression
+            app.closeChatSession();
+          }
+        }}
+        className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2"
+      >
+        <Trash2 className="w-4 h-4" />
+        <span>Supprimer la session</span>
+      </button>
+      
+      <div className="border-t border-gray-200 my-1"></div>
+      
+      <button
+        disabled
+        className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center space-x-2"
+        title="Fonctionnalité à venir"
+      >
+        <MessageCircle className="w-4 h-4" />
+        <span>Fusionner les chats</span>
+      </button>
+      
+      <div className="border-t border-gray-200 my-1"></div>
+      
+      <div className="px-4 py-2 text-xs text-gray-500">
+        {chatSession?.notes?.length || 0} messages
+      </div>
+      <div className="px-4 py-2 text-xs text-gray-500">
+        {chatSession?.createdAt && new Date(chatSession.createdAt).toLocaleDateString()}
+      </div>
+    </div>
+  );
       
       case 'sessions':
         return (
@@ -346,24 +392,23 @@ export default function UnifiedTopBar({
     );
   };
 
-  const currentUserObj = userManager.getUser(app.currentUser);
+// APRÈS (CORRECT)
+const currentUserObj = userManager.getUser(app.currentUser?.id) || app.currentUser;
+  console.log('👤 Current user:', app.currentUser, 'Obj:', currentUserObj);
   const isOnline = app.connection?.isOnline;
 
   return (
     <div className="bg-white border-b border-gray-200 px-4 h-12 flex items-center justify-between">
-      {/* Action gauche */}
       <div className="flex items-center space-x-2">
         {renderLeftAction()}
       </div>
 
-      {/* Contexte centre */}
       <div className="flex-1 flex items-center justify-center px-4">
         {renderContext()}
       </div>
 
-      {/* Menu + Avatar droite */}
       <div className="flex items-center space-x-2">
-        {/* Menu contextuel */}
+            {/* Menu contextuel */}
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowMenu(!showMenu)}
@@ -375,13 +420,13 @@ export default function UnifiedTopBar({
           {showMenu && renderMenu()}
         </div>
 
-        {/* Avatar (masqué en mobile) */}
+      {/* Avatar utilisateur */}
         <div className="relative hidden sm:block" ref={userMenuRef}>
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center space-x-2 p-1 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-lg relative">
+            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xl relative">
               {currentUserObj?.emoji || '👤'}
               {!isOnline && (
                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></div>

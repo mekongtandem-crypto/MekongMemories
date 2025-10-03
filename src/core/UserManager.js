@@ -1,6 +1,8 @@
 /**
- * UserManager v0.8 - Gestion centralisée des utilisateurs
+ * UserManager v0.8.2- Ajout des avaters users
  */
+
+
 
 export const USERS = {
   tom: {
@@ -29,6 +31,11 @@ export const USERS = {
 export class UserManager {
   constructor() {
     console.log('👤 UserManager: Construction...');
+    this.users = [
+    { id: 'lambert', name: 'Lambert', color: 'green', emoji: localStorage.getItem('mekong_avatar_lambert') || '🚴', description: 'L\'explorateur intrépide' },
+    { id: 'tom', name: 'Tom', color: 'blue', emoji: localStorage.getItem('mekong_avatar_tom') || '👨‍💻', description: 'Le jeune aventurier' },
+    { id: 'duo', name: 'Duo', color: 'amber', emoji: localStorage.getItem('mekong_avatar_duo') || '👥', description: 'L\'équipe complète' }
+  ];
   }
 
   /**
@@ -44,6 +51,20 @@ export class UserManager {
   getUser(userId) {
     return USERS[userId] || null;
   }
+
+// Dans UserManager.js, ajoute cette méthode après getUser()
+
+updateUserEmoji(userId, newEmoji) {
+  const user = this.users.find(u => u.id === userId);
+  if (user) {
+    user.emoji = newEmoji;
+    // Sauvegarder en localStorage pour persister
+    localStorage.setItem(`mekong_avatar_${userId}`, newEmoji);
+  }
+}
+
+
+
 
   /**
    * Valider qu'un ID utilisateur existe

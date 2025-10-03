@@ -5,8 +5,7 @@
  * ✅ Garde toute la logique moments/photos/sessions
  */
 
-import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
-import { useAppState } from '../../hooks/useAppState.js';
+import React, { useState, useEffect, useRef, memo, useCallback, useImperativeHandle } from 'react';import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
   AlertCircle, ChevronDown, MessageCircle
@@ -15,7 +14,8 @@ import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
 import SessionCreationModal from '../SessionCreationModal.jsx';
 
-export default function MemoriesPage({ 
+// APRÈS (CORRECT - juste function, pas export)
+function MemoriesPage({ 
   isTimelineVisible,
   setIsTimelineVisible,
   isSearchOpen,
@@ -23,7 +23,7 @@ export default function MemoriesPage({
   currentDay,
   setCurrentDay,
   displayOptions
-}) {
+}, ref) {  // ✅ AJOUT : accepter ref
   const app = useAppState();
   const [selectedMoments, setSelectedMoments] = useState([]);
   const [displayMode, setDisplayMode] = useState('focus');
@@ -39,6 +39,25 @@ export default function MemoriesPage({
 
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const momentRefs = useRef({});
+  
+  // ✅ NOUVEAU : Exposer fonctions via ref
+  React.useImperativeHandle(ref, () => ({
+    jumpToRandomMoment: () => {
+      if (momentsData.length > 0) {
+        const randomIndex = Math.floor(Math.random() * momentsData.length);
+        const randomMoment = momentsData[randomIndex];
+        handleSelectMoment(randomMoment);
+        setCurrentDay(randomMoment.dayStart);
+      }
+    },
+    jumpToDay: (day) => {
+      const targetMoment = momentsData.find(m => day >= m.dayStart && day <= m.dayEnd);
+      if (targetMoment) {
+        handleSelectMoment(targetMoment);
+        setCurrentDay(day);
+      }
+    }
+  }), [momentsData, setCurrentDay]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -727,3 +746,5 @@ function getFilteredMoments(momentsData, searchQuery) {
     m.posts?.some(p => p.content && p.content.toLowerCase().includes(query))
   );
 }
+
+export default React.forwardRef(MemoriesPage);

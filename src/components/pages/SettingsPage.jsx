@@ -1,16 +1,25 @@
 /**
- * SettingsPage.jsx v3.0 - Adaptation UnifiedTopBar
- * ✅ Suppression du header redondant
- * ✅ Mise en page simplifiée
+ * SettingsPage.jsx v3.1 - Sélection avatars
+ * ✅ Ajout choix d'avatar par utilisateur
  */
 import React, { useState } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
-import { RefreshCw, Database, Users, Info } from 'lucide-react';
+import { RefreshCw, Database, Users, Info, Smile } from 'lucide-react';
+
+// Liste d'avatars disponibles
+const AVAILABLE_AVATARS = [
+  '🚴', '🧗', '🏃', '🚶', '🧘', '🏊', '🚣', '🏔️', '⛰️',
+  '👨‍💻', '👩‍💻', '🧑‍💼', '👨‍🎨', '👩‍🎨', '🧑‍🔬', '👨‍🏫', '👩‍🏫',
+  '😊', '😎', '🤓', '🧐', '🥳', '🤗', '🌟', '✨', '🎨',
+  '📸', '🎒', '🗺️', '🧭', '⛺', '🏕️', '🌏', '🌍', '🌎',
+  '👥', '👫', '👬', '👭', '🤝', '💩', '💭', '🗨️', '💡'
+];
 
 export default function SettingsPage() {
   const app = useAppState();
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [editingAvatar, setEditingAvatar] = useState(null);
 
   const handleRegenerateIndex = async () => {
     if (!confirm('Régénérer l\'index complet ? Cette opération peut prendre quelques secondes.')) {
@@ -37,9 +46,20 @@ export default function SettingsPage() {
     app.setCurrentUser(userId);
   };
 
+  const handleChangeAvatar = (userId, newEmoji) => {
+    userManager.updateUserEmoji(userId, newEmoji);
+    setEditingAvatar(null);
+    // Force un re-render en changeant temporairement puis revenant
+    const currentId = app.currentUser?.id;
+    if (currentId === userId) {
+      app.setCurrentUser(null);
+      setTimeout(() => app.setCurrentUser(userId), 10);
+    }
+  };
+
   const users = [
     { id: 'lambert', name: 'Lambert', emoji: '🚴' },
-    { id: 'tom', name: 'Tom', emoji: '🧗' },
+    { id: 'tom', name: 'Tom', emoji: '👨‍💻' },
     { id: 'duo', name: 'Duo', emoji: '👥' }
   ];
 
@@ -61,8 +81,10 @@ export default function SettingsPage() {
         </div>
         <div className="grid grid-cols-3 gap-3">
           {users.map(user => {
-            const isActive = app.currentUser === user.id;
+            const isActive = app.currentUser?.id === user.id;
+            const currentUserData = userManager.getUser(user.id) || user;
             const style = userManager.getUserStyle(user.id);
+            
             return (
               <button
                 key={user.id}
@@ -73,7 +95,7 @@ export default function SettingsPage() {
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <div className="text-3xl mb-2">{user.emoji}</div>
+                <div className="text-3xl mb-2">{currentUserData.emoji}</div>
                 <div className={`font-medium ${isActive ? '' : 'text-gray-700'}`}>
                   {user.name}
                 </div>
@@ -81,6 +103,59 @@ export default function SettingsPage() {
             );
           })}
         </div>
+      </section>
+
+      {/* Choix d'avatar */}
+      <section className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center space-x-2 mb-4">
+          <Smile className="w-5 h-5 text-gray-600" />
+          <h2 className="text-lg font-semibold text-gray-900">Personnaliser l'avatar</h2>
+        </div>
+        
+        {editingAvatar ? (
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                Choisissez un avatar pour <span className="font-semibold">{editingAvatar.name}</span>
+              </p>
+              <button
+                onClick={() => setEditingAvatar(null)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Annuler
+              </button>
+            </div>
+            <div className="grid grid-cols-9 sm:grid-cols-12 gap-2 max-h-64 overflow-y-auto p-2 bg-gray-50 rounded-lg">
+              {AVAILABLE_AVATARS.map((emoji, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleChangeAvatar(editingAvatar.id, emoji)}
+                  className="text-3xl p-2 hover:bg-white hover:shadow-md rounded-lg transition-all"
+                  title={emoji}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            {users.map(user => {
+              const currentUserData = userManager.getUser(user.id) || user;
+              return (
+                <button
+                  key={user.id}
+                  onClick={() => setEditingAvatar(user)}
+                  className="p-4 rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all"
+                >
+                  <div className="text-4xl mb-2">{currentUserData.emoji}</div>
+                  <div className="text-sm font-medium text-gray-700">{user.name}</div>
+                  <div className="text-xs text-gray-500 mt-1">Cliquer pour modifier</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Statistiques */}
