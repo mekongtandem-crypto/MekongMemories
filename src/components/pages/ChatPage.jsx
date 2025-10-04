@@ -203,9 +203,6 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
             <p className="text-gray-500">
               Aucun message pour le moment. Commencez la conversation !
             </p>
-            <p className="text-xs text-gray-400 mt-2">
-              Entrée = nouvelle ligne • Shift+Entrée = envoyer
-            </p>
           </div>
         )}
 
@@ -309,10 +306,6 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
           >
             <Send className="w-5 h-5" />
           </button>
-        </div>
-        
-        <div className="text-xs text-gray-500 mt-2 text-center">
-          <span className="font-medium">Entrée</span> = nouvelle ligne • <span className="font-medium">Shift+Entrée</span> = envoyer
         </div>
       </div>
 

@@ -1,7 +1,6 @@
 /**
- * Navigation.jsx v4.0 - Seulement BottomNavigation
- * ✅ TopNavigation supprimée (remplacée par UnifiedTopBar)
- * ✅ Badge sessions conservé
+ * Navigation.jsx v4.1 - BottomNavigation toujours visible
+ * ✅ Suppression md:hidden pour être visible sur tous écrans
  */
 import React from 'react';
 import { Home, BookOpen, Settings } from 'lucide-react';
@@ -11,11 +10,11 @@ export function BottomNavigation({ currentPage, onPageChange, app }) {
     if (!app.sessions || !app.currentUser) return 0;
     
     return app.sessions.filter(session => {
-      if (session.user !== app.currentUser) return false;
+      if (session.user !== app.currentUser?.id) return false;
       if (!session.notes || session.notes.length === 0) return true;
       
       const lastMessage = session.notes[session.notes.length - 1];
-      return lastMessage.author !== app.currentUser;
+      return lastMessage.author !== app.currentUser?.id;
     }).length;
   }, [app.sessions, app.currentUser]);
 
@@ -26,7 +25,7 @@ export function BottomNavigation({ currentPage, onPageChange, app }) {
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 z-50">
       <div className="flex justify-around py-2">
         {navItems.map((item) => {
           const Icon = item.icon;

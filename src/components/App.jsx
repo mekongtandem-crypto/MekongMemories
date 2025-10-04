@@ -1,5 +1,7 @@
 /**
- * App.jsx v2.1 - Fix jumpToRandomMoment
+ * App.jsx v2.2 - TopBar fixe
+ * ✅ TopBar reste en haut au scroll
+ * ✅ Ajustement padding pour compenser la barre fixe
  */
 import React, { useState, useRef } from 'react';
 import { useAppState } from '../hooks/useAppState.js';
@@ -55,7 +57,6 @@ export default function App() {
   
   const [editingChatTitle, setEditingChatTitle] = useState(false);
   
-  // ✅ NOUVEAU : Ref pour exposer jumpToRandomMoment de MemoriesPage
   const memoriesPageRef = useRef(null);
 
   if (!app.isInitialized) {
@@ -106,38 +107,42 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <UnifiedTopBar 
-          currentPage={app.currentPage}
-          onPageChange={app.updateCurrentPage}
-          isTimelineVisible={isTimelineVisible}
-          setIsTimelineVisible={setIsTimelineVisible}
-          isSearchOpen={isSearchOpen}
-          setIsSearchOpen={setIsSearchOpen}
-          currentDay={currentDay}
-          setCurrentDay={setCurrentDay}
-          jumpToDay={(day) => {
-            setCurrentDay(day);
-            if (memoriesPageRef.current?.jumpToDay) {
-              memoriesPageRef.current.jumpToDay(day);
-            }
-          }}
-          navigateDay={(delta) => {
-            const newDay = Math.max(0, Math.min(currentDay + delta, 200));
-            setCurrentDay(newDay);
-          }}
-          displayOptions={displayOptions}
-          setDisplayOptions={setDisplayOptions}
-          jumpToRandomMoment={() => {
-            if (memoriesPageRef.current?.jumpToRandomMoment) {
-              memoriesPageRef.current.jumpToRandomMoment();
-            }
-          }}
-          chatSession={app.currentChatSession}
-          onEditChatTitle={() => setEditingChatTitle(true)}
-          onCloseChatSession={app.closeChatSession}
-        />
+        {/* ✅ TopBar fixe en haut */}
+        <div className="fixed top-0 left-0 right-0 z-40">
+          <UnifiedTopBar 
+            currentPage={app.currentPage}
+            onPageChange={app.updateCurrentPage}
+            isTimelineVisible={isTimelineVisible}
+            setIsTimelineVisible={setIsTimelineVisible}
+            isSearchOpen={isSearchOpen}
+            setIsSearchOpen={setIsSearchOpen}
+            currentDay={currentDay}
+            setCurrentDay={setCurrentDay}
+            jumpToDay={(day) => {
+              setCurrentDay(day);
+              if (memoriesPageRef.current?.jumpToDay) {
+                memoriesPageRef.current.jumpToDay(day);
+              }
+            }}
+            navigateDay={(delta) => {
+              const newDay = Math.max(0, Math.min(currentDay + delta, 200));
+              setCurrentDay(newDay);
+            }}
+            displayOptions={displayOptions}
+            setDisplayOptions={setDisplayOptions}
+            jumpToRandomMoment={() => {
+              if (memoriesPageRef.current?.jumpToRandomMoment) {
+                memoriesPageRef.current.jumpToRandomMoment();
+              }
+            }}
+            chatSession={app.currentChatSession}
+            onEditChatTitle={() => setEditingChatTitle(true)}
+            onCloseChatSession={app.closeChatSession}
+          />
+        </div>
         
-        <main className="flex-1 pb-16 md:pb-4 overflow-auto">
+        {/* ✅ Contenu avec padding-top pour compenser TopBar fixe */}
+        <main className="flex-1 pt-12 pb-16 overflow-auto">
           <div className="max-w-7xl mx-auto">
             {renderPage()}
           </div>
