@@ -1,14 +1,15 @@
 /**
- * UnifiedTopBar.jsx v1.1 - Corrections UI
- * ✅ Icônes Activé/Désactivé au lieu de points
- * ✅ Avatar utilisateur dynamique
- * ✅ Contexte "Mémoire" en amber-600
+ * UnifiedTopBar.jsx v1.2 - Fixes couleurs + connexion
+ * ✅ Contexte en amber-600 partout
+ * ✅ Menu Sessions grisé
+ * ✅ Bouton nouvelle session fonctionnel
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, Settings, Plus, Map, Search, Dices, 
   MoreVertical, Type, Image as ImageIcon, Camera,
-  CloudOff, Cloud, Edit, Trash2, MessageCircle
+  CloudOff, Cloud, Edit, Trash2, MessageCircle,
+  LogIn, LogOut
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
@@ -56,6 +57,25 @@ export default function UnifiedTopBar({
     navigateDay(delta);
   };
 
+  const handleCreateTestSession = async () => {
+    try {
+      const sessionData = {
+        id: `test_${Date.now()}`,
+        title: `Session de test`,
+        description: 'Session créée manuellement',
+        systemMessage: '💬 Session de test créée.'
+      };
+      
+      const newSession = await app.createSession(sessionData, 'Message de test initial', null);
+      if (newSession) {
+        await app.openChatSession(newSession);
+      }
+    } catch (error) {
+      console.error('Erreur création session test:', error);
+      alert('Impossible de créer la session');
+    }
+  };
+
   const renderLeftAction = () => {
     switch (currentPage) {
       case 'memories':
@@ -100,7 +120,7 @@ export default function UnifiedTopBar({
       case 'sessions':
         return (
           <button
-            onClick={() => {/* TODO */}}
+            onClick={handleCreateTestSession}
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             title="Nouvelle session"
           >
@@ -158,24 +178,24 @@ export default function UnifiedTopBar({
       
       case 'chat':
         return chatSession ? (
-          <h1 className="text-sm font-semibold text-gray-900 truncate max-w-xs">
+          <h1 className="text-sm font-semibold text-amber-600 truncate max-w-xs">
             {chatSession.gameTitle}
           </h1>
         ) : null;
       
       case 'sessions':
         const pendingCount = app.sessions?.filter(s => 
-          s.user === app.currentUser && 
+          s.user === app.currentUser?.id && 
           s.notes?.length > 0 && 
-          s.notes[s.notes.length - 1].author !== app.currentUser
+          s.notes[s.notes.length - 1].author !== app.currentUser?.id
         ).length || 0;
         
         return (
-          <div className="text-sm text-gray-700">
-            <span className="font-medium">{app.sessions?.length || 0}</span> session{app.sessions?.length > 1 ? 's' : ''}
+          <div className="text-sm text-amber-600 font-semibold">
+            <span>{app.sessions?.length || 0}</span> session{app.sessions?.length > 1 ? 's' : ''}
             {pendingCount > 0 && (
-              <span className="ml-2 text-amber-600">
-                · <span className="font-medium">{pendingCount}</span> nouvelle{pendingCount > 1 ? 's' : ''}
+              <span className="ml-2">
+                · <span>{pendingCount}</span> nouvelle{pendingCount > 1 ? 's' : ''}
               </span>
             )}
           </div>
@@ -183,7 +203,7 @@ export default function UnifiedTopBar({
       
       case 'settings':
         return (
-          <span className="text-sm font-medium text-gray-900">
+          <span className="text-sm font-semibold text-amber-600">
             Réglages
           </span>
         );
@@ -253,67 +273,69 @@ export default function UnifiedTopBar({
         );
       
       case 'chat':
-  return (
-    <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-56">
-      <button
-        onClick={() => {
-          setShowMenu(false);
-          onEditChatTitle();
-        }}
-        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
-      >
-        <Edit className="w-4 h-4" />
-        <span>Modifier le titre</span>
-      </button>
-      
-      <button
-        onClick={async () => {
-          setShowMenu(false);
-          if (chatSession && confirm(`Supprimer la session "${chatSession.gameTitle}" ?`)) {
-            await app.deleteSession(chatSession.id);
-            // Retour automatique à la page sessions après suppression
-            app.closeChatSession();
-          }
-        }}
-        className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2"
-      >
-        <Trash2 className="w-4 h-4" />
-        <span>Supprimer la session</span>
-      </button>
-      
-      <div className="border-t border-gray-200 my-1"></div>
-      
-      <button
-        disabled
-        className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center space-x-2"
-        title="Fonctionnalité à venir"
-      >
-        <MessageCircle className="w-4 h-4" />
-        <span>Fusionner les chats</span>
-      </button>
-      
-      <div className="border-t border-gray-200 my-1"></div>
-      
-      <div className="px-4 py-2 text-xs text-gray-500">
-        {chatSession?.notes?.length || 0} messages
-      </div>
-      <div className="px-4 py-2 text-xs text-gray-500">
-        {chatSession?.createdAt && new Date(chatSession.createdAt).toLocaleDateString()}
-      </div>
-    </div>
-  );
+        return (
+          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-56">
+            <button
+              onClick={() => {
+                setShowMenu(false);
+                onEditChatTitle();
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+            >
+              <Edit className="w-4 h-4" />
+              <span>Modifier le titre</span>
+            </button>
+            
+            <button
+              onClick={async () => {
+                setShowMenu(false);
+                if (chatSession && confirm(`Supprimer la session "${chatSession.gameTitle}" ?`)) {
+                  await app.deleteSession(chatSession.id);
+                  app.closeChatSession();
+                }
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Supprimer la session</span>
+            </button>
+            
+            <div className="border-t border-gray-200 my-1"></div>
+            
+            <button
+              disabled
+              className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center space-x-2"
+              title="Fonctionnalité à venir"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>Fusionner les chats</span>
+            </button>
+            
+            <div className="border-t border-gray-200 my-1"></div>
+            
+            <div className="px-4 py-2 text-xs text-gray-500">
+              {chatSession?.notes?.length || 0} messages
+            </div>
+            <div className="px-4 py-2 text-xs text-gray-500">
+              {chatSession?.createdAt && new Date(chatSession.createdAt).toLocaleDateString()}
+            </div>
+          </div>
+        );
       
       case 'sessions':
         return (
           <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
-            <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">
+            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
+              Fonctionnalités à venir
+            </div>
+            <button disabled className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
               Trier par date
             </button>
-            <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">
+            <button disabled className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
               Filtrer
             </button>
             <div className="border-t border-gray-200 my-1"></div>
-            <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">
+            <button disabled className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
               Exporter
             </button>
           </div>
@@ -340,7 +362,7 @@ export default function UnifiedTopBar({
   };
 
   const renderUserMenu = () => {
-    const currentUserObj = userManager.getUser(app.currentUser);
+    const currentUserObj = app.currentUser;
     const isOnline = app.connection?.isOnline;
     
     return (
@@ -383,18 +405,17 @@ export default function UnifiedTopBar({
               setShowUserMenu(false);
               app.connect();
             }}
-            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600 flex items-center space-x-2"
           >
-            Se reconnecter
+            <LogIn className="w-4 h-4" />
+            <span>Se reconnecter</span>
           </button>
         )}
       </div>
     );
   };
 
-// APRÈS (CORRECT)
-const currentUserObj = userManager.getUser(app.currentUser?.id) || app.currentUser;
-  console.log('👤 Current user:', app.currentUser, 'Obj:', currentUserObj);
+  const currentUserObj = app.currentUser;
   const isOnline = app.connection?.isOnline;
 
   return (
@@ -408,7 +429,6 @@ const currentUserObj = userManager.getUser(app.currentUser?.id) || app.currentUs
       </div>
 
       <div className="flex items-center space-x-2">
-            {/* Menu contextuel */}
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowMenu(!showMenu)}
@@ -420,7 +440,6 @@ const currentUserObj = userManager.getUser(app.currentUser?.id) || app.currentUs
           {showMenu && renderMenu()}
         </div>
 
-      {/* Avatar utilisateur */}
         <div className="relative hidden sm:block" ref={userMenuRef}>
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
