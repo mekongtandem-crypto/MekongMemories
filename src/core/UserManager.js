@@ -1,7 +1,5 @@
 /**
- * UserManager.js v2.0 - Support changement avatar
- * ✅ Charge les avatars depuis localStorage
- * ✅ Méthode updateUserEmoji pour modifier
+ * UserManager.js v2.1 - Ajout getAllUsers()
  */
 
 class UserManager {
@@ -35,6 +33,11 @@ class UserManager {
     return this.users.find(user => user.id === userId);
   }
 
+  // ✅ AJOUT : Retourne tous les utilisateurs
+  getAllUsers() {
+    return this.users;
+  }
+
   getUserStyle(userId) {
     const user = this.getUser(userId);
     if (!user) return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' };
@@ -48,7 +51,6 @@ class UserManager {
     return colorMap[user.color] || colorMap.amber;
   }
 
-  // ✅ NOUVEAU : Méthode pour changer l'emoji
   updateUserEmoji(userId, newEmoji) {
     const user = this.users.find(u => u.id === userId);
     if (user) {
