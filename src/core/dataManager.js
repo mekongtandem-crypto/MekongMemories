@@ -153,6 +153,8 @@ regenerateMasterIndex = async () => {
   }
 }
 
+
+
 // src/core/dataManager.js - REMPLACEMENT de createSession (lignes 145-220)
 
 createSession = async (gameData, initialText = null, sourcePhoto = null) => {
@@ -285,6 +287,21 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
   closeChatSession = () => {
     this.updateState({ currentChatSession: null, currentPage: 'sessions' });
   }
+  
+  /**
+ * Marquer une session comme terminée/archivée
+ */
+markSessionStatus = async (sessionId, statusType, value) => {
+  const session = this.appState.sessions.find(s => s.id === sessionId);
+  if (!session) return;
+  
+  const updatedSession = { 
+    ...session, 
+    [statusType]: value 
+  };
+  
+  await this.updateSession(updatedSession);
+}
 
   getState = () => this.appState;
   
