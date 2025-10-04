@@ -153,83 +153,98 @@ regenerateMasterIndex = async () => {
   }
 }
 
-  createSession = async (gameData, initialText = null, sourcePhoto = null) => {
-    this.updateState({ isCreatingSession: true });
+// src/core/dataManager.js - REMPLACEMENT de createSession (lignes 145-220)
+
+createSession = async (gameData, initialText = null, sourcePhoto = null) => {
+  this.updateState({ isCreatingSession: true });
+  
+  try {
+    const now = new Date().toISOString();
+    const baseTimestamp = Date.now();
     
-    try {
-      const now = new Date().toISOString();
-      const baseTimestamp = Date.now();
-      
-      const newSession = {
-        id: `sid_${baseTimestamp}`, 
-        gameId: gameData.id, 
-        gameTitle: gameData.title,
-        subtitle: `Conversation sur ${gameData.title}`, 
-        createdAt: now,
-        user: this.appState.currentUser,
-        notes: [],
+    const newSession = {
+      id: `sid_${baseTimestamp}`, 
+      gameId: gameData.id, 
+      gameTitle: gameData.title,
+      subtitle: `Conversation sur ${gameData.title}`, 
+      createdAt: now,
+      user: this.appState.currentUser,
+      notes: [],
+    };
+    
+    // ✅ NOUVEAU : Support photos Mastodon ET photos moments
+    if (sourcePhoto) {
+      const userPhotoMessage = {
+        id: `msg_${baseTimestamp}`,
+        author: this.appState.currentUser,
+        content: initialText?.trim() || '',
+        timestamp: now,
+        edited: false,
+        photoData: {
+          // ✅ Support filename OU name (photos Mastodon)
+          filename: sourcePhoto.filename || sourcePhoto.name || 'photo.jpg',
+          google_drive_id: sourcePhoto.google_drive_id,
+          
+          // ✅ Fallback URL si pas de Drive ID (cas rare)
+          url: sourcePhoto.url,
+          
+          width: sourcePhoto.width,
+          height: sourcePhoto.height,
+          mime_type: sourcePhoto.mime_type || sourcePhoto.mediaType || 'image/jpeg',
+          
+          // ✅ Flag pour distinguer origine
+          isMastodonPhoto: !!sourcePhoto.url && !sourcePhoto.filename
+        }
       };
+      newSession.notes.push(userPhotoMessage);
       
-      // ✅ NOUVEAU : Si photo, créer message utilisateur avec photo + texte
-      if (sourcePhoto) {
-        const userPhotoMessage = {
-          id: `msg_${baseTimestamp}`,
+      console.log('📸 Message photo créé:', {
+        filename: userPhotoMessage.photoData.filename,
+        hasGoogleId: !!userPhotoMessage.photoData.google_drive_id,
+        isMastodon: userPhotoMessage.photoData.isMastodonPhoto
+      });
+      
+    } else {
+      // Message système pour post/moment (inchangé)
+      const systemMessage = {
+        id: `${baseTimestamp}-system`,
+        content: gameData.systemMessage || `💬 Session initiée.`,
+        author: 'duo',
+        timestamp: now,
+        edited: false
+      };
+      newSession.notes.push(systemMessage);
+      
+      // Message utilisateur si texte fourni
+      if (initialText && initialText.trim()) {
+        const userMessage = {
+          id: `msg_${baseTimestamp + 1}`,
           author: this.appState.currentUser,
-          content: initialText?.trim() || '',
-          timestamp: now,
-          edited: false,
-          photoData: {
-            filename: sourcePhoto.filename,
-            google_drive_id: sourcePhoto.google_drive_id,
-            width: sourcePhoto.width,
-            height: sourcePhoto.height,
-            mime_type: sourcePhoto.mime_type
-          }
-        };
-        newSession.notes.push(userPhotoMessage);
-        console.log('📸 Message photo créé pour utilisateur:', userPhotoMessage.photoData.filename);
-      } else {
-        // Message système pour post/moment
-        const systemMessage = {
-          id: `${baseTimestamp}-system`,
-          content: gameData.systemMessage || `💬 Session initiée.`,
-          author: 'duo',
+          content: initialText.trim(),
           timestamp: now,
           edited: false
         };
-        newSession.notes.push(systemMessage);
-        
-        // Message utilisateur si texte fourni
-        if (initialText && initialText.trim()) {
-          const userMessage = {
-            id: `msg_${baseTimestamp + 1}`,
-            author: this.appState.currentUser,
-            content: initialText.trim(),
-            timestamp: now,
-            edited: false
-          };
-          newSession.notes.push(userMessage);
-          console.log('✅ Message utilisateur ajouté:', userMessage.content);
-        }
+        newSession.notes.push(userMessage);
       }
-      
-      await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      this.updateState({ 
-        sessions: [...this.appState.sessions, newSession],
-        isCreatingSession: false
-      });
-      
-      console.log('✅ Session créée avec', newSession.notes.length, 'message(s)');
-      return newSession;
-      
-    } catch (error) {
-      console.error('❌ Erreur création session:', error);
-      this.updateState({ isCreatingSession: false });
-      throw error;
     }
+    
+    await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    this.updateState({ 
+      sessions: [...this.appState.sessions, newSession],
+      isCreatingSession: false
+    });
+    
+    console.log('✅ Session créée avec', newSession.notes.length, 'message(s)');
+    return newSession;
+    
+  } catch (error) {
+    console.error('❌ Erreur création session:', error);
+    this.updateState({ isCreatingSession: false });
+    throw error;
   }
+}
 
   updateSession = async (sessionToUpdate) => {
     await this.driveSync.saveFile(`session_${sessionToUpdate.id}.json`, sessionToUpdate);

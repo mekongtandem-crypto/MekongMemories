@@ -29,33 +29,83 @@ export default function SettingsPage() {
     stats: false,
     data: false
   });
+  
+  // ✅ NOUVEAUX states pour progression
+  const [regenerationProgress, setRegenerationProgress] = useState({
+    isActive: false,
+    step: '',
+    message: '',
+    progress: 0,
+    logs: []
+  });
 
   const toggleSection = (section) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
 const handleRegenerateIndex = async () => {
-  if (!confirm('Régénérer l\'index complet ? Cette opération peut prendre quelques secondes.')) {
-    return;
-  }
-
-  setIsRegenerating(true);
-  try {
-    const result = await app.regenerateMasterIndex();
-    
-    if (result?.success) {
-      alert('✅ Index régénéré avec succès !\n\nRechargez la page (F5) pour voir les nouvelles statistiques.');
-    } else {
-      const errorMsg = result?.error || 'Erreur inconnue';
-      alert(`❌ Erreur lors de la régénération :\n\n${errorMsg}`);
+    if (!confirm('Régénérer l\'index complet ? Cette opération peut prendre quelques minutes.')) {
+      return;
     }
-  } catch (error) {
-    console.error('Erreur régénération:', error);
-    alert(`❌ Erreur lors de la régénération :\n\n${error.message}`);
-  } finally {
-    setIsRegenerating(false);
-  }
-};
+
+    // ✅ Initialiser progression
+    setRegenerationProgress({
+      isActive: true,
+      step: 'init',
+      message: 'Initialisation...',
+      progress: 0,
+      logs: ['🚀 Démarrage de la régénération...']
+    });
+
+    try {
+      // ✅ Enregistrer callback de progression
+      window.masterIndexGenerator.setProgressCallback((progressData) => {
+        setRegenerationProgress(prev => ({
+          isActive: true,
+          step: progressData.step,
+          message: progressData.message,
+          progress: progressData.progress || prev.progress,
+          logs: [...prev.logs, `[${new Date().toLocaleTimeString()}] ${progressData.message}`].slice(-20) // Garder 20 dernières lignes
+        }));
+      });
+
+      // ✅ Lancer régénération
+      const result = await window.masterIndexGenerator.generateMomentsStructure();
+      
+      if (result?.success) {
+        // ✅ Recharger l'index
+        await app.regenerateMasterIndex();
+        
+        setRegenerationProgress(prev => ({
+          ...prev,
+          isActive: false,
+          logs: [...prev.logs, '✅ Index rechargé avec succès !', '💡 Rechargez la page (F5) pour voir les changements']
+        }));
+        
+        // Auto-fermer après 3s
+        setTimeout(() => {
+          setRegenerationProgress({
+            isActive: false,
+            step: '',
+            message: '',
+            progress: 0,
+            logs: []
+          });
+        }, 5000);
+        
+      } else {
+        throw new Error(result?.error || 'Erreur inconnue');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erreur régénération:', error);
+      setRegenerationProgress(prev => ({
+        ...prev,
+        isActive: false,
+        logs: [...prev.logs, `❌ ERREUR : ${error.message}`]
+      }));
+    }
+  };
 
   const handleChangeUser = (userId) => {
     app.setCurrentUser(userId);
@@ -290,7 +340,7 @@ const handleRegenerateIndex = async () => {
         )}
       </section>
 
-      {/* Section Données */}
+      {/* Section Données - MODIFIÉE */}
       <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <button
           onClick={() => toggleSection('data')}
@@ -304,13 +354,49 @@ const handleRegenerateIndex = async () => {
         </button>
         
         {openSections.data && (
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-gray-100 space-y-4">
+            
+            {/* ✅ NOUVEAU : Affichage progression */}
+            {regenerationProgress.isActive && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                
+                {/* Barre de progression */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-blue-900">
+                      {regenerationProgress.message}
+                    </span>
+                    <span className="text-blue-600 font-mono">
+                      {regenerationProgress.progress}%
+                    </span>
+                  </div>
+                  
+                  <div className="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden">
+                    <div 
+                      className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                      style={{ width: `${regenerationProgress.progress}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Logs déroulants */}
+                <div className="bg-gray-900 text-green-400 rounded-lg p-3 font-mono text-xs max-h-48 overflow-y-auto">
+                  {regenerationProgress.logs.map((log, index) => (
+                    <div key={index} className="mb-1">
+                      {log}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bouton régénération */}
             <button
               onClick={handleRegenerateIndex}
-              disabled={isRegenerating}
+              disabled={regenerationProgress.isActive}
               className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded-lg font-medium transition-colors"
             >
-              {isRegenerating ? (
+              {regenerationProgress.isActive ? (
                 <>
                   <RefreshCw className="w-5 h-5 animate-spin" />
                   <span>Régénération en cours...</span>
@@ -322,13 +408,17 @@ const handleRegenerateIndex = async () => {
                 </>
               )}
             </button>
-            <p className="text-xs text-gray-500 mt-2">
+            
+            <p className="text-xs text-gray-500">
               Reconstruit l'index complet à partir des données sur Google Drive.
+              {regenerationProgress.logs.length > 0 && !regenerationProgress.isActive && 
+                ' Opération terminée avec succès !'
+              }
             </p>
           </div>
         )}
       </section>
-
+      
       {/* Version */}
       <section className="text-center text-sm text-gray-500 pt-4">
         <p>Mémoire du Mékong v2.0</p>

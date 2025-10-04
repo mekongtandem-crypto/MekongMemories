@@ -207,16 +207,47 @@ async getFileMetadata(fileId, fields = 'id,name,parents') {
 }
 
   // --- Fonctions Utilitaires Internes ---
-  async listFiles(options) {
-    if (!this.connectionManager.getState().isOnline) throw new Error('Non connecté.');
-    try {
-      const response = await window.gapi.client.drive.files.list(options);
-      return response.result.files || [];
-    } catch (error) {
-      console.error('Erreur lors du listage des fichiers Drive:', error);
-      throw new Error(`Erreur API Drive: ${error.details || error.message}`);
-    }
+
+async listFiles(options) {
+  if (!this.connectionManager.getState().isOnline) {
+    throw new Error('Non connecté.');
   }
+  
+  try {
+    let allFiles = [];
+    let pageToken = null;
+    
+    do {
+      const queryParams = { 
+        ...options,
+        pageSize: options.pageSize || 1000  // ✅ Maximum autorisé par Google
+      };
+      
+      if (pageToken) {
+        queryParams.pageToken = pageToken;
+      }
+      
+      const response = await window.gapi.client.drive.files.list(queryParams);
+      const files = response.result.files || [];
+      allFiles.push(...files);
+      
+      pageToken = response.result.nextPageToken;
+      
+      // Log pour debug
+      if (pageToken) {
+        console.log(`📄 DriveSync: ${allFiles.length} fichiers chargés, continuation...`);
+      }
+      
+    } while (pageToken);
+    
+    console.log(`✅ DriveSync.listFiles: ${allFiles.length} fichiers au total`);
+    return allFiles;
+    
+  } catch (error) {
+    console.error('❌ Erreur lors du listage des fichiers Drive:', error);
+    throw new Error(`Erreur API Drive: ${error.details || error.message}`);
+  }
+}
 
   async findFileInAppFolder(filename) {
     await this.ensureAppFolder();

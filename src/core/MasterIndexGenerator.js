@@ -1,5 +1,5 @@
 /**
- * MasterIndexGenerator.js v4.1 - Mapping photos Mastodon aplaties
+ * MasterIndexGenerator.js v4.2 - Avec progression
  * Photos Mastodon dans : Medias/Mastodon/Mastodon_Photos/
  */
 
@@ -9,7 +9,8 @@ import { mastodonData } from './MastodonData.js';
 class MasterIndexGenerator {
   constructor() {
     this.debugMode = true;
-    this.version = '4.1-mastodon-flat';
+    this.version = '4.2-progress';
+    this.progressCallback = null;
     console.log(`🗂️ MasterIndexGenerator ${this.version}: Prêt.`);
   }
 
@@ -24,35 +25,56 @@ class MasterIndexGenerator {
       console.log(`MIG_DEBUG: ${message}`, data || '');
     }
   }
+  
+  // ✅ Méthode pour enregistrer callback
+  setProgressCallback(callback) {
+    this.progressCallback = callback;
+  }
+
+  // ✅ Helper pour reporter progression
+  reportProgress(step, message, progress = null) {
+    console.log(`🔄 [${step}] ${message}`);
+    if (this.progressCallback) {
+      this.progressCallback({ step, message, progress });
+    }
+  }
 
   async generateMomentsStructure() {
     try {
-      console.log('🚀 Démarrage de la génération de l\'index par moments...');
+      this.reportProgress('init', 'Démarrage de la génération...', 0);
+      
+      this.reportProgress('mastodon', 'Import des posts Mastodon...', 10);
       await this.mastodonData.importFromGoogleDrive();
       
-      console.log('📸 Analyse photo moments...');
+      this.reportProgress('photos', 'Analyse des photo moments...', 25);
       const photoMoments = await this.analyzePhotoMoments();
-      console.log(`✅ ${photoMoments.length} photo moments`);
+      this.reportProgress('photos', `✅ ${photoMoments.length} photo moments trouvés`, 40);
       
-      console.log('📝 Analyse posts...');
+      this.reportProgress('posts', 'Analyse des posts Mastodon...', 50);
       const postsByDay = this.analyzeMastodonPostsByDay();
-      console.log(`✅ Posts analysés`);
+      this.reportProgress('posts', `✅ Posts analysés par jour`, 60);
       
-      console.log('🔗 Création moments unifiés...');
+      this.reportProgress('mapping', 'Mapping des photos Mastodon...', 70);
+      const mastodonPhotoMapping = await this.buildMastodonPhotoMapping();
+      this.reportProgress('mapping', `✅ ${Object.keys(mastodonPhotoMapping).length} photos mappées`, 75);
+      
+      this.reportProgress('merge', 'Création des moments unifiés...', 80);
       const unifiedMoments = await this.createUnifiedMoments(photoMoments, postsByDay);
-      console.log(`✅ ${unifiedMoments.length} moments unifiés`);
+      this.reportProgress('merge', `✅ ${unifiedMoments.length} moments unifiés`, 90);
       
-      console.log('📦 Construction structure finale...');
+      this.reportProgress('build', 'Construction de la structure finale...', 95);
       const finalStructure = this.buildFinalStructure(unifiedMoments);
 
-      console.log('💾 Sauvegarde sur Drive...');
+      this.reportProgress('save', 'Sauvegarde sur Google Drive...', 97);
       await this.driveSync.saveFile('mekong_master_index_v3_moments.json', JSON.stringify(finalStructure, null, 2));
       
-      console.log(`✅ Index généré avec succès: ${finalStructure.metadata.total_moments} moments.`);
+      this.reportProgress('complete', `✅ Index généré : ${finalStructure.metadata.total_moments} moments`, 100);
+      
       return { success: true, structure: finalStructure };
+      
     } catch (error) {
-      console.error('❌ Erreur critique lors de la génération de l\'index:', error);
-      console.error('Stack trace:', error.stack);
+      this.reportProgress('error', `❌ Erreur : ${error.message}`, -1);
+      console.error('❌ Erreur critique:', error);
       return { success: false, error: error.message };
     }
   }
@@ -119,28 +141,27 @@ class MasterIndexGenerator {
       }));
   }
 
+  // ✅ Mapping avec reporting
   async buildMastodonPhotoMapping() {
-    console.log('🖼️ Mapping photos Mastodon (structure aplatie)...');
+    this.reportProgress('mapping', 'Recherche du dossier Mastodon_Photos...');
     
     try {
       const folderResponse = await this.driveSync.searchFileByName('Mastodon_Photos', 'application/vnd.google-apps.folder');
       if (!folderResponse || folderResponse.length === 0) {
-        console.warn('⚠️ Dossier Mastodon_Photos introuvable');
+        this.reportProgress('mapping', '⚠️ Dossier Mastodon_Photos introuvable');
         return {};
       }
       
-      console.log('📂 Dossier Mastodon_Photos trouvé');
+      this.reportProgress('mapping', '📂 Dossier trouvé, chargement des photos...');
       
-      // UNE SEULE requête pour toutes les photos
       const allPhotos = await this.driveSync.listFiles({
         q: `'${folderResponse[0].id}' in parents and mimeType contains 'image/' and trashed=false`,
         fields: 'files(id, name)',
-        pageSize: 1000  // ✅ AJOUT
+        pageSize: 1000
       });
       
-      console.log(`📸 ${allPhotos.length} photos trouvées dans Mastodon_Photos`);
+      this.reportProgress('mapping', `📸 ${allPhotos.length} photos trouvées, création du mapping...`);
       
-      // Créer mapping par nom de fichier
       const mapping = {};
       for (const photo of allPhotos) {
         mapping[photo.name] = {
@@ -149,15 +170,15 @@ class MasterIndexGenerator {
         };
       }
       
-      console.log(`✅ Mapping créé pour ${Object.keys(mapping).length} photos`);
       return mapping;
       
     } catch (error) {
-      console.error('❌ Erreur mapping Mastodon:', error);
+      this.reportProgress('mapping', `❌ Erreur mapping : ${error.message}`);
       return {};
     }
   }
 
+  // ✅ CORRECTION : Cette méthode doit rester DANS la classe
   parseFolderToMoment(folderName) {
     const extendedPatterns = [
       { regex: /^(\d{1,3})-(\d{1,3})\.(.+)$/, name: 'PLAGE_POINT', extract: 'range' },
@@ -270,31 +291,31 @@ class MasterIndexGenerator {
   }
 
   enrichPostWithPhotoIds(post, mastodonPhotoMapping) {
-  if (!post.photos || post.photos.length === 0) {
-    return post;
-  }
-  
-  const enrichedPhotos = post.photos.map(photo => {
-    const filename = this.extractFilenameFromUrl(photo.url);
-    const mappingInfo = mastodonPhotoMapping[filename];
-    
-    if (mappingInfo) {
-      return {
-        ...photo,
-        google_drive_id: mappingInfo.google_drive_id,
-        filename: mappingInfo.filename
-      };
-    } else {
-      console.warn(`⚠️ Photo Mastodon non trouvée: ${filename}`);
-      return photo;
+    if (!post.photos || post.photos.length === 0) {
+      return post;
     }
-  });
-  
-  return {
-    ...post,
-    photos: enrichedPhotos
-  };
-}
+    
+    const enrichedPhotos = post.photos.map(photo => {
+      const filename = this.extractFilenameFromUrl(photo.url);
+      const mappingInfo = mastodonPhotoMapping[filename];
+      
+      if (mappingInfo) {
+        return {
+          ...photo,
+          google_drive_id: mappingInfo.google_drive_id,
+          filename: mappingInfo.filename
+        };
+      } else {
+        console.warn(`⚠️ Photo Mastodon non trouvée: ${filename}`);
+        return photo;
+      }
+    });
+    
+    return {
+      ...post,
+      photos: enrichedPhotos
+    };
+  }
 
   extractFilenameFromUrl(url) {
     const parts = url.split('/');
@@ -319,7 +340,7 @@ class MasterIndexGenerator {
       moments: unifiedMoments
     };
   }
-}
+} // ✅ CORRECTION : Accolade de fermeture de la classe ICI
 
 export const masterIndexGenerator = new MasterIndexGenerator();
 if (typeof window !== 'undefined') {

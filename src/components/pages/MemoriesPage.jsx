@@ -26,32 +26,7 @@ function MemoriesPage({
 }, ref) {  // ✅ AJOUT : accepter ref
   const app = useAppState();
   
-  // ✅ AJOUT TEMPORAIRE : Log pour débugger
-useEffect(() => {
-  if (app.masterIndex) {
-    console.log('📦 MasterIndex keys:', Object.keys(app.masterIndex));
-    console.log('📦 MasterIndex complet:', app.masterIndex);
-    
-    // Chercher des photos Mastodon
-    if (app.masterIndex.mastodonPhotos) {
-      console.log('🖼️ mastodonPhotos trouvées:', app.masterIndex.mastodonPhotos.length);
-    }
-    if (app.masterIndex.postPhotos) {
-      console.log('🖼️ postPhotos trouvées:', app.masterIndex.postPhotos.length);
-    }
-    
-    // Regarder la structure d'un moment avec posts
-    const momentWithPosts = app.masterIndex.moments?.find(m => m.posts?.length > 0);
-    if (momentWithPosts) {
-      console.log('📝 Premier moment avec posts:', momentWithPosts);
-      if (momentWithPosts.posts[0]?.photos?.length > 0) {
-        console.log('🖼️ Photo brute du post:', momentWithPosts.posts[0].photos[0]);
-      }
-    }
-  }
-}, [app.masterIndex]);
-  
-  
+
   
   const [selectedMoments, setSelectedMoments] = useState([]);
   const [displayMode, setDisplayMode] = useState('focus');

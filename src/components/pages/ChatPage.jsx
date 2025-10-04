@@ -324,39 +324,53 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
 }
 
 // Composant PhotoMessage
+// src/components/pages/ChatPage.jsx - Composant PhotoMessage (ligne ~210)
+
 function PhotoMessage({ photo, onPhotoClick }) {
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-  let isMounted = true;
-  const resolveUrl = async () => {
-    if (!photo) {
-      if (isMounted) setError(true);
-      return;
-    }
+    let isMounted = true;
     
-    try {
-      const url = await window.photoDataV2.resolveImageUrl(photo, true);
-      if (isMounted) {
-        if (url && !url.startsWith('data:image/svg+xml')) {
-          setImageUrl(url);
-        } else {
-          setError(true);
-        }
+    const resolveUrl = async () => {
+      if (!photo) {
+        if (isMounted) setError(true);
+        return;
       }
-    } catch (err) {
-      console.error('Erreur chargement photo:', err);
-      if (isMounted) setError(true);
-    } finally {
-      if (isMounted) setLoading(false);
-    }
-  };
-  
-  resolveUrl();
-  return () => { isMounted = false; };
-}, [photo]);
+      
+      try {
+        // ✅ AJOUT : Support URL directe (fallback si pas de google_drive_id)
+        if (!photo.google_drive_id && photo.url) {
+          console.log('📸 Photo Mastodon (URL directe):', photo.url);
+          if (isMounted) {
+            setImageUrl(photo.url);
+            setLoading(false);
+          }
+          return;
+        }
+        
+        // Résolution normale via PhotoDataV2
+        const url = await window.photoDataV2.resolveImageUrl(photo, true);
+        if (isMounted) {
+          if (url && !url.startsWith('data:image/svg+xml')) {
+            setImageUrl(url);
+          } else {
+            setError(true);
+          }
+        }
+      } catch (err) {
+        console.error('❌ Erreur chargement photo:', err);
+        if (isMounted) setError(true);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    
+    resolveUrl();
+    return () => { isMounted = false; };
+  }, [photo]);
 
 
   if (loading) {
