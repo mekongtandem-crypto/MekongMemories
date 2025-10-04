@@ -193,6 +193,18 @@ async searchFileByName(fileName, mimeType = null) {
   }
 }
 
+async getFileMetadata(fileId, fields = 'id,name,parents') {
+  try {
+    const response = await gapi.client.drive.files.get({
+      fileId: fileId,
+      fields: fields
+    });
+    return response.result;
+  } catch (error) {
+    console.error(`❌ Erreur getFileMetadata pour ${fileId}:`, error);
+    throw error;
+  }
+}
 
   // --- Fonctions Utilitaires Internes ---
   async listFiles(options) {

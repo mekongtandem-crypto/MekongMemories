@@ -330,30 +330,34 @@ function PhotoMessage({ photo, onPhotoClick }) {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
-    const resolveUrl = async () => {
-      if (!photo) {
-        if (isMounted) setError(true);
-        return;
-      }
-      try {
-        const url = await window.photoDataV2.resolveImageUrl(photo, true);
-        if (isMounted) {
-          if (url && !url.startsWith('data:image/svg+xml')) {
-            setImageUrl(url);
-          } else {
-            setError(true);
-          }
+  let isMounted = true;
+  const resolveUrl = async () => {
+    if (!photo) {
+      if (isMounted) setError(true);
+      return;
+    }
+    
+    try {
+      const url = await window.photoDataV2.resolveImageUrl(photo, true);
+      if (isMounted) {
+        if (url && !url.startsWith('data:image/svg+xml')) {
+          setImageUrl(url);
+        } else {
+          setError(true);
         }
-      } catch (err) {
-        if (isMounted) setError(true);
-      } finally {
-        if (isMounted) setLoading(false);
       }
-    };
-    resolveUrl();
-    return () => { isMounted = false; };
-  }, [photo]);
+    } catch (err) {
+      console.error('Erreur chargement photo:', err);
+      if (isMounted) setError(true);
+    } finally {
+      if (isMounted) setLoading(false);
+    }
+  };
+  
+  resolveUrl();
+  return () => { isMounted = false; };
+}, [photo]);
+
 
   if (loading) {
     return (

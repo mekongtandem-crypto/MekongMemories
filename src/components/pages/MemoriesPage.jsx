@@ -1,5 +1,5 @@
 /**
- * MemoriesPage.jsx v6.0 - Intégration UnifiedTopBar
+ * MemoriesPage.jsx v6.1 - Intégration UnifiedTopBar
  * ✅ States gérés par App.jsx
  * ✅ Suppression CompactFilters
  * ✅ Garde toute la logique moments/photos/sessions
@@ -25,6 +25,34 @@ function MemoriesPage({
   displayOptions
 }, ref) {  // ✅ AJOUT : accepter ref
   const app = useAppState();
+  
+  // ✅ AJOUT TEMPORAIRE : Log pour débugger
+useEffect(() => {
+  if (app.masterIndex) {
+    console.log('📦 MasterIndex keys:', Object.keys(app.masterIndex));
+    console.log('📦 MasterIndex complet:', app.masterIndex);
+    
+    // Chercher des photos Mastodon
+    if (app.masterIndex.mastodonPhotos) {
+      console.log('🖼️ mastodonPhotos trouvées:', app.masterIndex.mastodonPhotos.length);
+    }
+    if (app.masterIndex.postPhotos) {
+      console.log('🖼️ postPhotos trouvées:', app.masterIndex.postPhotos.length);
+    }
+    
+    // Regarder la structure d'un moment avec posts
+    const momentWithPosts = app.masterIndex.moments?.find(m => m.posts?.length > 0);
+    if (momentWithPosts) {
+      console.log('📝 Premier moment avec posts:', momentWithPosts);
+      if (momentWithPosts.posts[0]?.photos?.length > 0) {
+        console.log('🖼️ Photo brute du post:', momentWithPosts.posts[0].photos[0]);
+      }
+    }
+  }
+}, [app.masterIndex]);
+  
+  
+  
   const [selectedMoments, setSelectedMoments] = useState([]);
   const [displayMode, setDisplayMode] = useState('focus');
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,6 +173,12 @@ function MemoriesPage({
   }, [momentsData, setCurrentDay]);
 
   const openPhotoViewer = useCallback((clickedPhoto, contextMoment, photoList) => {
+    console.log('📸 openPhotoViewer:', {
+    isPhoto: !!clickedPhoto.filename,
+    filename: clickedPhoto.filename,
+    photoKeys: Object.keys(clickedPhoto),
+    clickedPhoto
+  });
     setViewerState({ 
       isOpen: true, 
       photo: clickedPhoto, 
@@ -176,6 +210,14 @@ function MemoriesPage({
   }, [displayMode]);
 
   const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
+    console.log('🚀 handleCreateAndOpenSession:', { 
+    source, 
+    contextMoment, 
+    options,
+    hasFilename: !!source.filename,
+    sourceKeys: Object.keys(source)
+  });
+  
     if (!source) return;
     
     const sessionTitle = options.title || (
@@ -225,6 +267,13 @@ function MemoriesPage({
   }, [app, viewerState.isOpen, closePhotoViewer]);
 
   const handleOpenSessionModal = useCallback((source, contextMoment) => {
+    console.log('🎯 Modal ouvert avec:', {
+    sourceType: source.filename ? 'PHOTO' : source.content ? 'POST' : 'MOMENT',
+    filename: source.filename,
+    hasGoogleDriveId: !!source.google_drive_id,
+    sourceKeys: Object.keys(source),
+    source
+  });
     setSessionModal({ source, contextMoment });
   }, []);
 
@@ -639,6 +688,7 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
           photos={post.photos}
           moment={moment}
           onPhotoClick={onPhotoClick}
+		allPhotos={post.photos}
         />
       )}
     </div>
@@ -725,17 +775,55 @@ const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
 
 function enrichMomentsWithData(rawMoments) {
   if (!rawMoments) return [];
-  return rawMoments.map((moment, index) => ({
-    ...moment,
-    id: moment.id || `moment_${moment.dayStart}_${moment.dayEnd}_${index}`,
-    postCount: moment.posts?.length || 0,
-    dayPhotoCount: moment.dayPhotos?.length || 0,
-    postPhotoCount: moment.postPhotos?.length || 0,
-    photoCount: (moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0),
-    displayTitle: moment.title || `Moment du jour ${moment.dayStart}`,
-    displaySubtitle: moment.dayEnd > moment.dayStart ? `J${moment.dayStart}-J${moment.dayEnd}` : `J${moment.dayStart}`,
-    isEmpty: (moment.posts?.length || 0) === 0 && ((moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0)) === 0,
-  })).filter(moment => !moment.isEmpty);
+  return rawMoments.map((moment, index) => {
+    // ✅ NOUVEAU : Normaliser les photos des posts
+    const enrichedPosts = moment.posts?.map(post => ({
+      ...post,
+      photos: post.photos?.map(photo => normalizePhoto(photo)) || []
+    })) || [];
+    
+    return {
+      ...moment,
+      id: moment.id || `moment_${moment.dayStart}_${moment.dayEnd}_${index}`,
+      posts: enrichedPosts,  // ✅ Posts avec photos normalisées
+      postCount: enrichedPosts.length,
+      dayPhotoCount: moment.dayPhotos?.length || 0,
+      postPhotoCount: moment.postPhotos?.length || 0,
+      photoCount: (moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0),
+      displayTitle: moment.title || `Moment du jour ${moment.dayStart}`,
+      displaySubtitle: moment.dayEnd > moment.dayStart ? `J${moment.dayStart}-J${moment.dayEnd}` : `J${moment.dayStart}`,
+      isEmpty: enrichedPosts.length === 0 && ((moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0)) === 0,
+    };
+  }).filter(moment => !moment.isEmpty);
+}
+
+// ✅ NOUVEAU : Fonction pour normaliser une photo
+function normalizePhoto(photo) {
+  // Si c'est déjà une photo Google Drive (avec filename), retourner tel quel
+  if (photo.filename && photo.google_drive_id) {
+    return photo;
+  }
+  
+  // Si c'est une photo Mastodon (avec url), la convertir
+  if (photo.url) {
+    return {
+      filename: photo.name || extractFilenameFromUrl(photo.url),
+      url: photo.url,  // Garder l'URL Mastodon
+      width: photo.width,
+      height: photo.height,
+      mime_type: photo.mediaType || 'image/jpeg',
+      isMastodonPhoto: true  // ✅ Flag pour différencier
+    };
+  }
+  
+  // Fallback
+  return photo;
+}
+
+// ✅ NOUVEAU : Extraire nom de fichier depuis URL
+function extractFilenameFromUrl(url) {
+  const parts = url.split('/');
+  return parts[parts.length - 1] || 'photo.jpg';
 }
 
 function getFilteredMoments(momentsData, searchQuery) {

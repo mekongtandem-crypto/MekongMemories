@@ -9,17 +9,17 @@ class DataManager {
     this.stateManager = null;
 
     this.appState = {
-      isInitialized: false, 
-      isLoading: true, 
-      masterIndex: null, 
-      sessions: [],
-      currentChatSession: null, 
-      currentUser: null, 
-      currentPage: 'memories',
-      error: null, 
-      connection: { hasError: false, lastError: null },
-      isCreatingSession: false,
-    };
+  isInitialized: false, 
+  isLoading: true, 
+  masterIndex: null, 
+  sessions: [],
+  currentChatSession: null, 
+  currentUser: null, 
+  currentPage: 'memories',
+  error: null, 
+  connection: { hasError: false, lastError: null },
+  isCreatingSession: false,
+};
 
     this.listeners = new Set();
     console.log('📦 DataManager v3.5 (Photo user message): Ready.');
@@ -121,6 +121,37 @@ class DataManager {
       return { success: false, error };
     }
   }
+
+// ✅ NOUVEAU : Régénérer complètement l'index
+regenerateMasterIndex = async () => {
+  try {
+    console.log('🏗️ DataManager: Régénération complète du masterIndex...');
+    
+    // 1. Vérifier que masterIndexGenerator existe
+    if (!window.masterIndexGenerator) {
+      throw new Error('masterIndexGenerator n\'est pas disponible');
+    }
+    
+    // 2. Régénérer l'index
+    const result = await window.masterIndexGenerator.generateMomentsStructure();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Erreur de génération');
+    }
+    
+    console.log('✅ Index régénéré sur Drive');
+    
+    // 3. Recharger le nouveau fichier
+    await new Promise(resolve => setTimeout(resolve, 500)); // Attendre que Drive sync
+    const reloadResult = await this.reloadMasterIndex();
+    
+    return reloadResult;
+    
+  } catch (error) {
+    console.error('❌ Erreur régénération masterIndex:', error);
+    return { success: false, error: error.message };
+  }
+}
 
   createSession = async (gameData, initialText = null, sourcePhoto = null) => {
     this.updateState({ isCreatingSession: true });

@@ -57,6 +57,10 @@ export function useAppState() {
   const openChatSession = useCallback((session) => dataManager.openChatSession(session), []);
   const closeChatSession = useCallback(() => dataManager.closeChatSession(), []);
   const addMessageToSession = useCallback((sessionId, content) => dataManager.addMessageToSession(sessionId, content), []);
+// ✅ AJOUT : Régénération index
+const regenerateMasterIndex = useCallback(() => dataManager.regenerateMasterIndex(), []);
+
+
 
   // On fusionne l'état brut, l'état dérivé et les actions
   return {
@@ -73,5 +77,6 @@ export function useAppState() {
     openChatSession,
     closeChatSession,
     addMessageToSession,
+    regenerateMasterIndex,  // ✅ AJOUT
   };
 }

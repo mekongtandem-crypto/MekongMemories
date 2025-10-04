@@ -34,26 +34,28 @@ export default function SettingsPage() {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const handleRegenerateIndex = async () => {
-    if (!confirm('Régénérer l\'index complet ? Cette opération peut prendre quelques secondes.')) {
-      return;
-    }
+const handleRegenerateIndex = async () => {
+  if (!confirm('Régénérer l\'index complet ? Cette opération peut prendre quelques secondes.')) {
+    return;
+  }
 
-    setIsRegenerating(true);
-    try {
-      const result = await app.dataManager?.reloadMasterIndex();
-      if (result?.success) {
-        alert('✅ Index régénéré avec succès !');
-      } else {
-        alert('❌ Erreur lors de la régénération de l\'index.');
-      }
-    } catch (error) {
-      console.error('Erreur régénération:', error);
-      alert('❌ Erreur lors de la régénération de l\'index.');
-    } finally {
-      setIsRegenerating(false);
+  setIsRegenerating(true);
+  try {
+    const result = await app.regenerateMasterIndex();
+    
+    if (result?.success) {
+      alert('✅ Index régénéré avec succès !\n\nRechargez la page (F5) pour voir les nouvelles statistiques.');
+    } else {
+      const errorMsg = result?.error || 'Erreur inconnue';
+      alert(`❌ Erreur lors de la régénération :\n\n${errorMsg}`);
     }
-  };
+  } catch (error) {
+    console.error('Erreur régénération:', error);
+    alert(`❌ Erreur lors de la régénération :\n\n${error.message}`);
+  } finally {
+    setIsRegenerating(false);
+  }
+};
 
   const handleChangeUser = (userId) => {
     app.setCurrentUser(userId);
@@ -78,11 +80,11 @@ export default function SettingsPage() {
   ];
 
   const stats = {
-    moments: app.masterIndex?.moments?.length || 0,
-    posts: app.masterIndex?.metadata?.stats?.postCount || 0,
-    photos: app.masterIndex?.metadata?.stats?.photoCount || 0,
-    sessions: app.sessions?.length || 0
-  };
+  moments: app.masterIndex?.metadata?.total_moments || 0,
+  posts: app.masterIndex?.metadata?.total_posts || 0,
+  photos: app.masterIndex?.metadata?.total_photos || 0,
+  sessions: app.sessions?.length || 0
+};
 
   const isOnline = app.connection?.isOnline;
   const connectionEmail = 'mekongtandem@gmail.com'; // À adapter si tu as cette info ailleurs
