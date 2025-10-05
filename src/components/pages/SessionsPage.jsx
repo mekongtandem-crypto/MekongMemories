@@ -84,39 +84,45 @@ export default function SessionsPage() {
   // Enrichir sessions avec statuts
   // NOUVEAU CODE (utilise sessionUtils)
 const enrichedSessions = useMemo(() => {
+  if (!app.sessions || !app.currentUser?.id) return [];
+  
   return app.sessions.map(s => 
-    enrichSessionWithStatus(s, app.currentUser?.id)
+    enrichSessionWithStatus(s, app.currentUser.id)
   );
 }, [app.sessions, app.currentUser]);
 
   // Grouper sessions par statut
   const groupedSessions = useMemo(() => {
-    const groups = {
-      urgent: [],
-      pending_you: [],
-      pending_other: [],
-      completed: []
-    };
-    
-    enrichedSessions.forEach(s => {
-      if (s.completed) {
-        groups.completed.push(s);
-      } else if (s.isUrgent) {
-        groups.urgent.push(s);
-      } else if (s.isPendingYou) {
-        groups.pending_you.push(s);
-      } else if (s.isPendingOther) {
-        groups.pending_other.push(s);
-      }
-    });
-    
-    // Trier chaque groupe
-    Object.keys(groups).forEach(key => {
-      groups[key] = sortSessions(groups[key], sortBy);
-    });
-    
-    return groups;
-  }, [enrichedSessions, sortBy]);
+  const groups = {
+    notified: [],
+    urgent: [],
+    pending_you: [],
+    pending_other: [],
+    completed: []
+  };
+  
+  enrichedSessions.forEach(s => {
+    // ✅ Utiliser s.status au lieu de s.isUrgent, etc.
+    if (s.completed || s.archived) {
+      groups.completed.push(s);
+    } else if (s.status === SESSION_STATUS.NOTIFIED) {
+      groups.notified.push(s);
+    } else if (s.status === SESSION_STATUS.STALE) {
+      groups.urgent.push(s);
+    } else if (s.status === SESSION_STATUS.PENDING_YOU) {
+      groups.pending_you.push(s);
+    } else if (s.status === SESSION_STATUS.PENDING_OTHER) {
+      groups.pending_other.push(s);
+    }
+  });
+  
+  // Trier chaque groupe
+  Object.keys(groups).forEach(key => {
+    groups[key] = sortSessions(groups[key], sortBy);
+  });
+  
+  return groups;
+}, [enrichedSessions, sortBy]);
 
   // Filtrer selon badge TopBar cliqué
   const filteredGroups = useMemo(() => {

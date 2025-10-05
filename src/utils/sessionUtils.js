@@ -95,6 +95,12 @@ export function calculateSessionStatus(session, currentUserId) {
   if (session.archived) return SESSION_STATUS.ARCHIVED;
   if (session.completed) return SESSION_STATUS.COMPLETED;
   
+  // ✅ Vérifier notification (AVANT les autres checks)
+  const hasUnreadNotif = window.notificationManager?.hasUnreadNotificationForSession(
+    session.id, 
+    currentUserId  // ✅ Doit être un string comme 'lambert' ou 'tom'
+  );
+  
   if (!session.notes || session.notes.length === 0) {
     return SESSION_STATUS.ACTIVE;
   }
@@ -104,6 +110,11 @@ export function calculateSessionStatus(session, currentUserId) {
   
   if (lastMessage.author === currentUserId) {
     return daysSinceLastMsg < 1 ? SESSION_STATUS.ACTIVE : SESSION_STATUS.PENDING_OTHER;
+  }
+  
+  // ✅ NOTIFIED a priorité sur STALE
+  if (hasUnreadNotif) {
+    return SESSION_STATUS.NOTIFIED;
   }
   
   return daysSinceLastMsg > 7 ? SESSION_STATUS.STALE : SESSION_STATUS.PENDING_YOU;
