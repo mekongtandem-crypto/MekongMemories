@@ -13,7 +13,8 @@ import {
   sortSessions,
   formatRelativeTime,
   formatMessagePreview,
-  SORT_OPTIONS
+  SORT_OPTIONS,
+  SESSION_STATUS
 } from '../../utils/sessionUtils.js';
 import { 
   Clock, MoreVertical, Edit, Trash2, 
@@ -81,23 +82,12 @@ export default function SessionsPage() {
   }, [openMenuId]);
 
   // Enrichir sessions avec statuts
-  const enrichedSessions = useMemo(() => {
-    return app.sessions.map(s => {
-      const lastMsg = s.notes?.[s.notes.length - 1];
-      const isPendingYou = lastMsg && lastMsg.author !== app.currentUser;
-      const daysSince = lastMsg ? (Date.now() - new Date(lastMsg.timestamp)) / (1000*60*60*24) : 0;
-      const isUrgent = isPendingYou && daysSince > 7;
-      const isPendingOther = lastMsg && lastMsg.author === app.currentUser;
-      
-      return enrichSessionWithStatus({
-        ...s,
-        isPendingYou,
-        isUrgent,
-        isPendingOther: isPendingOther && !isPendingYou,
-        daysSince
-      }, app.currentUser);
-    });
-  }, [app.sessions, app.currentUser]);
+  // NOUVEAU CODE (utilise sessionUtils)
+const enrichedSessions = useMemo(() => {
+  return app.sessions.map(s => 
+    enrichSessionWithStatus(s, app.currentUser?.id)
+  );
+}, [app.sessions, app.currentUser]);
 
   // Grouper sessions par statut
   const groupedSessions = useMemo(() => {

@@ -1,5 +1,5 @@
 /**
- * UnifiedTopBar.jsx v1.7 - Phase 15a
+ * UnifiedTopBar.jsx v1.7b - Phase 15a
  * ✅ Menu notifications avec badge
  */
 import React, { useState, useRef, useEffect } from 'react';
@@ -134,17 +134,7 @@ export default function UnifiedTopBar({
       case 'memories':
         return (
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setIsTimelineVisible(!isTimelineVisible)}
-              className={`p-2 rounded-lg transition-colors ${
-                isTimelineVisible 
-                  ? 'bg-blue-100 text-blue-700' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-              title="Timeline"
-            >
-              <Map className="w-5 h-5" />
-            </button>
+            
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               className={`p-2 rounded-lg transition-colors ${
@@ -376,22 +366,6 @@ export default function UnifiedTopBar({
               </button>
             )}
             
-            {unexploredMoments > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPageChange('memories');
-                  setTimeout(() => {
-                    window.memoriesPageFilters?.setMomentFilter?.('unexplored');
-                  }, 100);
-                }}
-                className="flex items-center space-x-1 bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded-lg text-xs font-bold transition-colors"
-                title="Moments non explorés - Voir dans Mémoires"
-              >
-                <span>✨</span>
-                <span>{unexploredMoments}</span>
-              </button>
-            )}
             
             <select
               onChange={(e) => {
@@ -640,60 +614,61 @@ export default function UnifiedTopBar({
 
   return (
     <div className="bg-white border-b border-gray-200 px-4 h-12 flex items-center justify-between">
+      {/* Section gauche */}
       <div className="flex items-center space-x-2">
         {renderLeftAction()}
       </div>
-
+		{/* Section centre */}
       <div className="flex-1 flex items-center justify-center px-4">
         {renderContext()}
       </div>
-
+	{/* Section droite - REMPLACER ICI */}
       <div className="flex items-center space-x-2">
-        {/* ✅ NOUVEAU : Bouton notifications */}
-        <div className="relative" ref={notifMenuRef}>
-          <button
-            onClick={() => setShowNotifMenu(!showNotifMenu)}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative"
-            title="Notifications"
-          >
-            <Bell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
-          {showNotifMenu && renderNotificationMenu()}
-        </div>
+  {/* ✅ Badge notifications */}
+  <div className="relative" ref={notifMenuRef}>
+    <button
+      onClick={() => setShowNotifMenu(!showNotifMenu)}
+      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative"
+      title="Notifications"
+    >
+      <Bell className="w-5 h-5" />
+      {unreadCount > 0 && (
+        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+    </button>
+    {showNotifMenu && renderNotificationMenu()}
+  </div>
 
-        {currentPage !== 'memories' && (
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Menu"
-            >
-              <MoreVertical className="w-5 h-5" />
-            </button>
-            {showMenu && renderMenu()}
-          </div>
+  {/* ✅ Menu ... (toujours visible) */}
+  <div className="relative" ref={menuRef}>
+    <button
+      onClick={() => setShowMenu(!showMenu)}
+      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+      title="Menu"
+    >
+      <MoreVertical className="w-5 h-5" />
+    </button>
+    {showMenu && renderMenu()}
+  </div>
+
+  {/* ✅ Avatar utilisateur */}
+  <div className="relative hidden sm:block" ref={userMenuRef}>
+    <button
+      onClick={() => setShowUserMenu(!showUserMenu)}
+      className="flex items-center space-x-2 p-1 hover:bg-gray-100 rounded-lg transition-colors"
+    >
+      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xl relative">
+        {currentUserObj?.emoji || '👤'}
+        {!isOnline && (
+          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></div>
         )}
-
-        <div className="relative hidden sm:block" ref={userMenuRef}>
-          <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center space-x-2 p-1 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xl relative">
-              {currentUserObj?.emoji || '👤'}
-              {!isOnline && (
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></div>
-              )}
-            </div>
-          </button>
-          {showUserMenu && renderUserMenu()}
-        </div>
+      </div>
+    </button>
+       {showUserMenu && renderUserMenu()}
       </div>
     </div>
-  );
+  </div>
+);
 }

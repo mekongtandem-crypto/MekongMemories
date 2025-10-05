@@ -14,7 +14,7 @@ class DataManager {
   sessions: [],
   currentChatSession: null, 
   currentUser: null, 
-  currentPage: 'memories',
+  currentPage: 'sessions',
   error: null, 
   connection: { hasError: false, lastError: null },
   isCreatingSession: false,
@@ -301,7 +301,17 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
     
     const updatedSession = { ...session, notes: [...session.notes, newMessage] };
     await this.updateSession(updatedSession);
+    
+  // ✅ NOUVEAU : Marquer notification comme lue
+  const notif = this.notificationManager.getNotificationForSession(
+    sessionId, 
+    this.appState.currentUser
+  );
+  if (notif) {
+    await this.notificationManager.markAsRead(notif.id);
+    console.log('✅ Notification marquée lue après envoi message');
   }
+}
 
   openChatSession = (session) => {
     this.updateState({ currentChatSession: session, currentPage: 'chat' });

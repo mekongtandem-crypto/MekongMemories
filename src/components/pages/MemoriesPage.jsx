@@ -481,12 +481,12 @@ const MomentHeader = memo(({
   return (
     <>
       <div onClick={handleChevronClick} className="cursor-pointer flex items-start justify-between">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-3">
             <div className="px-2 py-1 rounded-lg font-bold text-xs bg-gray-100 text-gray-800">
               {moment.displaySubtitle}
             </div>
-            <h3 className="text-base font-semibold text-gray-900 truncate">
+            <h3 className="text-base font-semibold text-gray-900 truncate flex-1">
               {moment.displayTitle}
             </h3>
           </div>

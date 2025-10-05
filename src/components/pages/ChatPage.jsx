@@ -305,7 +305,7 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
           if (!app.currentChatSession) return;
           
           // Trouver l'autre utilisateur
-          const otherUser = ['lambert', 'tom'].find(u => u !== app.currentUser);
+          const otherUser = ['lambert', 'tom'].find(u => u !== app.currentUser?.id);
           
           if (otherUser) {
             await app.sendNotification(
