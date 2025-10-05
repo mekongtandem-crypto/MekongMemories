@@ -1,8 +1,8 @@
 /**
- * UnifiedTopBar.jsx v1.2 - Fixes couleurs + connexion
- * ✅ Contexte en amber-600 partout
- * ✅ Menu Sessions grisé
- * ✅ Bouton nouvelle session fonctionnel
+ * UnifiedTopBar.jsx v1.6 - Phase 14.3
+ * ✅ MemoriesPage : Dropdown filtre + options inline
+ * ✅ SessionsPage : Badge ✨ redirige vers Memories
+ * ✅ Icônes explicites + couleurs discrètes
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { 
@@ -88,7 +88,7 @@ export default function UnifiedTopBar({
                   ? 'bg-blue-100 text-blue-700' 
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
-              title="Timeline (T)"
+              title="Timeline"
             >
               <Map className="w-5 h-5" />
             </button>
@@ -99,7 +99,7 @@ export default function UnifiedTopBar({
                   ? 'bg-blue-100 text-blue-700' 
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
-              title="Recherche (/)"
+              title="Recherche"
             >
               <Search className="w-5 h-5" />
             </button>
@@ -144,10 +144,68 @@ export default function UnifiedTopBar({
     switch (currentPage) {
       case 'memories':
         return (
-          <div className="flex items-center space-x-3">
-            <span className="text-sm font-semibold text-amber-600 hidden sm:inline">
-              Mémoire
-            </span>
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            
+            {/* Dropdown Filtre */}
+            <select
+              onChange={(e) => {
+                if (window.memoriesPageFilters?.setMomentFilter) {
+                  window.memoriesPageFilters.setMomentFilter(e.target.value);
+                }
+              }}
+              className="text-xs sm:text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-purple-500"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <option value="all">Tous</option>
+              <option value="unexplored">✨ Non explorés</option>
+              <option value="with_posts">📝 Avec articles</option>
+              <option value="with_photos">📸 Avec photos</option>
+            </select>
+            
+            <div className="h-6 w-px bg-gray-300 hidden sm:block"></div>
+            
+            {/* Options affichage - visibles inline desktop */}
+            <div className="hidden sm:flex items-center space-x-1">
+              <button
+                onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))}
+                className={`p-1.5 rounded transition-colors ${
+                  displayOptions.showPostText 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'text-gray-400 hover:bg-gray-100'
+                }`}
+                title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}
+              >
+                <Type className="w-4 h-4" />
+              </button>
+              
+              <button
+                onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))}
+                className={`p-1.5 rounded transition-colors ${
+                  displayOptions.showPostPhotos 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'text-gray-400 hover:bg-gray-100'
+                }`}
+                title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}
+              >
+                <ImageIcon className="w-4 h-4" />
+              </button>
+              
+              <button
+                onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))}
+                className={`p-1.5 rounded transition-colors ${
+                  displayOptions.showMomentPhotos 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'text-gray-400 hover:bg-gray-100'
+                }`}
+                title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="h-6 w-px bg-gray-300"></div>
+            
+            {/* Random + Jour */}
             <button 
               onClick={jumpToRandomMoment}
               className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
@@ -155,24 +213,23 @@ export default function UnifiedTopBar({
             >
               <Dices className="w-4 h-4" />
             </button>
-            <div className="relative">
-              <input 
-                type="number" 
-                value={currentDay} 
-                onChange={(e) => {
-                  const day = parseInt(e.target.value, 10);
-                  if (!isNaN(day)) setCurrentDay(day);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') jumpToDay(currentDay);
-                }}
-                onWheel={handleDayWheel}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                placeholder="J..."
-                min="0"
-                max="200"
-              />
-            </div>
+            
+            <input 
+              type="number" 
+              value={currentDay} 
+              onChange={(e) => {
+                const day = parseInt(e.target.value, 10);
+                if (!isNaN(day)) setCurrentDay(day);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') jumpToDay(currentDay);
+              }}
+              onWheel={handleDayWheel}
+              className="w-14 sm:w-16 px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm text-center focus:ring-2 focus:ring-blue-500"
+              placeholder="J..."
+              min="0"
+              max="200"
+            />
           </div>
         );
       
@@ -184,20 +241,125 @@ export default function UnifiedTopBar({
         ) : null;
       
       case 'sessions':
-        const pendingCount = app.sessions?.filter(s => 
-          s.user === app.currentUser?.id && 
-          s.notes?.length > 0 && 
-          s.notes[s.notes.length - 1].author !== app.currentUser?.id
-        ).length || 0;
+        const enrichedSessions = app.sessions?.map(s => {
+          const lastMsg = s.notes?.[s.notes.length - 1];
+          const isPendingYou = lastMsg && lastMsg.author !== app.currentUser;
+          const daysSince = lastMsg ? (Date.now() - new Date(lastMsg.timestamp)) / (1000*60*60*24) : 0;
+          const isUrgent = isPendingYou && daysSince > 7;
+          const isPendingOther = lastMsg && lastMsg.author === app.currentUser;
+          
+          return { 
+            ...s, 
+            isPendingYou, 
+            isUrgent,
+            isPendingOther: isPendingOther && !isPendingYou
+          };
+        }) || [];
+        
+        const urgentCount = enrichedSessions.filter(s => s.isUrgent).length;
+        const pendingYouCount = enrichedSessions.filter(s => s.isPendingYou && !s.isUrgent).length;
+        const pendingOtherCount = enrichedSessions.filter(s => s.isPendingOther).length;
+        const unexploredMoments = (app.masterIndex?.moments?.length || 0) - new Set(app.sessions?.map(s => s.gameId)).size;
+        
+        const activeFilter = window.sessionPageState?.activeFilter || null;
         
         return (
-          <div className="text-sm text-amber-600 font-semibold">
-            <span>{app.sessions?.length || 0}</span> session{app.sessions?.length > 1 ? 's' : ''}
-            {pendingCount > 0 && (
-              <span className="ml-2">
-                · <span>{pendingCount}</span> nouvelle{pendingCount > 1 ? 's' : ''}
-              </span>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-semibold text-amber-600">
+              Sessions
+            </span>
+            
+            {urgentCount > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.sessionPageFilters?.setGroupFilter) {
+                    window.sessionPageFilters.setGroupFilter('urgent');
+                  }
+                }}
+                className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+                  activeFilter === 'urgent'
+                    ? 'bg-orange-500 text-white shadow-md ring-2 ring-orange-300'
+                    : 'bg-orange-100 hover:bg-orange-200 text-orange-700'
+                }`}
+                title="Sessions urgentes (>7 jours)"
+              >
+                <span>🔴</span>
+                <span>{urgentCount}</span>
+              </button>
             )}
+            
+            {pendingYouCount > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.sessionPageFilters?.setGroupFilter) {
+                    window.sessionPageFilters.setGroupFilter('pending_you');
+                  }
+                }}
+                className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+                  activeFilter === 'pending_you'
+                    ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300'
+                    : 'bg-amber-100 hover:bg-amber-200 text-amber-700'
+                }`}
+                title="Sessions en attente de votre réponse"
+              >
+                <span>🟡</span>
+                <span>{pendingYouCount}</span>
+              </button>
+            )}
+            
+            {pendingOtherCount > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.sessionPageFilters?.setGroupFilter) {
+                    window.sessionPageFilters.setGroupFilter('pending_other');
+                  }
+                }}
+                className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+                  activeFilter === 'pending_other'
+                    ? 'bg-blue-500 text-white shadow-md ring-2 ring-blue-300'
+                    : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                }`}
+                title="Sessions en attente d'autres utilisateurs"
+              >
+                <span>🔵</span>
+                <span>{pendingOtherCount}</span>
+              </button>
+            )}
+            
+            {unexploredMoments > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPageChange('memories');
+                  setTimeout(() => {
+                    window.memoriesPageFilters?.setMomentFilter?.('unexplored');
+                  }, 100);
+                }}
+                className="flex items-center space-x-1 bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded-lg text-xs font-bold transition-colors"
+                title="Moments non explorés - Voir dans Mémoires"
+              >
+                <span>✨</span>
+                <span>{unexploredMoments}</span>
+              </button>
+            )}
+            
+            <select
+              onChange={(e) => {
+                if (window.sessionPageFilters?.setSortBy) {
+                  window.sessionPageFilters.setSortBy(e.target.value);
+                }
+              }}
+              className="text-xs border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <option value="urgency">Tri: Urgence</option>
+              <option value="date">Tri: Date</option>
+              <option value="chrono">Tri: Voyage</option>
+              <option value="activity">Tri: Activité</option>
+            </select>
           </div>
         );
       
@@ -216,61 +378,8 @@ export default function UnifiedTopBar({
   const renderMenu = () => {
     switch (currentPage) {
       case 'memories':
-        return (
-          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-56">
-            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
-              Options d'affichage
-            </div>
-            <button
-              onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center justify-between"
-            >
-              <span className="flex items-center space-x-2">
-                <Type className="w-4 h-4" />
-                <span>Texte des articles</span>
-              </span>
-              <span className="text-xs font-medium">
-                {displayOptions.showPostText ? (
-                  <span className="text-green-600">✓ Activé</span>
-                ) : (
-                  <span className="text-gray-400">Désactivé</span>
-                )}
-              </span>
-            </button>
-            <button
-              onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center justify-between"
-            >
-              <span className="flex items-center space-x-2">
-                <ImageIcon className="w-4 h-4" />
-                <span>Photos des articles</span>
-              </span>
-              <span className="text-xs font-medium">
-                {displayOptions.showPostPhotos ? (
-                  <span className="text-green-600">✓ Activé</span>
-                ) : (
-                  <span className="text-gray-400">Désactivé</span>
-                )}
-              </span>
-            </button>
-            <button
-              onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center justify-between"
-            >
-              <span className="flex items-center space-x-2">
-                <Camera className="w-4 h-4" />
-                <span>Photos des moments</span>
-              </span>
-              <span className="text-xs font-medium">
-                {displayOptions.showMomentPhotos ? (
-                  <span className="text-green-600">✓ Activé</span>
-                ) : (
-                  <span className="text-gray-400">Désactivé</span>
-                )}
-              </span>
-            </button>
-          </div>
-        );
+        // Options maintenant inline - pas de menu
+        return null;
       
       case 'chat':
         return (
@@ -324,20 +433,27 @@ export default function UnifiedTopBar({
       
       case 'sessions':
         return (
-          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
-            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
-              Fonctionnalités à venir
-            </div>
-            <button disabled className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
-              Trier par date
+          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-56">
+            <button
+              onClick={() => {
+                setShowMenu(false);
+                if (window.sessionPageActions?.openStatsModal) {
+                  window.sessionPageActions.openStatsModal();
+                }
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <span>Voir les statistiques</span>
             </button>
-            <button disabled className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
-              Filtrer
-            </button>
+            
             <div className="border-t border-gray-200 my-1"></div>
-            <button disabled className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
-              Exporter
-            </button>
+            
+            <div className="px-4 py-2 text-xs text-gray-500">
+              {app.sessions?.length || 0} session{app.sessions?.length > 1 ? 's' : ''} au total
+            </div>
           </div>
         );
       
@@ -429,16 +545,18 @@ export default function UnifiedTopBar({
       </div>
 
       <div className="flex items-center space-x-2">
-        <div className="relative" ref={menuRef}>
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Menu"
-          >
-            <MoreVertical className="w-5 h-5" />
-          </button>
-          {showMenu && renderMenu()}
-        </div>
+        {currentPage !== 'memories' && (
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Menu"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+            {showMenu && renderMenu()}
+          </div>
+        )}
 
         <div className="relative hidden sm:block" ref={userMenuRef}>
           <button

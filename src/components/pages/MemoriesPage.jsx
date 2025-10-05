@@ -1,20 +1,21 @@
 /**
- * MemoriesPage.jsx v6.1 - Intégration UnifiedTopBar
- * ✅ States gérés par App.jsx
- * ✅ Suppression CompactFilters
- * ✅ Garde toute la logique moments/photos/sessions
+ * MemoriesPage.jsx v6.2 - Phase 14.3
+ * ✅ Filtrage intelligent (Tous/Non explorés/Avec articles/Avec photos)
+ * ✅ Callbacks exposés pour TopBar
+ * ✅ Icônes 💬 pour sessions (amber)
+ * ✅ Scroll auto vers moments filtrés
  */
 
-import React, { useState, useEffect, useRef, memo, useCallback, useImperativeHandle } from 'react';import { useAppState } from '../../hooks/useAppState.js';
+import React, { useState, useEffect, useRef, memo, useCallback, useImperativeHandle } from 'react';
+import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown, MessageCircle
+  AlertCircle, ChevronDown
 } from 'lucide-react';
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
 import SessionCreationModal from '../SessionCreationModal.jsx';
 
-// APRÈS (CORRECT - juste function, pas export)
 function MemoriesPage({ 
   isTimelineVisible,
   setIsTimelineVisible,
@@ -23,14 +24,13 @@ function MemoriesPage({
   currentDay,
   setCurrentDay,
   displayOptions
-}, ref) {  // ✅ AJOUT : accepter ref
+}, ref) {
   const app = useAppState();
-  
-
   
   const [selectedMoments, setSelectedMoments] = useState([]);
   const [displayMode, setDisplayMode] = useState('focus');
   const [searchQuery, setSearchQuery] = useState('');
+  const [momentFilter, setMomentFilter] = useState('all');
   const [viewerState, setViewerState] = useState({ 
     isOpen: false, photo: null, gallery: [], contextMoment: null 
   });
@@ -43,8 +43,28 @@ function MemoriesPage({
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const momentRefs = useRef({});
   
-  // ✅ NOUVEAU : Exposer fonctions via ref
-  React.useImperativeHandle(ref, () => ({
+  // Exposer callbacks pour TopBar
+  useEffect(() => {
+    window.memoriesPageFilters = {
+      setMomentFilter: (filter) => {
+        setMomentFilter(filter);
+        // Scroll vers premier moment filtré après render
+        setTimeout(() => {
+          const firstFiltered = document.querySelector('[data-filtered="true"]');
+          if (firstFiltered) {
+            firstFiltered.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      }
+    };
+    
+    return () => {
+      delete window.memoriesPageFilters;
+    };
+  }, []);
+  
+  // Exposer fonctions via ref
+  useImperativeHandle(ref, () => ({
     jumpToRandomMoment: () => {
       if (momentsData.length > 0) {
         const randomIndex = Math.floor(Math.random() * momentsData.length);
@@ -148,12 +168,6 @@ function MemoriesPage({
   }, [momentsData, setCurrentDay]);
 
   const openPhotoViewer = useCallback((clickedPhoto, contextMoment, photoList) => {
-    console.log('📸 openPhotoViewer:', {
-    isPhoto: !!clickedPhoto.filename,
-    filename: clickedPhoto.filename,
-    photoKeys: Object.keys(clickedPhoto),
-    clickedPhoto
-  });
     setViewerState({ 
       isOpen: true, 
       photo: clickedPhoto, 
@@ -185,14 +199,6 @@ function MemoriesPage({
   }, [displayMode]);
 
   const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
-    console.log('🚀 handleCreateAndOpenSession:', { 
-    source, 
-    contextMoment, 
-    options,
-    hasFilename: !!source.filename,
-    sourceKeys: Object.keys(source)
-  });
-  
     if (!source) return;
     
     const sessionTitle = options.title || (
@@ -242,17 +248,10 @@ function MemoriesPage({
   }, [app, viewerState.isOpen, closePhotoViewer]);
 
   const handleOpenSessionModal = useCallback((source, contextMoment) => {
-    console.log('🎯 Modal ouvert avec:', {
-    sourceType: source.filename ? 'PHOTO' : source.content ? 'POST' : 'MOMENT',
-    filename: source.filename,
-    hasGoogleDriveId: !!source.google_drive_id,
-    sourceKeys: Object.keys(source),
-    source
-  });
     setSessionModal({ source, contextMoment });
   }, []);
 
-  const filteredMoments = getFilteredMoments(momentsData, searchQuery);
+  const filteredMoments = getFilteredMoments(momentsData, searchQuery, momentFilter, app.sessions);
 
   if (!app.isInitialized || !momentsData) {
     return <div className="p-12 text-center">Chargement des données...</div>;
@@ -305,6 +304,8 @@ function MemoriesPage({
             moments={filteredMoments}
             selectedMoments={selectedMoments}
             displayOptions={displayOptions}
+            momentFilter={momentFilter}
+            sessions={app.sessions}
             onMomentSelect={handleSelectMoment}
             onPhotoClick={openPhotoViewer}
             onCreateSession={handleOpenSessionModal}
@@ -341,33 +342,45 @@ function MemoriesPage({
 }
 
 // ====================================================================
-// COMPOSANTS (inchangés sauf suppression imports inutiles)
+// COMPOSANTS
 // ====================================================================
 
 const MomentsList = memo(({ 
-  moments, selectedMoments, displayOptions, onMomentSelect, onPhotoClick, onCreateSession, momentRefs
+  moments, selectedMoments, displayOptions, momentFilter, sessions, 
+  onMomentSelect, onPhotoClick, onCreateSession, momentRefs
 }) => {
   return (
     <div className="space-y-3">
-      {moments.map((moment) => (
-        <MomentCard
-          key={moment.id} 
-          moment={moment} 
-          isSelected={selectedMoments.some(m => m.id === moment.id)}
-          displayOptions={displayOptions}
-          onSelect={onMomentSelect}
-          onPhotoClick={onPhotoClick}
-          onCreateSession={onCreateSession}
-          ref={el => momentRefs.current[moment.id] = el}
-        />
-      ))}
+      {moments.map((moment) => {
+        const isExplored = sessions?.some(s => s.gameId === moment.id);
+        const matchesFilter = momentFilter === 'all' || 
+          (momentFilter === 'unexplored' && !isExplored) ||
+          (momentFilter === 'with_posts' && moment.posts?.length > 0) ||
+          (momentFilter === 'with_photos' && moment.dayPhotoCount > 0);
+        
+        return (
+          <MomentCard
+            key={moment.id} 
+            moment={moment} 
+            isSelected={selectedMoments.some(m => m.id === moment.id)}
+            isExplored={isExplored}
+            matchesFilter={matchesFilter}
+            displayOptions={displayOptions}
+            onSelect={onMomentSelect}
+            onPhotoClick={onPhotoClick}
+            onCreateSession={onCreateSession}
+            ref={el => momentRefs.current[moment.id] = el}
+          />
+        );
+      })}
     </div>
   );
 });
 
 const MomentCard = memo(React.forwardRef(({ 
-  moment, isSelected, displayOptions, onSelect, onPhotoClick, onCreateSession
-}, ref) => {  
+  moment, isSelected, isExplored, matchesFilter, displayOptions, 
+  onSelect, onPhotoClick, onCreateSession
+}, ref) => { 
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
   
@@ -402,7 +415,8 @@ const MomentCard = memo(React.forwardRef(({
   return (
     <div 
       ref={ref} 
-      id={moment.id} 
+      id={moment.id}
+      data-filtered={matchesFilter ? 'true' : 'false'}
       className={`bg-white rounded-xl shadow-sm border transition-all duration-300 ${
         isSelected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'
       }`}
@@ -411,6 +425,7 @@ const MomentCard = memo(React.forwardRef(({
         <MomentHeader 
           moment={moment}
           isSelected={isSelected}
+          isExplored={isExplored}
           onSelect={onSelect}
           onOpenWith={handleOpenWith}
           onCreateSession={onCreateSession}
@@ -436,7 +451,10 @@ const MomentCard = memo(React.forwardRef(({
   );
 }));
 
-const MomentHeader = memo(({ moment, isSelected, onSelect, onOpenWith, onCreateSession, localDisplay, onToggleLocal }) => {
+const MomentHeader = memo(({ 
+  moment, isSelected, isExplored, onSelect, onOpenWith, onCreateSession, 
+  localDisplay, onToggleLocal 
+}) => {
   
   const handleLinkClick = (e, contentType) => {
     e.stopPropagation();
@@ -471,6 +489,11 @@ const MomentHeader = memo(({ moment, isSelected, onSelect, onOpenWith, onCreateS
             <h3 className="text-base font-semibold text-gray-900 truncate">
               {moment.displayTitle}
             </h3>
+            {!isExplored && (
+              <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                ✨ Nouveau
+              </span>
+            )}
           </div>
           {moment.location && (
             <span className="flex items-center text-xs text-gray-500 mt-1.5 ml-1">
@@ -516,9 +539,10 @@ const MomentHeader = memo(({ moment, isSelected, onSelect, onOpenWith, onCreateS
             e.stopPropagation();
             onCreateSession(moment, moment);
           }}
-          className="flex items-center font-medium text-amber-600 hover:underline ml-auto pl-2"
+          className="flex items-center space-x-1.5 font-medium text-amber-600 hover:bg-amber-50 hover:text-amber-700 ml-auto pl-2 px-2 py-1 rounded transition-colors"
         >
-          <MessageCircle className="w-4 h-4 mr-1.5" /> Session
+          <span className="text-base">💬</span>
+          <span>Session</span>
         </button>
       </div>
     </>
@@ -644,10 +668,10 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
             
             <button 
               onClick={handleCreateSession} 
-              className="p-1 text-gray-500 hover:text-amber-600" 
+              className="p-1.5 rounded hover:bg-amber-50 transition-colors" 
               title="Créer une session"
             >
-              <MessageCircle className="w-4 h-4" />
+              <span className="text-base">💬</span>
             </button>
           </div>
         </div>
@@ -663,7 +687,7 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
           photos={post.photos}
           moment={moment}
           onPhotoClick={onPhotoClick}
-		allPhotos={post.photos}
+          allPhotos={post.photos}
         />
       )}
     </div>
@@ -751,7 +775,6 @@ const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
 function enrichMomentsWithData(rawMoments) {
   if (!rawMoments) return [];
   return rawMoments.map((moment, index) => {
-    // ✅ NOUVEAU : Normaliser les photos des posts
     const enrichedPosts = moment.posts?.map(post => ({
       ...post,
       photos: post.photos?.map(photo => normalizePhoto(photo)) || []
@@ -760,7 +783,7 @@ function enrichMomentsWithData(rawMoments) {
     return {
       ...moment,
       id: moment.id || `moment_${moment.dayStart}_${moment.dayEnd}_${index}`,
-      posts: enrichedPosts,  // ✅ Posts avec photos normalisées
+      posts: enrichedPosts,
       postCount: enrichedPosts.length,
       dayPhotoCount: moment.dayPhotos?.length || 0,
       postPhotoCount: moment.postPhotos?.length || 0,
@@ -772,42 +795,60 @@ function enrichMomentsWithData(rawMoments) {
   }).filter(moment => !moment.isEmpty);
 }
 
-// ✅ NOUVEAU : Fonction pour normaliser une photo
 function normalizePhoto(photo) {
-  // Si c'est déjà une photo Google Drive (avec filename), retourner tel quel
   if (photo.filename && photo.google_drive_id) {
     return photo;
   }
   
-  // Si c'est une photo Mastodon (avec url), la convertir
   if (photo.url) {
     return {
       filename: photo.name || extractFilenameFromUrl(photo.url),
-      url: photo.url,  // Garder l'URL Mastodon
+      url: photo.url,
       width: photo.width,
       height: photo.height,
       mime_type: photo.mediaType || 'image/jpeg',
-      isMastodonPhoto: true  // ✅ Flag pour différencier
+      isMastodonPhoto: true
     };
   }
   
-  // Fallback
   return photo;
 }
 
-// ✅ NOUVEAU : Extraire nom de fichier depuis URL
 function extractFilenameFromUrl(url) {
   const parts = url.split('/');
   return parts[parts.length - 1] || 'photo.jpg';
 }
 
-function getFilteredMoments(momentsData, searchQuery) {
-  if (!searchQuery.trim()) return momentsData;
-  const query = searchQuery.toLowerCase();
-  return momentsData.filter(m => 
-    m.displayTitle.toLowerCase().includes(query) ||
-    m.posts?.some(p => p.content && p.content.toLowerCase().includes(query))
-  );
+function getFilteredMoments(momentsData, searchQuery, momentFilter, sessions) {
+  let filtered = momentsData;
+  
+  // Filtre par recherche textuelle
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    filtered = filtered.filter(m => 
+      m.displayTitle.toLowerCase().includes(query) ||
+      m.posts?.some(p => p.content && p.content.toLowerCase().includes(query))
+    );
+  }
+  
+  // Filtre par type de moment
+  if (momentFilter !== 'all') {
+    const exploredIds = new Set(sessions?.map(s => s.gameId) || []);
+    
+    switch (momentFilter) {
+      case 'unexplored':
+        filtered = filtered.filter(m => !exploredIds.has(m.id));
+        break;
+      case 'with_posts':
+        filtered = filtered.filter(m => m.posts?.length > 0);
+        break;
+      case 'with_photos':
+        filtered = filtered.filter(m => m.dayPhotoCount > 0);
+        break;
+    }
+  }
+  
+  return filtered;
 }
 
 export default React.forwardRef(MemoriesPage);
