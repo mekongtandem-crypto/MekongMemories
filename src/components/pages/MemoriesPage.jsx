@@ -489,11 +489,6 @@ const MomentHeader = memo(({
             <h3 className="text-base font-semibold text-gray-900 truncate">
               {moment.displayTitle}
             </h3>
-            {!isExplored && (
-              <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                ✨ Nouveau
-              </span>
-            )}
           </div>
           {moment.location && (
             <span className="flex items-center text-xs text-gray-500 mt-1.5 ml-1">

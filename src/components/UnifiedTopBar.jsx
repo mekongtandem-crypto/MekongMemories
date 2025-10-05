@@ -143,95 +143,92 @@ export default function UnifiedTopBar({
   const renderContext = () => {
     switch (currentPage) {
       case 'memories':
-        return (
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            
-            {/* Dropdown Filtre */}
-            <select
-              onChange={(e) => {
-                if (window.memoriesPageFilters?.setMomentFilter) {
-                  window.memoriesPageFilters.setMomentFilter(e.target.value);
-                }
-              }}
-              className="text-xs sm:text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-purple-500"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <option value="all">Tous</option>
-              <option value="unexplored">✨ Non explorés</option>
-              <option value="with_posts">📝 Avec articles</option>
-              <option value="with_photos">📸 Avec photos</option>
-            </select>
-            
-            <div className="h-6 w-px bg-gray-300 hidden sm:block"></div>
-            
-            {/* Options affichage - visibles inline desktop */}
-            <div className="hidden sm:flex items-center space-x-1">
-              <button
-                onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))}
-                className={`p-1.5 rounded transition-colors ${
-                  displayOptions.showPostText 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'text-gray-400 hover:bg-gray-100'
-                }`}
-                title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}
-              >
-                <Type className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))}
-                className={`p-1.5 rounded transition-colors ${
-                  displayOptions.showPostPhotos 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'text-gray-400 hover:bg-gray-100'
-                }`}
-                title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}
-              >
-                <ImageIcon className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))}
-                className={`p-1.5 rounded transition-colors ${
-                  displayOptions.showMomentPhotos 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'text-gray-400 hover:bg-gray-100'
-                }`}
-                title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}
-              >
-                <Camera className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <div className="h-6 w-px bg-gray-300"></div>
-            
-            {/* Random + Jour */}
-            <button 
-              onClick={jumpToRandomMoment}
-              className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
-              title="Moment au hasard"
-            >
-              <Dices className="w-4 h-4" />
-            </button>
-            
-            <input 
-              type="number" 
-              value={currentDay} 
-              onChange={(e) => {
-                const day = parseInt(e.target.value, 10);
-                if (!isNaN(day)) setCurrentDay(day);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') jumpToDay(currentDay);
-              }}
-              onWheel={handleDayWheel}
-              className="w-14 sm:w-16 px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm text-center focus:ring-2 focus:ring-blue-500"
-              placeholder="J..."
-              min="0"
-              max="200"
-            />
-          </div>
-        );
+  return (
+    <div className="flex items-center space-x-2 sm:space-x-3">
+      
+      {/* Random + Jour (déplacés juste après Search) */}
+      <button 
+        onClick={jumpToRandomMoment}
+        className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+        title="Moment au hasard"
+      >
+        <Dices className="w-4 h-4" />
+      </button>
+      
+      <input 
+        type="number" 
+        value={currentDay} 
+        onChange={(e) => {
+          const day = parseInt(e.target.value, 10);
+          if (!isNaN(day)) setCurrentDay(day);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') jumpToDay(currentDay);
+        }}
+        onWheel={handleDayWheel}
+        className="w-14 sm:w-16 px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm text-center focus:ring-2 focus:ring-blue-500"
+        placeholder="J..."
+        min="0"
+        max="200"
+      />
+      
+      {/* Options affichage - visibles inline desktop (déplacées après J15) */}
+      <div className="hidden sm:flex items-center space-x-1">
+        <button
+          onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))}
+          className={`p-1.5 rounded transition-colors ${
+            displayOptions.showPostText 
+              ? 'bg-green-100 text-green-700' 
+              : 'text-gray-400 hover:bg-gray-100'
+          }`}
+          title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}
+        >
+          <Type className="w-4 h-4" />
+        </button>
+        
+        <button
+          onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))}
+          className={`p-1.5 rounded transition-colors ${
+            displayOptions.showPostPhotos 
+              ? 'bg-green-100 text-green-700' 
+              : 'text-gray-400 hover:bg-gray-100'
+          }`}
+          title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}
+        >
+          <ImageIcon className="w-4 h-4" />
+        </button>
+        
+        <button
+          onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))}
+          className={`p-1.5 rounded transition-colors ${
+            displayOptions.showMomentPhotos 
+              ? 'bg-green-100 text-green-700' 
+              : 'text-gray-400 hover:bg-gray-100'
+          }`}
+          title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}
+        >
+          <Camera className="w-4 h-4" />
+        </button>
+      </div>
+      
+      {/* Dropdown Filtre (déplacé à droite) */}
+      <select
+        onChange={(e) => {
+          if (window.memoriesPageFilters?.setMomentFilter) {
+            window.memoriesPageFilters.setMomentFilter(e.target.value);
+          }
+        }}
+        className="text-xs sm:text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-purple-500"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <option value="all">Tous</option>
+        <option value="unexplored">✨ Non explorés</option>
+        <option value="with_posts">📝 Avec articles</option>
+        <option value="with_photos">📸 Avec photos</option>
+      </select>
+      
+    </div>
+  );
       
       case 'chat':
         return chatSession ? (
