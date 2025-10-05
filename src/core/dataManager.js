@@ -7,7 +7,6 @@ class DataManager {
     this.connectionManager = null;
     this.driveSync = null;
     this.stateManager = null;
-
     this.appState = {
   isInitialized: false, 
   isLoading: true, 
@@ -20,8 +19,9 @@ class DataManager {
   connection: { hasError: false, lastError: null },
   isCreatingSession: false,
 };
-
     this.listeners = new Set();
+    this.notificationManager = null;
+
     console.log('📦 DataManager v3.5 (Photo user message): Ready.');
   }
 
@@ -29,6 +29,7 @@ class DataManager {
     this.connectionManager = dependencies.connectionManager;
     this.driveSync = dependencies.driveSync;
     this.stateManager = dependencies.stateManager;
+    this.notificationManager = dependencies.notificationManager; 
     this.connectionManager.subscribe(this.handleConnectionChange.bind(this));
     console.log('📦 DataManager: Dependencies injected.');
   }
@@ -64,6 +65,8 @@ class DataManager {
         (typeof loadedFiles.masterIndex === 'string' ? JSON.parse(loadedFiles.masterIndex) : loadedFiles.masterIndex) 
         : null;
       const sessions = loadedFiles.sessions || [];
+      // ✅ NOUVEAU : Charger notifications
+    await this.notificationManager.init();
 
       this.updateState({
         masterIndex, 
@@ -85,6 +88,26 @@ class DataManager {
       });
     }
   }
+
+	sendNotification = async (toUserId, sessionId, sessionTitle) => {
+  try {
+    const result = await this.notificationManager.sendNotification({
+      from: this.appState.currentUser,
+      to: toUserId,
+      sessionId,
+      sessionTitle
+    });
+    
+    if (result.success) {
+      console.log('✅ Notification envoyée:', result.notification);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Erreur envoi notification:', error);
+    return { success: false, error: error.message };
+  }
+}
 
   setCurrentUser = (userId) => {
     console.log(`👤 Changement d'utilisateur -> ${userId}`);
@@ -301,6 +324,26 @@ markSessionStatus = async (sessionId, statusType, value) => {
   };
   
   await this.updateSession(updatedSession);
+}
+
+sendNotification = async (toUserId, sessionId, sessionTitle) => {
+  try {
+    const result = await this.notificationManager.sendNotification({
+      from: this.appState.currentUser,
+      to: toUserId,
+      sessionId,
+      sessionTitle
+    });
+    
+    if (result.success) {
+      console.log('✅ Notification envoyée:', result.notification);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Erreur envoi notification:', error);
+    return { success: false, error: error.message };
+  }
 }
 
   getState = () => this.appState;

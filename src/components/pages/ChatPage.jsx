@@ -6,7 +6,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
-import { Send, Edit, Trash2, Check, X } from 'lucide-react';
+import { Send, Edit, Trash2, Check, X, Bell } from 'lucide-react';
 import PhotoViewer from '../PhotoViewer.jsx';
 
 export default function ChatPage({ editingTitle, setEditingTitle }) {
@@ -284,30 +284,55 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
 
       {/* Zone de saisie */}
       <div className="bg-white border-t border-gray-200 p-4">
-        <div className="flex space-x-3">
-          <textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            placeholder="Tapez votre message... (Shift+Entrée pour envoyer)"
-            className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-            rows="2"
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={!newMessage.trim()}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center transition-colors"
-            title="Envoyer message (Shift+Entrée)"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+  <div className="flex space-x-3">
+    <textarea
+      value={newMessage}
+      onChange={(e) => setNewMessage(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && e.shiftKey) {
+          e.preventDefault();
+          handleSendMessage();
+        }
+      }}
+      placeholder="Tapez votre message... (Shift+Entrée pour envoyer)"
+      className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+      rows="2"
+    />
+    <div className="flex flex-col space-y-2">
+      {/* ✅ NOUVEAU : Bouton Notifier */}
+      <button
+        onClick={async () => {
+          if (!app.currentChatSession) return;
+          
+          // Trouver l'autre utilisateur
+          const otherUser = ['lambert', 'tom'].find(u => u !== app.currentUser);
+          
+          if (otherUser) {
+            await app.sendNotification(
+              otherUser,
+              app.currentChatSession.id,
+              app.currentChatSession.gameTitle
+            );
+            alert(`🔔 ${otherUser === 'lambert' ? 'Lambert' : 'Tom'} a été notifié !`);
+          }
+        }}
+        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium flex items-center justify-center transition-colors"
+        title="Notifier l'autre utilisateur"
+      >
+        <Bell className="w-5 h-5" />
+      </button>
+      
+      <button
+        onClick={handleSendMessage}
+        disabled={!newMessage.trim()}
+        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center transition-colors"
+        title="Envoyer message (Shift+Entrée)"
+      >
+        <Send className="w-5 h-5" />
+      </button>
+    </div>
+  </div>
+</div>
 
       {/* PhotoViewer */}
       {viewerState.isOpen && viewerState.photo && (

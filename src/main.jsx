@@ -13,18 +13,20 @@ import { photoDataV2 } from './core/PhotoDataV2.js';
 import { mastodonData } from './core/MastodonData.js';
 import { masterIndexGenerator } from './core/MasterIndexGenerator.js';
 import { stateManager } from './core/StateManager.js';
+import { notificationManager } from './core/NotificationManager.js'; // ✅ NOUVEAU
 
-console.log('🚀 Démarrage de Mémoire du Mékong (Version Stable)...');
+console.log('🚀 Démarrage de Mémoire du Mékong v2.2 (Phase 15a)...');
 
 // --- Injection de TOUTES les dépendances ---
 driveSync.initialize({ connectionManager });
 photoDataV2.initializeDependencies({ stateManager });
 
-// Le bloc corrigé pour dataManager
+// ✅ MODIFIÉ : Ajout notificationManager
 dataManager.initializeDependencies({
   connectionManager,
   driveSync,
-  stateManager // On injecte stateManager ici
+  stateManager,
+  notificationManager  // ✅ NOUVEAU
 });
 
 masterIndexGenerator.initialize({

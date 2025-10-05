@@ -1,15 +1,13 @@
 /**
- * UnifiedTopBar.jsx v1.6 - Phase 14.3
- * ✅ MemoriesPage : Dropdown filtre + options inline
- * ✅ SessionsPage : Badge ✨ redirige vers Memories
- * ✅ Icônes explicites + couleurs discrètes
+ * UnifiedTopBar.jsx v1.7 - Phase 15a
+ * ✅ Menu notifications avec badge
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, Settings, Plus, Map, Search, Dices, 
   MoreVertical, Type, Image as ImageIcon, Camera,
   CloudOff, Cloud, Edit, Trash2, MessageCircle,
-  LogIn, LogOut
+  LogIn, LogOut, Bell
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
@@ -35,8 +33,15 @@ export default function UnifiedTopBar({
   const app = useAppState();
   const [showMenu, setShowMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifMenu, setShowNotifMenu] = useState(false); // ✅ NOUVEAU
+  
   const menuRef = useRef(null);
   const userMenuRef = useRef(null);
+  const notifMenuRef = useRef(null); // ✅ NOUVEAU
+
+  // ✅ NOUVEAU : Récupérer notifications
+  const unreadCount = app.getUnreadNotificationCount?.() || 0;
+  const unreadNotifications = app.getUnreadNotifications?.() || [];
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -45,6 +50,10 @@ export default function UnifiedTopBar({
       }
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setShowUserMenu(false);
+      }
+      // ✅ NOUVEAU
+      if (notifMenuRef.current && !notifMenuRef.current.contains(e.target)) {
+        setShowNotifMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -74,6 +83,50 @@ export default function UnifiedTopBar({
       console.error('Erreur création session test:', error);
       alert('Impossible de créer la session');
     }
+  };
+
+  // ✅ NOUVEAU : Handler clic notification
+  const handleNotificationClick = async (notification) => {
+    try {
+      // Marquer comme lue
+      await window.notificationManager.markAsRead(notification.id);
+      
+      // Trouver et ouvrir la session
+      const session = app.sessions.find(s => s.id === notification.sessionId);
+      if (session) {
+        await app.openChatSession(session);
+      }
+      
+      setShowNotifMenu(false);
+    } catch (error) {
+      console.error('Erreur ouverture notification:', error);
+    }
+  };
+
+  // ✅ NOUVEAU : Marquer tout lu
+  const handleMarkAllRead = async () => {
+    try {
+      await window.notificationManager.markAllAsRead(app.currentUser);
+      setShowNotifMenu(false);
+    } catch (error) {
+      console.error('Erreur marquage tout lu:', error);
+    }
+  };
+
+  // ✅ NOUVEAU : Formatter temps relatif
+  const formatRelativeTime = (timestamp) => {
+    const now = Date.now();
+    const past = new Date(timestamp).getTime();
+    const diffMs = now - past;
+    
+    const minutes = Math.floor(diffMs / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) return `Il y a ${days}j`;
+    if (hours > 0) return `Il y a ${hours}h`;
+    if (minutes > 0) return `Il y a ${minutes}min`;
+    return 'À l\'instant';
   };
 
   const renderLeftAction = () => {
@@ -143,92 +196,89 @@ export default function UnifiedTopBar({
   const renderContext = () => {
     switch (currentPage) {
       case 'memories':
-  return (
-    <div className="flex items-center space-x-2 sm:space-x-3">
-      
-      {/* Random + Jour (déplacés juste après Search) */}
-      <button 
-        onClick={jumpToRandomMoment}
-        className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
-        title="Moment au hasard"
-      >
-        <Dices className="w-4 h-4" />
-      </button>
-      
-      <input 
-        type="number" 
-        value={currentDay} 
-        onChange={(e) => {
-          const day = parseInt(e.target.value, 10);
-          if (!isNaN(day)) setCurrentDay(day);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') jumpToDay(currentDay);
-        }}
-        onWheel={handleDayWheel}
-        className="w-14 sm:w-16 px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm text-center focus:ring-2 focus:ring-blue-500"
-        placeholder="J..."
-        min="0"
-        max="200"
-      />
-      
-      {/* Options affichage - visibles inline desktop (déplacées après J15) */}
-      <div className="hidden sm:flex items-center space-x-1">
-        <button
-          onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))}
-          className={`p-1.5 rounded transition-colors ${
-            displayOptions.showPostText 
-              ? 'bg-green-100 text-green-700' 
-              : 'text-gray-400 hover:bg-gray-100'
-          }`}
-          title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}
-        >
-          <Type className="w-4 h-4" />
-        </button>
-        
-        <button
-          onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))}
-          className={`p-1.5 rounded transition-colors ${
-            displayOptions.showPostPhotos 
-              ? 'bg-green-100 text-green-700' 
-              : 'text-gray-400 hover:bg-gray-100'
-          }`}
-          title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}
-        >
-          <ImageIcon className="w-4 h-4" />
-        </button>
-        
-        <button
-          onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))}
-          className={`p-1.5 rounded transition-colors ${
-            displayOptions.showMomentPhotos 
-              ? 'bg-green-100 text-green-700' 
-              : 'text-gray-400 hover:bg-gray-100'
-          }`}
-          title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}
-        >
-          <Camera className="w-4 h-4" />
-        </button>
-      </div>
-      
-      {/* Dropdown Filtre (déplacé à droite) */}
-      <select
-        onChange={(e) => {
-          if (window.memoriesPageFilters?.setMomentFilter) {
-            window.memoriesPageFilters.setMomentFilter(e.target.value);
-          }
-        }}
-        className="text-xs sm:text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-purple-500"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <option value="all">Tous</option>
-        <option value="unexplored">✨ Non explorés</option>
-        <option value="with_posts">📝 Avec articles</option>
-        <option value="with_photos">📸 Avec photos</option>
-      </select>
-      
-    </div>
-  );
+        return (
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            
+            <button 
+              onClick={jumpToRandomMoment}
+              className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+              title="Moment au hasard"
+            >
+              <Dices className="w-4 h-4" />
+            </button>
+            
+            <input 
+              type="number" 
+              value={currentDay} 
+              onChange={(e) => {
+                const day = parseInt(e.target.value, 10);
+                if (!isNaN(day)) setCurrentDay(day);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') jumpToDay(currentDay);
+              }}
+              onWheel={handleDayWheel}
+              className="w-14 sm:w-16 px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm text-center focus:ring-2 focus:ring-blue-500"
+              placeholder="J..."
+              min="0"
+              max="200"
+            />
+            
+            <div className="hidden sm:flex items-center space-x-1">
+              <button
+                onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))}
+                className={`p-1.5 rounded transition-colors ${
+                  displayOptions.showPostText 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'text-gray-400 hover:bg-gray-100'
+                }`}
+                title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}
+              >
+                <Type className="w-4 h-4" />
+              </button>
+              
+              <button
+                onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))}
+                className={`p-1.5 rounded transition-colors ${
+                  displayOptions.showPostPhotos 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'text-gray-400 hover:bg-gray-100'
+                }`}
+                title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}
+              >
+                <ImageIcon className="w-4 h-4" />
+              </button>
+              
+              <button
+                onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))}
+                className={`p-1.5 rounded transition-colors ${
+                  displayOptions.showMomentPhotos 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'text-gray-400 hover:bg-gray-100'
+                }`}
+                title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <select
+              onChange={(e) => {
+                if (window.memoriesPageFilters?.setMomentFilter) {
+                  window.memoriesPageFilters.setMomentFilter(e.target.value);
+                }
+              }}
+              className="text-xs sm:text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-purple-500"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <option value="all">Tous</option>
+              <option value="unexplored">✨ Non explorés</option>
+              <option value="with_posts">📝 Avec articles</option>
+              <option value="with_photos">📸 Avec photos</option>
+            </select>
+            
+          </div>
+        );
       
       case 'chat':
         return chatSession ? (
@@ -375,7 +425,6 @@ export default function UnifiedTopBar({
   const renderMenu = () => {
     switch (currentPage) {
       case 'memories':
-        // Options maintenant inline - pas de menu
         return null;
       
       case 'chat':
@@ -474,6 +523,64 @@ export default function UnifiedTopBar({
     }
   };
 
+  // ✅ NOUVEAU : Menu notifications
+  const renderNotificationMenu = () => {
+    return (
+      <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-80 max-h-96 overflow-y-auto">
+        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Bell className="w-4 h-4 text-gray-600" />
+            <span className="font-semibold text-gray-900">
+              Notifications {unreadCount > 0 && `(${unreadCount})`}
+            </span>
+          </div>
+          {unreadCount > 0 && (
+            <button
+              onClick={handleMarkAllRead}
+              className="text-xs text-blue-600 hover:text-blue-800"
+            >
+              Tout marquer lu
+            </button>
+          )}
+        </div>
+        
+        {unreadNotifications.length === 0 ? (
+          <div className="px-4 py-8 text-center text-gray-500 text-sm">
+            Aucune notification
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {unreadNotifications.map(notif => {
+              const fromUser = userManager.getUser(notif.from);
+              return (
+                <button
+                  key={notif.id}
+                  onClick={() => handleNotificationClick(notif)}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className="text-2xl">{fromUser?.emoji || '👤'}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900">
+                        {fromUser?.name} attend ta réponse
+                      </div>
+                      <div className="text-sm text-gray-600 truncate mt-1">
+                        📍 {notif.sessionTitle}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {formatRelativeTime(notif.timestamp)}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderUserMenu = () => {
     const currentUserObj = app.currentUser;
     const isOnline = app.connection?.isOnline;
@@ -542,6 +649,23 @@ export default function UnifiedTopBar({
       </div>
 
       <div className="flex items-center space-x-2">
+        {/* ✅ NOUVEAU : Bouton notifications */}
+        <div className="relative" ref={notifMenuRef}>
+          <button
+            onClick={() => setShowNotifMenu(!showNotifMenu)}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative"
+            title="Notifications"
+          >
+            <Bell className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          {showNotifMenu && renderNotificationMenu()}
+        </div>
+
         {currentPage !== 'memories' && (
           <div className="relative" ref={menuRef}>
             <button

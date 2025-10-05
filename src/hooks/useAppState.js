@@ -1,4 +1,4 @@
-// hooks/useAppState.js - VERSION SANS timeout iOS (pour test)
+// hooks/useAppState.js - Phase 15a avec notifications
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { dataManager } from '../core/dataManager.js';
@@ -24,7 +24,7 @@ export function useAppState() {
       unsubDataManager();
       unsubConnectionManager();
     };
-  }, []); // Dépendances vides, ne s'exécute qu'une fois
+  }, []);
 
   // HOOK 3: useCallback (pour la connexion)
   const connect = useCallback(() => connectionManager.connect(), []);
@@ -44,7 +44,7 @@ export function useAppState() {
     return { currentUser: currentUserObject, userStyle };
   }, [appState.data?.currentUser]);
 
-  // --- Actions exposées à l'UI (toutes avec useCallback) ---
+  // Actions exposées à l'UI (toutes avec useCallback)
   const disconnect = useCallback(() => connectionManager.disconnect(), []);
   const updateCurrentPage = useCallback((pageId) => dataManager.updateCurrentPage(pageId), []);
   const setCurrentUser = useCallback((userId) => dataManager.setCurrentUser(userId), []);
@@ -57,10 +57,21 @@ export function useAppState() {
   const openChatSession = useCallback((session) => dataManager.openChatSession(session), []);
   const closeChatSession = useCallback(() => dataManager.closeChatSession(), []);
   const addMessageToSession = useCallback((sessionId, content) => dataManager.addMessageToSession(sessionId, content), []);
-// ✅ AJOUT : Régénération index
-const regenerateMasterIndex = useCallback(() => dataManager.regenerateMasterIndex(), []);
+  const regenerateMasterIndex = useCallback(() => dataManager.regenerateMasterIndex(), []);
 
+  // Actions notifications (Phase 15a)
+  const sendNotification = useCallback((toUserId, sessionId, sessionTitle) => 
+    dataManager.sendNotification(toUserId, sessionId, sessionTitle), []);
 
+  const getUnreadNotifications = useCallback(() => {
+    if (!appState.data?.currentUser) return [];
+    return dataManager.notificationManager?.getUnreadNotifications(appState.data.currentUser) || [];
+  }, [appState.data?.currentUser]);
+
+  const getUnreadNotificationCount = useCallback(() => {
+    if (!appState.data?.currentUser) return 0;
+    return dataManager.notificationManager?.getUnreadCount(appState.data.currentUser) || 0;
+  }, [appState.data?.currentUser]);
 
   // On fusionne l'état brut, l'état dérivé et les actions
   return {
@@ -77,6 +88,9 @@ const regenerateMasterIndex = useCallback(() => dataManager.regenerateMasterInde
     openChatSession,
     closeChatSession,
     addMessageToSession,
-    regenerateMasterIndex,  // ✅ AJOUT
+    regenerateMasterIndex,
+    sendNotification,
+    getUnreadNotifications,
+    getUnreadNotificationCount,
   };
 }
