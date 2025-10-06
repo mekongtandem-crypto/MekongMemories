@@ -299,33 +299,12 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
       rows="2"
     />
     <div className="flex flex-col space-y-2">
-      {/* ✅ NOUVEAU : Bouton Notifier */}
-      <button
-        onClick={async () => {
-          if (!app.currentChatSession) return;
-          
-          // Trouver l'autre utilisateur
-          const otherUser = ['lambert', 'tom'].find(u => u !== app.currentUser?.id);
-          
-          if (otherUser) {
-            await app.sendNotification(
-              otherUser,
-              app.currentChatSession.id,
-              app.currentChatSession.gameTitle
-            );
-            alert(`🔔 ${otherUser === 'lambert' ? 'Lambert' : 'Tom'} a été notifié !`);
-          }
-        }}
-        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium flex items-center justify-center transition-colors"
-        title="Notifier l'autre utilisateur"
-      >
-        <Bell className="w-5 h-5" />
-      </button>
+      
       
       <button
         onClick={handleSendMessage}
         disabled={!newMessage.trim()}
-        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center transition-colors"
+        className="px-4 py-6 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center transition-colors"
         title="Envoyer message (Shift+Entrée)"
       >
         <Send className="w-5 h-5" />

@@ -33,15 +33,9 @@ export default function UnifiedTopBar({
   const app = useAppState();
   const [showMenu, setShowMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showNotifMenu, setShowNotifMenu] = useState(false); // ✅ NOUVEAU
   
   const menuRef = useRef(null);
   const userMenuRef = useRef(null);
-  const notifMenuRef = useRef(null); // ✅ NOUVEAU
-
-  // ✅ NOUVEAU : Récupérer notifications
-  const unreadCount = app.getUnreadNotificationCount?.() || 0;
-  const unreadNotifications = app.getUnreadNotifications?.() || [];
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -50,11 +44,7 @@ export default function UnifiedTopBar({
       }
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setShowUserMenu(false);
-      }
-      // ✅ NOUVEAU
-      if (notifMenuRef.current && !notifMenuRef.current.contains(e.target)) {
-        setShowNotifMenu(false);
-      }
+      } 
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -85,49 +75,7 @@ export default function UnifiedTopBar({
     }
   };
 
-  // ✅ NOUVEAU : Handler clic notification
-  const handleNotificationClick = async (notification) => {
-    try {
-      // Marquer comme lue
-      await window.notificationManager.markAsRead(notification.id);
-      
-      // Trouver et ouvrir la session
-      const session = app.sessions.find(s => s.id === notification.sessionId);
-      if (session) {
-        await app.openChatSession(session);
-      }
-      
-      setShowNotifMenu(false);
-    } catch (error) {
-      console.error('Erreur ouverture notification:', error);
-    }
-  };
-
-  // ✅ NOUVEAU : Marquer tout lu
-  const handleMarkAllRead = async () => {
-    try {
-      await window.notificationManager.markAllAsRead(app.currentUser);
-      setShowNotifMenu(false);
-    } catch (error) {
-      console.error('Erreur marquage tout lu:', error);
-    }
-  };
-
-  // ✅ NOUVEAU : Formatter temps relatif
-  const formatRelativeTime = (timestamp) => {
-    const now = Date.now();
-    const past = new Date(timestamp).getTime();
-    const diffMs = now - past;
-    
-    const minutes = Math.floor(diffMs / (1000 * 60));
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    
-    if (days > 0) return `Il y a ${days}j`;
-    if (hours > 0) return `Il y a ${hours}h`;
-    if (minutes > 0) return `Il y a ${minutes}min`;
-    return 'À l\'instant';
-  };
+  
 
   const renderLeftAction = () => {
     switch (currentPage) {
@@ -270,119 +218,190 @@ export default function UnifiedTopBar({
           </div>
         );
       
-      case 'chat':
-        return chatSession ? (
-          <h1 className="text-sm font-semibold text-amber-600 truncate max-w-xs">
-            {chatSession.gameTitle}
-          </h1>
-        ) : null;
+      case 'chat': {
+  if (!chatSession) return null;
+  
+  const existingNotif = window.notificationManager?.getNotificationForSession(
+    chatSession.id,
+    app.currentUser?.id
+  );
+  
+  const otherUsers = ['lambert', 'tom', 'duo'].filter(u => u !== app.currentUser?.id);
+  const targetUser = otherUsers[0];
+  
+  return (
+    <div className="flex items-center space-x-3 flex-1">
+      <h1 className="text-sm font-semibold text-amber-600 truncate max-w-xs">
+        {chatSession.gameTitle}
+      </h1>
       
-      case 'sessions':
-        const enrichedSessions = app.sessions?.map(s => {
-          const lastMsg = s.notes?.[s.notes.length - 1];
-          const isPendingYou = lastMsg && lastMsg.author !== app.currentUser;
-          const daysSince = lastMsg ? (Date.now() - new Date(lastMsg.timestamp)) / (1000*60*60*24) : 0;
-          const isUrgent = isPendingYou && daysSince > 7;
-          const isPendingOther = lastMsg && lastMsg.author === app.currentUser;
+      <button
+        onClick={async (e) => {
+          e.stopPropagation();
           
-          return { 
-            ...s, 
-            isPendingYou, 
-            isUrgent,
-            isPendingOther: isPendingOther && !isPendingYou
-          };
-        }) || [];
-        
-        const urgentCount = enrichedSessions.filter(s => s.isUrgent).length;
-        const pendingYouCount = enrichedSessions.filter(s => s.isPendingYou && !s.isUrgent).length;
-        const pendingOtherCount = enrichedSessions.filter(s => s.isPendingOther).length;
-        const unexploredMoments = (app.masterIndex?.moments?.length || 0) - new Set(app.sessions?.map(s => s.gameId)).size;
-        
-        const activeFilter = window.sessionPageState?.activeFilter || null;
-        
-        return (
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-semibold text-amber-600">
-              Sessions
-            </span>
+          if (existingNotif) {
+            if (confirm('Une notification a déjà été envoyée. La supprimer ?')) {
+              await window.notificationManager.deleteNotification(existingNotif.id);
+              alert('✅ Notification supprimée');
+            }
+          } else {
+            const result = await app.sendNotification(targetUser, chatSession.id, chatSession.gameTitle);
             
-            {urgentCount > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (window.sessionPageFilters?.setGroupFilter) {
-                    window.sessionPageFilters.setGroupFilter('urgent');
-                  }
-                }}
-                className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
-                  activeFilter === 'urgent'
-                    ? 'bg-orange-500 text-white shadow-md ring-2 ring-orange-300'
-                    : 'bg-orange-100 hover:bg-orange-200 text-orange-700'
-                }`}
-                title="Sessions urgentes (>7 jours)"
-              >
-                <span>🔴</span>
-                <span>{urgentCount}</span>
-              </button>
-            )}
-            
-            {pendingYouCount > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (window.sessionPageFilters?.setGroupFilter) {
-                    window.sessionPageFilters.setGroupFilter('pending_you');
-                  }
-                }}
-                className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
-                  activeFilter === 'pending_you'
-                    ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300'
-                    : 'bg-amber-100 hover:bg-amber-200 text-amber-700'
-                }`}
-                title="Sessions en attente de votre réponse"
-              >
-                <span>🟡</span>
-                <span>{pendingYouCount}</span>
-              </button>
-            )}
-            
-            {pendingOtherCount > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (window.sessionPageFilters?.setGroupFilter) {
-                    window.sessionPageFilters.setGroupFilter('pending_other');
-                  }
-                }}
-                className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
-                  activeFilter === 'pending_other'
-                    ? 'bg-blue-500 text-white shadow-md ring-2 ring-blue-300'
-                    : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
-                }`}
-                title="Sessions en attente d'autres utilisateurs"
-              >
-                <span>🔵</span>
-                <span>{pendingOtherCount}</span>
-              </button>
-            )}
-            
-            
-            <select
-              onChange={(e) => {
-                if (window.sessionPageFilters?.setSortBy) {
-                  window.sessionPageFilters.setSortBy(e.target.value);
-                }
-              }}
-              className="text-xs border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <option value="urgency">Tri: Urgence</option>
-              <option value="date">Tri: Date</option>
-              <option value="chrono">Tri: Voyage</option>
-              <option value="activity">Tri: Activité</option>
-            </select>
-          </div>
-        );
+            if (result.success) {
+              const targetUserInfo = userManager.getUser(targetUser);
+              alert(`✅ Notification envoyée à ${targetUserInfo?.name || targetUser} !`);
+            } else {
+              alert('❌ Erreur lors de l\'envoi de la notification');
+            }
+          }
+        }}
+        className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+          existingNotif
+            ? 'bg-orange-100 text-orange-700 border border-orange-300'
+            : 'bg-gray-100 hover:bg-amber-100 text-gray-700 hover:text-amber-700 border border-gray-300'
+        }`}
+        title={existingNotif ? 'Notification déjà envoyée' : 'Envoyer une notification'}
+      >
+        <span className="text-base">🔔</span>
+        <span className="hidden sm:inline">
+          {existingNotif ? 'Notifié' : 'Notifier'}
+        </span>
+      </button>
+    </div>
+  );
+}
+      
+ case 'sessions': {
+  // ✅ Accolades ajoutées pour créer un scope
+  const currentUserId = app.currentUser?.id;
+  if (!currentUserId) return null;
+  
+  const activeSessions = app.sessions?.filter(s => !s.archived) || [];
+  
+  const enrichedSessions = activeSessions.map(s => {
+    const notes = s.notes || [];
+    const lastMsg = notes.length > 0 ? notes[notes.length - 1] : null;
+    
+    const isPendingYou = lastMsg && lastMsg.author !== currentUserId;
+    const isPendingOther = lastMsg && lastMsg.author === currentUserId;
+    
+    const hasNotif = window.notificationManager?.hasUnreadNotificationForSession(
+      s.id, 
+      currentUserId
+    );
+    
+    return { 
+      ...s, 
+      hasNotif,
+      isPendingYou: isPendingYou && !hasNotif,
+      isPendingOther
+    };
+  });
+  
+  const totalActive = activeSessions.length;
+  const notifiedCount = enrichedSessions.filter(s => s.hasNotif).length;
+  const pendingYouCount = enrichedSessions.filter(s => s.isPendingYou).length;
+  const pendingOtherCount = enrichedSessions.filter(s => s.isPendingOther).length;
+  
+  const activeFilter = window.sessionPageState?.activeFilter || null;
+  
+  return (
+    <div className="flex items-center space-x-2">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (window.sessionPageFilters?.setGroupFilter) {
+            window.sessionPageFilters.setGroupFilter(null);
+          }
+        }}
+        className={`text-sm font-semibold transition-colors ${
+          activeFilter === null
+            ? 'text-amber-600'
+            : 'text-gray-600 hover:text-amber-600'
+        }`}
+      >
+        {totalActive} Session{totalActive > 1 ? 's' : ''}
+      </button>
+      
+      <span className="text-gray-300">·</span>
+      
+      {notifiedCount > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (window.sessionPageFilters?.setGroupFilter) {
+              window.sessionPageFilters.setGroupFilter('notified');
+            }
+          }}
+          className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+            activeFilter === 'notified'
+              ? 'bg-orange-500 text-white shadow-md ring-2 ring-orange-300'
+              : 'bg-orange-100 hover:bg-orange-200 text-orange-700'
+          }`}
+          title="Sessions avec notifications non répondues"
+        >
+          <span>🔔</span>
+          <span>{notifiedCount}</span>
+        </button>
+      )}
+      
+      {pendingYouCount > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (window.sessionPageFilters?.setGroupFilter) {
+              window.sessionPageFilters.setGroupFilter('pending_you');
+            }
+          }}
+          className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+            activeFilter === 'pending_you'
+              ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300'
+              : 'bg-amber-100 hover:bg-amber-200 text-amber-700'
+          }`}
+          title="Sessions en attente de votre réponse"
+        >
+          <span>🟡</span>
+          <span>{pendingYouCount}</span>
+        </button>
+      )}
+      
+      {pendingOtherCount > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (window.sessionPageFilters?.setGroupFilter) {
+              window.sessionPageFilters.setGroupFilter('pending_other');
+            }
+          }}
+          className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+            activeFilter === 'pending_other'
+              ? 'bg-blue-500 text-white shadow-md ring-2 ring-blue-300'
+              : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+          }`}
+          title="Sessions en attente d'autres utilisateurs"
+        >
+          <span>🔵</span>
+          <span>{pendingOtherCount}</span>
+        </button>
+      )}
+      
+      <select
+        onChange={(e) => {
+          if (window.sessionPageFilters?.setSortBy) {
+            window.sessionPageFilters.setSortBy(e.target.value);
+          }
+        }}
+        className="text-xs border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <option value="urgency">Tri: Urgence</option>
+        <option value="date">Tri: Date</option>
+        <option value="chrono">Tri: Voyage</option>
+        <option value="activity">Tri: Activité</option>
+      </select>
+    </div>
+  );
+} // ✅ FERMETURE ACCOLADE DU CASE
       
       case 'settings':
         return (
@@ -497,64 +516,7 @@ export default function UnifiedTopBar({
     }
   };
 
-  // ✅ NOUVEAU : Menu notifications
-  const renderNotificationMenu = () => {
-    return (
-      <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-80 max-h-96 overflow-y-auto">
-        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Bell className="w-4 h-4 text-gray-600" />
-            <span className="font-semibold text-gray-900">
-              Notifications {unreadCount > 0 && `(${unreadCount})`}
-            </span>
-          </div>
-          {unreadCount > 0 && (
-            <button
-              onClick={handleMarkAllRead}
-              className="text-xs text-blue-600 hover:text-blue-800"
-            >
-              Tout marquer lu
-            </button>
-          )}
-        </div>
-        
-        {unreadNotifications.length === 0 ? (
-          <div className="px-4 py-8 text-center text-gray-500 text-sm">
-            Aucune notification
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {unreadNotifications.map(notif => {
-              const fromUser = userManager.getUser(notif.from);
-              return (
-                <button
-                  key={notif.id}
-                  onClick={() => handleNotificationClick(notif)}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className="text-2xl">{fromUser?.emoji || '👤'}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900">
-                        {fromUser?.name} attend ta réponse
-                      </div>
-                      <div className="text-sm text-gray-600 truncate mt-1">
-                        📍 {notif.sessionTitle}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        {formatRelativeTime(notif.timestamp)}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  };
-
+  
   const renderUserMenu = () => {
     const currentUserObj = app.currentUser;
     const isOnline = app.connection?.isOnline;
@@ -625,21 +587,7 @@ export default function UnifiedTopBar({
 	{/* Section droite - REMPLACER ICI */}
       <div className="flex items-center space-x-2">
   {/* ✅ Badge notifications */}
-  <div className="relative" ref={notifMenuRef}>
-    <button
-      onClick={() => setShowNotifMenu(!showNotifMenu)}
-      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative"
-      title="Notifications"
-    >
-      <Bell className="w-5 h-5" />
-      {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-          {unreadCount > 9 ? '9+' : unreadCount}
-        </span>
-      )}
-    </button>
-    {showNotifMenu && renderNotificationMenu()}
-  </div>
+  
 
   {/* ✅ Menu ... (toujours visible) */}
   <div className="relative" ref={menuRef}>

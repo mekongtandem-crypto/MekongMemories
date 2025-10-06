@@ -1,8 +1,8 @@
 /**
- * SessionsPage.jsx v6.1 - Phase 14.3
- * ✅ Suppression SuggestionsModal (redirige vers Memories)
- * ✅ Icônes 💬 au lieu de <MessageCircle />
- * ✅ Liste groupée auto par statut
+ * SessionsPage.jsx v6.2 - Phase 15
+ * ✅ En-têtes groupes compacts (bulle + sous-titre)
+ * ✅ Menu "..." avec z-index élevé
+ * ✅ Support SESSION_STATUS.NOTIFIED
  */
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
@@ -34,9 +34,9 @@ export default function SessionsPage() {
   
   // États sections repliables
   const [openSections, setOpenSections] = useState(() => {
-    const saved = localStorage.getItem(`mekong_sessionGroups_${app.currentUser}`);
+    const saved = localStorage.getItem(`mekong_sessionGroups_${app.currentUser?.id}`);
     return saved ? JSON.parse(saved) : {
-      urgent: true,
+      notified: true,
       pending_you: true,
       pending_other: false,
       completed: false
@@ -47,7 +47,12 @@ export default function SessionsPage() {
 
   // Sauvegarder états sections
   useEffect(() => {
-    localStorage.setItem(`mekong_sessionGroups_${app.currentUser}`, JSON.stringify(openSections));
+    if (app.currentUser?.id) {
+      localStorage.setItem(
+        `mekong_sessionGroups_${app.currentUser.id}`,
+        JSON.stringify(openSections)
+      );
+    }
   }, [openSections, app.currentUser]);
 
   // Exposer callbacks pour TopBar
@@ -82,47 +87,45 @@ export default function SessionsPage() {
   }, [openMenuId]);
 
   // Enrichir sessions avec statuts
-  // NOUVEAU CODE (utilise sessionUtils)
-const enrichedSessions = useMemo(() => {
-  if (!app.sessions || !app.currentUser?.id) return [];
-  
-  return app.sessions.map(s => 
-    enrichSessionWithStatus(s, app.currentUser.id)
-  );
-}, [app.sessions, app.currentUser]);
+  const enrichedSessions = useMemo(() => {
+    if (!app.sessions || !app.currentUser?.id) return [];
+    
+    return app.sessions.map(s => 
+      enrichSessionWithStatus(s, app.currentUser.id)
+    );
+  }, [app.sessions, app.currentUser]);
 
   // Grouper sessions par statut
   const groupedSessions = useMemo(() => {
-  const groups = {
-    notified: [],
-    urgent: [],
-    pending_you: [],
-    pending_other: [],
-    completed: []
-  };
-  
-  enrichedSessions.forEach(s => {
-    // ✅ Utiliser s.status au lieu de s.isUrgent, etc.
-    if (s.completed || s.archived) {
-      groups.completed.push(s);
-    } else if (s.status === SESSION_STATUS.NOTIFIED) {
-      groups.notified.push(s);
-    } else if (s.status === SESSION_STATUS.STALE) {
-      groups.urgent.push(s);
-    } else if (s.status === SESSION_STATUS.PENDING_YOU) {
-      groups.pending_you.push(s);
-    } else if (s.status === SESSION_STATUS.PENDING_OTHER) {
-      groups.pending_other.push(s);
-    }
-  });
-  
-  // Trier chaque groupe
-  Object.keys(groups).forEach(key => {
-    groups[key] = sortSessions(groups[key], sortBy);
-  });
-  
-  return groups;
-}, [enrichedSessions, sortBy]);
+    const groups = {
+      notified: [],
+      pending_you: [],
+      pending_other: [],
+      completed: []
+    };
+    
+    enrichedSessions.forEach(s => {
+      if (s.completed || s.archived) {
+        groups.completed.push(s);
+      } else if (s.status === SESSION_STATUS.NOTIFIED) {
+        groups.notified.push(s);
+      } else if (s.status === SESSION_STATUS.PENDING_YOU) {
+        groups.pending_you.push(s);
+      } else if (s.status === SESSION_STATUS.PENDING_OTHER || s.status === SESSION_STATUS.ACTIVE) {
+        groups.pending_other.push(s);
+      } else {
+        console.warn('⚠️ Session avec statut non géré:', s.status, s.id);
+        groups.pending_other.push(s);
+      }
+    });
+    
+    // Trier chaque groupe
+    Object.keys(groups).forEach(key => {
+      groups[key] = sortSessions(groups[key], sortBy);
+    });
+    
+    return groups;
+  }, [enrichedSessions, sortBy]);
 
   // Filtrer selon badge TopBar cliqué
   const filteredGroups = useMemo(() => {
@@ -221,12 +224,12 @@ const enrichedSessions = useMemo(() => {
           <div className="flex items-center space-x-2 text-sm text-blue-900">
             <span className="font-medium">Filtre actif :</span>
             <span className="text-2xl">
-              {groupFilter === 'urgent' && '🔴'}
+              {groupFilter === 'notified' && '🔔'}
               {groupFilter === 'pending_you' && '🟡'}
               {groupFilter === 'pending_other' && '🔵'}
             </span>
             <span>
-              {groupFilter === 'urgent' && 'Urgent'}
+              {groupFilter === 'notified' && 'Notifiées'}
               {groupFilter === 'pending_you' && 'À traiter'}
               {groupFilter === 'pending_other' && 'En attente'}
             </span>
@@ -251,14 +254,14 @@ const enrichedSessions = useMemo(() => {
       ) : (
         <div className="space-y-4">
           
-          {/* Groupe URGENT */}
-          {filteredGroups.urgent && filteredGroups.urgent.length > 0 && (
+          {/* Groupe NOTIFIÉES */}
+          {filteredGroups.notified && filteredGroups.notified.length > 0 && (
             <SessionGroup
-              title="🔥 URGENT"
-              subtitle={`Plus de 7 jours sans réponse`}
-              sessions={filteredGroups.urgent}
-              isOpen={openSections.urgent}
-              onToggle={() => toggleSection('urgent')}
+              emoji="🔔"
+              subtitle="Notifications non répondues"
+              sessions={filteredGroups.notified}
+              isOpen={openSections.notified}
+              onToggle={() => toggleSection('notified')}
               color="orange"
               currentUserId={app.currentUser}
               editingSession={editingSession}
@@ -280,7 +283,7 @@ const enrichedSessions = useMemo(() => {
           {/* Groupe À TRAITER */}
           {filteredGroups.pending_you && filteredGroups.pending_you.length > 0 && (
             <SessionGroup
-              title="🟡 À TRAITER"
+              emoji="🟡"
               subtitle="En attente de votre réponse"
               sessions={filteredGroups.pending_you}
               isOpen={openSections.pending_you}
@@ -303,10 +306,10 @@ const enrichedSessions = useMemo(() => {
             />
           )}
           
-          {/* Groupe EN ATTENTE (autres) */}
+          {/* Groupe EN ATTENTE */}
           {filteredGroups.pending_other && filteredGroups.pending_other.length > 0 && (
             <SessionGroup
-              title="🔵 EN ATTENTE"
+              emoji="🔵"
               subtitle="Attente d'autres utilisateurs"
               sessions={filteredGroups.pending_other}
               isOpen={openSections.pending_other}
@@ -332,7 +335,7 @@ const enrichedSessions = useMemo(() => {
           {/* Groupe TERMINÉES */}
           {filteredGroups.completed && filteredGroups.completed.length > 0 && (
             <SessionGroup
-              title="✅ TERMINÉES"
+              emoji="✅"
               subtitle="Sessions complétées"
               sessions={filteredGroups.completed}
               isOpen={openSections.completed}
@@ -376,38 +379,40 @@ const enrichedSessions = useMemo(() => {
 // ========================================
 
 function SessionGroup({ 
-  title, subtitle, sessions, isOpen, onToggle, color,
+  emoji, subtitle, sessions, isOpen, onToggle, color,
   currentUserId, editingSession, editTitle, setEditTitle,
   openMenuId, setOpenMenuId, menuRefs,
   onOpen, onStartEdit, onSaveEdit, onCancelEdit,
   onMarkCompleted, onArchive, onDelete
 }) {
   const colorClasses = {
-    orange: { bg: 'bg-orange-50', border: 'border-orange-200', hover: 'hover:bg-orange-100' },
-    amber: { bg: 'bg-amber-50', border: 'border-amber-200', hover: 'hover:bg-amber-100' },
-    blue: { bg: 'bg-blue-50', border: 'border-blue-200', hover: 'hover:bg-blue-100' },
-    green: { bg: 'bg-green-50', border: 'border-green-200', hover: 'hover:bg-green-100' }
+    orange: { bg: 'bg-orange-50', border: 'border-orange-200', hover: 'hover:bg-orange-100', badgeBg: 'bg-orange-500' },
+    amber: { bg: 'bg-amber-50', border: 'border-amber-200', hover: 'hover:bg-amber-100', badgeBg: 'bg-amber-500' },
+    blue: { bg: 'bg-blue-50', border: 'border-blue-200', hover: 'hover:bg-blue-100', badgeBg: 'bg-blue-500' },
+    green: { bg: 'bg-green-50', border: 'border-green-200', hover: 'hover:bg-green-100', badgeBg: 'bg-green-500' }
   };
   
   const colors = colorClasses[color];
   
   return (
-    <div className={`${colors.bg} border ${colors.border} rounded-lg overflow-hidden`}>
+    <div className={`${colors.bg} border ${colors.border} rounded-lg overflow-visible`}>
       
-      {/* Header */}
+      {/* ✅ NOUVEAU : Header compact */}
       <button
         onClick={onToggle}
-        className={`w-full flex items-center justify-between p-4 ${colors.hover} transition-colors`}
+        className={`w-full flex items-center justify-between p-3 ${colors.hover} transition-colors`}
       >
         <div className="flex items-center space-x-3">
-          <span className="text-2xl">{title.split(' ')[0]}</span>
-          <div className="text-left">
-            <div className="font-semibold text-gray-900">
-              {title.substring(title.indexOf(' ') + 1)} ({sessions.length})
-            </div>
-            <div className="text-xs text-gray-600">{subtitle}</div>
+          {/* Bulle colorée style TopBar */}
+          <div className={`flex items-center space-x-1 px-2 py-1 rounded-lg ${colors.badgeBg} text-white text-xs font-bold shadow-sm`}>
+            <span>{emoji}</span>
+            <span>{sessions.length}</span>
           </div>
+          
+          {/* Sous-titre uniquement */}
+          <span className="text-sm font-medium text-gray-700">{subtitle}</span>
         </div>
+        
         <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       
@@ -455,12 +460,19 @@ function SessionRow({
   return (
     <div 
       onClick={() => !isEditing && onOpen(session)}
-      className={`bg-white border rounded-lg p-3 transition-all ${
+      className={`bg-white rounded-lg p-3 transition-all relative ${
         isEditing 
-          ? 'border-gray-300' 
-          : 'border-gray-200 hover:border-gray-400 hover:shadow-md cursor-pointer'
+          ? 'border-2 border-gray-300' 
+          : `border-2 ${session.statusConfig?.borderClass || 'border-gray-200'} hover:border-gray-400 hover:shadow-md cursor-pointer`
       }`}
     >
+      {/* Badge 🔔 en haut à gauche pour NOTIFIED */}
+      {session.status === SESSION_STATUS.NOTIFIED && !isEditing && (
+        <div className="absolute -top-2 -left-2 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center shadow-lg z-10">
+          <span className="text-sm">🔔</span>
+        </div>
+      )}
+      
       <div className="flex items-center justify-between">
         
         {/* Titre */}
@@ -507,9 +519,13 @@ function SessionRow({
           )}
         </div>
         
-        {/* Menu */}
+        {/* Menu avec z-index élevé */}
         {!isEditing && (
-          <div className="relative flex-shrink-0" ref={el => menuRefs.current[session.id] = el}>
+          <div 
+            className="relative flex-shrink-0" 
+            style={{ zIndex: 100 }}
+            ref={el => menuRefs.current[session.id] = el}
+          >
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -521,7 +537,10 @@ function SessionRow({
             </button>
             
             {openMenuId === session.id && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
+              <div 
+                className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-48"
+                style={{ zIndex: 101 }}
+              >
                 
                 <button
                   onClick={(e) => onStartEdit(e, session)}

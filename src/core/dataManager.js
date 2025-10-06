@@ -313,9 +313,19 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
   }
 }
 
-  openChatSession = (session) => {
-    this.updateState({ currentChatSession: session, currentPage: 'chat' });
+openChatSession = (session) => {
+  this.updateState({ currentChatSession: session, currentPage: 'chat' });
+  
+  // ✅ NOUVEAU : Marquer notification comme lue à l'ouverture
+  const notif = this.notificationManager.getNotificationForSession(
+    session.id, 
+    this.appState.currentUser.id
+  );
+  if (notif) {
+    this.notificationManager.markAsRead(notif.id);
+    console.log('✅ Notification marquée lue à l\'ouverture de la session');
   }
+}
 
   closeChatSession = () => {
     this.updateState({ currentChatSession: null, currentPage: 'sessions' });

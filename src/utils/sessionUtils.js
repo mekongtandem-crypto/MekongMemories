@@ -1,7 +1,8 @@
 // ==================== DÉBUT DU FICHIER ====================
 /**
- * sessionUtils.js - Utilitaires pour SessionsPage
- * Calcul de statuts, tri, filtrage, suggestions
+ * sessionUtils.js v2.0 - Phase 15 : Système notifications
+ * ✅ SUPPRIMÉ : SESSION_STATUS.STALE (urgent 7 jours)
+ * ✅ AJOUTÉ : SESSION_STATUS.NOTIFIED (priorité 1)
  */
 
 // ========================================
@@ -9,15 +10,24 @@
 // ========================================
 
 export const SESSION_STATUS = {
-  PENDING_YOU: 'pending_you',
-  PENDING_OTHER: 'pending_other',
+  NOTIFIED: 'notified',        // ✅ NOUVEAU - Priorité 1
+  PENDING_YOU: 'pending_you',  // Priorité 2
+  PENDING_OTHER: 'pending_other', // Priorité 3
   ACTIVE: 'active',
-  STALE: 'stale',
   COMPLETED: 'completed',
   ARCHIVED: 'archived'
 };
 
 export const STATUS_CONFIG = {
+  [SESSION_STATUS.NOTIFIED]: {
+    label: 'Notifiée',
+    icon: '🔔',
+    color: 'orange',
+    bgClass: 'bg-orange-100',
+    textClass: 'text-orange-700',
+    borderClass: 'border-orange-300',
+    priority: 1
+  },
   [SESSION_STATUS.PENDING_YOU]: {
     label: 'À traiter',
     icon: '🟡',
@@ -34,7 +44,7 @@ export const STATUS_CONFIG = {
     bgClass: 'bg-blue-100',
     textClass: 'text-blue-700',
     borderClass: 'border-blue-300',
-    priority: 4
+    priority: 3
   },
   [SESSION_STATUS.ACTIVE]: {
     label: 'Active',
@@ -43,16 +53,7 @@ export const STATUS_CONFIG = {
     bgClass: 'bg-green-100',
     textClass: 'text-green-700',
     borderClass: 'border-green-300',
-    priority: 5
-  },
-  [SESSION_STATUS.STALE]: {
-    label: 'Urgent',
-    icon: '🟠',
-    color: 'orange',
-    bgClass: 'bg-orange-100',
-    textClass: 'text-orange-700',
-    borderClass: 'border-orange-300',
-    priority: 1
+    priority: 4
   },
   [SESSION_STATUS.COMPLETED]: {
     label: 'Terminée',
@@ -61,7 +62,7 @@ export const STATUS_CONFIG = {
     bgClass: 'bg-gray-100',
     textClass: 'text-gray-600',
     borderClass: 'border-gray-300',
-    priority: 6
+    priority: 5
   },
   [SESSION_STATUS.ARCHIVED]: {
     label: 'Archivée',
@@ -70,7 +71,7 @@ export const STATUS_CONFIG = {
     bgClass: 'bg-gray-50',
     textClass: 'text-gray-500',
     borderClass: 'border-gray-200',
-    priority: 7
+    priority: 6
   }
 };
 
@@ -92,32 +93,52 @@ export const SUGGESTION_MODES = {
 // ========================================
 
 export function calculateSessionStatus(session, currentUserId) {
+  // États méta (priorité absolue)
   if (session.archived) return SESSION_STATUS.ARCHIVED;
   if (session.completed) return SESSION_STATUS.COMPLETED;
   
-  // ✅ Vérifier notification (AVANT les autres checks)
+  // ✅ DEBUG LOG
+  console.log('📊 Calcul statut session:', {
+    sessionId: session.id,
+    currentUserId,
+    notesCount: session.notes?.length,
+    lastAuthor: session.notes?.[session.notes.length - 1]?.author
+  });
+  
+  // ✅ PRIORITÉ 1 : Notification non répondue
   const hasUnreadNotif = window.notificationManager?.hasUnreadNotificationForSession(
     session.id, 
-    currentUserId  // ✅ Doit être un string comme 'lambert' ou 'tom'
+    currentUserId
   );
   
+  if (hasUnreadNotif) {
+    console.log('  → NOTIFIED (notification non lue)');
+    return SESSION_STATUS.NOTIFIED;
+  }
+  
+  // Session vide = active
   if (!session.notes || session.notes.length === 0) {
+        console.log('  → ACTIVE (pas de messages)');
     return SESSION_STATUS.ACTIVE;
   }
   
   const lastMessage = session.notes[session.notes.length - 1];
   const daysSinceLastMsg = (Date.now() - new Date(lastMessage.timestamp)) / (1000 * 60 * 60 * 24);
   
-  if (lastMessage.author === currentUserId) {
-    return daysSinceLastMsg < 1 ? SESSION_STATUS.ACTIVE : SESSION_STATUS.PENDING_OTHER;
+  // ✅ PRIORITÉ 2 : À traiter (dernier msg ≠ currentUser)
+  if (lastMessage.author !== currentUserId) {
+        console.log('  → PENDING_YOU (dernier msg ≠ moi)');
+    return SESSION_STATUS.PENDING_YOU;
   }
   
-  // ✅ NOTIFIED a priorité sur STALE
-  if (hasUnreadNotif) {
-    return SESSION_STATUS.NOTIFIED;
+  // ✅ PRIORITÉ 3 : En attente (dernier msg = currentUser)
+  // Sous-cas : si très récent (< 24h) = ACTIVE
+  if (daysSinceLastMsg < 1) {
+    console.log('  → ACTIVE (< 24h)');
+    return SESSION_STATUS.ACTIVE;
   }
-  
-  return daysSinceLastMsg > 7 ? SESSION_STATUS.STALE : SESSION_STATUS.PENDING_YOU;
+  console.log('  → PENDING_OTHER (j\'attends réponse)');
+  return SESSION_STATUS.PENDING_OTHER;
 }
 
 export function enrichSessionWithStatus(session, currentUserId) {
@@ -153,10 +174,10 @@ export function calculateSessionStats(sessions, currentUserId, masterIndex) {
     exploredMoments,
     totalMoments,
     unexploredMoments: totalMoments - exploredMoments,
+    notified: byStatus[SESSION_STATUS.NOTIFIED] || 0,
     pendingYou: byStatus[SESSION_STATUS.PENDING_YOU] || 0,
     pendingOther: byStatus[SESSION_STATUS.PENDING_OTHER] || 0,
     active: byStatus[SESSION_STATUS.ACTIVE] || 0,
-    stale: byStatus[SESSION_STATUS.STALE] || 0,
     completed: byStatus[SESSION_STATUS.COMPLETED] || 0,
     archived: byStatus[SESSION_STATUS.ARCHIVED] || 0,
     totalMessages,
