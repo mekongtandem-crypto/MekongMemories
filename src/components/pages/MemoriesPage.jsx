@@ -180,7 +180,8 @@ function MemoriesPage({
     setViewerState({ isOpen: false, photo: null, gallery: [], contextMoment: null });
   }, []);
 
-  const handleSelectMoment = useCallback((moment) => {
+  // ✅ NOUVELLE SIGNATURE (on ajoute un paramètre "forceOpen")
+const handleSelectMoment = useCallback((moment, forceOpen = false) => {
     setSelectedMoments(prev => {
       const isAlreadySelected = prev.some(m => m.id === moment.id);
       
@@ -384,10 +385,17 @@ const MomentCard = memo(React.forwardRef(({
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
   
+  // ✅ NOUVEAU CODE (synchronisé avec la TopBar)
   const [localDisplay, setLocalDisplay] = useState({
-    showPosts: false,
-    showDayPhotos: false
+    showPosts: false, // On pourrait aussi synchroniser les posts si besoin
+    showDayPhotos: displayOptions.showMomentPhotos
   });
+
+  // ✅ AJOUTER CE BLOC pour garder la synchro
+  // Met à jour l'affichage local si le bouton global de la TopBar est utilisé
+  useEffect(() => {
+    setLocalDisplay(prev => ({ ...prev, showDayPhotos: displayOptions.showMomentPhotos }));
+  }, [displayOptions.showMomentPhotos]);
   
   const wasSelectedRef = useRef(isSelected);
   

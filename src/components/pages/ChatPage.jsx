@@ -1,8 +1,6 @@
 /**
- * ChatPage.jsx v2.2 - Phase 15 finale
- * ✅ Titre éditable inline (clic → Enter/Escape)
- * ✅ Suppression modal édition titre
- * ✅ Affichage photos dans bulles utilisateur
+ * ChatPage.jsx v2.3 - Phase 16
+ * ✅ Suppression en-tête (déplacé dans UnifiedTopBar)
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
@@ -15,10 +13,7 @@ export default function ChatPage() {
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
   
-  // ✅ NOUVEAU : États titre éditable inline
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [titleValue, setTitleValue] = useState('');
-  const titleInputRef = useRef(null);
+  // ❌ SUPPRIMÉ : États du titre (editingTitle, titleValue, titleInputRef)
   
   const [viewerState, setViewerState] = useState({ 
     isOpen: false, photo: null 
@@ -33,46 +28,9 @@ export default function ChatPage() {
     }
   }, [app.currentChatSession?.notes]);
 
-  // ✅ Focus sur input titre au montage édition
-  useEffect(() => {
-    if (editingTitle && titleInputRef.current) {
-      titleInputRef.current.focus();
-      titleInputRef.current.select();
-    }
-  }, [editingTitle]);
+  // ❌ SUPPRIMÉ : useEffect pour le focus sur l'input du titre
 
-  // ========================================
-  // HANDLERS TITRE
-  // ========================================
-
-  const handleStartEditTitle = () => {
-    if (!app.currentChatSession) return;
-    setEditingTitle(true);
-    setTitleValue(app.currentChatSession.gameTitle);
-  };
-
-  const handleSaveTitle = async () => {
-    if (!titleValue.trim()) {
-      setEditingTitle(false);
-      return;
-    }
-
-    try {
-      const updatedSession = {
-        ...app.currentChatSession,
-        gameTitle: titleValue.trim()
-      };
-      await app.updateSession(updatedSession);
-      setEditingTitle(false);
-    } catch (error) {
-      console.error('❌ Erreur modification titre:', error);
-    }
-  };
-
-  const handleCancelEditTitle = () => {
-    setEditingTitle(false);
-    setTitleValue('');
-  };
+  // ❌ SUPPRIMÉ : Tous les handlers du titre (handleStartEditTitle, handleSaveTitle, handleCancelEditTitle)
 
   // ========================================
   // HANDLERS MESSAGES
@@ -193,54 +151,7 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       
-      {/* ✅ NOUVEAU : En-tête avec titre éditable inline */}
-      <div className="bg-white border-b border-gray-200 p-4 flex-shrink-0">
-        {editingTitle ? (
-          <div className="flex items-center space-x-2">
-            <input
-              ref={titleInputRef}
-              type="text"
-              value={titleValue}
-              onChange={(e) => setTitleValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSaveTitle();
-                if (e.key === 'Escape') handleCancelEditTitle();
-              }}
-              className="flex-1 px-3 py-2 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 font-semibold text-amber-600"
-              placeholder="Titre de la session..."
-            />
-            <button 
-              onClick={handleSaveTitle} 
-              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-              title="Sauvegarder (Enter)"
-            >
-              <Check className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={handleCancelEditTitle} 
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Annuler (Escape)"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between group">
-  <h2 
-    onClick={handleStartEditTitle}
-    className="text-lg font-semibold text-amber-600 cursor-pointer hover:text-amber-700 transition-colors flex items-center space-x-2"
-    title="Cliquer pour modifier le titre"
-  >
-    <span>{app.currentChatSession.gameTitle}</span>
-    {/* ✅ Icône Edit visible au hover */}
-    <Edit className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-  </h2>
-  <div className="text-xs text-gray-500">
-    {app.currentChatSession.notes?.length || 0} message{app.currentChatSession.notes?.length > 1 ? 's' : ''}
-  </div>
-</div>
-        )}
-      </div>
+      {/* ❌ SUPPRIMÉ : L'en-tête complet avec titre éditable a été retiré d'ici */}
 
       {/* Zone des messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">

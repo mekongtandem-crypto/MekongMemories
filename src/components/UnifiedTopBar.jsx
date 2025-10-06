@@ -1,18 +1,27 @@
 /**
- * UnifiedTopBar.jsx v1.8 - Phase 15 finale
- * ✅ Avatar toujours visible (desktop + mobile)
- * ✅ Menu tri Memories en bouton dédié
- * ✅ Suppression menu tri Sessions
- * ✅ Suppression "Régénérer" Settings
+ * UnifiedTopBar.jsx v2.1 - Version Complète et Restaurée
+ * ✅ Contient le code fonctionnel pour TOUTES les pages : Memories, Sessions, Chat, et Settings.
+ * ✅ Le titre éditable pour la page Chat est correctement placé au centre.
+ * ✅ Le menu "..." de la page Chat avec les statistiques et le bouton supprimer est fonctionnel.
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, Settings, Plus, Map, Search, Dices, 
   MoreVertical, Type, Image as ImageIcon, Camera,
-  CloudOff, Cloud, Edit, Trash2, ArrowUpDown
+  CloudOff, Cloud, Edit, Trash2, ArrowUpDown,
+  Check, X, Bell
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
+
+// Helper pour formater les dates, utilisé dans le menu du chat
+const formatDateTime = (isoString) => {
+  if (!isoString) return 'N/A';
+  return new Date(isoString).toLocaleString('fr-FR', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  });
+};
 
 export default function UnifiedTopBar({ 
   currentPage,
@@ -29,39 +38,51 @@ export default function UnifiedTopBar({
   setDisplayOptions,
   jumpToRandomMoment,
   chatSession,
-  onEditChatTitle,
   onCloseChatSession
 }) {
   const app = useAppState();
   const [showMenu, setShowMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-const [showSortMenu, setShowSortMenu] = useState(false);
-const [showMomentFilterMenu, setShowMomentFilterMenu] = useState(false); // ✅ NOUVEAU
-const [currentMomentFilter, setCurrentMomentFilter] = useState('all');     // ✅ NOUVEAU  
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showMomentFilterMenu, setShowMomentFilterMenu] = useState(false);
+  const [currentMomentFilter, setCurrentMomentFilter] = useState('all');
+  
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState('');
+  const [notificationState, setNotificationState] = useState('idle'); // idle, sending, sent, already_notified
+  const titleInputRef = useRef(null);
+  
   const menuRef = useRef(null);
-const userMenuRef = useRef(null);
-const sortMenuRef = useRef(null);
-const momentFilterMenuRef = useRef(null); // ✅ NOUVEAU
+  const userMenuRef = useRef(null);
+  const sortMenuRef = useRef(null);
+  const momentFilterMenuRef = useRef(null);
 
   useEffect(() => {
-  const handleClickOutside = (e) => {
-    if (menuRef.current && !menuRef.current.contains(e.target)) {
-      setShowMenu(false);
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setShowUserMenu(false);
+      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target)) setShowSortMenu(false);
+      if (momentFilterMenuRef.current && !momentFilterMenuRef.current.contains(e.target)) setShowMomentFilterMenu(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
     }
-    if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
-      setShowUserMenu(false);
+  }, [editingTitle]);
+
+useEffect(() => {
+    if (currentPage === 'chat' && chatSession && app.currentUser) {
+        const otherUser = userManager.getAllUsers().find(u => u.id !== 'duo' && u.id !== app.currentUser.id);
+        if (!otherUser) return;
+        const existingNotif = window.notificationManager?.getNotificationForSession(chatSession.id, otherUser.id);
+        setNotificationState(existingNotif && !existingNotif.read ? 'already_notified' : 'idle');
     }
-    if (sortMenuRef.current && !sortMenuRef.current.contains(e.target)) {
-      setShowSortMenu(false);
-    }
-    // ✅ NOUVEAU
-    if (momentFilterMenuRef.current && !momentFilterMenuRef.current.contains(e.target)) {
-      setShowMomentFilterMenu(false);
-    }
-  };
-  document.addEventListener('mousedown', handleClickOutside);
-  return () => document.removeEventListener('mousedown', handleClickOutside);
-}, []);
+}, [chatSession, currentPage, app.currentUser]);
 
   const handleDayWheel = (e) => {
     e.preventDefault();
@@ -71,686 +92,243 @@ const momentFilterMenuRef = useRef(null); // ✅ NOUVEAU
 
   const handleCreateTestSession = async () => {
     try {
-      const sessionData = {
-        id: `test_${Date.now()}`,
-        title: `Session de test`,
-        description: 'Session créée manuellement',
-        systemMessage: '💬 Session de test créée.'
-      };
-      
+      const sessionData = { id: `test_${Date.now()}`, title: `Session de test`, description: 'Session créée manuellement', systemMessage: '💬 Session de test créée.' };
       const newSession = await app.createSession(sessionData, 'Message de test initial', null);
-      if (newSession) {
-        await app.openChatSession(newSession);
-      }
-    } catch (error) {
-      console.error('Erreur création session test:', error);
-      alert('Impossible de créer la session');
-    }
+      if (newSession) await app.openChatSession(newSession);
+    } catch (error) { console.error('Erreur création session test:', error); alert('Impossible de créer la session'); }
+  };
+  
+  const handleStartEditTitle = () => {
+    if (!chatSession) return;
+    setEditingTitle(true);
+    setTitleValue(chatSession.gameTitle);
   };
 
-  // ========================================
-  // RENDER LEFT ACTION
-  // ========================================
+  const handleSaveTitle = async () => {
+    if (!titleValue.trim()) { setEditingTitle(false); return; }
+    try {
+      const updatedSession = { ...chatSession, gameTitle: titleValue.trim() };
+      await app.updateSession(updatedSession);
+      setEditingTitle(false);
+    } catch (error) { console.error('❌ Erreur modification titre:', error); }
+  };
+
+  const handleCancelEditTitle = () => { setEditingTitle(false); setTitleValue(''); };
+
+  const handleDeleteCurrentSession = async () => {
+    if (!chatSession) return;
+    setShowMenu(false);
+    if (confirm(`Supprimer la session "${chatSession.gameTitle}" ? Cette action est irréversible.`)) {
+      await app.deleteSession(chatSession.id);
+      onCloseChatSession();
+    }
+  };
+  
+  const handleSendNotification = async () => {
+    if (!chatSession || !app.currentUser) return;
+    const otherUser = userManager.getAllUsers().find(u => u.id !== 'duo' && u.id !== app.currentUser.id);
+    if (!otherUser) return;
+
+    // Si on est déjà notifié, on propose d'annuler
+    if (notificationState === 'already_notified') {
+        if (confirm(`Annuler la notification pour ${otherUser.name} ?`)) {
+            // Ici, il faudrait une fonction pour supprimer la notification.
+            // Pour l'instant, on va juste réinitialiser l'état visuellement.
+            // await app.deleteNotification(...)
+            console.log("LOGIQUE D'ANNULATION A IMPLEMENTER");
+            setNotificationState('idle');
+        }
+        return;
+    }
+
+    setNotificationState('sending');
+    try {
+        await app.sendNotification(otherUser.id, chatSession.id, chatSession.gameTitle);
+        setNotificationState('sent');
+        // Le feedback visuel est géré par le JSX
+    } catch (error) {
+        console.error("Erreur d'envoi de la notification:", error);
+        setNotificationState('idle');
+    }
+};
 
   const renderLeftAction = () => {
     switch (currentPage) {
-      case 'memories':
-        return (
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className={`p-2 rounded-lg transition-colors ${
-                isSearchOpen 
-                  ? 'bg-blue-100 text-blue-700' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-              title="Recherche"
-            >
-              <Search className="w-5 h-5" />
-            </button>
-          </div>
-        );
-      
-      case 'chat':
-        return (
-          <button
-            onClick={onCloseChatSession}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Retour aux sessions"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-        );
-      
-      case 'sessions':
-        return (
-          <button
-            onClick={handleCreateTestSession}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Nouvelle session"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        );
-      
-      case 'settings':
-        return (
-          <div className="p-2">
-            <Settings className="w-5 h-5 text-gray-600" />
-          </div>
-        );
-      
-      default:
-        return null;
+      case 'memories': return (
+        <div className="flex items-center space-x-2"><button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-2 rounded-lg transition-colors ${isSearchOpen ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`} title="Recherche"><Search className="w-5 h-5" /></button></div>
+      );
+      case 'chat': return (
+        <button onClick={onCloseChatSession} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Retour aux sessions"><ArrowLeft className="w-5 h-5" /></button>
+      );
+      case 'sessions': return (
+        <button onClick={handleCreateTestSession} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Nouvelle session"><Plus className="w-5 h-5" /></button>
+      );
+      case 'settings': return (
+        <div className="p-2"><Settings className="w-5 h-5 text-gray-600" /></div>
+      );
+      default: return null;
     }
   };
-
-  // ========================================
-  // RENDER CONTEXT (Centre)
-  // ========================================
 
   const renderContext = () => {
     switch (currentPage) {
       case 'memories': {
-  // ✅ État du filtre moment actif
-  const filterIcons = {
-    all: '📋',
-    unexplored: '✨',
-    with_posts: '📄',
-    with_photos: '📸'
-  };
-  
-  return (
-    <div className="flex items-center space-x-2">
-      
-      {/* ========================================
-          PRIORITÉ 1 : Filtres contenu (TOUJOURS visibles)
-          ======================================== */}
-      <div className="flex items-center space-x-1">
-        <button
-          onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))}
-          className={`p-1.5 rounded transition-colors ${
-            displayOptions.showPostText 
-              ? 'bg-green-100 text-green-700' 
-              : 'text-gray-400 hover:bg-gray-100'
-          }`}
-          title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}
-        >
-          <Type className="w-4 h-4" />
-        </button>
-        
-        <button
-          onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))}
-          className={`p-1.5 rounded transition-colors ${
-            displayOptions.showPostPhotos 
-              ? 'bg-green-100 text-green-700' 
-              : 'text-gray-400 hover:bg-gray-100'
-          }`}
-          title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}
-        >
-          <ImageIcon className="w-4 h-4" />
-        </button>
-        
-        <button
-          onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))}
-          className={`p-1.5 rounded transition-colors ${
-            displayOptions.showMomentPhotos 
-              ? 'bg-green-100 text-green-700' 
-              : 'text-gray-400 hover:bg-gray-100'
-          }`}
-          title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}
-        >
-          <Camera className="w-4 h-4" />
-        </button>
-      </div>
-      
-      {/* Séparateur visuel */}
-      <span className="text-gray-300 hidden sm:inline">|</span>
-      
-      {/* ========================================
-          PRIORITÉ 2 : Tri moments (visible desktop)
-          ======================================== */}
-      <div className="relative hidden md:block" ref={sortMenuRef}>
-        <button
-          onClick={() => setShowSortMenu(!showSortMenu)}
-          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          title="Trier les moments"
-        >
-          <ArrowUpDown className="w-4 h-4" />
-        </button>
-        
-        {showSortMenu && (
-          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
-            <button
-              onClick={() => {
-                if (window.memoriesPageFilters?.setSortBy) {
-                  window.memoriesPageFilters.setSortBy('chrono');
-                }
-                setShowSortMenu(false);
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
-            >
-              <span>📅</span>
-              <span>Chronologique</span>
-            </button>
-            <button
-              onClick={() => {
-                if (window.memoriesPageFilters?.setSortBy) {
-                  window.memoriesPageFilters.setSortBy('recent');
-                }
-                setShowSortMenu(false);
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
-            >
-              <span>🕐</span>
-              <span>Plus récents</span>
-            </button>
-            <button
-              onClick={() => {
-                if (window.memoriesPageFilters?.setSortBy) {
-                  window.memoriesPageFilters.setSortBy('content');
-                }
-                setShowSortMenu(false);
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
-            >
-              <span>📸</span>
-              <span>Plus de contenu</span>
-            </button>
-          </div>
-        )}
-      </div>
-      
-      {/* ========================================
-          PRIORITÉ 3 : Filtre moment (icône dynamique)
-          ======================================== */}
-      <div className="relative hidden md:block">
-        <button
-          onClick={() => setShowMomentFilterMenu(!showMomentFilterMenu)}
-          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          title="Filtrer les moments"
-        >
-          <span className="text-lg">{filterIcons[currentMomentFilter]}</span>
-        </button>
-        
-        {showMomentFilterMenu && (
-          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
-            <button
-              onClick={() => {
-                if (window.memoriesPageFilters?.setMomentFilter) {
-                  window.memoriesPageFilters.setMomentFilter('all');
-                }
-                setCurrentMomentFilter('all');
-                setShowMomentFilterMenu(false);
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
-            >
-              <span>📋</span>
-              <span>Tous les moments</span>
-            </button>
-            <button
-              onClick={() => {
-                if (window.memoriesPageFilters?.setMomentFilter) {
-                  window.memoriesPageFilters.setMomentFilter('unexplored');
-                }
-                setCurrentMomentFilter('unexplored');
-                setShowMomentFilterMenu(false);
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
-            >
-              <span>✨</span>
-              <span>Non explorés</span>
-            </button>
-            <button
-              onClick={() => {
-                if (window.memoriesPageFilters?.setMomentFilter) {
-                  window.memoriesPageFilters.setMomentFilter('with_posts');
-                }
-                setCurrentMomentFilter('with_posts');
-                setShowMomentFilterMenu(false);
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
-            >
-              <span>📄</span>
-              <span>Avec articles</span>
-            </button>
-            <button
-              onClick={() => {
-                if (window.memoriesPageFilters?.setMomentFilter) {
-                  window.memoriesPageFilters.setMomentFilter('with_photos');
-                }
-                setCurrentMomentFilter('with_photos');
-                setShowMomentFilterMenu(false);
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
-            >
-              <span>📸</span>
-              <span>Avec photos</span>
-            </button>
-          </div>
-        )}
-      </div>
-      
-      {/* ========================================
-          OVERFLOW MOBILE : Actions secondaires
-          ======================================== */}
-      <div className="flex items-center space-x-2 md:hidden">
-        
-        
-        <button 
-          onClick={jumpToRandomMoment}
-          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          title="Moment au hasard"
-        >
-          <Dices className="w-4 h-4" />
-        </button>
-        
-        <input 
-          type="number" 
-          value={currentDay} 
-          onChange={(e) => {
-            const day = parseInt(e.target.value, 10);
-            if (!isNaN(day)) setCurrentDay(day);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') jumpToDay(currentDay);
-          }}
-          className="w-14 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:ring-2 focus:ring-blue-500"
-          placeholder="J..."
-          min="0"
-          max="200"
-        />
-      </div>
-      
-      {/* Desktop : Navigation jour */}
-      <div className="hidden md:flex items-center space-x-2">
-        <button
-          onClick={() => setIsSearchOpen(!isSearchOpen)}
-          className={`p-1.5 rounded-lg transition-colors ${
-            isSearchOpen ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
-          }`}
-          title="Recherche"
-        >
-          <Search className="w-4 h-4" />
-        </button>
-        
-        <button 
-          onClick={jumpToRandomMoment}
-          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          title="Moment au hasard"
-        >
-          <Dices className="w-4 h-4" />
-        </button>
-        
-        <input 
-          type="number" 
-          value={currentDay} 
-          onChange={(e) => {
-            const day = parseInt(e.target.value, 10);
-            if (!isNaN(day)) setCurrentDay(day);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') jumpToDay(currentDay);
-          }}
-          onWheel={handleDayWheel}
-          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-blue-500"
-          placeholder="J..."
-          min="0"
-          max="200"
-        />
-      </div>
-      
-    </div>
-  );
-}
-      
-      case 'sessions': {
-        const currentUserId = app.currentUser?.id;
-        if (!currentUserId) return null;
-        
-        const activeSessions = app.sessions?.filter(s => !s.archived) || [];
-        
-        const enrichedSessions = activeSessions.map(s => {
-          const notes = s.notes || [];
-          const lastMsg = notes.length > 0 ? notes[notes.length - 1] : null;
-          
-          const isPendingYou = lastMsg && lastMsg.author !== currentUserId;
-          const isPendingOther = lastMsg && lastMsg.author === currentUserId;
-          
-          const hasNotif = window.notificationManager?.hasUnreadNotificationForSession(
-            s.id, 
-            currentUserId
-          );
-          
-          return { 
-            ...s, 
-            hasNotif,
-            isPendingYou: isPendingYou && !hasNotif,
-            isPendingOther
-          };
-        });
-        
-        const totalActive = activeSessions.length;
-        const notifiedCount = enrichedSessions.filter(s => s.hasNotif).length;
-        const pendingYouCount = enrichedSessions.filter(s => s.isPendingYou).length;
-        const pendingOtherCount = enrichedSessions.filter(s => s.isPendingOther).length;
-        
-        const activeFilter = window.sessionPageState?.activeFilter || null;
-        
+        const filterIcons = { all: '📋', unexplored: '✨', with_posts: '📄', with_photos: '📸' };
         return (
           <div className="flex items-center space-x-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.sessionPageFilters?.setGroupFilter) {
-                  window.sessionPageFilters.setGroupFilter(null);
-                }
-              }}
-              className={`text-sm font-semibold transition-colors ${
-                activeFilter === null
-                  ? 'text-amber-600'
-                  : 'text-gray-600 hover:text-amber-600'
-              }`}
-            >
-              {totalActive} Session{totalActive > 1 ? 's' : ''}
-            </button>
-            
-            <span className="text-gray-300">·</span>
-            
-            {notifiedCount > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (window.sessionPageFilters?.setGroupFilter) {
-                    window.sessionPageFilters.setGroupFilter('notified');
-                  }
-                }}
-                className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
-                  activeFilter === 'notified'
-                    ? 'bg-orange-500 text-white shadow-md ring-2 ring-orange-300'
-                    : 'bg-orange-100 hover:bg-orange-200 text-orange-700'
-                }`}
-                title="Sessions avec notifications non répondues"
-              >
-                <span>🔔</span>
-                <span>{notifiedCount}</span>
-              </button>
-            )}
-            
-            {pendingYouCount > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (window.sessionPageFilters?.setGroupFilter) {
-                    window.sessionPageFilters.setGroupFilter('pending_you');
-                  }
-                }}
-                className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
-                  activeFilter === 'pending_you'
-                    ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300'
-                    : 'bg-amber-100 hover:bg-amber-200 text-amber-700'
-                }`}
-                title="Sessions en attente de votre réponse"
-              >
-                <span>🟡</span>
-                <span>{pendingYouCount}</span>
-              </button>
-            )}
-            
-            {pendingOtherCount > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (window.sessionPageFilters?.setGroupFilter) {
-                    window.sessionPageFilters.setGroupFilter('pending_other');
-                  }
-                }}
-                className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
-                  activeFilter === 'pending_other'
-                    ? 'bg-blue-500 text-white shadow-md ring-2 ring-blue-300'
-                    : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
-                }`}
-                title="Sessions en attente d'autres utilisateurs"
-              >
-                <span>🔵</span>
-                <span>{pendingOtherCount}</span>
-              </button>
-            )}
+            <div className="flex items-center space-x-1">
+              <button onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))} className={`p-1.5 rounded transition-colors ${displayOptions.showPostText ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}><Type className="w-4 h-4" /></button>
+              <button onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))} className={`p-1.5 rounded transition-colors ${displayOptions.showPostPhotos ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}><ImageIcon className="w-4 h-4" /></button>
+              <button onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))} className={`p-1.5 rounded transition-colors ${displayOptions.showMomentPhotos ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}><Camera className="w-4 h-4" /></button>
+            </div>
+            <span className="text-gray-300 hidden sm:inline">|</span>
+            <div className="relative hidden md:block" ref={sortMenuRef}><button onClick={() => setShowSortMenu(!showSortMenu)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Trier les moments"><ArrowUpDown className="w-4 h-4" /></button>{showSortMenu && (<div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">{/* Menu de tri */}<button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('chrono'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📅</span><span>Chronologique</span></button>
+<button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('recent'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>🕐</span><span>Plus récents</span></button>
+<button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('content'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📸</span><span>Plus de contenu</span></button></div>)}</div>
+            <div className="relative hidden md:block"><button onClick={() => setShowMomentFilterMenu(!showMomentFilterMenu)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Filtrer les moments"><span className="text-lg">{filterIcons[currentMomentFilter]}</span></button>{showMomentFilterMenu && (<div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">{/* Menu de filtre */}<button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('all'); } setCurrentMomentFilter('all'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📋</span><span>Tous les moments</span></button>
+<button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('unexplored'); } setCurrentMomentFilter('unexplored'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>✨</span><span>Non explorés</span></button>
+<button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('with_posts'); } setCurrentMomentFilter('with_posts'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📄</span><span>Avec articles</span></button>
+<button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('with_photos'); } setCurrentMomentFilter('with_photos'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📸</span><span>Avec photos</span></button></div>)}</div>
+            <div className="flex items-center space-x-2 md:hidden"><button onClick={jumpToRandomMoment} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Moment au hasard"><Dices className="w-4 h-4" /></button><input type="number" value={currentDay} onChange={(e) => { const day = parseInt(e.target.value, 10); if (!isNaN(day)) setCurrentDay(day);}} onKeyDown={(e) => { if (e.key === 'Enter') jumpToDay(currentDay); }} className="w-14 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:ring-2 focus:ring-blue-500" /></div>
+            <span className="text-gray-300 hidden md:inline">|</span> 
+            <div className="hidden md:flex items-center space-x-2"><button onClick={jumpToRandomMoment} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Moment au hasard"><Dices className="w-4 h-4" /></button><input type="number" value={currentDay} onChange={(e) => { const day = parseInt(e.target.value, 10); if (!isNaN(day)) setCurrentDay(day); }} onKeyDown={(e) => { if (e.key === 'Enter') jumpToDay(currentDay); }} onWheel={handleDayWheel} className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-blue-500" /></div>
           </div>
         );
       }
-      
-      case 'settings':
+      case 'sessions': {
+        const currentUserId = app.currentUser?.id; if (!currentUserId) return null;
+        const activeSessions = app.sessions?.filter(s => !s.archived) || [];
+        const enrichedSessions = activeSessions.map(s => { const notes = s.notes || []; const lastMsg = notes.length > 0 ? notes[notes.length - 1] : null; const isPendingYou = lastMsg && lastMsg.author !== currentUserId; const isPendingOther = lastMsg && lastMsg.author === currentUserId; const hasNotif = window.notificationManager?.hasUnreadNotificationForSession(s.id, currentUserId); return { ...s, hasNotif, isPendingYou: isPendingYou && !hasNotif, isPendingOther }; });
+        const totalActive = activeSessions.length; const notifiedCount = enrichedSessions.filter(s => s.hasNotif).length; const pendingYouCount = enrichedSessions.filter(s => s.isPendingYou).length; const pendingOtherCount = enrichedSessions.filter(s => s.isPendingOther).length;
+        const activeFilter = window.sessionPageState?.activeFilter || null;
         return (
-          <span className="text-sm font-semibold text-amber-600">
-            Réglages
-          </span>
+          <div className="flex items-center space-x-2"><button onClick={(e) => { e.stopPropagation(); if (window.sessionPageFilters?.setGroupFilter) { window.sessionPageFilters.setGroupFilter(null); } }} className={`text-sm font-semibold transition-colors ${activeFilter === null ? 'text-amber-600' : 'text-gray-600 hover:text-amber-600'}`}>{totalActive} Session{totalActive > 1 ? 's' : ''}</button><span className="text-gray-300">·</span>{notifiedCount > 0 && (<button onClick={(e) => { e.stopPropagation(); if (window.sessionPageFilters?.setGroupFilter) { window.sessionPageFilters.setGroupFilter('notified'); } }} className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${activeFilter === 'notified' ? 'bg-orange-500 text-white shadow-md ring-2 ring-orange-300' : 'bg-orange-100 hover:bg-orange-200 text-orange-700'}`}><span>🔔</span><span>{notifiedCount}</span></button>)}{pendingYouCount > 0 && (<button onClick={(e) => { e.stopPropagation(); if (window.sessionPageFilters?.setGroupFilter) { window.sessionPageFilters.setGroupFilter('pending_you'); } }} className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${activeFilter === 'pending_you' ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300' : 'bg-amber-100 hover:bg-amber-200 text-amber-700'}`}><span>🟡</span><span>{pendingYouCount}</span></button>)}{pendingOtherCount > 0 && (<button onClick={(e) => { e.stopPropagation(); if (window.sessionPageFilters?.setGroupFilter) { window.sessionPageFilters.setGroupFilter('pending_other'); } }} className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${activeFilter === 'pending_other' ? 'bg-blue-500 text-white shadow-md ring-2 ring-blue-300' : 'bg-blue-100 hover:bg-blue-200 text-blue-700'}`}><span>🔵</span><span>{pendingOtherCount}</span></button>)}</div>
         );
-      
+      }
+      case 'chat': {
+        if (!chatSession) return null;
+        if (editingTitle) {
+          return (
+            <div className="flex items-center space-x-2 w-full max-w-md">
+              <input ref={titleInputRef} type="text" value={titleValue} onChange={(e) => setTitleValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTitle(); if (e.key === 'Escape') handleCancelEditTitle(); }} className="flex-1 px-3 py-1 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 font-semibold text-amber-600 text-sm" placeholder="Titre de la session..." />
+              <button onClick={handleSaveTitle} className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors" title="Sauvegarder (Enter)"><Check className="w-5 h-5" /></button>
+              <button onClick={handleCancelEditTitle} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Annuler (Escape)"><X className="w-5 h-5" /></button>
+            </div>
+          );
+        } else {
+          return (
+            <div onClick={handleStartEditTitle} className="group flex items-center justify-center w-full min-w-0 px-2 py-1 cursor-pointer rounded-lg hover:bg-gray-100 transition-colors" title="Cliquer pour modifier le titre">
+              <h2 className="text-sm font-semibold text-amber-600 truncate">{chatSession.gameTitle}</h2>
+              <Edit className="w-4 h-4 ml-2 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+            </div>
+          );
+        }
+      }
+      case 'settings':
+        return <span className="text-sm font-semibold text-amber-600">Réglages</span>;
       default:
         return null;
     }
   };
-
-  // ========================================
-  // RENDER MENU (...)
-  // ========================================
 
   const renderMenu = () => {
     switch (currentPage) {
-      case 'chat':
-  if (!chatSession) return null;
-  
-  // ✅ Infos session
-  const messageCount = chatSession.notes?.length || 0;
-  const createdAt = chatSession.createdAt ? new Date(chatSession.createdAt) : null;
-  const creatorId = chatSession.user;
-  const creatorInfo = userManager.getUser(creatorId);
-  
-  const lastMessage = chatSession.notes?.[chatSession.notes.length - 1];
-  const lastModifiedAt = lastMessage?.timestamp ? new Date(lastMessage.timestamp) : createdAt;
-  const lastAuthorId = lastMessage?.author || creatorId;
-  const lastAuthorInfo = userManager.getUser(lastAuthorId);
-  
-  return (
-    <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-64">
-      
-      {/* ✅ Infos session */}
-      <div className="px-4 py-3 border-b border-gray-200 space-y-2">
-        <div className="flex items-center space-x-2 text-sm text-gray-700">
-          <span className="font-semibold">{messageCount}</span>
-          <span>message{messageCount > 1 ? 's' : ''}</span>
-        </div>
-        
-        {createdAt && (
-          <div className="text-xs text-gray-500">
-            <div className="flex items-center space-x-1">
-              <span>📅 Créée le</span>
-              <span className="font-medium">{createdAt.toLocaleDateString('fr-FR')}</span>
+      case 'chat': {
+        if (!chatSession) return null;
+        const messageCount = chatSession.notes?.length || 0;
+        const createdByUser = userManager.getUser(chatSession.user)?.name || 'N/A';
+        const lastMessage = chatSession.notes?.[messageCount - 1];
+        const lastModifiedByUser = userManager.getUser(lastMessage?.author)?.name || createdByUser;
+        return (
+          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-64 z-50">
+            <div className="px-4 py-3 text-xs text-gray-500 space-y-1">
+              <div><strong>{messageCount}</strong> message{messageCount > 1 ? 's' : ''}</div>
+              <div>Créée par <strong>{createdByUser}</strong> le {formatDateTime(chatSession.createdAt)}</div>
+              {lastMessage && (<div>Modifiée par <strong>{lastModifiedByUser}</strong> le {formatDateTime(lastMessage.timestamp)}</div>)}
             </div>
-            <div className="flex items-center space-x-1 mt-1">
-              <span>par</span>
-              <span>{creatorInfo?.emoji}</span>
-              <span className="font-medium">{creatorInfo?.name || 'Inconnu'}</span>
-            </div>
+            <div className="border-t border-gray-200 my-1"></div>
+            <button onClick={handleDeleteCurrentSession} className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2"><Trash2 className="w-4 h-4" /><span>Supprimer la session</span></button>
           </div>
-        )}
-        
-        {lastModifiedAt && lastModifiedAt !== createdAt && (
-          <div className="text-xs text-gray-500 pt-2 border-t border-gray-100">
-            <div className="flex items-center space-x-1">
-              <span>✏️ Modifiée le</span>
-              <span className="font-medium">{lastModifiedAt.toLocaleDateString('fr-FR')}</span>
-            </div>
-            <div className="flex items-center space-x-1 mt-1">
-              <span>par</span>
-              <span>{lastAuthorInfo?.emoji}</span>
-              <span className="font-medium">{lastAuthorInfo?.name || 'Inconnu'}</span>
-            </div>
-          </div>
-        )}
-      </div>
-      
-      {/* Actions */}
-      <button
-        onClick={async () => {
-          setShowMenu(false);
-          if (chatSession && confirm(`Supprimer la session "${chatSession.gameTitle}" ?`)) {
-            await app.deleteSession(chatSession.id);
-            app.closeChatSession();
-          }
-        }}
-        className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2"
-      >
-        <Trash2 className="w-4 h-4" />
-        <span>Supprimer la session</span>
-      </button>
-      
-    </div>
-  );
-      
-      // ✅ Sessions, Memories, Settings : Plus de menu
-      default:
-        return null;
+        );
+      }
+      default: return null;
     }
   };
-
-  // ========================================
-  // RENDER USER MENU
-  // ========================================
 
   const renderUserMenu = () => {
     const currentUserObj = app.currentUser;
     const isOnline = app.connection?.isOnline;
-    
-    const allUsers = [
-      { id: 'lambert', name: 'Lambert', emoji: userManager.getUser('lambert')?.emoji || '🚴', color: 'green' },
-      { id: 'tom', name: 'Tom', emoji: userManager.getUser('tom')?.emoji || '👨‍💻', color: 'blue' },
-      { id: 'duo', name: 'Duo', emoji: userManager.getUser('duo')?.emoji || '👥', color: 'amber' }
-    ];
-    
+    const allUsers = [{ id: 'lambert', name: 'Lambert', emoji: userManager.getUser('lambert')?.emoji || '🚴', color: 'green' }, { id: 'tom', name: 'Tom', emoji: userManager.getUser('tom')?.emoji || '👨‍💻', color: 'blue' }, { id: 'duo', name: 'Duo', emoji: userManager.getUser('duo')?.emoji || '👥', color: 'amber' }];
     const otherUsers = allUsers.filter(u => u.id !== currentUserObj?.id);
-    
     return (
       <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-64">
-        
         <div className="px-4 py-3 border-b border-gray-200">
-          <div className="flex items-center space-x-2">
-            <span className="text-2xl">{currentUserObj?.emoji || '👤'}</span>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-gray-900">
-                {currentUserObj?.name || 'Utilisateur'}
-              </div>
-              <div className="text-xs text-gray-500 flex items-center space-x-1">
-                {isOnline ? (
-                  <>
-                    <Cloud className="w-3 h-3 text-green-500" />
-                    <span>Connecté</span>
-                  </>
-                ) : (
-                  <>
-                    <CloudOff className="w-3 h-3 text-red-500" />
-                    <span>Déconnecté</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+          <div className="flex items-center space-x-2"><span className="text-2xl">{currentUserObj?.emoji || '👤'}</span><div className="flex-1"><div className="text-sm font-medium text-gray-900">{currentUserObj?.name || 'Utilisateur'}</div><div className="text-xs text-gray-500 flex items-center space-x-1">{isOnline ? (<><Cloud className="w-3 h-3 text-green-500" /><span>Connecté</span></>) : (<><CloudOff className="w-3 h-3 text-red-500" /><span>Déconnecté</span></>)}</div></div></div>
         </div>
-        
-        <div className="px-4 py-2 border-b border-gray-200">
-          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-            Changer d'utilisateur
-          </div>
-          
-          {otherUsers.map(user => (
-            <button
-              key={user.id}
-              onClick={() => {
-                setShowUserMenu(false);
-                app.setCurrentUser(user.id);
-              }}
-              className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg mb-1 transition-all ${
-                user.color === 'green' ? 'hover:bg-green-50' :
-                user.color === 'blue' ? 'hover:bg-blue-50' :
-                'hover:bg-amber-50'
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
-                user.color === 'green' ? 'bg-green-100' :
-                user.color === 'blue' ? 'bg-blue-100' :
-                'bg-amber-100'
-              }`}>
-                {user.emoji}
-              </div>
-              <span className="text-sm font-medium text-gray-900">{user.name}</span>
-            </button>
-          ))}
-        </div>
-        
-        {!isOnline && (
-          <button
-            onClick={() => {
-              setShowUserMenu(false);
-              app.connect();
-            }}
-            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600 flex items-center space-x-2"
-          >
-            <Cloud className="w-4 h-4" />
-            <span>Se reconnecter</span>
-          </button>
-        )}
-        
+        <div className="px-4 py-2 border-b border-gray-200"><div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Changer d'utilisateur</div>{otherUsers.map(user => (<button key={user.id} onClick={() => { setShowUserMenu(false); app.setCurrentUser(user.id); }} className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg mb-1 transition-all ${user.color === 'green' ? 'hover:bg-green-50' : user.color === 'blue' ? 'hover:bg-blue-50' : 'hover:bg-amber-50'}`}><div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${user.color === 'green' ? 'bg-green-100' : user.color === 'blue' ? 'bg-blue-100' : 'bg-amber-100'}`}>{user.emoji}</div><span className="text-sm font-medium text-gray-900">{user.name}</span></button>))}</div>
+        {!isOnline && (<button onClick={() => { setShowUserMenu(false); app.connect(); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600 flex items-center space-x-2"><Cloud className="w-4 h-4" /><span>Se reconnecter</span></button>)}
       </div>
     );
   };
-
-  // ========================================
-  // RENDER PRINCIPAL
-  // ========================================
 
   const currentUserObj = app.currentUser;
   const isOnline = app.connection?.isOnline;
 
   return (
-    <div className="bg-white border-b border-gray-200 px-4 h-12 flex items-center justify-between">
-      
-      {/* Section gauche */}
-      <div className="flex items-center space-x-2">
+    <div className="bg-white border-b border-gray-200 px-4 h-12 flex items-center">
+      {/* SECTION GAUCHE */}
+      <div className="w-1/4 flex items-center space-x-2">
         {renderLeftAction()}
       </div>
 
-      {/* Section centre */}
-      <div className="flex-1 flex items-center justify-center px-4">
+      {/* SECTION CENTRALE */}
+      <div className="flex-1 flex items-center justify-center px-4 min-w-0">
         {renderContext()}
       </div>
 
-      {/* Section droite */}
-      <div className="flex items-center space-x-2">
+      {/* SECTION DROITE */}
+      <div className="w-1/4 flex items-center justify-end space-x-2">
         
-        {/* Menu ... (seulement Chat maintenant) */}
+        {/* Affiche les boutons spécifiques à la page Chat */}
         {currentPage === 'chat' && (
-          <div className="relative" ref={menuRef}>
+          <>
+            {/* Bouton de notification */}
             <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Menu"
+                onClick={handleSendNotification}
+                disabled={notificationState === 'sending'}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                    notificationState === 'idle' ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' :
+                    notificationState === 'sending' ? 'bg-gray-300 text-gray-500 cursor-wait' :
+                    notificationState === 'sent' ? 'bg-green-500 text-white' :
+                    'bg-orange-400 text-white hover:bg-orange-500' // already_notified
+                }`}
+                title={notificationState === 'already_notified' ? 'Cliquer pour annuler' : 'Notifier l\'autre utilisateur'}
             >
-              <MoreVertical className="w-5 h-5" />
+                {notificationState === 'sent' ? <Check className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                <span>
+                    {notificationState === 'idle' && "Notifier"}
+                    {notificationState === 'sending' && "Envoi..."}
+                    {notificationState === 'sent' && `${userManager.getAllUsers().find(u => u.id !== 'duo' && u.id !== app.currentUser.id)?.name || 'Utilisateur'} notifié !`}
+                    {notificationState === 'already_notified' && "Notifié"}
+                </span>
             </button>
-            {showMenu && renderMenu()}
-          </div>
+
+            {/* Menu "..." */}
+            <div className="relative" ref={menuRef}>
+              <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Options de la session">
+                <MoreVertical className="w-5 h-5" />
+              </button>
+              {showMenu && renderMenu()}
+            </div>
+          </>
         )}
-        
-        {/* ✅ Avatar TOUJOURS visible (plus de hidden sm:block) */}
+
+        {/* Avatar (commun à toutes les pages) */}
         <div className="relative" ref={userMenuRef}>
-          <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center space-x-2 p-1 hover:bg-gray-100 rounded-lg transition-colors"
-          >
+          <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center space-x-2 p-1 hover:bg-gray-100 rounded-lg transition-colors">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xl relative ${
-              currentUserObj?.id === 'lambert' ? 'bg-green-100' :
-              currentUserObj?.id === 'tom' ? 'bg-blue-100' :
+              currentUserObj?.id === 'lambert' ? 'bg-green-100' : 
+              currentUserObj?.id === 'tom' ? 'bg-blue-100' : 
               'bg-amber-100'
             }`}>
               {currentUserObj?.emoji || '👤'}
@@ -761,8 +339,8 @@ const momentFilterMenuRef = useRef(null); // ✅ NOUVEAU
           </button>
           {showUserMenu && renderUserMenu()}
         </div>
-        
       </div>
     </div>
   );
 }
+     
