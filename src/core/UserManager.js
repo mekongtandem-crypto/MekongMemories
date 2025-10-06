@@ -8,21 +8,21 @@ class UserManager {
       { 
         id: 'lambert', 
         name: 'Lambert', 
-        color: 'green', 
+        color: localStorage.getItem('mekong_color_lambert') || 'green',
         emoji: localStorage.getItem('mekong_avatar_lambert') || '🚴', 
         description: 'L\'explorateur intrépide' 
       },
       { 
         id: 'tom', 
         name: 'Tom', 
-        color: 'blue', 
+        color: localStorage.getItem('mekong_color_tom') || 'blue',
         emoji: localStorage.getItem('mekong_avatar_tom') || '👨‍💻', 
         description: 'Le jeune aventurier' 
       },
       { 
         id: 'duo', 
         name: 'Duo', 
-        color: 'amber', 
+        color: localStorage.getItem('mekong_color_duo') || 'amber', 
         emoji: localStorage.getItem('mekong_avatar_duo') || '👥', 
         description: 'L\'équipe complète' 
       }
@@ -50,6 +50,15 @@ class UserManager {
 
     return colorMap[user.color] || colorMap.amber;
   }
+
+	updateUserColor(userId, newColor) {
+  const user = this.users.find(u => u.id === userId);
+  if (user) {
+    user.color = newColor;
+    localStorage.setItem(`mekong_color_${userId}`, newColor);
+    console.log(`✅ Couleur mise à jour pour ${userId}: ${newColor}`);
+  }
+}
 
   updateUserEmoji(userId, newEmoji) {
     const user = this.users.find(u => u.id === userId);

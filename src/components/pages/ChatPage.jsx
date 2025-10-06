@@ -1,20 +1,24 @@
 /**
- * ChatPage.jsx v2.1 - Intégration UnifiedTopBar
- * ✅ Suppression du header local (géré par UnifiedTopBar)
+ * ChatPage.jsx v2.2 - Phase 15 finale
+ * ✅ Titre éditable inline (clic → Enter/Escape)
+ * ✅ Suppression modal édition titre
  * ✅ Affichage photos dans bulles utilisateur
- * ✅ Focus sur les messages
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
-import { Send, Edit, Trash2, Check, X, Bell } from 'lucide-react';
+import { Send, Trash2, Check, X, Edit } from 'lucide-react';
 import PhotoViewer from '../PhotoViewer.jsx';
 
-export default function ChatPage({ editingTitle, setEditingTitle }) {
+export default function ChatPage() {
   const app = useAppState();
   const [newMessage, setNewMessage] = useState('');
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
-  const [titleContent, setTitleContent] = useState('');
+  
+  // ✅ NOUVEAU : États titre éditable inline
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState('');
+  const titleInputRef = useRef(null);
   
   const [viewerState, setViewerState] = useState({ 
     isOpen: false, photo: null 
@@ -22,21 +26,33 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
   
   const messagesEndRef = useRef(null);
 
+  // Scroll vers dernier message
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [app.currentChatSession?.notes]);
 
-  // Gestion édition titre depuis UnifiedTopBar
+  // ✅ Focus sur input titre au montage édition
   useEffect(() => {
-    if (editingTitle && app.currentChatSession) {
-      setTitleContent(app.currentChatSession.gameTitle);
+    if (editingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
     }
-  }, [editingTitle, app.currentChatSession]);
+  }, [editingTitle]);
+
+  // ========================================
+  // HANDLERS TITRE
+  // ========================================
+
+  const handleStartEditTitle = () => {
+    if (!app.currentChatSession) return;
+    setEditingTitle(true);
+    setTitleValue(app.currentChatSession.gameTitle);
+  };
 
   const handleSaveTitle = async () => {
-    if (!titleContent.trim()) {
+    if (!titleValue.trim()) {
       setEditingTitle(false);
       return;
     }
@@ -44,7 +60,7 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
     try {
       const updatedSession = {
         ...app.currentChatSession,
-        gameTitle: titleContent.trim()
+        gameTitle: titleValue.trim()
       };
       await app.updateSession(updatedSession);
       setEditingTitle(false);
@@ -53,49 +69,14 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
     }
   };
 
-  if (!app.currentChatSession) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="text-6xl mb-4">💬</div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Aucune session de chat</h2>
-        <p className="text-gray-600 mb-6">
-          Sélectionnez une session depuis la page Sessions pour commencer une conversation.
-        </p>
-      </div>
-    );
-  }
-
-  const getUserBubbleStyle = (author) => {
-    const isCurrentUser = author === app.currentUser?.id;
-    
-    const userColors = {
-      tom: {
-        own: 'bg-blue-500 text-white rounded-l-lg rounded-tr-lg shadow-lg',
-        other: 'bg-blue-100 text-blue-900 rounded-r-lg rounded-tl-lg border border-blue-200'
-      },
-      lambert: {
-        own: 'bg-green-500 text-white rounded-l-lg rounded-tr-lg shadow-lg',
-        other: 'bg-green-100 text-green-900 rounded-r-lg rounded-tl-lg border border-green-200'
-      },
-      duo: {
-        own: 'bg-amber-500 text-white rounded-l-lg rounded-tr-lg shadow-lg',
-        other: 'bg-amber-100 text-amber-900 rounded-r-lg rounded-tl-lg border border-amber-200'
-      }
-    };
-    
-    const authorColors = userColors[author] || userColors.duo;
-    return isCurrentUser ? authorColors.own : authorColors.other;
+  const handleCancelEditTitle = () => {
+    setEditingTitle(false);
+    setTitleValue('');
   };
 
-  const getCurrentUserStyle = (author) => {
-    if (author === 'duo') {
-      return 'mx-auto';
-    } else if (author === app.currentUser?.id) {
-      return 'ml-auto';
-    } else {
-      return 'mr-auto';
-    }
-  };
+  // ========================================
+  // HANDLERS MESSAGES
+  // ========================================
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
@@ -149,6 +130,10 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
     }
   };
 
+  // ========================================
+  // PHOTO VIEWER
+  // ========================================
+
   const openPhotoViewer = (photo) => {
     setViewerState({ isOpen: true, photo });
   };
@@ -157,45 +142,108 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
     setViewerState({ isOpen: false, photo: null });
   };
 
+  // ========================================
+  // RENDER
+  // ========================================
+
+  if (!app.currentChatSession) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="text-6xl mb-4">💬</div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Aucune session de chat</h2>
+        <p className="text-gray-600 mb-6">
+          Sélectionnez une session depuis la page Sessions pour commencer une conversation.
+        </p>
+      </div>
+    );
+  }
+
+  const getUserBubbleStyle = (author) => {
+    const isCurrentUser = author === app.currentUser?.id;
+    
+    const userColors = {
+      tom: {
+        own: 'bg-blue-500 text-white rounded-l-lg rounded-tr-lg shadow-lg',
+        other: 'bg-blue-100 text-blue-900 rounded-r-lg rounded-tl-lg border border-blue-200'
+      },
+      lambert: {
+        own: 'bg-green-500 text-white rounded-l-lg rounded-tr-lg shadow-lg',
+        other: 'bg-green-100 text-green-900 rounded-r-lg rounded-tl-lg border border-green-200'
+      },
+      duo: {
+        own: 'bg-amber-500 text-white rounded-l-lg rounded-tr-lg shadow-lg',
+        other: 'bg-amber-100 text-amber-900 rounded-r-lg rounded-tl-lg border border-amber-200'
+      }
+    };
+    
+    const authorColors = userColors[author] || userColors.duo;
+    return isCurrentUser ? authorColors.own : authorColors.other;
+  };
+
+  const getCurrentUserStyle = (author) => {
+    if (author === 'duo') {
+      return 'mx-auto';
+    } else if (author === app.currentUser?.id) {
+      return 'ml-auto';
+    } else {
+      return 'mr-auto';
+    }
+  };
+
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-full bg-gray-50">
       
-      {/* Modal édition titre (si activée depuis UnifiedTopBar) */}
-      {editingTitle && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-semibold mb-4">Modifier le titre</h3>
+      {/* ✅ NOUVEAU : En-tête avec titre éditable inline */}
+      <div className="bg-white border-b border-gray-200 p-4 flex-shrink-0">
+        {editingTitle ? (
+          <div className="flex items-center space-x-2">
             <input
+              ref={titleInputRef}
               type="text"
-              value={titleContent}
-              onChange={(e) => setTitleContent(e.target.value)}
+              value={titleValue}
+              onChange={(e) => setTitleValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSaveTitle();
-                if (e.key === 'Escape') setEditingTitle(false);
+                if (e.key === 'Escape') handleCancelEditTitle();
               }}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-              autoFocus
+              className="flex-1 px-3 py-2 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 font-semibold text-amber-600"
+              placeholder="Titre de la session..."
             />
-            <div className="flex space-x-2 mt-4">
-              <button
-                onClick={handleSaveTitle}
-                className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
-              >
-                Sauvegarder
-              </button>
-              <button
-                onClick={() => setEditingTitle(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Annuler
-              </button>
-            </div>
+            <button 
+              onClick={handleSaveTitle} 
+              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+              title="Sauvegarder (Enter)"
+            >
+              <Check className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={handleCancelEditTitle} 
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Annuler (Escape)"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="flex items-center justify-between group">
+  <h2 
+    onClick={handleStartEditTitle}
+    className="text-lg font-semibold text-amber-600 cursor-pointer hover:text-amber-700 transition-colors flex items-center space-x-2"
+    title="Cliquer pour modifier le titre"
+  >
+    <span>{app.currentChatSession.gameTitle}</span>
+    {/* ✅ Icône Edit visible au hover */}
+    <Edit className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+  </h2>
+  <div className="text-xs text-gray-500">
+    {app.currentChatSession.notes?.length || 0} message{app.currentChatSession.notes?.length > 1 ? 's' : ''}
+  </div>
+</div>
+        )}
+      </div>
 
       {/* Zone des messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         
         {(!app.currentChatSession.notes || app.currentChatSession.notes.length === 0) && (
           <div className="text-center py-8">
@@ -265,10 +313,18 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
 
                     {app.currentUser && message.author === app.currentUser.id && (
                       <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded shadow-lg p-1 -mr-2 -mt-2">
-                        <button onClick={() => handleEditMessage(message)} className="p-1 hover:bg-gray-100 rounded" title="Modifier">
+                        <button 
+                          onClick={() => handleEditMessage(message)} 
+                          className="p-1 hover:bg-gray-100 rounded" 
+                          title="Modifier"
+                        >
                           <Edit className="w-3 h-3 text-gray-600" />
                         </button>
-                        <button onClick={() => handleDeleteMessage(message.id)} className="p-1 hover:bg-red-100 rounded ml-1" title="Supprimer">
+                        <button 
+                          onClick={() => handleDeleteMessage(message.id)} 
+                          className="p-1 hover:bg-red-100 rounded ml-1" 
+                          title="Supprimer"
+                        >
                           <Trash2 className="w-3 h-3 text-red-600" />
                         </button>
                       </div>
@@ -283,35 +339,31 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
       </div>
 
       {/* Zone de saisie */}
-      <div className="bg-white border-t border-gray-200 p-4">
-  <div className="flex space-x-3">
-    <textarea
-      value={newMessage}
-      onChange={(e) => setNewMessage(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' && e.shiftKey) {
-          e.preventDefault();
-          handleSendMessage();
-        }
-      }}
-      placeholder="Tapez votre message... (Shift+Entrée pour envoyer)"
-      className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-      rows="2"
-    />
-    <div className="flex flex-col space-y-2">
-      
-      
-      <button
-        onClick={handleSendMessage}
-        disabled={!newMessage.trim()}
-        className="px-4 py-6 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center transition-colors"
-        title="Envoyer message (Shift+Entrée)"
-      >
-        <Send className="w-5 h-5" />
-      </button>
-    </div>
-  </div>
-</div>
+      <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
+        <div className="flex space-x-3">
+          <textarea
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            placeholder="Tapez votre message... (Shift+Entrée pour envoyer)"
+            className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            rows="2"
+          />
+          <button
+            onClick={handleSendMessage}
+            disabled={!newMessage.trim()}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center transition-colors"
+            title="Envoyer message (Shift+Entrée)"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
 
       {/* PhotoViewer */}
       {viewerState.isOpen && viewerState.photo && (
@@ -327,8 +379,9 @@ export default function ChatPage({ editingTitle, setEditingTitle }) {
   );
 }
 
-// Composant PhotoMessage
-// src/components/pages/ChatPage.jsx - Composant PhotoMessage (ligne ~210)
+// ========================================
+// COMPOSANT PhotoMessage
+// ========================================
 
 function PhotoMessage({ photo, onPhotoClick }) {
   const [imageUrl, setImageUrl] = useState(null);
@@ -345,7 +398,7 @@ function PhotoMessage({ photo, onPhotoClick }) {
       }
       
       try {
-        // ✅ AJOUT : Support URL directe (fallback si pas de google_drive_id)
+        // Support URL directe (fallback si pas de google_drive_id)
         if (!photo.google_drive_id && photo.url) {
           console.log('📸 Photo Mastodon (URL directe):', photo.url);
           if (isMounted) {
@@ -375,7 +428,6 @@ function PhotoMessage({ photo, onPhotoClick }) {
     resolveUrl();
     return () => { isMounted = false; };
   }, [photo]);
-
 
   if (loading) {
     return (

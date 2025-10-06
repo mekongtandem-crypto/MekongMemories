@@ -297,37 +297,44 @@ export default function UnifiedTopBar({
             </h1>
             
             <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                
-                if (existingNotif) {
-                  if (confirm('Une notification a déjà été envoyée. La supprimer ?')) {
-                    await window.notificationManager.deleteNotification(existingNotif.id);
-                    alert('✅ Notification supprimée');
-                  }
-                } else {
-                  const result = await app.sendNotification(targetUser, chatSession.id, chatSession.gameTitle);
-                  
-                  if (result.success) {
-                    const targetUserInfo = userManager.getUser(targetUser);
-                    alert(`✅ Notification envoyée à ${targetUserInfo?.name || targetUser} !`);
-                  } else {
-                    alert('❌ Erreur lors de l\'envoi de la notification');
-                  }
-                }
-              }}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                existingNotif
-                  ? 'bg-orange-100 text-orange-700 border border-orange-300'
-                  : 'bg-gray-100 hover:bg-amber-100 text-gray-700 hover:text-amber-700 border border-gray-300'
-              }`}
-              title={existingNotif ? 'Notification déjà envoyée' : 'Envoyer une notification'}
-            >
-              <span className="text-base">🔔</span>
-              <span className="hidden sm:inline">
-                {existingNotif ? 'Notifié' : 'Notifier'}
-              </span>
-            </button>
+  onClick={async (e) => {
+    e.stopPropagation();
+    
+    if (existingNotif) {
+      // Annuler notification existante
+      if (confirm('Annuler la notification envoyée ?')) {
+        await window.notificationManager.deleteNotification(existingNotif.id);
+        alert('✅ Notification annulée');
+      }
+    } else {
+      // Envoyer nouvelle notification
+      const result = await app.sendNotification(targetUser, chatSession.id, chatSession.gameTitle);
+      
+      if (result.success) {
+        const targetUserInfo = userManager.getUser(targetUser);
+        alert(`✅ Notification envoyée à ${targetUserInfo?.name || targetUser} !`);
+      } else {
+        alert('❌ Erreur lors de l\'envoi de la notification');
+      }
+    }
+  }}
+  className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+    existingNotif
+      ? 'bg-red-50 text-red-700 border border-red-300 hover:bg-red-100'
+      : 'bg-gray-100 hover:bg-amber-100 text-gray-700 hover:text-amber-700 border border-gray-300'
+  }`}
+  title={existingNotif ? 'Annuler la notification' : 'Envoyer une notification'}
+>
+  {/* ✅ Icône dynamique selon état */}
+  {existingNotif ? (
+    <span className="text-base text-red-600">🔴</span>
+  ) : (
+    <span className="text-base">🔔</span>
+  )}
+  <span className="hidden sm:inline">
+    {existingNotif ? 'Notifié' : 'Notifier'}
+  </span>
+</button>
           </div>
         );
       }
@@ -469,16 +476,7 @@ export default function UnifiedTopBar({
       case 'chat':
         return (
           <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-56">
-            <button
-              onClick={() => {
-                setShowMenu(false);
-                onEditChatTitle();
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
-            >
-              <Edit className="w-4 h-4" />
-              <span>Modifier le titre</span>
-            </button>
+                  {/* ❌ SUPPRIMER : Bouton "Modifier le titre" */}
             
             <button
               onClick={async () => {

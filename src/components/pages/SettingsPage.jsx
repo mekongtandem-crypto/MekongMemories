@@ -1,18 +1,17 @@
 /**
- * SettingsPage.jsx v3.2 - Sections dépliables + Connexion
- * ✅ Volets repliables pour chaque section
- * ✅ Section connexion avec email et bouton
- * ✅ Avatar modifiable seulement pour utilisateur actif
+ * SettingsPage.jsx v3.3 - Section Utilisateurs unifiée
+ * ✅ Utilisateur actif + Avatar + Couleur regroupés
+ * ✅ Changement avatar/couleur en 1 clic
  */
 import React, { useState } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
-import { RefreshCw, Database, Users, Info, Smile, ChevronDown, Cloud, CloudOff, LogIn, LogOut } from 'lucide-react';
+import { RefreshCw, Database, Users, Info, ChevronDown, Cloud, CloudOff } from 'lucide-react';
 
 const AVAILABLE_AVATARS = [
   '🚴', '🧗', '🏃', '🚶', '🧘', '🏊', '🚣', '💩', '🕺',
- '😊', '😎', '🤓', '🧐', '🥳', '🤗', '🌟', '✨', '😽',
-   '👨‍💻', '🤫', '😇', '🤓', '🤩', '🤡', '🤖', '🎃',
+  '😊', '😎', '🤓', '🧐', '🥳', '🤗', '🌟', '✨', '😽',
+  '👨‍💻', '🤫', '😇', '🤓', '🤩', '🤡', '🤖', '🎃',
   '📸', '🎒', '🗺️', '🧭', '⛺', '🏕️', '🌏', '⛰️', '💡',
   '👥', '💞', '🍃', '👬', '🤝', '⚔️', '💭', '🥂', '👨‍❤️‍💋‍👨'
 ];
@@ -20,17 +19,14 @@ const AVAILABLE_AVATARS = [
 export default function SettingsPage() {
   const app = useAppState();
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [editingAvatar, setEditingAvatar] = useState(false);
   
   const [openSections, setOpenSections] = useState({
-    user: true,
+    users: true,
     connection: false,
-    avatar: false,
     stats: false,
     data: false
   });
   
-  // ✅ NOUVEAUX states pour progression
   const [regenerationProgress, setRegenerationProgress] = useState({
     isActive: false,
     step: '',
@@ -43,12 +39,11 @@ export default function SettingsPage() {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-const handleRegenerateIndex = async () => {
+  const handleRegenerateIndex = async () => {
     if (!confirm('Régénérer l\'index complet ? Cette opération peut prendre quelques minutes.')) {
       return;
     }
 
-    // ✅ Initialiser progression
     setRegenerationProgress({
       isActive: true,
       step: 'init',
@@ -58,22 +53,19 @@ const handleRegenerateIndex = async () => {
     });
 
     try {
-      // ✅ Enregistrer callback de progression
       window.masterIndexGenerator.setProgressCallback((progressData) => {
         setRegenerationProgress(prev => ({
           isActive: true,
           step: progressData.step,
           message: progressData.message,
           progress: progressData.progress || prev.progress,
-          logs: [...prev.logs, `[${new Date().toLocaleTimeString()}] ${progressData.message}`].slice(-20) // Garder 20 dernières lignes
+          logs: [...prev.logs, `[${new Date().toLocaleTimeString()}] ${progressData.message}`].slice(-20)
         }));
       });
 
-      // ✅ Lancer régénération
       const result = await window.masterIndexGenerator.generateMomentsStructure();
       
       if (result?.success) {
-        // ✅ Recharger l'index
         await app.regenerateMasterIndex();
         
         setRegenerationProgress(prev => ({
@@ -82,7 +74,6 @@ const handleRegenerateIndex = async () => {
           logs: [...prev.logs, '✅ Index rechargé avec succès !', '💡 Rechargez la page (F5) pour voir les changements']
         }));
         
-        // Auto-fermer après 3s
         setTimeout(() => {
           setRegenerationProgress({
             isActive: false,
@@ -111,16 +102,28 @@ const handleRegenerateIndex = async () => {
     app.setCurrentUser(userId);
   };
 
-  const handleChangeAvatar = (newEmoji) => {
-    if (!app.currentUser?.id) return;
+  // ✅ UNIQUE : Fonction changement avatar
+  const handleChangeAvatar = (userId, newEmoji) => {
+    userManager.updateUserEmoji(userId, newEmoji);
     
-    userManager.updateUserEmoji(app.currentUser.id, newEmoji);
-    setEditingAvatar(false);
+    // Force re-render si c'est l'utilisateur actif
+    if (app.currentUser?.id === userId) {
+      const currentId = app.currentUser.id;
+      app.setCurrentUser(null);
+      setTimeout(() => app.setCurrentUser(currentId), 10);
+    }
+  };
+
+  // ✅ NOUVEAU : Fonction changement couleur
+  const handleChangeColor = (userId, newColor) => {
+    userManager.updateUserColor(userId, newColor);
     
-    // Force re-render
-    const currentId = app.currentUser.id;
-    app.setCurrentUser(null);
-    setTimeout(() => app.setCurrentUser(currentId), 10);
+    // Force re-render si c'est l'utilisateur actif
+    if (app.currentUser?.id === userId) {
+      const currentId = app.currentUser.id;
+      app.setCurrentUser(null);
+      setTimeout(() => app.setCurrentUser(currentId), 10);
+    }
   };
 
   const users = [
@@ -130,57 +133,134 @@ const handleRegenerateIndex = async () => {
   ];
 
   const stats = {
-  moments: app.masterIndex?.metadata?.total_moments || 0,
-  posts: app.masterIndex?.metadata?.total_posts || 0,
-  photos: app.masterIndex?.metadata?.total_photos || 0,
-  sessions: app.sessions?.length || 0
-};
+    moments: app.masterIndex?.metadata?.total_moments || 0,
+    posts: app.masterIndex?.metadata?.total_posts || 0,
+    photos: app.masterIndex?.metadata?.total_photos || 0,
+    sessions: app.sessions?.length || 0
+  };
 
   const isOnline = app.connection?.isOnline;
-  const connectionEmail = 'mekongtandem@gmail.com'; // À adapter si tu as cette info ailleurs
+  const connectionEmail = 'mekongtandem@gmail.com';
 
   return (
     <div className="p-4 space-y-4 max-w-4xl mx-auto">
       
-      {/* Section Utilisateur actif */}
+      {/* ✅ Section Utilisateurs (regroupée) */}
       <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <button
-          onClick={() => toggleSection('user')}
+          onClick={() => toggleSection('users')}
           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
         >
           <div className="flex items-center space-x-2">
             <Users className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Utilisateur actif</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Utilisateurs</h2>
           </div>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.user ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.users ? 'rotate-180' : ''}`} />
         </button>
         
-        {openSections.user && (
-          <div className="p-4 border-t border-gray-100">
-            <div className="grid grid-cols-3 gap-3">
+        {openSections.users && (
+          <div className="p-4 border-t border-gray-100 space-y-6">
+            
+            {/* Utilisateur actif */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-3">Utilisateur actif</h3>
+              <div className="grid grid-cols-3 gap-3">
+                {users.map(user => {
+                  const isActive = app.currentUser?.id === user.id;
+                  const currentUserData = userManager.getUser(user.id) || user;
+                  const style = userManager.getUserStyle(user.id);
+                  
+                  return (
+                    <button
+                      key={user.id}
+                      onClick={() => handleChangeUser(user.id)}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        isActive 
+                          ? `${style.bg} ${style.border} ring-2 ring-offset-2 ${style.text}` 
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-3xl mb-2">{currentUserData.emoji}</div>
+                      <div className={`font-medium ${isActive ? '' : 'text-gray-700'}`}>
+                        {user.name}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Personnalisation utilisateurs */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-3">Personnaliser les profils</h3>
+              
               {users.map(user => {
-                const isActive = app.currentUser?.id === user.id;
-                const currentUserData = userManager.getUser(user.id) || user;
+                const userData = userManager.getUser(user.id);
                 const style = userManager.getUserStyle(user.id);
                 
                 return (
-                  <button
-                    key={user.id}
-                    onClick={() => handleChangeUser(user.id)}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      isActive 
-                        ? `${style.bg} ${style.border} ring-2 ring-offset-2 ${style.text}` 
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="text-3xl mb-2">{currentUserData.emoji}</div>
-                    <div className={`font-medium ${isActive ? '' : 'text-gray-700'}`}>
-                      {user.name}
+                  <div key={user.id} className={`mb-4 p-4 rounded-lg border-2 ${style.border} ${style.bg}`}>
+                    
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-3xl">{userData.emoji}</div>
+                        <span className="font-semibold text-gray-900">{user.name}</span>
+                      </div>
+                      <div className={`text-xs font-medium px-2 py-1 rounded ${style.text}`}>
+                        {userData.color}
+                      </div>
                     </div>
-                  </button>
+                    
+                    {/* Avatar selector */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-2">Avatar (clic pour changer)</label>
+                      <div className="grid grid-cols-9 sm:grid-cols-12 gap-1 max-h-24 overflow-y-auto p-2 bg-white rounded border border-gray-200">
+                        {AVAILABLE_AVATARS.map((emoji, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleChangeAvatar(user.id, emoji)}
+                            className={`text-2xl p-1 rounded transition-all ${
+                              userData.emoji === emoji 
+                                ? 'bg-amber-100 ring-2 ring-amber-500' 
+                                : 'hover:bg-gray-100'
+                            }`}
+                            title={emoji}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Color selector */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-2">Couleur</label>
+                      <div className="flex space-x-2">
+                        {['green', 'blue', 'amber', 'purple', 'red'].map(color => (
+                          <button
+                            key={color}
+                            onClick={() => handleChangeColor(user.id, color)}
+                            className={`w-10 h-10 rounded-full border-2 transition-all ${
+                              userData.color === color ? 'ring-2 ring-offset-2 ring-gray-400' : ''
+                            } ${
+                              color === 'green' ? 'bg-green-500 border-green-700' :
+                              color === 'blue' ? 'bg-blue-500 border-blue-700' :
+                              color === 'amber' ? 'bg-amber-500 border-amber-700' :
+                              color === 'purple' ? 'bg-purple-500 border-purple-700' :
+                              'bg-red-500 border-red-700'
+                            }`}
+                            title={color}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    
+                  </div>
                 );
               })}
             </div>
+            
           </div>
         )}
       </section>
@@ -223,7 +303,7 @@ const handleRegenerateIndex = async () => {
                   }}
                   className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <CloudOff className="w-4 h-4" />
                   <span>Se déconnecter</span>
                 </button>
               </>
@@ -237,67 +317,10 @@ const handleRegenerateIndex = async () => {
                   onClick={() => app.connect()}
                   className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
                 >
-                  <LogIn className="w-4 h-4" />
+                  <Cloud className="w-4 h-4" />
                   <span>Se connecter</span>
                 </button>
               </>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* Section Avatar */}
-      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <button
-          onClick={() => toggleSection('avatar')}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center space-x-2">
-            <Smile className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Personnaliser l'avatar</h2>
-          </div>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.avatar ? 'rotate-180' : ''}`} />
-        </button>
-        
-        {openSections.avatar && (
-          <div className="p-4 border-t border-gray-100">
-            {!app.currentUser ? (
-              <p className="text-sm text-gray-500">Sélectionnez un utilisateur pour modifier son avatar</p>
-            ) : editingAvatar ? (
-              <div>
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
-                    Choisissez un avatar pour <span className="font-semibold">{app.currentUser.name}</span>
-                  </p>
-                  <button
-                    onClick={() => setEditingAvatar(false)}
-                    className="text-sm text-gray-500 hover:text-gray-700"
-                  >
-                    Annuler
-                  </button>
-                </div>
-                <div className="grid grid-cols-9 sm:grid-cols-12 gap-2 max-h-64 overflow-y-auto p-2 bg-gray-50 rounded-lg">
-                  {AVAILABLE_AVATARS.map((emoji, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleChangeAvatar(emoji)}
-                      className="text-3xl p-2 hover:bg-white hover:shadow-md rounded-lg transition-all"
-                      title={emoji}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setEditingAvatar(true)}
-                className="w-full p-4 rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all"
-              >
-                <div className="text-4xl mb-2">{app.currentUser.emoji}</div>
-                <div className="text-sm font-medium text-gray-700">{app.currentUser.name}</div>
-                <div className="text-xs text-gray-500 mt-1">Cliquer pour modifier</div>
-              </button>
             )}
           </div>
         )}
@@ -340,7 +363,7 @@ const handleRegenerateIndex = async () => {
         )}
       </section>
 
-      {/* Section Données - MODIFIÉE */}
+      {/* Section Données */}
       <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <button
           onClick={() => toggleSection('data')}
@@ -356,11 +379,9 @@ const handleRegenerateIndex = async () => {
         {openSections.data && (
           <div className="p-4 border-t border-gray-100 space-y-4">
             
-            {/* ✅ NOUVEAU : Affichage progression */}
             {regenerationProgress.isActive && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                 
-                {/* Barre de progression */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-blue-900">
@@ -379,7 +400,6 @@ const handleRegenerateIndex = async () => {
                   </div>
                 </div>
 
-                {/* Logs déroulants */}
                 <div className="bg-gray-900 text-green-400 rounded-lg p-3 font-mono text-xs max-h-48 overflow-y-auto">
                   {regenerationProgress.logs.map((log, index) => (
                     <div key={index} className="mb-1">
@@ -390,7 +410,6 @@ const handleRegenerateIndex = async () => {
               </div>
             )}
 
-            {/* Bouton régénération */}
             <button
               onClick={handleRegenerateIndex}
               disabled={regenerationProgress.isActive}
@@ -421,8 +440,8 @@ const handleRegenerateIndex = async () => {
       
       {/* Version */}
       <section className="text-center text-sm text-gray-500 pt-4">
-        <p>Mémoire du Mékong v2.0</p>
-        <p className="text-xs mt-1">Phase 13B - Messages riches + TopBar unifiée</p>
+        <p>Mémoire du Mékong v2.3</p>
+        <p className="text-xs mt-1">Phase 15 complète - Système notifications</p>
       </section>
     </div>
   );
