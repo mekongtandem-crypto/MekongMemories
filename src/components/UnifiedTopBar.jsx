@@ -301,17 +301,17 @@ export default function UnifiedTopBar({
     e.stopPropagation();
     
     if (existingNotif) {
-      // Annuler notification existante
+      // ✅ Confirmation annulation
       if (confirm('Annuler la notification envoyée ?')) {
         await window.notificationManager.deleteNotification(existingNotif.id);
         alert('✅ Notification annulée');
       }
     } else {
-      // Envoyer nouvelle notification
+      // ✅ Envoi avec info destinataire
+      const targetUserInfo = userManager.getUser(targetUser);
       const result = await app.sendNotification(targetUser, chatSession.id, chatSession.gameTitle);
       
       if (result.success) {
-        const targetUserInfo = userManager.getUser(targetUser);
         alert(`✅ Notification envoyée à ${targetUserInfo?.name || targetUser} !`);
       } else {
         alert('❌ Erreur lors de l\'envoi de la notification');
@@ -320,21 +320,22 @@ export default function UnifiedTopBar({
   }}
   className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
     existingNotif
-      ? 'bg-red-50 text-red-700 border border-red-300 hover:bg-red-100'
-      : 'bg-gray-100 hover:bg-amber-100 text-gray-700 hover:text-amber-700 border border-gray-300'
+      ? 'bg-red-50 text-red-700 border-2 border-red-300 hover:bg-red-100'
+      : 'bg-gray-100 hover:bg-amber-100 text-gray-700 hover:text-amber-700 border-2 border-gray-300'
   }`}
-  title={existingNotif ? 'Annuler la notification' : 'Envoyer une notification'}
+  title={existingNotif ? 'Annuler la notification (clic pour annuler)' : 'Envoyer une notification'}
 >
-  {/* ✅ Icône dynamique selon état */}
+  {/* ✅ Icône rouge si notifié */}
   {existingNotif ? (
-    <span className="text-base text-red-600">🔴</span>
+    <span className="text-base">🔴</span>
   ) : (
     <span className="text-base">🔔</span>
   )}
-  <span className="hidden sm:inline">
+  <span className="hidden sm:inline font-semibold">
     {existingNotif ? 'Notifié' : 'Notifier'}
   </span>
 </button>
+
           </div>
         );
       }
@@ -474,34 +475,75 @@ export default function UnifiedTopBar({
   const renderMenu = () => {
     switch (currentPage) {
       case 'chat':
-        return (
-          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-56">
-                  {/* ❌ SUPPRIMER : Bouton "Modifier le titre" */}
-            
-            <button
-              onClick={async () => {
-                setShowMenu(false);
-                if (chatSession && confirm(`Supprimer la session "${chatSession.gameTitle}" ?`)) {
-                  await app.deleteSession(chatSession.id);
-                  app.closeChatSession();
-                }
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Supprimer la session</span>
-            </button>
-            
-            <div className="border-t border-gray-200 my-1"></div>
-            
-            <div className="px-4 py-2 text-xs text-gray-500">
-              {chatSession?.notes?.length || 0} messages
+  if (!chatSession) return null;
+  
+  // ✅ Infos session
+  const messageCount = chatSession.notes?.length || 0;
+  const createdAt = chatSession.createdAt ? new Date(chatSession.createdAt) : null;
+  const creatorId = chatSession.user;
+  const creatorInfo = userManager.getUser(creatorId);
+  
+  const lastMessage = chatSession.notes?.[chatSession.notes.length - 1];
+  const lastModifiedAt = lastMessage?.timestamp ? new Date(lastMessage.timestamp) : createdAt;
+  const lastAuthorId = lastMessage?.author || creatorId;
+  const lastAuthorInfo = userManager.getUser(lastAuthorId);
+  
+  return (
+    <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-64">
+      
+      {/* ✅ Infos session */}
+      <div className="px-4 py-3 border-b border-gray-200 space-y-2">
+        <div className="flex items-center space-x-2 text-sm text-gray-700">
+          <span className="font-semibold">{messageCount}</span>
+          <span>message{messageCount > 1 ? 's' : ''}</span>
+        </div>
+        
+        {createdAt && (
+          <div className="text-xs text-gray-500">
+            <div className="flex items-center space-x-1">
+              <span>📅 Créée le</span>
+              <span className="font-medium">{createdAt.toLocaleDateString('fr-FR')}</span>
             </div>
-            <div className="px-4 py-2 text-xs text-gray-500">
-              {chatSession?.createdAt && new Date(chatSession.createdAt).toLocaleDateString()}
+            <div className="flex items-center space-x-1 mt-1">
+              <span>par</span>
+              <span>{creatorInfo?.emoji}</span>
+              <span className="font-medium">{creatorInfo?.name || 'Inconnu'}</span>
             </div>
           </div>
-        );
+        )}
+        
+        {lastModifiedAt && lastModifiedAt !== createdAt && (
+          <div className="text-xs text-gray-500 pt-2 border-t border-gray-100">
+            <div className="flex items-center space-x-1">
+              <span>✏️ Modifiée le</span>
+              <span className="font-medium">{lastModifiedAt.toLocaleDateString('fr-FR')}</span>
+            </div>
+            <div className="flex items-center space-x-1 mt-1">
+              <span>par</span>
+              <span>{lastAuthorInfo?.emoji}</span>
+              <span className="font-medium">{lastAuthorInfo?.name || 'Inconnu'}</span>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Actions */}
+      <button
+        onClick={async () => {
+          setShowMenu(false);
+          if (chatSession && confirm(`Supprimer la session "${chatSession.gameTitle}" ?`)) {
+            await app.deleteSession(chatSession.id);
+            app.closeChatSession();
+          }
+        }}
+        className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2"
+      >
+        <Trash2 className="w-4 h-4" />
+        <span>Supprimer la session</span>
+      </button>
+      
+    </div>
+  );
       
       // ✅ Sessions, Memories, Settings : Plus de menu
       default:
