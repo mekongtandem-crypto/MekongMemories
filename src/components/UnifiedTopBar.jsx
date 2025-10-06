@@ -518,58 +518,97 @@ export default function UnifiedTopBar({
 
   
   const renderUserMenu = () => {
-    const currentUserObj = app.currentUser;
-    const isOnline = app.connection?.isOnline;
-    
-    return (
-      <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-56">
-        <div className="px-4 py-3 border-b border-gray-200">
-          <div className="flex items-center space-x-2">
-            <span className="text-2xl">{currentUserObj?.emoji || '👤'}</span>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-gray-900">
-                {currentUserObj?.name || 'Utilisateur'}
-              </div>
-              <div className="text-xs text-gray-500 flex items-center space-x-1">
-                {isOnline ? (
-                  <>
-                    <Cloud className="w-3 h-3 text-green-500" />
-                    <span>Connecté</span>
-                  </>
-                ) : (
-                  <>
-                    <CloudOff className="w-3 h-3 text-red-500" />
-                    <span>Déconnecté</span>
-                  </>
-                )}
-              </div>
+  const currentUserObj = app.currentUser;
+  const isOnline = app.connection?.isOnline;
+  
+  // ✅ Tous les utilisateurs sauf l'actuel
+  const allUsers = [
+    { id: 'lambert', name: 'Lambert', emoji: userManager.getUser('lambert')?.emoji || '🚴', color: 'green' },
+    { id: 'tom', name: 'Tom', emoji: userManager.getUser('tom')?.emoji || '👨‍💻', color: 'blue' },
+    { id: 'duo', name: 'Duo', emoji: userManager.getUser('duo')?.emoji || '👥', color: 'amber' }
+  ];
+  
+  const otherUsers = allUsers.filter(u => u.id !== currentUserObj?.id);
+  
+  return (
+    <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-64">
+      
+      {/* Utilisateur actuel */}
+      <div className="px-4 py-3 border-b border-gray-200">
+        <div className="flex items-center space-x-2">
+          <span className="text-2xl">{currentUserObj?.emoji || '👤'}</span>
+          <div className="flex-1">
+            <div className="text-sm font-medium text-gray-900">
+              {currentUserObj?.name || 'Utilisateur'}
+            </div>
+            <div className="text-xs text-gray-500 flex items-center space-x-1">
+              {isOnline ? (
+                <>
+                  <Cloud className="w-3 h-3 text-green-500" />
+                  <span>Connecté</span>
+                </>
+              ) : (
+                <>
+                  <CloudOff className="w-3 h-3 text-red-500" />
+                  <span>Déconnecté</span>
+                </>
+              )}
             </div>
           </div>
         </div>
+      </div>
+      
+      {/* Changer d'utilisateur */}
+      <div className="px-4 py-2 border-b border-gray-200">
+        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+          Changer d'utilisateur
+        </div>
+        
+        {otherUsers.map(user => {
+          const userStyle = userManager.getUserStyle(user.id);
+          return (
+            <button
+              key={user.id}
+              onClick={() => {
+                setShowUserMenu(false);
+                app.setCurrentUser(user.id);
+              }}
+              className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg mb-1 transition-all hover:${userStyle.bg} ${
+                user.color === 'green' ? 'hover:bg-green-50' :
+                user.color === 'blue' ? 'hover:bg-blue-50' :
+                'hover:bg-amber-50'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
+                user.color === 'green' ? 'bg-green-100' :
+                user.color === 'blue' ? 'bg-blue-100' :
+                'bg-amber-100'
+              }`}>
+                {user.emoji}
+              </div>
+              <span className="text-sm font-medium text-gray-900">{user.name}</span>
+            </button>
+          );
+        })}
+      </div>
+      
+      {/* Connexion */}
+      {!isOnline && (
         <button
           onClick={() => {
             setShowUserMenu(false);
-            onPageChange('settings');
+            app.connect();
           }}
-          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600 flex items-center space-x-2"
         >
-          Changer d'utilisateur
+          <LogIn className="w-4 h-4" />
+          <span>Se reconnecter</span>
         </button>
-        {!isOnline && (
-          <button
-            onClick={() => {
-              setShowUserMenu(false);
-              app.connect();
-            }}
-            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600 flex items-center space-x-2"
-          >
-            <LogIn className="w-4 h-4" />
-            <span>Se reconnecter</span>
-          </button>
-        )}
-      </div>
-    );
-  };
+      )}
+      
+    </div>
+  );
+};
 
   const currentUserObj = app.currentUser;
   const isOnline = app.connection?.isOnline;
@@ -601,21 +640,25 @@ export default function UnifiedTopBar({
     {showMenu && renderMenu()}
   </div>
 
-  {/* ✅ Avatar utilisateur */}
-  <div className="relative hidden sm:block" ref={userMenuRef}>
-    <button
-      onClick={() => setShowUserMenu(!showUserMenu)}
-      className="flex items-center space-x-2 p-1 hover:bg-gray-100 rounded-lg transition-colors"
-    >
-      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xl relative">
-        {currentUserObj?.emoji || '👤'}
-        {!isOnline && (
-          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></div>
-        )}
-      </div>
-    </button>
-       {showUserMenu && renderUserMenu()}
-      </div>
+  {/* ✅ Avatar utilisateur avec couleur */}
+<div className="relative hidden sm:block" ref={userMenuRef}>
+  <button
+    onClick={() => setShowUserMenu(!showUserMenu)}
+    className="flex items-center space-x-2 p-1 hover:bg-gray-100 rounded-lg transition-colors"
+  >
+    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xl relative ${
+      currentUserObj?.id === 'lambert' ? 'bg-green-100' :
+      currentUserObj?.id === 'tom' ? 'bg-blue-100' :
+      'bg-amber-100'
+    }`}>
+      {currentUserObj?.emoji || '👤'}
+      {!isOnline && (
+        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></div>
+      )}
+    </div>
+  </button>
+  {showUserMenu && renderUserMenu()}
+</div>
     </div>
   </div>
 );
