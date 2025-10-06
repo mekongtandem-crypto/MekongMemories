@@ -35,27 +35,33 @@ export default function UnifiedTopBar({
   const app = useAppState();
   const [showMenu, setShowMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showSortMenu, setShowSortMenu] = useState(false); // ✅ NOUVEAU : Menu tri Memories
-  
+const [showSortMenu, setShowSortMenu] = useState(false);
+const [showMomentFilterMenu, setShowMomentFilterMenu] = useState(false); // ✅ NOUVEAU
+const [currentMomentFilter, setCurrentMomentFilter] = useState('all');     // ✅ NOUVEAU  
   const menuRef = useRef(null);
-  const userMenuRef = useRef(null);
-  const sortMenuRef = useRef(null); // ✅ NOUVEAU
+const userMenuRef = useRef(null);
+const sortMenuRef = useRef(null);
+const momentFilterMenuRef = useRef(null); // ✅ NOUVEAU
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setShowMenu(false);
-      }
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
-        setShowUserMenu(false);
-      }
-      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target)) {
-        setShowSortMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const handleClickOutside = (e) => {
+    if (menuRef.current && !menuRef.current.contains(e.target)) {
+      setShowMenu(false);
+    }
+    if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+      setShowUserMenu(false);
+    }
+    if (sortMenuRef.current && !sortMenuRef.current.contains(e.target)) {
+      setShowSortMenu(false);
+    }
+    // ✅ NOUVEAU
+    if (momentFilterMenuRef.current && !momentFilterMenuRef.current.contains(e.target)) {
+      setShowMomentFilterMenu(false);
+    }
+  };
+  document.addEventListener('mousedown', handleClickOutside);
+  return () => document.removeEventListener('mousedown', handleClickOutside);
+}, []);
 
   const handleDayWheel = (e) => {
     e.preventDefault();
@@ -145,200 +151,258 @@ export default function UnifiedTopBar({
 
   const renderContext = () => {
     switch (currentPage) {
-      case 'memories':
-        return (
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            
-            <button 
-              onClick={jumpToRandomMoment}
-              className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
-              title="Moment au hasard"
-            >
-              <Dices className="w-4 h-4" />
-            </button>
-            
-            <input 
-              type="number" 
-              value={currentDay} 
-              onChange={(e) => {
-                const day = parseInt(e.target.value, 10);
-                if (!isNaN(day)) setCurrentDay(day);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') jumpToDay(currentDay);
-              }}
-              onWheel={handleDayWheel}
-              className="w-14 sm:w-16 px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm text-center focus:ring-2 focus:ring-blue-500"
-              placeholder="J..."
-              min="0"
-              max="200"
-            />
-            
-            <div className="hidden sm:flex items-center space-x-1">
-              <button
-                onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))}
-                className={`p-1.5 rounded transition-colors ${
-                  displayOptions.showPostText 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'text-gray-400 hover:bg-gray-100'
-                }`}
-                title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}
-              >
-                <Type className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))}
-                className={`p-1.5 rounded transition-colors ${
-                  displayOptions.showPostPhotos 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'text-gray-400 hover:bg-gray-100'
-                }`}
-                title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}
-              >
-                <ImageIcon className="w-4 h-4" />
-              </button>
-              
-              <button
-                onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))}
-                className={`p-1.5 rounded transition-colors ${
-                  displayOptions.showMomentPhotos 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'text-gray-400 hover:bg-gray-100'
-                }`}
-                title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}
-              >
-                <Camera className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <select
-              onChange={(e) => {
-                if (window.memoriesPageFilters?.setMomentFilter) {
-                  window.memoriesPageFilters.setMomentFilter(e.target.value);
-                }
-              }}
-              className="text-xs sm:text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-purple-500"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <option value="all">Tous</option>
-              <option value="unexplored">✨ Non explorés</option>
-              <option value="with_posts">📄 Avec articles</option>
-              <option value="with_photos">📸 Avec photos</option>
-            </select>
-            
-            {/* ✅ NOUVEAU : Bouton tri dédié */}
-            <div className="relative" ref={sortMenuRef}>
-              <button
-                onClick={() => setShowSortMenu(!showSortMenu)}
-                className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Trier les moments"
-              >
-                <ArrowUpDown className="w-4 h-4" />
-              </button>
-              
-              {showSortMenu && (
-                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
-                  <button
-                    onClick={() => {
-                      if (window.memoriesPageFilters?.setSortBy) {
-                        window.memoriesPageFilters.setSortBy('chrono');
-                      }
-                      setShowSortMenu(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                  >
-                    📅 Chronologique
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.memoriesPageFilters?.setSortBy) {
-                        window.memoriesPageFilters.setSortBy('recent');
-                      }
-                      setShowSortMenu(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                  >
-                    🕐 Plus récents
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.memoriesPageFilters?.setSortBy) {
-                        window.memoriesPageFilters.setSortBy('content');
-                      }
-                      setShowSortMenu(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                  >
-                    📸 Plus de contenu
-                  </button>
-                </div>
-              )}
-            </div>
-            
-          </div>
-        );
+      case 'memories': {
+  // ✅ État du filtre moment actif
+  const filterIcons = {
+    all: '📋',
+    unexplored: '✨',
+    with_posts: '📄',
+    with_photos: '📸'
+  };
+  
+  return (
+    <div className="flex items-center space-x-2">
       
-      case 'chat': {
-        if (!chatSession) return null;
+      {/* ========================================
+          PRIORITÉ 1 : Filtres contenu (TOUJOURS visibles)
+          ======================================== */}
+      <div className="flex items-center space-x-1">
+        <button
+          onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))}
+          className={`p-1.5 rounded transition-colors ${
+            displayOptions.showPostText 
+              ? 'bg-green-100 text-green-700' 
+              : 'text-gray-400 hover:bg-gray-100'
+          }`}
+          title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}
+        >
+          <Type className="w-4 h-4" />
+        </button>
         
-        const existingNotif = window.notificationManager?.getNotificationForSession(
-          chatSession.id,
-          app.currentUser?.id
-        );
+        <button
+          onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))}
+          className={`p-1.5 rounded transition-colors ${
+            displayOptions.showPostPhotos 
+              ? 'bg-green-100 text-green-700' 
+              : 'text-gray-400 hover:bg-gray-100'
+          }`}
+          title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}
+        >
+          <ImageIcon className="w-4 h-4" />
+        </button>
         
-        const otherUsers = ['lambert', 'tom', 'duo'].filter(u => u !== app.currentUser?.id);
-        const targetUser = otherUsers[0];
+        <button
+          onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))}
+          className={`p-1.5 rounded transition-colors ${
+            displayOptions.showMomentPhotos 
+              ? 'bg-green-100 text-green-700' 
+              : 'text-gray-400 hover:bg-gray-100'
+          }`}
+          title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}
+        >
+          <Camera className="w-4 h-4" />
+        </button>
+      </div>
+      
+      {/* Séparateur visuel */}
+      <span className="text-gray-300 hidden sm:inline">|</span>
+      
+      {/* ========================================
+          PRIORITÉ 2 : Tri moments (visible desktop)
+          ======================================== */}
+      <div className="relative hidden md:block" ref={sortMenuRef}>
+        <button
+          onClick={() => setShowSortMenu(!showSortMenu)}
+          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          title="Trier les moments"
+        >
+          <ArrowUpDown className="w-4 h-4" />
+        </button>
         
-        return (
-          <div className="flex items-center space-x-3 flex-1">
-            <h1 className="text-sm font-semibold text-amber-600 truncate max-w-xs">
-              {chatSession.gameTitle}
-            </h1>
-            
+        {showSortMenu && (
+          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
             <button
-  onClick={async (e) => {
-    e.stopPropagation();
-    
-    if (existingNotif) {
-      // ✅ Confirmation annulation
-      if (confirm('Annuler la notification envoyée ?')) {
-        await window.notificationManager.deleteNotification(existingNotif.id);
-        alert('✅ Notification annulée');
-      }
-    } else {
-      // ✅ Envoi avec info destinataire
-      const targetUserInfo = userManager.getUser(targetUser);
-      const result = await app.sendNotification(targetUser, chatSession.id, chatSession.gameTitle);
-      
-      if (result.success) {
-        alert(`✅ Notification envoyée à ${targetUserInfo?.name || targetUser} !`);
-      } else {
-        alert('❌ Erreur lors de l\'envoi de la notification');
-      }
-    }
-  }}
-  className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-    existingNotif
-      ? 'bg-red-50 text-red-700 border-2 border-red-300 hover:bg-red-100'
-      : 'bg-gray-100 hover:bg-amber-100 text-gray-700 hover:text-amber-700 border-2 border-gray-300'
-  }`}
-  title={existingNotif ? 'Annuler la notification (clic pour annuler)' : 'Envoyer une notification'}
->
-  {/* ✅ Icône rouge si notifié */}
-  {existingNotif ? (
-    <span className="text-base">🔴</span>
-  ) : (
-    <span className="text-base">🔔</span>
-  )}
-  <span className="hidden sm:inline font-semibold">
-    {existingNotif ? 'Notifié' : 'Notifier'}
-  </span>
-</button>
-
+              onClick={() => {
+                if (window.memoriesPageFilters?.setSortBy) {
+                  window.memoriesPageFilters.setSortBy('chrono');
+                }
+                setShowSortMenu(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+            >
+              <span>📅</span>
+              <span>Chronologique</span>
+            </button>
+            <button
+              onClick={() => {
+                if (window.memoriesPageFilters?.setSortBy) {
+                  window.memoriesPageFilters.setSortBy('recent');
+                }
+                setShowSortMenu(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+            >
+              <span>🕐</span>
+              <span>Plus récents</span>
+            </button>
+            <button
+              onClick={() => {
+                if (window.memoriesPageFilters?.setSortBy) {
+                  window.memoriesPageFilters.setSortBy('content');
+                }
+                setShowSortMenu(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+            >
+              <span>📸</span>
+              <span>Plus de contenu</span>
+            </button>
           </div>
-        );
-      }
+        )}
+      </div>
+      
+      {/* ========================================
+          PRIORITÉ 3 : Filtre moment (icône dynamique)
+          ======================================== */}
+      <div className="relative hidden md:block">
+        <button
+          onClick={() => setShowMomentFilterMenu(!showMomentFilterMenu)}
+          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          title="Filtrer les moments"
+        >
+          <span className="text-lg">{filterIcons[currentMomentFilter]}</span>
+        </button>
+        
+        {showMomentFilterMenu && (
+          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
+            <button
+              onClick={() => {
+                if (window.memoriesPageFilters?.setMomentFilter) {
+                  window.memoriesPageFilters.setMomentFilter('all');
+                }
+                setCurrentMomentFilter('all');
+                setShowMomentFilterMenu(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+            >
+              <span>📋</span>
+              <span>Tous les moments</span>
+            </button>
+            <button
+              onClick={() => {
+                if (window.memoriesPageFilters?.setMomentFilter) {
+                  window.memoriesPageFilters.setMomentFilter('unexplored');
+                }
+                setCurrentMomentFilter('unexplored');
+                setShowMomentFilterMenu(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+            >
+              <span>✨</span>
+              <span>Non explorés</span>
+            </button>
+            <button
+              onClick={() => {
+                if (window.memoriesPageFilters?.setMomentFilter) {
+                  window.memoriesPageFilters.setMomentFilter('with_posts');
+                }
+                setCurrentMomentFilter('with_posts');
+                setShowMomentFilterMenu(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+            >
+              <span>📄</span>
+              <span>Avec articles</span>
+            </button>
+            <button
+              onClick={() => {
+                if (window.memoriesPageFilters?.setMomentFilter) {
+                  window.memoriesPageFilters.setMomentFilter('with_photos');
+                }
+                setCurrentMomentFilter('with_photos');
+                setShowMomentFilterMenu(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+            >
+              <span>📸</span>
+              <span>Avec photos</span>
+            </button>
+          </div>
+        )}
+      </div>
+      
+      {/* ========================================
+          OVERFLOW MOBILE : Actions secondaires
+          ======================================== */}
+      <div className="flex items-center space-x-2 md:hidden">
+        
+        
+        <button 
+          onClick={jumpToRandomMoment}
+          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          title="Moment au hasard"
+        >
+          <Dices className="w-4 h-4" />
+        </button>
+        
+        <input 
+          type="number" 
+          value={currentDay} 
+          onChange={(e) => {
+            const day = parseInt(e.target.value, 10);
+            if (!isNaN(day)) setCurrentDay(day);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') jumpToDay(currentDay);
+          }}
+          className="w-14 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:ring-2 focus:ring-blue-500"
+          placeholder="J..."
+          min="0"
+          max="200"
+        />
+      </div>
+      
+      {/* Desktop : Navigation jour */}
+      <div className="hidden md:flex items-center space-x-2">
+        <button
+          onClick={() => setIsSearchOpen(!isSearchOpen)}
+          className={`p-1.5 rounded-lg transition-colors ${
+            isSearchOpen ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+          }`}
+          title="Recherche"
+        >
+          <Search className="w-4 h-4" />
+        </button>
+        
+        <button 
+          onClick={jumpToRandomMoment}
+          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          title="Moment au hasard"
+        >
+          <Dices className="w-4 h-4" />
+        </button>
+        
+        <input 
+          type="number" 
+          value={currentDay} 
+          onChange={(e) => {
+            const day = parseInt(e.target.value, 10);
+            if (!isNaN(day)) setCurrentDay(day);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') jumpToDay(currentDay);
+          }}
+          onWheel={handleDayWheel}
+          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-blue-500"
+          placeholder="J..."
+          min="0"
+          max="200"
+        />
+      </div>
+      
+    </div>
+  );
+}
       
       case 'sessions': {
         const currentUserId = app.currentUser?.id;
