@@ -61,8 +61,19 @@ export default function App() {
 
   if (!app.isInitialized) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="animate-pulse text-lg">Chargement...</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50 dark:bg-black text-center p-4">
+        <div className="text-6xl mb-4 animate-bounce">
+          🐘
+        </div>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+          Mémoire du Mékong
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-2">
+          Chargement de vos souvenirs...
+        </p>
+        <div className="absolute bottom-4 text-xs text-gray-400 dark:text-gray-500">
+          Version 2.4 - Plein Écran
+        </div>
       </div>
     );
   }
