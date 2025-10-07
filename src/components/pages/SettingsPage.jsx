@@ -20,6 +20,8 @@ const AVAILABLE_AVATARS = [
 export default function SettingsPage() {
   const app = useAppState();
   
+  const [editingUser, setEditingUser] = useState({ id: null, type: null }); 
+  
   const [openSections, setOpenSections] = useState({
     users: true,
     connection: false,
@@ -62,24 +64,21 @@ export default function SettingsPage() {
     app.setCurrentUser(userId);
   };
 
-  const forceUserUpdate = (userId) => {
-    if (app.currentUser?.id === userId) {
-      const currentId = app.currentUser.id;
-      app.setCurrentUser(null);
-      setTimeout(() => app.setCurrentUser(currentId), 10);
-    }
-    // Force un re-render global pour voir les changements de couleur/avatar partout
-    app.refreshSessions();
-  };
+  const forceUserUpdate = () => {
+  // On force un rafraîchissement global en changeant brièvement l'utilisateur
+  const currentId = app.currentUser.id;
+  app.setCurrentUser(null);
+  setTimeout(() => app.setCurrentUser(currentId), 10);
+};
   
   const handleChangeAvatar = (userId, newEmoji) => {
     userManager.updateUserEmoji(userId, newEmoji);
-    forceUserUpdate(userId);
+    forceUserUpdate();
   };
 
   const handleChangeColor = (userId, newColor) => {
     userManager.updateUserColor(userId, newColor);
-    forceUserUpdate(userId);
+    forceUserUpdate();
   };
 
   const users = userManager.getAllUsers();
@@ -95,9 +94,12 @@ export default function SettingsPage() {
   return (
     <div className="p-4 space-y-4 max-w-4xl mx-auto">
       
-      {/* Section Utilisateurs (regroupée) */}
+      {/* Section Utilisateurs (mise à jour) */}
       <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <button onClick={() => toggleSection('users')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50">
+        <button
+          onClick={() => toggleSection('users')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50"
+        >
           <div className="flex items-center space-x-2">
             <Users className="w-5 h-5 text-gray-600" />
             <h2 className="text-lg font-semibold text-gray-900">Utilisateurs</h2>
@@ -106,41 +108,90 @@ export default function SettingsPage() {
         </button>
         
         {openSections.users && (
-          <div className="p-4 border-t border-gray-100 space-y-6">
-            
-            {/* Utilisateur actif */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Utilisateur actif</h3>
-              <div className="grid grid-cols-3 gap-3">
-                {users.map(user => {
+          <div className="p-4 border-t border-gray-100">
+            <div className="grid grid-cols-3 gap-3">
+              
+              {/* Ligne 1 : Sélection de l'utilisateur */}
+              {users.map(user => {
                   const isActive = app.currentUser?.id === user.id;
                   const currentUserData = userManager.getUser(user.id) || user;
                   const style = userManager.getUserStyle(user.id);
                   return (
-                    <button key={user.id} onClick={() => handleChangeUser(user.id)} className={`p-4 rounded-lg border-2 transition-all ${ isActive ? `${style.bg} ${style.border} ring-2 ring-offset-2 ${style.ring}` : 'border-gray-200 hover:border-gray-300' }`}>
+                    <button
+                      key={`${user.id}-selector`}
+                      onClick={() => handleChangeUser(user.id)}
+                      className={`p-4 rounded-lg border-2 transition-all ${ isActive ? `${style.bg} ${style.border} ring-2 ring-offset-2 ${style.ring}` : 'border-gray-200 hover:border-gray-300' }`}
+                    >
                       <div className="text-3xl mb-2">{currentUserData.emoji}</div>
                       <div className={`font-medium ${isActive ? style.text.replace('bg-', 'text-') : 'text-gray-700'}`}>{user.name}</div>
                     </button>
                   );
-                })}
-              </div>
+              })}
+
+              {/* Ligne 2 : Boutons Avatar */}
+              {users.map(user => {
+                const userData = userManager.getUser(user.id);
+                return (
+                  <button 
+                    key={`${user.id}-avatar`} 
+onClick={() => setEditingUser(prev => 
+    prev.id === user.id && prev.type === 'avatar' 
+    ? { id: null, type: null } 
+    : { id: user.id, type: 'avatar' }
+)}                    className="w-full p-3 bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium text-sm rounded-lg transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <span className="text-2xl">{userData.emoji}</span>
+                    <span>Avatar</span>
+                  </button>
+                )
+              })}
+
+              {/* Ligne 3 : Boutons Couleur */}
+              {users.map(user => {
+                const style = userManager.getUserStyle(user.id);
+                return (
+                  <button 
+                    key={`${user.id}-color`} 
+onClick={() => setEditingUser(prev => 
+    prev.id === user.id && prev.type === 'color' 
+    ? { id: null, type: null } 
+    : { id: user.id, type: 'color' }
+)}                    className="w-full p-3 bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium text-sm rounded-lg transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <div className={`w-5 h-5 rounded-full ${style.bg} border-2 ${style.border}`}></div>
+                    <span>Couleur</span>
+                  </button>
+                )
+              })}
             </div>
-            
-            {/* ✅ SECTION REFACTORISÉE */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Personnaliser les profils</h3>
-              <div className="space-y-3">
-                {users.map(user => (
-                  <UserCustomization 
-                    key={user.id} 
-                    user={user}
-                    onAvatarChange={handleChangeAvatar}
-                    onColorChange={handleChangeColor}
-                  />
-                ))}
+
+            {/* AFFICHE LE SÉLECTEUR SI UN UTILISATEUR EST EN COURS D'ÉDITION */}
+            {editingUser.id && (
+              <div className="mt-6">
+                {editingUser.type === 'avatar' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-2">Changer l'avatar de {userManager.getUser(editingUser.id).name}</label>
+                    <div className="grid grid-cols-9 sm:grid-cols-12 gap-1 p-2 bg-white rounded border border-gray-200">
+                      {AVAILABLE_AVATARS.map((emoji, idx) => (
+                        <button key={idx} onClick={() => { handleChangeAvatar(editingUser.id, emoji); setEditingUser({id: null, type: null}); }} className={`text-2xl p-1 rounded transition-all hover:bg-gray-100`}>
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {editingUser.type === 'color' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-2">Changer la couleur de {userManager.getUser(editingUser.id).name}</label>
+                    <div className="flex space-x-2">
+                      {['green', 'blue', 'amber', 'purple', 'red'].map(color => (
+                        <button key={color} onClick={() => { handleChangeColor(editingUser.id, color); setEditingUser({id: null, type: null}); }} className={`w-10 h-10 rounded-full border-2 transition-all ${ color === 'green' ? 'bg-green-500 border-green-700' : color === 'blue' ? 'bg-blue-500 border-blue-700' : color === 'amber' ? 'bg-amber-500 border-amber-700' : color === 'purple' ? 'bg-purple-500 border-purple-700' : 'bg-red-500 border-red-700' }`} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-            
+            )}
           </div>
         )}
       </section>

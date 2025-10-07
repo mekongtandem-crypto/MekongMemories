@@ -12,7 +12,7 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState('');
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
-  
+  const [feedbackMessage, setFeedbackMessage] = useState(null);
   // ❌ SUPPRIMÉ : États du titre (editingTitle, titleValue, titleInputRef)
   
   const [viewerState, setViewerState] = useState({ 
@@ -29,8 +29,21 @@ export default function ChatPage() {
   }, [app.currentChatSession?.notes]);
 
   // ❌ SUPPRIMÉ : useEffect pour le focus sur l'input du titre
-
   // ❌ SUPPRIMÉ : Tous les handlers du titre (handleStartEditTitle, handleSaveTitle, handleCancelEditTitle)
+
+useEffect(() => {
+    window.chatPageActions = {
+      showFeedback: (message) => {
+        setFeedbackMessage(message);
+        setTimeout(() => {
+          setFeedbackMessage(null);
+        }, 2500); // Le message disparaît après 2.5 secondes
+      }
+    };
+    return () => {
+      delete window.chatPageActions;
+    };
+  }, []);
 
   // ========================================
   // HANDLERS MESSAGES
@@ -286,7 +299,16 @@ export default function ChatPage() {
           onCreateSession={null}
         />
       )}
+      
+  {/* ✅ NOUVEAU : Message de feedback temporaire */}
+  {feedbackMessage && (
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-pulse">
+      {feedbackMessage}
     </div>
+  )}
+
+</div> 
+      
   );
 }
 

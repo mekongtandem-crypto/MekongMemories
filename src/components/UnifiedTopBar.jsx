@@ -129,23 +129,44 @@ useEffect(() => {
     const otherUser = userManager.getAllUsers().find(u => u.id !== 'duo' && u.id !== app.currentUser.id);
     if (!otherUser) return;
 
-    // Si on est déjà notifié, on propose d'annuler
+    // Logique d'annulation de notification
     if (notificationState === 'already_notified') {
-        if (confirm(`Annuler la notification pour ${otherUser.name} ?`)) {
-            // Ici, il faudrait une fonction pour supprimer la notification.
-            // Pour l'instant, on va juste réinitialiser l'état visuellement.
-            // await app.deleteNotification(...)
-            console.log("LOGIQUE D'ANNULATION A IMPLEMENTER");
-            setNotificationState('idle');
-        }
-        return;
-    }
+    // NOTE: Annulation sans confirmation, comme demandé
 
+    // On retrouve la notification spécifique à cette session pour cet utilisateur
+    const existingNotif = window.notificationManager?.getNotificationForSession(chatSession.id, otherUser.id);
+
+    if (existingNotif) {
+        // On appelle la fonction de suppression du manager avec l'ID de la notification
+        await window.notificationManager.deleteNotification(existingNotif.id);
+
+        setNotificationState('idle'); // Mise à jour visuelle immédiate
+        window.chatPageActions?.showFeedback(`Notification pour ${otherUser.name} annulée`);
+    } else {
+        console.warn("Impossible d'annuler une notification qui n'a pas été trouvée.");
+        // On réinitialise l'état au cas où il serait désynchronisé
+        setNotificationState('idle');
+    }
+    return;
+}
+
+    // Logique d'envoi de notification
     setNotificationState('sending');
     try {
         await app.sendNotification(otherUser.id, chatSession.id, chatSession.gameTitle);
-        setNotificationState('sent');
-        // Le feedback visuel est géré par le JSX
+        setNotificationState('already_notified');
+        window.chatPageActions?.showFeedback(`Notification envoyée à ${otherUser.name}`);
+    } catch (error) {
+        console.error("Erreur d'envoi de la notification:", error);
+        setNotificationState('idle');
+    }
+  // };
+  
+    setNotificationState('sending');
+    try {
+        await app.sendNotification(otherUser.id, chatSession.id, chatSession.gameTitle);
+        setNotificationState('already_notified'); // ✅ MISE À JOUR IMMÉDIATE
+        window.chatPageActions?.showFeedback(`Notification envoyée à ${otherUser.name}`);
     } catch (error) {
         console.error("Erreur d'envoi de la notification:", error);
         setNotificationState('idle');
@@ -292,26 +313,30 @@ useEffect(() => {
         {/* Affiche les boutons spécifiques à la page Chat */}
         {currentPage === 'chat' && (
           <>
-            {/* Bouton de notification */}
-            <button
-                onClick={handleSendNotification}
-                disabled={notificationState === 'sending'}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                    notificationState === 'idle' ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' :
-                    notificationState === 'sending' ? 'bg-gray-300 text-gray-500 cursor-wait' :
-                    notificationState === 'sent' ? 'bg-green-500 text-white' :
-                    'bg-orange-400 text-white hover:bg-orange-500' // already_notified
-                }`}
-                title={notificationState === 'already_notified' ? 'Cliquer pour annuler' : 'Notifier l\'autre utilisateur'}
-            >
-                {notificationState === 'sent' ? <Check className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
-                <span>
-                    {notificationState === 'idle' && "Notifier"}
-                    {notificationState === 'sending' && "Envoi..."}
-                    {notificationState === 'sent' && `${userManager.getAllUsers().find(u => u.id !== 'duo' && u.id !== app.currentUser.id)?.name || 'Utilisateur'} notifié !`}
-                    {notificationState === 'already_notified' && "Notifié"}
-                </span>
-            </button>
+            {/* Bouton de notification - nouveau style */}
+<button
+    onClick={handleSendNotification}
+    disabled={notificationState === 'sending'}
+    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+        notificationState === 'already_notified' 
+          ? 'bg-orange-500 hover:bg-orange-600' 
+          : 'bg-gray-200 hover:bg-gray-300'
+    }`}
+    title={(() => {
+        const otherUser = userManager.getAllUsers().find(u => u.id !== 'duo' && u.id !== app.currentUser.id);
+        const otherUserName = otherUser?.name || 'l\'autre utilisateur';
+        if (notificationState === 'already_notified') {
+            return `${otherUserName} est notifié. Cliquer pour annuler.`;
+        }
+        return `Notifier ${otherUserName}`;
+    })()}
+>
+    <Bell className={`w-5 h-5 ${
+        notificationState === 'already_notified' 
+          ? 'text-white' 
+          : 'text-gray-600'
+    }`} />
+</button>
 
             {/* Menu "..." */}
             <div className="relative" ref={menuRef}>
