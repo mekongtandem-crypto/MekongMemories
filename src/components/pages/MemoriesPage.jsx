@@ -43,6 +43,28 @@ function MemoriesPage({
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const momentRefs = useRef({});
   
+  const executeScrollToElement = useCallback((element) => {
+    // 1. On trouve la barre de navigation
+    const topBarElement = document.querySelector('.fixed.top-0.z-40');
+    const scrollContainer = scrollContainerRef.current;
+
+    if (element && topBarElement && scrollContainer) {
+      // 2. On mesure sa hauteur exacte
+      const topBarHeight = topBarElement.offsetHeight;
+      
+      // 3. On calcule la position de destination...
+      //    ET ON SOUSTRAIT LA HAUTEUR DE LA BARRE !
+      const offsetPosition = element.offsetTop - topBarHeight - 64; // 16px de marge
+
+      // 4. On scrolle à la position calculée
+      scrollContainer.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth',
+      });
+    } // ...
+  }, []);
+  
+  
   // Exposer callbacks pour TopBar
   useEffect(() => {
     window.memoriesPageFilters = {
@@ -150,14 +172,14 @@ function MemoriesPage({
     }
   }, [selectedMoments]);
 
-  const scrollToMoment = useCallback((momentId, blockPosition = 'start') => {
+  const scrollToMoment = useCallback((momentId) => {
     const element = momentRefs.current[momentId];
     if (element) {
-        // setTimeout(() => {
-            element.scrollIntoView({ behavior: 'smooth', block: blockPosition });
-        // }, 50);
+      // On utilise notre nouvelle fonction de scroll
+      executeScrollToElement(element);
     }
-  }, []);
+  }, [executeScrollToElement]); // <-- On ajoute la dépendance
+  
 
   const jumpToDay = useCallback((day) => {
     const targetMoment = momentsData.find(m => day >= m.dayStart && day <= m.dayEnd);
