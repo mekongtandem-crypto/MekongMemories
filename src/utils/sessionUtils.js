@@ -94,60 +94,53 @@ export const SUGGESTION_MODES = {
 
 export function calculateSessionStatus(session, currentUserId) {
   // États méta (priorité absolue)
-  if (session.archived) return SESSION_STATUS.ARCHIVED;
-  if (session.completed) return SESSION_STATUS.COMPLETED;
-  
-  // ✅ DEBUG LOG
-  console.log('📊 Calcul statut session:', {
-    sessionId: session.id,
-    currentUserId,
-    notesCount: session.notes?.length,
-    lastAuthor: session.notes?.[session.notes.length - 1]?.author
-  });
-  
-  // ✅ PRIORITÉ 1 : Notification non répondue
-  const hasUnreadNotif = window.notificationManager?.hasUnreadNotificationForSession(
+  if (session.archived) return { status: SESSION_STATUS.ARCHIVED };
+  if (session.completed) return { status: SESSION_STATUS.COMPLETED };
+
+  // PRIORITÉ 1 : Notification non répondue
+  // On utilise getNotificationForSession pour récupérer l'objet complet
+  const notification = window.notificationManager?.getNotificationForSession(
     session.id, 
     currentUserId
   );
-  
-  if (hasUnreadNotif) {
-    console.log('  → NOTIFIED (notification non lue)');
-    return SESSION_STATUS.NOTIFIED;
+
+  if (notification) {
+    // On retourne le statut ET l'expéditeur de la notif
+    return { status: SESSION_STATUS.NOTIFIED, notifiedBy: notification.from };
   }
   
-  // Session vide = active
+  // Session vide = active pour l'instant
   if (!session.notes || session.notes.length === 0) {
-        console.log('  → ACTIVE (pas de messages)');
-    return SESSION_STATUS.ACTIVE;
+    return { status: SESSION_STATUS.ACTIVE };
   }
   
   const lastMessage = session.notes[session.notes.length - 1];
   const daysSinceLastMsg = (Date.now() - new Date(lastMessage.timestamp)) / (1000 * 60 * 60 * 24);
   
-  // ✅ PRIORITÉ 2 : À traiter (dernier msg ≠ currentUser)
+  // PRIORITÉ 2 : À traiter (dernier msg ≠ currentUser)
   if (lastMessage.author !== currentUserId) {
-        console.log('  → PENDING_YOU (dernier msg ≠ moi)');
-    return SESSION_STATUS.PENDING_YOU;
+    return { status: SESSION_STATUS.PENDING_YOU };
   }
   
-  // ✅ PRIORITÉ 3 : En attente (dernier msg = currentUser)
+  // PRIORITÉ 3 : En attente (dernier msg = currentUser)
   // Sous-cas : si très récent (< 24h) = ACTIVE
   if (daysSinceLastMsg < 1) {
-    console.log('  → ACTIVE (< 24h)');
-    return SESSION_STATUS.ACTIVE;
+    return { status: SESSION_STATUS.ACTIVE };
   }
-  console.log('  → PENDING_OTHER (j\'attends réponse)');
-  return SESSION_STATUS.PENDING_OTHER;
+
+  return { status: SESSION_STATUS.PENDING_OTHER };
 }
 
 export function enrichSessionWithStatus(session, currentUserId) {
-  const status = calculateSessionStatus(session, currentUserId);
-  const config = STATUS_CONFIG[status];
+  // statusInfo contient maintenant { status: '...', notifiedBy: '...' }
+  const statusInfo = calculateSessionStatus(session, currentUserId);
+  const config = STATUS_CONFIG[statusInfo.status];
   
   return {
     ...session,
-    status,
+    // On garde "status" pour la compatibilité avec le reste du code (tri, filtres)
+    status: statusInfo.status, 
+    statusInfo, // On stocke l'objet complet
     statusConfig: config
   };
 }

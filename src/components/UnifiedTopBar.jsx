@@ -79,8 +79,22 @@ useEffect(() => {
     if (currentPage === 'chat' && chatSession && app.currentUser) {
         const otherUser = userManager.getAllUsers().find(u => u.id !== 'duo' && u.id !== app.currentUser.id);
         if (!otherUser) return;
-        const existingNotif = window.notificationManager?.getNotificationForSession(chatSession.id, otherUser.id);
-        setNotificationState(existingNotif && !existingNotif.read ? 'already_notified' : 'idle');
+
+        // On vérifie s'il y a une notification envoyée PAR MOI à l'autre
+        const notifSentByMe = window.notificationManager?.getNotificationForSession(chatSession.id, otherUser.id);
+        // On vérifie s'il y a une notification envoyée PAR L'AUTRE à moi
+        const notifSentToMe = window.notificationManager?.getNotificationForSession(chatSession.id, app.currentUser.id);
+
+        if (notifSentByMe) {
+            // Une notif existe, envoyée par moi. Je peux l'annuler.
+            setNotificationState('already_notified');
+        } else if (notifSentToMe) {
+            // Une notif existe, envoyée par l'autre. Le bouton est "verrouillé".
+            setNotificationState('locked'); 
+        } else {
+            // Aucune notif. Je peux en envoyer une.
+            setNotificationState('idle');
+        }
     }
 }, [chatSession, currentPage, app.currentUser]);
 
@@ -124,44 +138,36 @@ useEffect(() => {
     }
   };
   
-  const handleSendNotification = async () => {
+// REMPLACER la fonction handleSendNotification par celle-ci (avec le mot-clé async)
+
+const handleSendNotification = async () => {
     if (!chatSession || !app.currentUser) return;
     const otherUser = userManager.getAllUsers().find(u => u.id !== 'duo' && u.id !== app.currentUser.id);
     if (!otherUser) return;
 
-    // Logique d'annulation de notification
-    if (notificationState === 'already_notified') {
-    // NOTE: Annulation sans confirmation, comme demandé
-
-    // On retrouve la notification spécifique à cette session pour cet utilisateur
+    // On récupère la notification existante envoyée par l'utilisateur actuel
     const existingNotif = window.notificationManager?.getNotificationForSession(chatSession.id, otherUser.id);
 
-    if (existingNotif) {
-        // On appelle la fonction de suppression du manager avec l'ID de la notification
+    // --- LOGIQUE D'ANNULATION ---
+    // Si la notif existe et que l'état est 'already_notified', on l'annule.
+    if (existingNotif && notificationState === 'already_notified') {
         await window.notificationManager.deleteNotification(existingNotif.id);
-
-        setNotificationState('idle'); // Mise à jour visuelle immédiate
+        setNotificationState('idle'); // On repasse en mode "prêt à notifier"
         window.chatPageActions?.showFeedback(`Notification pour ${otherUser.name} annulée`);
-    } else {
-        console.warn("Impossible d'annuler une notification qui n'a pas été trouvée.");
-        // On réinitialise l'état au cas où il serait désynchronisé
-        setNotificationState('idle');
+        return;
     }
-    return;
-}
+    
+    // --- LOGIQUE DE BLOCAGE ---
+    // On vérifie si l'autre utilisateur n'a pas déjà notifié la session
+    const notifFromOther = window.notificationManager?.getNotificationForSession(chatSession.id, app.currentUser.id);
+    if (notifFromOther) {
+        window.chatPageActions?.showFeedback(`${otherUser.name} a déjà demandé votre attention ici.`);
+        return; // On bloque l'envoi
+    }
 
-    // Logique d'envoi de notification
-    setNotificationState('sending');
-    try {
-        await app.sendNotification(otherUser.id, chatSession.id, chatSession.gameTitle);
-        setNotificationState('already_notified');
-        window.chatPageActions?.showFeedback(`Notification envoyée à ${otherUser.name}`);
-    } catch (error) {
-        console.error("Erreur d'envoi de la notification:", error);
-        setNotificationState('idle');
-    }
-  // };
-  
+    // --- LOGIQUE D'ENVOI ---
+    // Si aucune notification n'existe, on envoie.
+    
     setNotificationState('sending');
     try {
         await app.sendNotification(otherUser.id, chatSession.id, chatSession.gameTitle);
@@ -293,6 +299,7 @@ useEffect(() => {
   };
 
   const currentUserObj = app.currentUser;
+  const userStyle = userManager.getUserStyle(currentUserObj?.id); // <-- CETTE LIGNE
   const isOnline = app.connection?.isOnline;
 
   return (
@@ -316,17 +323,23 @@ useEffect(() => {
             {/* Bouton de notification - nouveau style */}
 <button
     onClick={handleSendNotification}
-    disabled={notificationState === 'sending'}
+    disabled={notificationState === 'sending' || notificationState === 'locked'}
     className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
         notificationState === 'already_notified' 
-          ? 'bg-orange-500 hover:bg-orange-600' 
+          ? 'bg-orange-500 hover:bg-orange-600'
+        : notificationState === 'locked'
+          ? 'bg-gray-300 cursor-not-allowed'
           : 'bg-gray-200 hover:bg-gray-300'
     }`}
     title={(() => {
         const otherUser = userManager.getAllUsers().find(u => u.id !== 'duo' && u.id !== app.currentUser.id);
         const otherUserName = otherUser?.name || 'l\'autre utilisateur';
+        
         if (notificationState === 'already_notified') {
             return `${otherUserName} est notifié. Cliquer pour annuler.`;
+        }
+        if (notificationState === 'locked') {
+            return `Vous ne pouvez pas notifier, ${otherUserName} a déjà notifié cette session.`;
         }
         return `Notifier ${otherUserName}`;
     })()}
@@ -351,11 +364,7 @@ useEffect(() => {
         {/* Avatar (commun à toutes les pages) */}
         <div className="relative" ref={userMenuRef}>
           <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center space-x-2 p-1 hover:bg-gray-100 rounded-lg transition-colors">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xl relative ${
-              currentUserObj?.id === 'lambert' ? 'bg-green-100' : 
-              currentUserObj?.id === 'tom' ? 'bg-blue-100' : 
-              'bg-amber-100'
-            }`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xl relative ${userStyle.bg}`}>
               {currentUserObj?.emoji || '👤'}
               {!isOnline && (
                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></div>

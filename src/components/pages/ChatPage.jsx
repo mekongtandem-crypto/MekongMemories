@@ -4,6 +4,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
+import { userManager } from '../../core/UserManager.js'; // <-- LIGNE À AJOUTER
 import { Send, Trash2, Check, X, Edit } from 'lucide-react';
 import PhotoViewer from '../PhotoViewer.jsx';
 
@@ -131,25 +132,17 @@ useEffect(() => {
 
   const getUserBubbleStyle = (author) => {
     const isCurrentUser = author === app.currentUser?.id;
-    
-    const userColors = {
-      tom: {
-        own: 'bg-blue-500 text-white rounded-l-lg rounded-tr-lg shadow-lg',
-        other: 'bg-blue-100 text-blue-900 rounded-r-lg rounded-tl-lg border border-blue-200'
-      },
-      lambert: {
-        own: 'bg-green-500 text-white rounded-l-lg rounded-tr-lg shadow-lg',
-        other: 'bg-green-100 text-green-900 rounded-r-lg rounded-tl-lg border border-green-200'
-      },
-      duo: {
-        own: 'bg-amber-500 text-white rounded-l-lg rounded-tr-lg shadow-lg',
-        other: 'bg-amber-100 text-amber-900 rounded-r-lg rounded-tl-lg border border-amber-200'
-      }
-    };
-    
-    const authorColors = userColors[author] || userColors.duo;
-    return isCurrentUser ? authorColors.own : authorColors.other;
-  };
+    // On récupère l'objet de style complet depuis notre UserManager amélioré
+    const style = userManager.getUserStyle(author);
+
+    if (isCurrentUser) {
+      // Style pour les messages de l'utilisateur actuel (fond vif)
+      return `${style.strong_bg} text-white rounded-l-lg rounded-tr-lg shadow-lg`;
+    } else {
+      // Style pour les messages des autres (fond clair)
+      return `${style.bg} ${style.text} rounded-r-lg rounded-tl-lg border ${style.border}`;
+    }
+  };  
 
   const getCurrentUserStyle = (author) => {
     if (author === 'duo') {
@@ -160,7 +153,7 @@ useEffect(() => {
       return 'mr-auto';
     }
   };
-
+  
   return (
     <div className="flex flex-col h-full bg-gray-50">
       

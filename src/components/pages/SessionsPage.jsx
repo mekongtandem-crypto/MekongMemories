@@ -468,8 +468,12 @@ function SessionRow({
     >
       {/* Badge 🔔 en haut à gauche pour NOTIFIED */}
       {session.status === SESSION_STATUS.NOTIFIED && !isEditing && (
-        <div className="absolute -top-2 -left-2 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center shadow-lg z-10">
-          <span className="text-sm">🔔</span>
+        <div className="absolute -top-2 -left-2 flex items-center bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
+          <span className="mr-1.5">🔔</span>
+          {/* ✅ NOUVEAU : On affiche le nom de l'expéditeur */}
+          <span>
+            Notifié par {userManager.getUser(session.statusInfo.notifiedBy)?.name || '...'}
+          </span>
         </div>
       )}
       
