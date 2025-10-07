@@ -153,9 +153,9 @@ function MemoriesPage({
   const scrollToMoment = useCallback((momentId, blockPosition = 'start') => {
     const element = momentRefs.current[momentId];
     if (element) {
-        setTimeout(() => {
+        // setTimeout(() => {
             element.scrollIntoView({ behavior: 'smooth', block: blockPosition });
-        }, 50);
+        // }, 50);
     }
   }, []);
 
@@ -297,9 +297,9 @@ const handleSelectMoment = useCallback((moment, forceOpen = false) => {
 
       {/* Contenu principal */}
       <main 
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto"
-      >
+  ref={scrollContainerRef}
+  className="flex-1 overflow-y-auto scroll-pt-32"
+>
         <div className="container mx-auto px-4 py-4">
           <MomentsList 
             moments={filteredMoments}
@@ -387,15 +387,19 @@ const MomentCard = memo(React.forwardRef(({
   
   // ✅ NOUVEAU CODE (synchronisé avec la TopBar)
   const [localDisplay, setLocalDisplay] = useState({
-    showPosts: false, // On pourrait aussi synchroniser les posts si besoin
-    showDayPhotos: displayOptions.showMomentPhotos
-  });
+  // ✅ Initialise l'état des posts en respectant les options globales
+  showPosts: displayOptions.showPostText,
+  showDayPhotos: displayOptions.showMomentPhotos
+});
 
-  // ✅ AJOUTER CE BLOC pour garder la synchro
-  // Met à jour l'affichage local si le bouton global de la TopBar est utilisé
-  useEffect(() => {
-    setLocalDisplay(prev => ({ ...prev, showDayPhotos: displayOptions.showMomentPhotos }));
-  }, [displayOptions.showMomentPhotos]);
+// ✅ Synchronise les DEUX états locaux lorsque les options globales changent
+useEffect(() => {
+  setLocalDisplay(prev => ({
+    ...prev,
+    showPosts: displayOptions.showPostText,
+    showDayPhotos: displayOptions.showMomentPhotos
+  }));
+}, [displayOptions.showPostText, displayOptions.showMomentPhotos]);
   
   const wasSelectedRef = useRef(isSelected);
   
@@ -429,7 +433,7 @@ const MomentCard = memo(React.forwardRef(({
         isSelected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'
       }`}
     >
-      <div className="p-3">
+      <div className="px-3 pt-3 pb-0">
         <MomentHeader 
           moment={moment}
           isSelected={isSelected}
@@ -510,7 +514,7 @@ const MomentHeader = memo(({
         }`} />
       </div>
 
-      <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm mt-2 pt-2 border-t border-gray-100">
+      <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm mt-2 pt-0 border-t border-gray-100">
         {moment.postCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'posts')}
@@ -641,7 +645,8 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
   const photosAreVisible = showThisPostPhotos && hasPhotos;
 
   return (
-    <div className="mt-2 border-b border-gray-100 pb-2 last:border-b-0">
+   // <div className="mt-2 border-b border-gray-100 pb-2 last:border-b-0">
+      <div className="mt-2">
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         <div className="flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200">
           <div className="flex items-center gap-x-3 flex-1 min-w-0">
