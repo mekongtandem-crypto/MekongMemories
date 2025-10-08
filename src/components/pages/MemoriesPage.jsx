@@ -85,6 +85,14 @@ function MemoriesPage({
     };
   }, []);
   
+  // Ce hook s'assure que lorsque la barre de recherche se ferme, la recherche est réinitialisée.
+  useEffect(() => {
+    if (!isSearchOpen) {
+      setSearchQuery('');
+    }
+  }, [isSearchOpen]);
+
+  
   // Exposer fonctions via ref
   useImperativeHandle(ref, () => ({
     jumpToRandomMoment: () => {
@@ -299,24 +307,29 @@ const handleSelectMoment = useCallback((moment, forceOpen = false) => {
 
       {/* Barre de recherche (si ouverte) */}
       {isSearchOpen && (
-        <div className="bg-white border-b border-gray-200 p-3">
+        <div className="relative bg-white border-b border-gray-200 p-3">
           <input 
             type="text" 
             value={searchQuery} 
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setIsSearchOpen(false);
-                setSearchQuery('');
-              }
-            }}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+            onKeyDown={(e) => { if (e.key === 'Escape') setIsSearchOpen(false); }}
+            className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
             placeholder="Rechercher un texte, un titre... (Echap pour fermer)"
             autoFocus
           />
+          {/* Le bouton "X" qui n'apparaît que si du texte est saisi */}
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')} 
+              className="absolute inset-y-0 right-0 flex items-center pr-5 text-gray-400 hover:text-gray-600"
+              title="Effacer la recherche"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
       )}
-
+      
       {/* Contenu principal */}
       <main 
   ref={scrollContainerRef}

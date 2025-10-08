@@ -141,8 +141,8 @@ export default function UnifiedTopBar({
     switch (currentPage) {
 	  case 'memories':
         return (
-          <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-2 rounded-lg ${isSearchOpen ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`} title="Rechercher (/)">
-            <Search className="w-5 h-5" />
+          <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-2 rounded-lg ${isSearchOpen ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`} title={isSearchOpen ? "Fermer la recherche" : "Rechercher (/)"}>
+            {isSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
           </button>
         );
       case 'chat': 
