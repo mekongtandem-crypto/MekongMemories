@@ -10,7 +10,7 @@ import React, { useState, useEffect, useRef, memo, useCallback, useImperativeHan
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown
+  AlertCircle, ChevronDown, X
 } from 'lucide-react';
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
