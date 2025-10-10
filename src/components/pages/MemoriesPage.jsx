@@ -15,6 +15,8 @@ import {
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
 import SessionCreationModal from '../SessionCreationModal.jsx';
+import ThemeModal from '../ThemeModal.jsx';
+import { generatePostKey, generatePhotoMomentKey, generatePhotoMastodonKey } from '../../utils/themeUtils.js';
 
 function MemoriesPage({ 
   isTimelineVisible,
@@ -40,6 +42,16 @@ function MemoriesPage({
   const [lastScrollY, setLastScrollY] = useState(0);
   const scrollContainerRef = useRef(null);
 
+// États pour le tagging
+const [themeModal, setThemeModal] = useState({
+  isOpen: false,
+  contentKey: null,
+  contentType: null,
+  currentThemes: []
+});
+
+const [selectedPhotos, setSelectedPhotos] = useState([]); // Pour sélection multiple
+const [selectionMode, setSelectionMode] = useState(false); // Mode sélection actif ?
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const momentRefs = useRef({});
   
@@ -282,7 +294,99 @@ const handleSelectMoment = useCallback((moment, forceOpen = false) => {
     setSessionModal({ source, contextMoment });
   }, []);
 
+  // ========================================
+// HANDLERS TAGGING
+// ========================================
+
+const handleOpenThemeModal = useCallback((contentKey, contentType, currentThemes = []) => {
+  setThemeModal({
+    isOpen: true,
+    contentKey,
+    contentType,
+    currentThemes
+  });
+}, []);
+
+const handleSaveThemes = useCallback(async (selectedThemes) => {
+  if (!themeModal.contentKey || !app.currentUser) return;
+  
+  await window.themeAssignments.assignThemes(
+    themeModal.contentKey,
+    selectedThemes,
+    app.currentUser.id
+  );
+  
+  setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
+  
+  // Force re-render pour afficher les badges
+  setViewerState(prev => ({ ...prev }));
+}, [themeModal, app.currentUser]);
+
+const handleCloseThemeModal = useCallback(() => {
+  setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
+}, []);
+
+// Sélection multiple photos
+const togglePhotoSelection = useCallback((photo) => {
+  setSelectedPhotos(prev => {
+    const key = photo.google_drive_id;
+    if (prev.some(p => p.google_drive_id === key)) {
+      return prev.filter(p => p.google_drive_id !== key);
+    } else {
+      return [...prev, photo];
+    }
+  });
+}, []);
+
+const handleBulkTagPhotos = useCallback(() => {
+  if (selectedPhotos.length === 0) return;
+  
+  // Ouvrir modal pour toutes les photos sélectionnées
+  setThemeModal({
+    isOpen: true,
+    contentKey: null, // On gérera plusieurs clés
+    contentType: 'photos',
+    currentThemes: [],
+    bulkPhotos: selectedPhotos
+  });
+}, [selectedPhotos]);
+
+const handleSaveBulkThemes = useCallback(async (selectedThemes) => {
+  if (!themeModal.bulkPhotos || !app.currentUser) return;
+  
+  // Assigner à toutes les photos sélectionnées
+  for (const photo of themeModal.bulkPhotos) {
+    const key = generatePhotoMomentKey(photo);
+    if (key) {
+      await window.themeAssignments.assignThemes(
+        key,
+        selectedThemes,
+        app.currentUser.id
+      );
+    }
+  }
+  
+  setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
+  setSelectedPhotos([]);
+  setSelectionMode(false);
+  
+  // Force re-render
+  setViewerState(prev => ({ ...prev }));
+}, [themeModal, app.currentUser]);
+
+const cancelSelection = useCallback(() => {
+  setSelectedPhotos([]);
+  setSelectionMode(false);
+}, []);
+
+
   const filteredMoments = getFilteredMoments(momentsData, searchQuery, momentFilter, app.sessions);
+
+
+
+
+
+
 
   if (!app.isInitialized || !momentsData) {
     return <div className="p-12 text-center">Chargement des données...</div>;
@@ -458,6 +562,8 @@ useEffect(() => {
   const handleToggleLocal = (key) => {
     setLocalDisplay(prev => ({ ...prev, [key]: !prev[key] }));
   };
+  
+
 
   return (
     <div 
@@ -676,12 +782,27 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
     onCreateSession(post, moment);
   };
 
+  // ✅ NOUVEAU : Gérer le tagging
+  const handleTagPost = (e) => {
+    e.stopPropagation();
+    const postKey = generatePostKey(post);
+    const currentThemes = window.themeAssignments?.getThemesForContent(postKey) || [];
+    
+    if (window.memoriesPageActions?.openThemeModal) {
+      window.memoriesPageActions.openThemeModal(postKey, 'post', currentThemes);
+    }
+  };
+
+  // ✅ NOUVEAU : Vérifier si ce post a des thèmes
+  const postKey = generatePostKey(post);
+  const postThemes = window.themeAssignments?.getThemesForContent(postKey) || [];
+  const hasThemes = postThemes.length > 0;
+
   const hasPhotos = post.photos && post.photos.length > 0;
   const photosAreVisible = showThisPostPhotos && hasPhotos;
 
   return (
-   // <div className="mt-2 border-b border-gray-100 pb-2 last:border-b-0">
-      <div className="mt-2">
+    <div className="mt-2">
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         <div className="flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200">
           <div className="flex items-center gap-x-3 flex-1 min-w-0">
@@ -700,6 +821,14 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
             <h4 className="font-semibold text-gray-800 text-sm truncate flex-1">
               {title}
             </h4>
+            
+            {/* ✅ NOUVEAU : Badge thèmes */}
+            {hasThemes && (
+              <div className="flex items-center space-x-1 text-xs text-amber-600 flex-shrink-0">
+                <Tag className="w-3 h-3" />
+                <span>{postThemes.length}</span>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center gap-x-3 flex-shrink-0 ml-2">
@@ -708,6 +837,15 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
                 {post.photos.length} photo{post.photos.length > 1 ? 's' : ''}
               </span>
             )}
+            
+            {/* ✅ NOUVEAU : Bouton tagger */}
+            <button 
+              onClick={handleTagPost} 
+              className="p-1.5 rounded hover:bg-amber-50 transition-colors" 
+              title="Assigner des thèmes"
+            >
+              <Tag className={`w-4 h-4 ${hasThemes ? 'text-amber-600' : 'text-gray-400'}`} />
+            </button>
             
             <button 
               onClick={handleCreateSession} 
