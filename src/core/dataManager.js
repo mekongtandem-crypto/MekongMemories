@@ -382,3 +382,9 @@ sendNotification = async (toUserId, sessionId, sessionTitle) => {
 }
 
 export const dataManager = new DataManager();
+
+// ✅ AJOUTER CES LIGNES À LA FIN :
+if (typeof window !== 'undefined') {
+  window.dataManager = dataManager;
+  console.log('🛠️ DataManager disponible via window.dataManager');
+}

@@ -1,5 +1,5 @@
 /**
- * MasterIndexGenerator.js v4.2 - Avec progression
+ * MasterIndexGenerator.js v5.0 - Avec Thèmes
  * Photos Mastodon dans : Medias/Mastodon/Mastodon_Photos/
  */
 
@@ -9,10 +9,11 @@ import { mastodonData } from './MastodonData.js';
 class MasterIndexGenerator {
   constructor() {
     this.debugMode = true;
-    this.version = '4.2-progress';
+    this.version = '5.0-themes';
     this.progressCallback = null;
     console.log(`🗂️ MasterIndexGenerator ${this.version}: Prêt.`);
   }
+
 
   initialize({ driveSync, mastodonData }) {
     this.driveSync = driveSync;
@@ -328,8 +329,12 @@ class MasterIndexGenerator {
     const total_photos_post = unifiedMoments.reduce((sum, m) => sum + (m.postPhotos?.length || 0), 0);
 
     return {
-      version: this.version,
+      version: "5.0-themes", // ✅ CHANGÉ
       generated_at: new Date().toISOString(),
+      
+      // ✅ NOUVEAU : Structure thèmes (vide au départ)
+      themes: [],
+      
       metadata: {
         total_moments: unifiedMoments.length,
         total_posts: total_posts,
@@ -340,7 +345,7 @@ class MasterIndexGenerator {
       moments: unifiedMoments
     };
   }
-} // ✅ CORRECTION : Accolade de fermeture de la classe ICI
+}
 
 export const masterIndexGenerator = new MasterIndexGenerator();
 if (typeof window !== 'undefined') {
