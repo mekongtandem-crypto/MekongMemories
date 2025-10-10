@@ -366,6 +366,25 @@ sendNotification = async (toUserId, sessionId, sessionTitle) => {
   }
 }
 
+  /**
+ * Sauvegarde le masterIndex modifié sur Drive
+ */
+saveMasterIndex = async (updatedMasterIndex) => {
+  try {
+    await this.driveSync.saveFile('mekong_master_index_v3_moments.json', updatedMasterIndex);
+    
+    // Mettre à jour l'état local
+    this.updateState({ masterIndex: updatedMasterIndex });
+    
+    console.log('✅ MasterIndex sauvegardé');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Erreur sauvegarde masterIndex:', error);
+    return { success: false, error: error.message };
+  }
+}
+  
+  
   getState = () => this.appState;
   
   subscribe = (callback) => {
