@@ -1,9 +1,9 @@
 /**
- * SettingsPage.jsx v4.1 - Emoji Picker Natif
- * ✅ Input text acceptant n'importe quel emoji
- * ✅ Suggestions optionnelles repliables
- * ✅ Code nettoyé (duplication supprimée)
+ * SettingsPage.jsx v4.2 - Phase 16 - Améliorations
+ * ✅ data-section pour ciblage automatique
+ * ✅ Cascade delete avec confirmation si >10 assignations
  */
+ 
 import React, { useState, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
@@ -197,16 +197,31 @@ export default function SettingsPage() {
 
     const stats = countThemeContents(window.themeAssignments, themeId);
     
-    const confirmMessage = stats.totalCount > 0
-      ? `⚠️ Ce thème est utilisé sur ${stats.totalCount} contenu(s).\n\nSi vous le supprimez, tous ces contenus seront détaggués.\n\nContinuer ?`
-      : `Supprimer le thème "${theme.name}" ?`;
+    // ✅ Message adapté selon le nombre d'assignations
+    let confirmMessage;
+    if (stats.totalCount === 0) {
+      confirmMessage = `Supprimer le thème "${theme.name}" ?`;
+    } else if (stats.totalCount > 10) {
+      // ✅ NOUVEAU : Confirmation renforcée si >10
+      confirmMessage = `⚠️ ATTENTION : Ce thème est utilisé sur ${stats.totalCount} contenus !\n\n` +
+        `• ${stats.postCount} article${stats.postCount > 1 ? 's' : ''}\n` +
+        `• ${stats.photoCount} photo${stats.photoCount > 1 ? 's' : ''}\n\n` +
+        `Si vous le supprimez, tous ces contenus seront détaggués.\n\n` +
+        `Êtes-vous VRAIMENT sûr de vouloir continuer ?`;
+    } else {
+      confirmMessage = `⚠️ Ce thème est utilisé sur ${stats.totalCount} contenu${stats.totalCount > 1 ? 's' : ''}.\n\n` +
+        `Si vous le supprimez, ${stats.totalCount === 1 ? 'ce contenu sera détaggué' : 'ces contenus seront détaggués'}.\n\n` +
+        `Continuer ?`;
+    }
 
     if (!confirm(confirmMessage)) return;
 
+    // Cascade delete des assignations
     if (stats.totalCount > 0) {
       await window.themeAssignments.deleteThemeAssignments(themeId);
     }
 
+    // Suppression du thème dans masterIndex
     const updatedThemes = themes.filter(t => t.id !== themeId);
     const updatedMasterIndex = {
       ...app.masterIndex,
@@ -217,7 +232,7 @@ export default function SettingsPage() {
 
     if (result.success) {
       setThemes(updatedThemes);
-      console.log('✅ Thème supprimé (cascade)');
+      console.log(`✅ Thème supprimé (${stats.totalCount} assignations nettoyées)`);
     } else {
       alert('Erreur lors de la suppression du thème');
     }
@@ -367,9 +382,11 @@ export default function SettingsPage() {
         )}
       </section>
 
-      {/* Section Mes Thèmes */}
+ {/* ✅ Section Thèmes avec data-section pour ciblage */}
       <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <button
+          data-section="themes" // ✅ NOUVEAU : Pour ciblage automatique
+          data-open={openSections.themes ? "true" : undefined}
           onClick={() => toggleSection('themes')}
           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
         >
@@ -385,6 +402,7 @@ export default function SettingsPage() {
         {openSections.themes && (
           <div className="p-4 border-t border-gray-100 space-y-4">
             
+            {/* Message si aucun thème */}
             {themes.length === 0 && !showThemeForm && !editingTheme && (
               <div className="text-center py-8 text-gray-500">
                 <Tag className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -393,6 +411,7 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {/* Liste des thèmes existants */}
             {themes.length > 0 && !editingTheme && (
               <div className="space-y-2">
                 {themes.map(theme => {

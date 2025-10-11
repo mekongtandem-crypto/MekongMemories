@@ -1,8 +1,7 @@
 /**
- * ThemeModal.jsx v1.1c - Phase 16B
- * ✅ Encarts plus compacts
- * ✅ Affichage en 2 colonnes
- * ✅ Bouton "Créer un thème" en fin de liste
+ * ThemeModal.jsx v1.2 - Phase 16 - Corrections bugs
+ * ✅ Bug 4 : Bouton "Créer thème" redirige vers Settings
+ * ✅ Bug 5 : z-index 10000 (devant PhotoViewer)
  */
 import React, { useState, useEffect } from 'react';
 import { X, Tag, Plus } from 'lucide-react';
@@ -14,7 +13,6 @@ export default function ThemeModal({
   availableThemes,
   currentThemes,
   onSave,
-  onCreateTheme, // ✅ Nouveau callback
   title = "Assigner des thèmes",
   description = null,
   contentType = null
@@ -47,15 +45,33 @@ export default function ThemeModal({
     onClose();
   };
 
+  // ✅ CORRECTION BUG 4 : Redirection vers Settings
   const handleCreateTheme = () => {
-    if (onCreateTheme) {
-      onCreateTheme();
+    onClose();
+    
+    // Changer de page vers Settings
+    if (window.app) {
+      window.app.updateCurrentPage('settings');
+      
+      // Auto-ouvrir section Thèmes après 200ms
+      setTimeout(() => {
+        const themesSection = document.querySelector('[data-section="themes"]');
+        if (themesSection && !themesSection.getAttribute('data-open')) {
+          themesSection.click();
+        }
+        
+        // Scroll vers la section
+        setTimeout(() => {
+          themesSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }, 200);
     }
   };
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4"
+      style={{ zIndex: 10000 }} // ✅ CORRECTION BUG 5 : z-index au-dessus de PhotoViewer (9999)
       onClick={handleCancel}
     >
       <div 
@@ -124,10 +140,11 @@ export default function ThemeModal({
                 );
               })}
               
-              {/* ✅ Bouton créer un thème */}
+              {/* ✅ Bouton créer un thème FONCTIONNEL */}
               <button
                 onClick={handleCreateTheme}
                 className="flex items-center justify-center space-x-2 p-2 rounded-lg border-2 border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50 transition-all"
+                title="Ouvrir Réglages → Thèmes"
               >
                 <Plus className="w-5 h-5 text-gray-500" />
                 <span className="text-sm font-medium text-gray-600">Créer un thème</span>

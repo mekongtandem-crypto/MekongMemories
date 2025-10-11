@@ -1,8 +1,7 @@
 /**
- * MemoriesPage.jsx v6.3 - Phase 16
- * ✅ Tagging posts avec bouton 🏷️
- * ✅ Tagging photos avec longpress → mode sélection
- * ✅ Filtrage par thème (pills en haut)
+ * MemoriesPage.jsx v6.4 - Phase 16 - Corrections bugs
+ * ✅ Bug 1&2 : Header posts cohérent (📸 N · 🏷️ M · 💬)
+ * ✅ Bug 3 : Header photos moment "N Photos de..." (pas redondant)
  */
 
 import React, { useState, useEffect, useRef, memo, useCallback, useImperativeHandle } from 'react';
@@ -805,6 +804,7 @@ const MomentContent = memo(({
       />
     ))}
     
+    {/* ✅ CORRECTION BUG 3 : Header simplifié */}
     {moment.dayPhotoCount > 0 && (
       <div className="mt-2 border-b border-gray-100 pb-2">
         <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -815,20 +815,19 @@ const MomentContent = memo(({
             }}
             className="w-full flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200 hover:bg-gray-100 transition-colors"
           >
+            {/* ✅ Format: 📸 20 Photos de "Titre" */}
             <div className="flex items-center gap-x-3 flex-1">
-              <Camera className={`w-4 h-4 transition-colors ${
+              <Camera className={`w-4 h-4 ${
                 localDisplay.showDayPhotos ? 'text-green-600' : 'text-gray-400'
               }`} />
               <h4 className="font-semibold text-gray-800 text-sm">
-                Photos de "{moment.displayTitle}"
+                {moment.dayPhotoCount} Photo{moment.dayPhotoCount > 1 ? 's' : ''} de "{moment.displayTitle}"
               </h4>
             </div>
-            <div className="flex items-center gap-x-2 text-sm text-gray-600">
-              <span>{moment.dayPhotoCount} photo{moment.dayPhotoCount > 1 ? 's' : ''}</span>
-              <ChevronDown className={`w-4 h-4 transition-transform ${
-                localDisplay.showDayPhotos ? 'rotate-180' : ''
-              }`} />
-            </div>
+            
+            <ChevronDown className={`w-4 h-4 transition-transform ${
+              localDisplay.showDayPhotos ? 'rotate-180' : ''
+            }`} />
           </button>
         </div>
       </div>
@@ -906,6 +905,7 @@ const PostArticle = memo(({
     <div className="mt-2">
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         <div className="flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200">
+          {/* Gauche : Titre + indicateur photos inline */}
           <div className="flex items-center gap-x-3 flex-1 min-w-0">
             {hasPhotos && (
               <button 
@@ -922,33 +922,36 @@ const PostArticle = memo(({
             <h4 className="font-semibold text-gray-800 text-sm truncate flex-1">
               {title}
             </h4>
-            
-            {hasThemes && (
-              <div className="flex items-center space-x-1 text-xs text-amber-600 flex-shrink-0">
-                <Tag className="w-3 h-3" />
-                <span>{postThemes.length}</span>
-              </div>
-            )}
           </div>
           
-          <div className="flex items-center gap-x-3 flex-shrink-0 ml-2">
+          {/* ✅ CORRECTION : Droite = Indicateurs compacts + Boutons */}
+          <div className="flex items-center gap-x-2 flex-shrink-0 ml-2">
+            {/* 📸 Indicateur photos (si hasPhotos) */}
             {hasPhotos && (
-              <span className="text-xs text-gray-600 whitespace-nowrap">
-                {post.photos.length} photo{post.photos.length > 1 ? 's' : ''}
-              </span>
+              <div className="flex items-center space-x-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                <Camera className="w-3 h-3" />
+                <span className="font-medium">{post.photos.length}</span>
+              </div>
             )}
             
+            {/* 🏷️ Bouton Tag avec compteur intégré */}
             <button 
               onClick={handleTagPost} 
-              className="p-1.5 rounded hover:bg-amber-50 transition-colors" 
+              className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors ${
+                hasThemes 
+                  ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
+                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+              }`}
               title="Assigner des thèmes"
             >
-              <Tag className={`w-4 h-4 ${hasThemes ? 'text-amber-600' : 'text-gray-400'}`} />
+              <Tag className="w-4 h-4" />
+              {hasThemes && <span className="text-xs font-bold">{postThemes.length}</span>}
             </button>
             
+            {/* 💬 Bouton session */}
             <button 
               onClick={handleCreateSession} 
-              className="p-1.5 rounded hover:bg-amber-50 transition-colors" 
+              className="px-2 py-1 rounded hover:bg-amber-50 transition-colors" 
               title="Créer une session"
             >
               <span className="text-base">💬</span>

@@ -1,7 +1,8 @@
 /**
- * ThemeAssignments.js v1.0
- * Gestionnaire des assignments thèmes ↔ contenus
- * Inspiré de NotificationManager.js
+ * ThemeAssignments.js v2.0 - Optimisé
+ * ✅ Index inversé pour performance
+ * ✅ Batch operations
+ * ✅ Support moment tagging (désactivé mais prévu)
  */
 
 import { driveSync } from './DriveSync.js';
@@ -9,9 +10,11 @@ import { driveSync } from './DriveSync.js';
 class ThemeAssignments {
   constructor() {
     this.assignments = {}; // { contentKey: { themes: [], assignedBy, assignedAt } }
+    this.invertedIndex = {}; // { themeId: Set([contentKey, ...]) } - NOUVEAU
     this.listeners = new Set();
     this.isLoaded = false;
-    console.log('🏷️ ThemeAssignments v1.0: Ready');
+    this.allowMomentTagging = false; // ✅ NOUVEAU : Option pour tagging moments entiers
+    console.log('🏷️ ThemeAssignments v2.0: Ready');
   }
 
   // ========================================
@@ -33,10 +36,10 @@ class ThemeAssignments {
       
       if (data) {
         this.assignments = data.assignments || {};
+        this.rebuildInvertedIndex(); // ✅ NOUVEAU : Reconstruire index
         this.isLoaded = true;
         console.log(`🏷️ ${Object.keys(this.assignments).length} assignments chargés`);
       } else {
-        // Créer fichier vide si inexistant
         await this.saveAssignments();
       }
       
@@ -44,14 +47,31 @@ class ThemeAssignments {
     } catch (error) {
       console.error('❌ Erreur chargement assignments:', error);
       this.assignments = {};
+      this.invertedIndex = {};
       this.isLoaded = true;
     }
+  }
+
+  // ✅ NOUVEAU : Reconstruction index inversé
+  rebuildInvertedIndex() {
+    this.invertedIndex = {};
+    
+    Object.entries(this.assignments).forEach(([contentKey, data]) => {
+      data.themes.forEach(themeId => {
+        if (!this.invertedIndex[themeId]) {
+          this.invertedIndex[themeId] = new Set();
+        }
+        this.invertedIndex[themeId].add(contentKey);
+      });
+    });
+    
+    console.log(`📊 Index inversé: ${Object.keys(this.invertedIndex).length} thèmes indexés`);
   }
 
   async saveAssignments() {
     try {
       const data = {
-        version: '1.0',
+        version: '2.0',
         lastModified: new Date().toISOString(),
         assignments: this.assignments
       };
@@ -81,11 +101,26 @@ class ThemeAssignments {
         throw new Error('Paramètres invalides');
       }
 
+      // Retirer des anciens index
+      const oldThemes = this.assignments[contentKey]?.themes || [];
+      oldThemes.forEach(themeId => {
+        this.invertedIndex[themeId]?.delete(contentKey);
+      });
+
+      // Nouvelle assignation
       this.assignments[contentKey] = {
         themes: themeIds,
         assignedBy: userId,
         assignedAt: new Date().toISOString()
       };
+
+      // Ajouter aux nouveaux index
+      themeIds.forEach(themeId => {
+        if (!this.invertedIndex[themeId]) {
+          this.invertedIndex[themeId] = new Set();
+        }
+        this.invertedIndex[themeId].add(contentKey);
+      });
 
       await this.saveAssignments();
 
@@ -98,22 +133,65 @@ class ThemeAssignments {
     }
   }
 
+  // ✅ NOUVEAU : Batch assignation (pour plusieurs contenus)
+  async assignThemesBatch(contentKeys, themeIds, userId) {
+    try {
+      if (!Array.isArray(contentKeys) || !Array.isArray(themeIds)) {
+        throw new Error('Paramètres invalides');
+      }
+
+      for (const contentKey of contentKeys) {
+        // Retirer des anciens index
+        const oldThemes = this.assignments[contentKey]?.themes || [];
+        oldThemes.forEach(themeId => {
+          this.invertedIndex[themeId]?.delete(contentKey);
+        });
+
+        // Nouvelle assignation
+        this.assignments[contentKey] = {
+          themes: themeIds,
+          assignedBy: userId,
+          assignedAt: new Date().toISOString()
+        };
+
+        // Ajouter aux nouveaux index
+        themeIds.forEach(themeId => {
+          if (!this.invertedIndex[themeId]) {
+            this.invertedIndex[themeId] = new Set();
+          }
+          this.invertedIndex[themeId].add(contentKey);
+        });
+      }
+
+      await this.saveAssignments();
+
+      console.log(`🏷️ Batch: ${contentKeys.length} contenus → [${themeIds.join(', ')}]`);
+      
+      return { success: true, count: contentKeys.length };
+    } catch (error) {
+      console.error('❌ Erreur batch assignation:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   /**
    * Retire des thèmes d'un contenu
-   * @param {string} contentKey - Clé composite
-   * @param {Array<string>} themeIds - IDs des thèmes à retirer
    */
   async removeThemes(contentKey, themeIds) {
     try {
       if (!this.assignments[contentKey]) {
-        return { success: true }; // Déjà pas de thèmes
+        return { success: true };
       }
 
       const currentThemes = this.assignments[contentKey].themes;
       const newThemes = currentThemes.filter(t => !themeIds.includes(t));
 
+      // Retirer de l'index inversé
+      themeIds.forEach(themeId => {
+        this.invertedIndex[themeId]?.delete(contentKey);
+      });
+
       if (newThemes.length === 0) {
-        // Plus aucun thème → supprimer l'entrée
         delete this.assignments[contentKey];
       } else {
         this.assignments[contentKey].themes = newThemes;
@@ -132,8 +210,6 @@ class ThemeAssignments {
 
   /**
    * Récupère les thèmes d'un contenu
-   * @param {string} contentKey - Clé composite
-   * @returns {Array<string>} IDs des thèmes
    */
   getThemesForContent(contentKey) {
     if (!contentKey) return [];
@@ -141,38 +217,37 @@ class ThemeAssignments {
   }
 
   /**
-   * Récupère tous les contenus taggués avec un thème
-   * @param {string} themeId - ID du thème
-   * @returns {Array<string>} Clés composites des contenus
+   * ✅ OPTIMISÉ : Récupère tous les contenus taggués avec un thème (O(1) au lieu de O(n))
    */
   getAllContentsByTheme(themeId) {
-    return Object.keys(this.assignments).filter(key => 
-      this.assignments[key].themes.includes(themeId)
-    );
+    return Array.from(this.invertedIndex[themeId] || []);
   }
 
   /**
-   * Supprime tous les assignments d'un thème (suppression en cascade)
-   * @param {string} themeId - ID du thème
+   * Supprime tous les assignments d'un thème (cascade)
    */
   async deleteThemeAssignments(themeId) {
     try {
       let deletedCount = 0;
 
-      Object.keys(this.assignments).forEach(key => {
-        const themes = this.assignments[key].themes;
+      // Récupérer tous les contenus via index inversé (rapide)
+      const affectedContents = Array.from(this.invertedIndex[themeId] || []);
+
+      affectedContents.forEach(contentKey => {
+        const themes = this.assignments[contentKey].themes;
         const newThemes = themes.filter(t => t !== themeId);
 
         if (newThemes.length === 0) {
-          // Plus aucun thème → supprimer l'entrée
-          delete this.assignments[key];
+          delete this.assignments[contentKey];
           deletedCount++;
-        } else if (newThemes.length < themes.length) {
-          // Il reste des thèmes → mettre à jour
-          this.assignments[key].themes = newThemes;
+        } else {
+          this.assignments[contentKey].themes = newThemes;
           deletedCount++;
         }
       });
+
+      // Nettoyer l'index inversé
+      delete this.invertedIndex[themeId];
 
       if (deletedCount > 0) {
         await this.saveAssignments();
@@ -182,6 +257,58 @@ class ThemeAssignments {
       return { success: true, deletedCount };
     } catch (error) {
       console.error('❌ Erreur suppression assignments:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ========================================
+  // ✅ NOUVEAU : MOMENT TAGGING (désactivé)
+  // ========================================
+
+  /**
+   * Tag un moment entier (tous ses contenus)
+   * @param {Object} moment - Moment complet
+   * @param {Array<string>} themeIds - IDs des thèmes
+   * @param {string} userId - ID utilisateur
+   */
+  async assignThemesToMoment(moment, themeIds, userId) {
+    if (!this.allowMomentTagging) {
+      console.warn('⚠️ Moment tagging désactivé');
+      return { success: false, error: 'Feature désactivée' };
+    }
+
+    try {
+      const contentKeys = [];
+
+      // Collecter tous les posts
+      moment.posts?.forEach(post => {
+        contentKeys.push(`post:${post.id}`);
+      });
+
+      // Collecter toutes les photos moment
+      moment.dayPhotos?.forEach(photo => {
+        if (photo.google_drive_id) {
+          contentKeys.push(`photo_moment:${photo.google_drive_id}`);
+        }
+      });
+
+      // Collecter toutes les photos Mastodon
+      moment.posts?.forEach(post => {
+        post.photos?.forEach(photo => {
+          if (photo.google_drive_id) {
+            contentKeys.push(`photo_mastodon:${photo.google_drive_id}`);
+          }
+        });
+      });
+
+      // Batch assign
+      const result = await this.assignThemesBatch(contentKeys, themeIds, userId);
+
+      console.log(`✅ Moment "${moment.displayTitle}" taggué (${contentKeys.length} contenus)`);
+
+      return result;
+    } catch (error) {
+      console.error('❌ Erreur moment tagging:', error);
       return { success: false, error: error.message };
     }
   }
@@ -208,7 +335,8 @@ class ThemeAssignments {
     return {
       totalAssignments,
       byType,
-      isLoaded: this.isLoaded
+      isLoaded: this.isLoaded,
+      indexSize: Object.keys(this.invertedIndex).length
     };
   }
 
