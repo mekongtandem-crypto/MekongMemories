@@ -1,8 +1,6 @@
 /**
- * PhotoViewer.jsx v2.7 - Bouton Tag
- * ✅ Ajout bouton 🏷️ pour tagger les photos
- * ✅ Badge compteur de thèmes
- * ✅ ThemeModal intégré
+ * PhotoViewer.jsx v2.7.1 - Correction bug thèmes
+ * ✅ Utilise window.dataManager.getState() au lieu de window.app
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -18,12 +16,12 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   
-  // ✅ NOUVEAU : État pour le tagging
+  // État pour le tagging
   const [themeModal, setThemeModal] = useState({
     isOpen: false,
     currentThemes: []
   });
-  const [, forceUpdate] = useState({}); // Pour forcer re-render après sauvegarde
+  const [, forceUpdate] = useState({});
   
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -78,7 +76,7 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
     }
   };
 
-  // ✅ NOUVEAU : Gestion du tagging
+  // Gestion du tagging
   const handleOpenThemeModal = () => {
     const photoKey = currentPhoto.type === 'day_photo' 
       ? generatePhotoMomentKey(currentPhoto)
@@ -95,7 +93,12 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
   };
 
   const handleSaveThemes = async (selectedThemes) => {
-    if (!window.app?.currentUser) return;
+    // ✅ CORRECTION : Récupérer currentUser depuis dataManager
+    const appState = window.dataManager?.getState();
+    if (!appState?.currentUser) {
+      console.error('❌ Utilisateur non connecté');
+      return;
+    }
     
     const photoKey = currentPhoto.type === 'day_photo' 
       ? generatePhotoMomentKey(currentPhoto)
@@ -105,7 +108,7 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
       await window.themeAssignments.assignThemes(
         photoKey,
         selectedThemes,
-        window.app.currentUser.id
+        appState.currentUser.id // ✅ Utilise appState.currentUser
       );
       
       // Force re-render pour afficher le badge
@@ -119,7 +122,7 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
     setThemeModal({ isOpen: false, currentThemes: [] });
   };
 
-  // ✅ Vérifier si la photo actuelle a des thèmes
+  // Vérifier si la photo actuelle a des thèmes
   const photoKey = currentPhoto 
     ? (currentPhoto.type === 'day_photo' 
         ? generatePhotoMomentKey(currentPhoto)
@@ -160,6 +163,10 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [currentIndex, gallery.length, onClose]);
 
+  // ✅ CORRECTION : Récupérer thèmes depuis dataManager
+  const appState = window.dataManager?.getState();
+  const availableThemes = appState?.masterIndex?.themes || [];
+
   return (
     <>
       <div 
@@ -172,7 +179,7 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
           style={{ zIndex: 10001 }}
         >
           
-          {/* ✅ Boutons d'action (Session + Tag) */}
+          {/* Boutons d'action (Session + Tag) */}
           <div className="flex items-center space-x-2">
             <button 
               onClick={handleCreateSession}
@@ -183,7 +190,7 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
               <span className="hidden sm:inline">Session</span>
             </button>
             
-            {/* ✅ NOUVEAU : Bouton Tag avec badge */}
+            {/* Bouton Tag avec badge */}
             <button 
               onClick={handleOpenThemeModal}
               className={`relative flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold shadow-xl transition-colors ${
@@ -277,11 +284,11 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
         />
       </div>
 
-      {/* ✅ NOUVEAU : ThemeModal */}
+      {/* ✅ CORRECTION : Utilise availableThemes depuis appState */}
       <ThemeModal
         isOpen={themeModal.isOpen}
         onClose={handleCloseThemeModal}
-        availableThemes={window.app?.masterIndex?.themes || []}
+        availableThemes={availableThemes}
         currentThemes={themeModal.currentThemes}
         onSave={handleSaveThemes}
         title="Assigner des thèmes à cette photo"

@@ -49,9 +49,9 @@ export default function ThemeModal({
   const handleCreateTheme = () => {
     onClose();
     
-    // Changer de page vers Settings
-    if (window.app) {
-      window.app.updateCurrentPage('settings');
+    // Changer de page vers Settings (utilise dataManager, pas app)
+    if (window.dataManager) {
+      window.dataManager.updateCurrentPage('settings');
       
       // Auto-ouvrir section Thèmes après 200ms
       setTimeout(() => {
@@ -65,6 +65,8 @@ export default function ThemeModal({
           themesSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
       }, 200);
+    } else {
+      console.error('❌ window.dataManager non disponible');
     }
   };
 
