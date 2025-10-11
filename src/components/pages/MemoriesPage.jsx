@@ -1,16 +1,15 @@
 /**
- * MemoriesPage.jsx v6.2 - Phase 14.3
- * ✅ Filtrage intelligent (Tous/Non explorés/Avec articles/Avec photos)
- * ✅ Callbacks exposés pour TopBar
- * ✅ Icônes 💬 pour sessions (amber)
- * ✅ Scroll auto vers moments filtrés
+ * MemoriesPage.jsx v6.3 - Phase 16
+ * ✅ Tagging posts avec bouton 🏷️
+ * ✅ Tagging photos avec longpress → mode sélection
+ * ✅ Filtrage par thème (pills en haut)
  */
 
 import React, { useState, useEffect, useRef, memo, useCallback, useImperativeHandle } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown, X
+  AlertCircle, ChevronDown, X, Tag
 } from 'lucide-react';
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
@@ -27,6 +26,7 @@ function MemoriesPage({
   setCurrentDay,
   displayOptions
 }, ref) {
+
   const app = useAppState();
   
   const [selectedMoments, setSelectedMoments] = useState([]);
@@ -42,47 +42,133 @@ function MemoriesPage({
   const [lastScrollY, setLastScrollY] = useState(0);
   const scrollContainerRef = useRef(null);
 
-// États pour le tagging
-const [themeModal, setThemeModal] = useState({
-  isOpen: false,
-  contentKey: null,
-  contentType: null,
-  currentThemes: []
-});
+  // États pour le tagging
+  const [themeModal, setThemeModal] = useState({
+    isOpen: false,
+    contentKey: null,
+    contentType: null,
+    currentThemes: []
+  });
 
-const [selectedPhotos, setSelectedPhotos] = useState([]); // Pour sélection multiple
-const [selectionMode, setSelectionMode] = useState(false); // Mode sélection actif ?
+  const [selectedPhotos, setSelectedPhotos] = useState([]); // Photos cochées
+  const [activePhotoGrid, setActivePhotoGrid] = useState(null); // Quelle grille est en mode sélection
+  
+  // ✅ NOUVEAU : Filtre par thème
+  const [selectedTheme, setSelectedTheme] = useState(null);
+  
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const momentRefs = useRef({});
   
+  // ========================================
+  // CALLBACKS TAGGING
+  // ========================================
+
   const executeScrollToElement = useCallback((element) => {
-    // 1. On trouve la barre de navigation
     const topBarElement = document.querySelector('.fixed.top-0.z-40');
     const scrollContainer = scrollContainerRef.current;
 
     if (element && topBarElement && scrollContainer) {
-      // 2. On mesure sa hauteur exacte
       const topBarHeight = topBarElement.offsetHeight;
-      
-      // 3. On calcule la position de destination...
-      //    ET ON SOUSTRAIT LA HAUTEUR DE LA BARRE !
-      const offsetPosition = element.offsetTop - topBarHeight - 64; // 16px de marge
-
-      // 4. On scrolle à la position calculée
+      const offsetPosition = element.offsetTop - topBarHeight - 64;
       scrollContainer.scrollTo({
         top: offsetPosition,
         behavior: 'smooth',
       });
-    } // ...
+    }
   }, []);
+
+  const handleOpenThemeModal = useCallback((contentKey, contentType, currentThemes = []) => {
+    setThemeModal({
+      isOpen: true,
+      contentKey,
+      contentType,
+      currentThemes
+    });
+  }, []);
+
+  const handleSaveThemes = useCallback(async (selectedThemes) => {
+    if (!themeModal.contentKey || !app.currentUser) return;
+    
+    await window.themeAssignments.assignThemes(
+      themeModal.contentKey,
+      selectedThemes,
+      app.currentUser.id
+    );
+    
+    setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
+    setViewerState(prev => ({ ...prev }));
+  }, [themeModal, app.currentUser]);
+
+  const handleCloseThemeModal = useCallback(() => {
+    setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
+  }, []);
+
+  // ✅ MODIFIÉ : Activation mode sélection pour une grille spécifique
+  const activatePhotoSelection = useCallback((gridId) => {
+    setActivePhotoGrid(gridId);
+    setSelectedPhotos([]);
+  }, []);
+
+  // Sélection photo
+  const togglePhotoSelection = useCallback((photo) => {
+    setSelectedPhotos(prev => {
+      const key = photo.google_drive_id;
+      if (prev.some(p => p.google_drive_id === key)) {
+        return prev.filter(p => p.google_drive_id !== key);
+      } else {
+        return [...prev, photo];
+      }
+    });
+  }, []);
+
+  // Bulk tag
+  const handleBulkTagPhotos = useCallback(() => {
+    if (selectedPhotos.length === 0) return;
+    
+    setThemeModal({
+      isOpen: true,
+      contentKey: null,
+      contentType: 'photos',
+      currentThemes: [],
+      bulkPhotos: selectedPhotos
+    });
+  }, [selectedPhotos]);
+
+  const handleSaveBulkThemes = useCallback(async (selectedThemes) => {
+    if (!themeModal.bulkPhotos || !app.currentUser) return;
+    
+    for (const photo of themeModal.bulkPhotos) {
+      const key = generatePhotoMomentKey(photo);
+      if (key) {
+        await window.themeAssignments.assignThemes(
+          key,
+          selectedThemes,
+          app.currentUser.id
+        );
+      }
+    }
+    
+    setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
+    setSelectedPhotos([]);
+    setActivePhotoGrid(null);
+    setViewerState(prev => ({ ...prev }));
+  }, [themeModal, app.currentUser]);
+
+  const cancelSelection = useCallback(() => {
+    setSelectedPhotos([]);
+    setActivePhotoGrid(null);
+  }, []);
+
+  const filteredMoments = getFilteredMoments(momentsData, searchQuery, momentFilter, app.sessions, selectedTheme);
+
+  // ========================================
+  // EFFECTS
+  // ========================================
   
-  
-  // Exposer callbacks pour TopBar
   useEffect(() => {
     window.memoriesPageFilters = {
       setMomentFilter: (filter) => {
         setMomentFilter(filter);
-        // Scroll vers premier moment filtré après render
         setTimeout(() => {
           const firstFiltered = document.querySelector('[data-filtered="true"]');
           if (firstFiltered) {
@@ -92,20 +178,30 @@ const [selectionMode, setSelectionMode] = useState(false); // Mode sélection ac
       }
     };
     
+    window.memoriesPageActions = {
+      openThemeModal: handleOpenThemeModal,
+      togglePhotoSelection: togglePhotoSelection,
+      activatePhotoSelection: activatePhotoSelection
+    };
+    
+    window.memoriesPageState = {
+      activePhotoGrid,
+      selectedPhotos
+    };
+    
     return () => {
       delete window.memoriesPageFilters;
+      delete window.memoriesPageActions;
+      delete window.memoriesPageState;
     };
-  }, []);
+  }, [handleOpenThemeModal, togglePhotoSelection, activatePhotoSelection, activePhotoGrid, selectedPhotos]);
   
-  // Ce hook s'assure que lorsque la barre de recherche se ferme, la recherche est réinitialisée.
   useEffect(() => {
     if (!isSearchOpen) {
       setSearchQuery('');
     }
   }, [isSearchOpen]);
 
-  
-  // Exposer fonctions via ref
   useImperativeHandle(ref, () => ({
     jumpToRandomMoment: () => {
       if (momentsData.length > 0) {
@@ -141,12 +237,17 @@ const [selectionMode, setSelectionMode] = useState(false); // Mode sélection ac
         case 'F':
           setDisplayMode(prev => prev === 'focus' ? 'multi' : 'focus');
           break;
+        case 'Escape':
+          if (activePhotoGrid) {
+            cancelSelection();
+          }
+          break;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [setIsTimelineVisible, setIsSearchOpen]);
+  }, [setIsTimelineVisible, setIsSearchOpen, activePhotoGrid, cancelSelection]);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -195,11 +296,9 @@ const [selectionMode, setSelectionMode] = useState(false); // Mode sélection ac
   const scrollToMoment = useCallback((momentId) => {
     const element = momentRefs.current[momentId];
     if (element) {
-      // On utilise notre nouvelle fonction de scroll
       executeScrollToElement(element);
     }
-  }, [executeScrollToElement]); // <-- On ajoute la dépendance
-  
+  }, [executeScrollToElement]);
 
   const jumpToDay = useCallback((day) => {
     const targetMoment = momentsData.find(m => day >= m.dayStart && day <= m.dayEnd);
@@ -222,8 +321,7 @@ const [selectionMode, setSelectionMode] = useState(false); // Mode sélection ac
     setViewerState({ isOpen: false, photo: null, gallery: [], contextMoment: null });
   }, []);
 
-  // ✅ NOUVELLE SIGNATURE (on ajoute un paramètre "forceOpen")
-const handleSelectMoment = useCallback((moment, forceOpen = false) => {
+  const handleSelectMoment = useCallback((moment, forceOpen = false) => {
     setSelectedMoments(prev => {
       const isAlreadySelected = prev.some(m => m.id === moment.id);
       
@@ -266,7 +364,7 @@ const handleSelectMoment = useCallback((moment, forceOpen = false) => {
       sessionData.systemMessage = `📸 Session basée sur la photo : "${source.filename}".`;
     } else if (source.content) {
       const title = source.content.split('\n')[0].substring(0, 40);
-      sessionData.systemMessage = `📝 Session basée sur l'article : "${title}...".`;
+      sessionData.systemMessage = `📄 Session basée sur l'article : "${title}...".`;
     } else {
       sessionData.systemMessage = `💬 Session basée sur le moment : "${source.displayTitle}".`;
     }
@@ -294,100 +392,6 @@ const handleSelectMoment = useCallback((moment, forceOpen = false) => {
     setSessionModal({ source, contextMoment });
   }, []);
 
-  // ========================================
-// HANDLERS TAGGING
-// ========================================
-
-const handleOpenThemeModal = useCallback((contentKey, contentType, currentThemes = []) => {
-  setThemeModal({
-    isOpen: true,
-    contentKey,
-    contentType,
-    currentThemes
-  });
-}, []);
-
-const handleSaveThemes = useCallback(async (selectedThemes) => {
-  if (!themeModal.contentKey || !app.currentUser) return;
-  
-  await window.themeAssignments.assignThemes(
-    themeModal.contentKey,
-    selectedThemes,
-    app.currentUser.id
-  );
-  
-  setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
-  
-  // Force re-render pour afficher les badges
-  setViewerState(prev => ({ ...prev }));
-}, [themeModal, app.currentUser]);
-
-const handleCloseThemeModal = useCallback(() => {
-  setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
-}, []);
-
-// Sélection multiple photos
-const togglePhotoSelection = useCallback((photo) => {
-  setSelectedPhotos(prev => {
-    const key = photo.google_drive_id;
-    if (prev.some(p => p.google_drive_id === key)) {
-      return prev.filter(p => p.google_drive_id !== key);
-    } else {
-      return [...prev, photo];
-    }
-  });
-}, []);
-
-const handleBulkTagPhotos = useCallback(() => {
-  if (selectedPhotos.length === 0) return;
-  
-  // Ouvrir modal pour toutes les photos sélectionnées
-  setThemeModal({
-    isOpen: true,
-    contentKey: null, // On gérera plusieurs clés
-    contentType: 'photos',
-    currentThemes: [],
-    bulkPhotos: selectedPhotos
-  });
-}, [selectedPhotos]);
-
-const handleSaveBulkThemes = useCallback(async (selectedThemes) => {
-  if (!themeModal.bulkPhotos || !app.currentUser) return;
-  
-  // Assigner à toutes les photos sélectionnées
-  for (const photo of themeModal.bulkPhotos) {
-    const key = generatePhotoMomentKey(photo);
-    if (key) {
-      await window.themeAssignments.assignThemes(
-        key,
-        selectedThemes,
-        app.currentUser.id
-      );
-    }
-  }
-  
-  setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
-  setSelectedPhotos([]);
-  setSelectionMode(false);
-  
-  // Force re-render
-  setViewerState(prev => ({ ...prev }));
-}, [themeModal, app.currentUser]);
-
-const cancelSelection = useCallback(() => {
-  setSelectedPhotos([]);
-  setSelectionMode(false);
-}, []);
-
-
-  const filteredMoments = getFilteredMoments(momentsData, searchQuery, momentFilter, app.sessions);
-
-
-
-
-
-
-
   if (!app.isInitialized || !momentsData) {
     return <div className="p-12 text-center">Chargement des données...</div>;
   }
@@ -396,10 +400,20 @@ const cancelSelection = useCallback(() => {
     return <div className="p-12 text-center text-red-500">Aucun moment à afficher.</div>;
   }
 
+  // ✅ NOUVEAU : Calculer les stats des thèmes
+  const availableThemes = app.masterIndex?.themes || [];
+  const themeStats = availableThemes.map(theme => {
+    const contents = window.themeAssignments?.getAllContentsByTheme(theme.id) || [];
+    return {
+      ...theme,
+      count: contents.length
+    };
+  }).filter(t => t.count > 0);
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden relative">
       
-      {/* Timeline (si visible) */}
+      {/* Timeline */}
       {isTimelineVisible && (
         <div className="border-b border-gray-200 bg-white">
           <TimelineRuleV2 
@@ -409,7 +423,7 @@ const cancelSelection = useCallback(() => {
         </div>
       )}
 
-      {/* Barre de recherche (si ouverte) */}
+      {/* Barre de recherche */}
       {isSearchOpen && (
         <div className="relative bg-white border-b border-gray-200 p-3">
           <input 
@@ -421,7 +435,6 @@ const cancelSelection = useCallback(() => {
             placeholder="Rechercher un texte, un titre... (Echap pour fermer)"
             autoFocus
           />
-          {/* Le bouton "X" qui n'apparaît que si du texte est saisi */}
           {searchQuery && (
             <button 
               onClick={() => setSearchQuery('')} 
@@ -433,12 +446,46 @@ const cancelSelection = useCallback(() => {
           )}
         </div>
       )}
+
+      {/* ✅ NOUVEAU : Filtres par thème */}
+      {themeStats.length > 0 && (
+        <div className="bg-white border-b border-gray-200 px-4 py-2">
+          <div className="flex items-center space-x-2 overflow-x-auto">
+            <Tag className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <button
+              onClick={() => setSelectedTheme(null)}
+              className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                selectedTheme === null
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Tous
+            </button>
+            {themeStats.map(theme => (
+              <button
+                key={theme.id}
+                onClick={() => setSelectedTheme(theme.id === selectedTheme ? null : theme.id)}
+                className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap flex items-center space-x-1 transition-colors ${
+                  selectedTheme === theme.id
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <span>{theme.icon}</span>
+                <span>{theme.name}</span>
+                <span className="text-xs opacity-75">({theme.count})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Contenu principal */}
       <main 
-  ref={scrollContainerRef}
-  className="flex-1 overflow-y-auto scroll-pt-32"
->
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto scroll-pt-32"
+      >
         <div className="container mx-auto px-4 py-4">
           <MomentsList 
             moments={filteredMoments}
@@ -450,9 +497,26 @@ const cancelSelection = useCallback(() => {
             onPhotoClick={openPhotoViewer}
             onCreateSession={handleOpenSessionModal}
             momentRefs={momentRefs}
+            activePhotoGrid={activePhotoGrid}
+            selectedPhotos={selectedPhotos}
+            onActivateSelection={activatePhotoSelection}
+            onTogglePhotoSelection={togglePhotoSelection}
+            onBulkTagPhotos={handleBulkTagPhotos}
+            onCancelSelection={cancelSelection}
           />
         </div>
       </main>
+
+      {/* ThemeModal */}
+      <ThemeModal
+        isOpen={themeModal.isOpen}
+        onClose={handleCloseThemeModal}
+        availableThemes={availableThemes}
+        currentThemes={themeModal.currentThemes}
+        onSave={themeModal.bulkPhotos ? handleSaveBulkThemes : handleSaveThemes}
+        title={themeModal.bulkPhotos ? "Assigner des thèmes aux photos" : "Assigner des thèmes"}
+        contentType={themeModal.contentType}
+      />
 
       {sessionModal && (
         <SessionCreationModal
@@ -487,7 +551,9 @@ const cancelSelection = useCallback(() => {
 
 const MomentsList = memo(({ 
   moments, selectedMoments, displayOptions, momentFilter, sessions, 
-  onMomentSelect, onPhotoClick, onCreateSession, momentRefs
+  onMomentSelect, onPhotoClick, onCreateSession, momentRefs,
+  activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
+  onBulkTagPhotos, onCancelSelection
 }) => {
   return (
     <div className="space-y-3">
@@ -510,6 +576,12 @@ const MomentsList = memo(({
             onPhotoClick={onPhotoClick}
             onCreateSession={onCreateSession}
             ref={el => momentRefs.current[moment.id] = el}
+            activePhotoGrid={activePhotoGrid}
+            selectedPhotos={selectedPhotos}
+            onActivateSelection={onActivateSelection}
+            onTogglePhotoSelection={onTogglePhotoSelection}
+            onBulkTagPhotos={onBulkTagPhotos}
+            onCancelSelection={onCancelSelection}
           />
         );
       })}
@@ -519,26 +591,25 @@ const MomentsList = memo(({
 
 const MomentCard = memo(React.forwardRef(({ 
   moment, isSelected, isExplored, matchesFilter, displayOptions, 
-  onSelect, onPhotoClick, onCreateSession
+  onSelect, onPhotoClick, onCreateSession,
+  activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
+  onBulkTagPhotos, onCancelSelection
 }, ref) => { 
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
   
-  // ✅ NOUVEAU CODE (synchronisé avec la TopBar)
   const [localDisplay, setLocalDisplay] = useState({
-  // ✅ Initialise l'état des posts en respectant les options globales
-  showPosts: displayOptions.showPostText,
-  showDayPhotos: displayOptions.showMomentPhotos
-});
-
-// ✅ Synchronise les DEUX états locaux lorsque les options globales changent
-useEffect(() => {
-  setLocalDisplay(prev => ({
-    ...prev,
     showPosts: displayOptions.showPostText,
     showDayPhotos: displayOptions.showMomentPhotos
-  }));
-}, [displayOptions.showPostText, displayOptions.showMomentPhotos]);
+  });
+
+  useEffect(() => {
+    setLocalDisplay(prev => ({
+      ...prev,
+      showPosts: displayOptions.showPostText,
+      showDayPhotos: displayOptions.showMomentPhotos
+    }));
+  }, [displayOptions.showPostText, displayOptions.showMomentPhotos]);
   
   const wasSelectedRef = useRef(isSelected);
   
@@ -562,8 +633,6 @@ useEffect(() => {
   const handleToggleLocal = (key) => {
     setLocalDisplay(prev => ({ ...prev, [key]: !prev[key] }));
   };
-  
-
 
   return (
     <div 
@@ -598,6 +667,12 @@ useEffect(() => {
           onCreateSession={onCreateSession}
           onLoadMorePhotos={() => setVisibleDayPhotos(prev => prev + photosPerLoad)}
           onToggleDayPhotos={() => handleToggleLocal('showDayPhotos')}
+          activePhotoGrid={activePhotoGrid}
+          selectedPhotos={selectedPhotos}
+          onActivateSelection={onActivateSelection}
+          onTogglePhotoSelection={onTogglePhotoSelection}
+          onBulkTagPhotos={onBulkTagPhotos}
+          onCancelSelection={onCancelSelection}
         />
       )}
     </div>
@@ -699,7 +774,9 @@ const MomentHeader = memo(({
 
 const MomentContent = memo(({ 
   moment, displayOptions, localDisplay, visibleDayPhotos, photosPerLoad, 
-  onPhotoClick, onCreateSession, onLoadMorePhotos, onToggleDayPhotos  
+  onPhotoClick, onCreateSession, onLoadMorePhotos, onToggleDayPhotos,
+  activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
+  onBulkTagPhotos, onCancelSelection
 }) => (
   <div className="px-3 pb-3">
     {localDisplay.showPosts && moment.posts?.map(post => (
@@ -710,6 +787,12 @@ const MomentContent = memo(({
         displayOptions={displayOptions}
         onPhotoClick={onPhotoClick}
         onCreateSession={onCreateSession}
+        activePhotoGrid={activePhotoGrid}
+        selectedPhotos={selectedPhotos}
+        onActivateSelection={onActivateSelection}
+        onTogglePhotoSelection={onTogglePhotoSelection}
+        onBulkTagPhotos={onBulkTagPhotos}
+        onCancelSelection={onCancelSelection}
       />
     ))}
     
@@ -749,6 +832,13 @@ const MomentContent = memo(({
           moment={moment}
           onPhotoClick={onPhotoClick}
           allPhotos={moment.dayPhotos}
+          gridId={`moment_${moment.id}_day`}
+          activePhotoGrid={activePhotoGrid}
+          selectedPhotos={selectedPhotos}
+          onActivateSelection={onActivateSelection}
+          onTogglePhotoSelection={onTogglePhotoSelection}
+          onBulkTagPhotos={onBulkTagPhotos}
+          onCancelSelection={onCancelSelection}
         />
         
         {visibleDayPhotos < moment.dayPhotoCount && (
@@ -766,7 +856,11 @@ const MomentContent = memo(({
   </div>
 ));
 
-const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreateSession }) => {
+const PostArticle = memo(({ 
+  post, moment, displayOptions, onPhotoClick, onCreateSession,
+  activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
+  onBulkTagPhotos, onCancelSelection
+}) => {
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
   useEffect(() => {
@@ -782,7 +876,6 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
     onCreateSession(post, moment);
   };
 
-  // ✅ NOUVEAU : Gérer le tagging
   const handleTagPost = (e) => {
     e.stopPropagation();
     const postKey = generatePostKey(post);
@@ -793,7 +886,6 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
     }
   };
 
-  // ✅ NOUVEAU : Vérifier si ce post a des thèmes
   const postKey = generatePostKey(post);
   const postThemes = window.themeAssignments?.getThemesForContent(postKey) || [];
   const hasThemes = postThemes.length > 0;
@@ -822,7 +914,6 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
               {title}
             </h4>
             
-            {/* ✅ NOUVEAU : Badge thèmes */}
             {hasThemes && (
               <div className="flex items-center space-x-1 text-xs text-amber-600 flex-shrink-0">
                 <Tag className="w-3 h-3" />
@@ -838,7 +929,6 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
               </span>
             )}
             
-            {/* ✅ NOUVEAU : Bouton tagger */}
             <button 
               onClick={handleTagPost} 
               className="p-1.5 rounded hover:bg-amber-50 transition-colors" 
@@ -869,30 +959,85 @@ const PostArticle = memo(({ post, moment, displayOptions, onPhotoClick, onCreate
           moment={moment}
           onPhotoClick={onPhotoClick}
           allPhotos={post.photos}
+          gridId={`post_${post.id}`}
+          activePhotoGrid={activePhotoGrid}
+          selectedPhotos={selectedPhotos}
+          onActivateSelection={onActivateSelection}
+          onTogglePhotoSelection={onTogglePhotoSelection}
+          onBulkTagPhotos={onBulkTagPhotos}
+          onCancelSelection={onCancelSelection}
         />
       )}
     </div>
   );
 });
 
-const PhotoGrid = memo(({ photos, moment, onPhotoClick, allPhotos }) => (
-  <div className="mt-2">
-    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
-      {photos.map((photo, idx) => (
-        <PhotoThumbnail 
-          key={photo.google_drive_id || photo.url || idx} 
-          photo={photo} 
-          moment={moment} 
-          onClick={(p) => onPhotoClick(p, moment, allPhotos || photos)} 
-        />
-      ))}
-    </div>
-  </div>
-));
+const PhotoGrid = memo(({ 
+  photos, moment, onPhotoClick, allPhotos, gridId,
+  activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
+  onBulkTagPhotos, onCancelSelection
+}) => {
+  const isThisGridActive = activePhotoGrid === gridId;
+  const hasSelection = isThisGridActive && selectedPhotos.length > 0;
 
-const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
+  return (
+    <div className="mt-2">
+      {/* ✅ Bouton contextuel (apparaît quand des photos sont sélectionnées) */}
+      {hasSelection && (
+        <div className="mb-2 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+          <span className="text-sm font-medium text-amber-800">
+            {selectedPhotos.length} photo{selectedPhotos.length > 1 ? 's' : ''} sélectionnée{selectedPhotos.length > 1 ? 's' : ''}
+          </span>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={onBulkTagPhotos}
+              className="flex items-center space-x-1 px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              <Tag className="w-3 h-3" />
+              <span>Assigner thèmes</span>
+            </button>
+            <button
+              onClick={onCancelSelection}
+              className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
+        {photos.map((photo, idx) => {
+          const isSelected = isThisGridActive && selectedPhotos.some(p => 
+            p.google_drive_id === photo.google_drive_id
+          );
+          
+          return (
+            <PhotoThumbnail 
+              key={photo.google_drive_id || photo.url || idx} 
+              photo={photo} 
+              moment={moment} 
+              onClick={(p) => onPhotoClick(p, moment, allPhotos || photos)}
+              gridId={gridId}
+              selectionMode={isThisGridActive}
+              isSelected={isSelected}
+              onToggleSelect={onTogglePhotoSelection}
+              onActivateSelection={onActivateSelection}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+const PhotoThumbnail = memo(({ 
+  photo, moment, onClick, gridId, selectionMode, isSelected, 
+  onToggleSelect, onActivateSelection 
+}) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [status, setStatus] = useState('loading');
+  const longPressTimerRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -918,11 +1063,77 @@ const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
     return () => { isMounted = false; };
   }, [photo]);
 
+  // ✅ Longpress pour activer le mode sélection
+  const handleTouchStart = (e) => {
+    if (selectionMode) return; // Déjà en mode sélection
+    
+    longPressTimerRef.current = setTimeout(() => {
+      onActivateSelection(gridId);
+      onToggleSelect(photo);
+    }, 500); // 500ms = longpress
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+  };
+
+  const handleClick = (e) => {
+    if (selectionMode) {
+      e.stopPropagation();
+      onToggleSelect(photo);
+    } else if (status === 'loaded') {
+      onClick(photo, moment);
+    }
+  };
+
+  const photoKey = photo.type === 'day_photo' 
+    ? generatePhotoMomentKey(photo)
+    : generatePhotoMastodonKey(photo);
+  const photoThemes = photoKey ? (window.themeAssignments?.getThemesForContent(photoKey) || []) : [];
+  const hasThemes = photoThemes.length > 0;
+
   return (
     <div 
       className="aspect-square bg-gray-200 rounded-md group relative cursor-pointer overflow-hidden" 
-      onClick={() => status === 'loaded' && onClick(photo, moment)}
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleTouchStart}
+      onMouseUp={handleTouchEnd}
+      onMouseLeave={handleTouchEnd}
     >
+      {/* ✅ Checkbox visible uniquement en mode sélection */}
+      {selectionMode && (
+        <div 
+          className="absolute top-1 left-1 z-10"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect(photo);
+          }}
+        >
+          <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${
+            isSelected 
+              ? 'bg-amber-500 border-amber-600' 
+              : 'bg-white/80 border-gray-400'
+          }`}>
+            {isSelected && (
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Badge thèmes */}
+      {!selectionMode && hasThemes && (
+        <div className="absolute top-1 right-1 bg-amber-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center z-10">
+          {photoThemes.length}
+        </div>
+      )}
+
       {status === 'loading' && (
         <div className="w-full h-full animate-pulse flex items-center justify-center">
           <Camera className="w-6 h-6 text-gray-400" />
@@ -944,7 +1155,9 @@ const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
           onError={() => setStatus('error')} 
         />
       )}
-      {status === 'loaded' && (
+      
+      {/* Overlay hover (sauf en mode sélection) */}
+      {!selectionMode && status === 'loaded' && (
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
           <ZoomIn className="w-6 h-6 text-white" />
         </div>
@@ -952,6 +1165,10 @@ const PhotoThumbnail = memo(({ photo, moment, onClick }) => {
     </div>
   );
 });
+
+// ====================================================================
+// HELPERS
+// ====================================================================
 
 function enrichMomentsWithData(rawMoments) {
   if (!rawMoments) return [];
@@ -1000,7 +1217,7 @@ function extractFilenameFromUrl(url) {
   return parts[parts.length - 1] || 'photo.jpg';
 }
 
-function getFilteredMoments(momentsData, searchQuery, momentFilter, sessions) {
+function getFilteredMoments(momentsData, searchQuery, momentFilter, sessions, selectedTheme) {
   let filtered = momentsData;
   
   // Filtre par recherche textuelle
@@ -1027,6 +1244,38 @@ function getFilteredMoments(momentsData, searchQuery, momentFilter, sessions) {
         filtered = filtered.filter(m => m.dayPhotoCount > 0);
         break;
     }
+  }
+  
+  // ✅ NOUVEAU : Filtre par thème
+  if (selectedTheme) {
+    filtered = filtered.filter(moment => {
+      // Vérifier posts
+      const hasTaggedPost = moment.posts?.some(post => {
+        const key = generatePostKey(post);
+        const themes = window.themeAssignments?.getThemesForContent(key) || [];
+        return themes.includes(selectedTheme);
+      });
+      
+      // Vérifier photos moment
+      const hasTaggedDayPhoto = moment.dayPhotos?.some(photo => {
+        const key = generatePhotoMomentKey(photo);
+        if (!key) return false;
+        const themes = window.themeAssignments?.getThemesForContent(key) || [];
+        return themes.includes(selectedTheme);
+      });
+      
+      // Vérifier photos Mastodon
+      const hasTaggedMastodonPhoto = moment.posts?.some(post => 
+        post.photos?.some(photo => {
+          const key = generatePhotoMastodonKey(photo);
+          if (!key) return false;
+          const themes = window.themeAssignments?.getThemesForContent(key) || [];
+          return themes.includes(selectedTheme);
+        })
+      );
+      
+      return hasTaggedPost || hasTaggedDayPhoto || hasTaggedMastodonPhoto;
+    });
   }
   
   return filtered;

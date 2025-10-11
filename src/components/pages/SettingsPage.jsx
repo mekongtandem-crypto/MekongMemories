@@ -19,14 +19,65 @@ const SUGGESTED_EMOJIS = [
   '📸', '🎒', '🗺️', '🧳', '⛺'  // Voyage
 ];
 
+function generateUserActivityStats(sessions, masterIndex, users) {
+  if (!masterIndex || !sessions || !users) return null;
+
+  const totalMoments = masterIndex.moments?.length || 0;
+  const exploredMomentIds = new Set(sessions.map(s => s.gameId));
+  const exploredCount = exploredMomentIds.size;
+  const explorationRate = totalMoments > 0 ? (exploredCount / totalMoments) * 100 : 0;
+  const totalMessages = sessions.reduce((sum, s) => sum + (s.notes?.length || 0), 0);
+
+  const userStats = {};
+  users.filter(u => u.id !== 'duo').forEach(u => {
+    userStats[u.id] = { messages: 0, sessionsCreated: 0 };
+  });
+
+  sessions.forEach(session => {
+    if (userStats[session.user]) {
+      userStats[session.user].sessionsCreated++;
+    }
+    session.notes?.forEach(note => {
+      if (userStats[note.author]) {
+        userStats[note.author].messages++;
+      }
+    });
+  });
+
+  let mostTalkativeSession = null;
+  if (sessions.length > 0) {
+    mostTalkativeSession = sessions
+        .filter(s => s.notes && s.notes.length > 0)
+        .reduce((max, current) => 
+            (current.notes.length || 0) > (max.notes?.length || 0) ? current : max, sessions[0]
+        );
+  }
+  
+  const activeSessions = sessions.filter(s => !s.completed && !s.archived && s.notes?.length > 0);
+  let oldestActiveSession = null;
+  if (activeSessions.length > 0) {
+    oldestActiveSession = activeSessions.reduce((min, current) => 
+      new Date(current.notes[0].timestamp) < new Date(min.notes[0].timestamp) ? current : min
+    );
+  }
+
+  return {
+    explorationRate,
+    totalMessages,
+    userStats,
+    mostTalkativeSession,
+    oldestActiveSession
+  };
+}
+
 export default function SettingsPage() {
   const app = useAppState();
   
   // États sections repliables
   const [openSections, setOpenSections] = useState({
-    users: true,
-    stats: true,
-    themes: true,
+    users: false,
+    stats: false,
+    themes: false,
     connection: false,
     data: false
   });
@@ -48,20 +99,6 @@ export default function SettingsPage() {
   const [regenerationProgress, setRegenerationProgress] = useState({
     isActive: false, step: '', message: '', progress: 0, logs: []
   });
-  
-  const [assignmentsVersion, setAssignmentsVersion] = useState(0);
-  
-	// Ajouter un useEffect pour écouter les changements
-useEffect(() => {
-  if (!window.themeAssignments) return;
-  
-  const unsubscribe = window.themeAssignments.subscribe(() => {
-    // Forcer re-render quand assignments changent
-    setAssignmentsVersion(v => v + 1);
-  });
-  
-  return unsubscribe;
-}, []);
 
   // Charger thèmes au montage
   useEffect(() => {
@@ -257,8 +294,20 @@ useEffect(() => {
     }
   };
 
+// ========================================
+  // Gestion des users et stats
+  // ========================================
+
   const users = userManager.getAllUsers();
   const isOnline = app.connection?.isOnline;
+    const connectionEmail = 'mekongtandem@gmail.com';
+  
+  const stats = {
+    moments: app.masterIndex?.metadata?.total_moments || 0,
+    posts: app.masterIndex?.metadata?.total_posts || 0,
+    photos: app.masterIndex?.metadata?.total_photos || 0,
+    sessions: app.sessions?.length || 0
+  };
 
   return (
     <div className="p-4 space-y-4 max-w-4xl mx-auto">
@@ -373,12 +422,8 @@ useEffect(() => {
             {themes.length > 0 && !editingTheme && (
               <div className="space-y-2">
                 {themes.map(theme => {
-  // Forcer recalcul avec la version (évite le cache)
-  const stats = window.themeAssignments?.isLoaded 
-    ? countThemeContents(window.themeAssignments, theme.id)
-    : { totalCount: 0, postCount: 0, photoCount: 0 };
-  
-  const colorClasses = THEME_COLORS[theme.color];
+                  const stats = countThemeContents(window.themeAssignments, theme.id);
+                  const colorClasses = THEME_COLORS[theme.color];
                   
                   return (
                     <div 
@@ -529,8 +574,246 @@ useEffect(() => {
         )}
       </section>
 
-      {/* Sections existantes (Stats, Connexion, Données) - code original inchangé */}
-      {/* Je les laisse tels quels pour ne pas alourdir la réponse */}
+      {/* Section Connexion (inchangée) */}
+      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => toggleSection('connection')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center space-x-2">
+            {isOnline ? (
+              <Cloud className="w-5 h-5 text-green-600" />
+            ) : (
+              <CloudOff className="w-5 h-5 text-red-600" />
+            )}
+            <h2 className="text-lg font-semibold text-gray-900">Connexion</h2>
+            <span className={`text-xs font-medium px-2 py-1 rounded ${
+              isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            }`}>
+              {isOnline ? 'Connecté' : 'Déconnecté'}
+            </span>
+          </div>
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.connection ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {openSections.connection && (
+          <div className="p-4 border-t border-gray-100 space-y-3">
+            {isOnline ? (
+              <>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <Cloud className="w-4 h-4 text-green-500" />
+                  <span>Connecté en tant que <span className="font-medium">{connectionEmail}</span></span>
+                </div>
+                <button
+                  onClick={() => {
+                    if (confirm('Se déconnecter ?')) {
+                      app.disconnect();
+                    }
+                  }}
+                  className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  <CloudOff className="w-4 h-4" />
+                  <span>Se déconnecter</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center space-x-2 text-sm text-red-600">
+                  <CloudOff className="w-4 h-4" />
+                  <span>Non connecté à Google Drive</span>
+                </div>
+                <button
+                  onClick={() => app.connect()}
+                  className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  <Cloud className="w-4 h-4" />
+                  <span>Se connecter</span>
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Section Statistiques */}
+      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => toggleSection('stats')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center space-x-2">
+            <Info className="w-5 h-5 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Statistiques d'Activité</h2>
+          </div>
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.stats ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {openSections.stats && (
+          <div className="p-4 border-t border-gray-100 space-y-6">
+            {(() => {
+              const userActivityStats = generateUserActivityStats(app.sessions, app.masterIndex, users);
+              if (!userActivityStats) {
+                return <p className="text-sm text-gray-500">Statistiques indisponibles.</p>;
+              }
+              const totalSessionsCreated = Object.values(userActivityStats.userStats).reduce((sum, s) => sum + s.sessionsCreated, 0);
+
+              return (
+                <>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Vue d'ensemble</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-semibold text-gray-800">🗺️ Exploration du voyage</span>
+                          <span className="font-bold text-blue-600">{Math.round(userActivityStats.explorationRate)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${userActivityStats.explorationRate}%` }}></div></div>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg text-center">
+                        <div className="text-3xl font-bold text-amber-600">{userActivityStats.totalMessages}</div>
+                        <div className="text-sm text-gray-600">Messages échangés</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Engagement des utilisateurs</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                      <div>
+                        {/* ✅ NOUVEAU : Labels au-dessus du graphique */}
+                        <div className="flex justify-between items-center text-xs font-medium text-gray-600 mb-1">
+                          {Object.entries(userActivityStats.userStats).map(([userId, stats]) => (
+                            <span key={userId}>{`${userManager.getUser(userId).name} (${stats.messages})`}</span>
+                          ))}
+                        </div>
+                        <div className="w-full flex rounded-full h-4 overflow-hidden bg-gray-200">
+                          {Object.entries(userActivityStats.userStats).map(([userId, stats]) => {
+                            const user = userManager.getUser(userId);
+                            const style = userManager.getUserStyle(userId);
+                            const percentage = userActivityStats.totalMessages > 0 ? (stats.messages / userActivityStats.totalMessages) * 100 : 0;
+                            return <div key={userId} className={`${style.strong_bg}`} style={{ width: `${percentage}%` }} title={`${user.name}: ${stats.messages} messages (${Math.round(percentage)}%)`}></div>;
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        {/* ✅ NOUVEAU : Labels au-dessus du graphique */}
+                        <div className="flex justify-between items-center text-xs font-medium text-gray-600 mb-1">
+                          {Object.entries(userActivityStats.userStats).map(([userId, stats]) => (
+                            <span key={userId}>{`${userManager.getUser(userId).name} (${stats.sessionsCreated})`}</span>
+                          ))}
+                        </div>
+                         <div className="w-full flex rounded-full h-4 overflow-hidden bg-gray-200">
+                           {Object.entries(userActivityStats.userStats).map(([userId, stats]) => {
+                            const user = userManager.getUser(userId);
+                            const style = userManager.getUserStyle(userId);
+                            const percentage = totalSessionsCreated > 0 ? (stats.sessionsCreated / totalSessionsCreated) * 100 : 50;
+                            return <div key={userId} className={`${style.strong_bg}`} style={{ width: `${percentage}%` }} title={`${user.name}: ${stats.sessionsCreated} sessions créées (${Math.round(percentage)}%)`}></div>;
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Pleins feux sur les sessions</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* ✅ NOUVEAU : La carte est maintenant un bouton cliquable */}
+                      {userActivityStats.mostTalkativeSession ? (
+                        <button onClick={() => app.openChatSession(userActivityStats.mostTalkativeSession)} className="text-left bg-gray-50 p-4 rounded-lg hover:bg-gray-100 hover:ring-2 hover:ring-amber-400 transition-all cursor-pointer">
+                          <div className="font-semibold text-gray-800">💬 La plus bavarde</div>
+                          <p className="text-sm text-amber-700 truncate">{userActivityStats.mostTalkativeSession.gameTitle}</p>
+                          <p className="text-xs text-gray-500">{userActivityStats.mostTalkativeSession.notes.length} messages</p>
+                        </button>
+                      ) : <div />}
+                      {/* ✅ NOUVEAU : La carte est maintenant un bouton cliquable */}
+                      {userActivityStats.oldestActiveSession ? (
+                        <button onClick={() => app.openChatSession(userActivityStats.oldestActiveSession)} className="text-left bg-gray-50 p-4 rounded-lg hover:bg-gray-100 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer">
+                           <div className="font-semibold text-gray-800">⏳ Le souvenir oublié</div>
+                           <p className="text-sm text-blue-700 truncate">{userActivityStats.oldestActiveSession.gameTitle}</p>
+                           <p className="text-xs text-gray-500">En attente depuis le {new Date(userActivityStats.oldestActiveSession.notes[0].timestamp).toLocaleDateString('fr-FR')}</p>
+                        </button>
+                      ) : <div />}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
+      </section>
+
+      {/* Section Connexion */}
+      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => toggleSection('connection')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center space-x-2">
+            {isOnline ? <Cloud className="w-5 h-5 text-green-600" /> : <CloudOff className="w-5 h-5 text-red-600" />}
+            <h2 className="text-lg font-semibold text-gray-900">Connexion</h2>
+          </div>
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.connection ? 'rotate-180' : ''}`} />
+        </button>
+        {openSections.connection && (
+          <div className="p-4 border-t border-gray-100 text-sm text-gray-600">
+            {isOnline ? (<p>Connecté à Google Drive.</p>) : (<p>Non connecté à Google Drive.</p>)}
+          </div>
+        )}
+      </section>
+
+      {/* Section Données */}
+      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => toggleSection('data')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center space-x-2">
+            <Database className="w-5 h-5 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Données Brutes</h2>
+          </div>
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.data ? 'rotate-180' : ''}`} />
+        </button>
+        {openSections.data && (
+          <div className="p-4 border-t border-gray-100 space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{app.masterIndex?.metadata?.total_moments || 0}</div>
+                <div className="text-sm text-gray-600">Moments</div>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{app.masterIndex?.metadata?.total_posts || 0}</div>
+                <div className="text-sm text-gray-600">Articles</div>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{app.masterIndex?.metadata?.total_photos || 0}</div>
+                <div className="text-sm text-gray-600">Photos</div>
+              </div>
+              <div className="text-center p-4 bg-amber-50 rounded-lg">
+                <div className="text-2xl font-bold text-amber-600">{app.sessions?.length || 0}</div>
+                <div className="text-sm text-gray-600">Sessions</div>
+              </div>
+            </div>
+            {regenerationProgress.isActive && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-blue-900">{regenerationProgress.message}</span>
+                  <span className="text-blue-600 font-mono">{regenerationProgress.progress}%</span>
+                </div>
+                <div className="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden"><div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${regenerationProgress.progress}%` }}/></div>
+              </div>
+            )}
+            <button
+              onClick={handleRegenerateIndex}
+              disabled={regenerationProgress.isActive}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded-lg font-medium transition-colors"
+            >
+              <RefreshCw className={`w-5 h-5 ${regenerationProgress.isActive ? 'animate-spin' : ''}`} />
+              <span>{regenerationProgress.isActive ? 'Régénération en cours...' : "Régénérer l'index"}</span>
+            </button>
+          </div>
+        )}
+      </section>
+            
       
       <section className="text-center text-sm text-gray-500 pt-4">
         <p>Mémoire du Mékong v2.4 - Phase 16a</p>
