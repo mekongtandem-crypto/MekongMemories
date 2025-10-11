@@ -56,7 +56,8 @@ export default function App() {
   });
   
   const [editingChatTitle, setEditingChatTitle] = useState(false);
-  
+  const [isThemeBarVisible, setIsThemeBarVisible] = useState(true); // Visible par défaut
+
   const memoriesPageRef = useRef(null);
 
   if (!app.isInitialized) {
@@ -110,6 +111,7 @@ export default function App() {
             currentDay={currentDay}
             setCurrentDay={setCurrentDay}
             displayOptions={displayOptions}
+            isThemeBarVisible={isThemeBarVisible}
           />
         );
     }
@@ -129,6 +131,8 @@ export default function App() {
             setIsSearchOpen={setIsSearchOpen}
             currentDay={currentDay}
             setCurrentDay={setCurrentDay}
+            isThemeBarVisible={isThemeBarVisible}
+  			setIsThemeBarVisible={setIsThemeBarVisible}
             jumpToDay={(day) => {
               setCurrentDay(day);
               if (memoriesPageRef.current?.jumpToDay) {

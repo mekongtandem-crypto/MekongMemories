@@ -24,7 +24,8 @@ function MemoriesPage({
   setIsSearchOpen,
   currentDay,
   setCurrentDay,
-  displayOptions
+  displayOptions,
+  isThemeBarVisible // ✅ NOUVEAU
 }, ref) {
 
   const app = useAppState();
@@ -447,10 +448,10 @@ function MemoriesPage({
         </div>
       )}
 
-      {/* ✅ NOUVEAU : Filtres par thème */}
-      {themeStats.length > 0 && (
-        <div className="bg-white border-b border-gray-200 px-4 py-2">
-          <div className="flex items-center space-x-2 overflow-x-auto">
+      {/* ✅ Filtres par thème (conditionnel) */}
+      {isThemeBarVisible && themeStats.length > 0 && (
+        <div className="bg-white border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center space-x-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin', scrollbarColor: '#d1d5db transparent' }}>
             <Tag className="w-4 h-4 text-gray-500 flex-shrink-0" />
             <button
               onClick={() => setSelectedTheme(null)}
@@ -706,6 +707,10 @@ const MomentHeader = memo(({
     }
   };
 
+  // Vérifier si session existe pour ce moment
+  const sessions = window.app?.sessions || [];
+  const hasSession = sessions.some(s => s.gameId === moment.id);
+
   return (
     <>
       <div onClick={handleChevronClick} className="cursor-pointer flex items-start justify-between">
@@ -762,10 +767,14 @@ const MomentHeader = memo(({
             e.stopPropagation();
             onCreateSession(moment, moment);
           }}
-          className="flex items-center space-x-1.5 font-medium text-amber-600 hover:bg-amber-50 hover:text-amber-700 ml-auto pl-2 px-2 py-1 rounded transition-colors"
+          className={`ml-auto p-1.5 rounded transition-colors ${
+            hasSession 
+              ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
+              : 'hover:bg-amber-50 text-gray-600'
+          }`}
+          title={hasSession ? "Session existante" : "Créer une session"}
         >
           <span className="text-base">💬</span>
-          <span>Session</span>
         </button>
       </div>
     </>

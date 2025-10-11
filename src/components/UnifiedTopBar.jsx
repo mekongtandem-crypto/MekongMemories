@@ -1,16 +1,15 @@
 /**
- * UnifiedTopBar.jsx v2.4 - Version finale stabilisée
- * Intègre toutes les corrections de bugs et améliorations UI.
+ * UnifiedTopBar.jsx v2.5 - Ajout toggle thèmes
+ * ✅ Bouton 🏷️ pour afficher/masquer barre thèmes
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, Settings, Plus, MoreVertical, Edit, Trash2, Check, X, Bell,
-  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown 
+  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown, Tag
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
 
-// Helper pour formater les dates
 const formatDateTime = (isoString) => {
   if (!isoString) return 'N/A';
   return new Date(isoString).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
@@ -19,7 +18,9 @@ const formatDateTime = (isoString) => {
 export default function UnifiedTopBar({ 
   currentPage, onCloseChatSession, isTimelineVisible, setIsTimelineVisible, 
   isSearchOpen, setIsSearchOpen, displayOptions, setDisplayOptions, jumpToRandomMoment,
-  currentDay, setCurrentDay, jumpToDay 
+  currentDay, setCurrentDay, jumpToDay,
+  // ✅ NOUVEAU : props pour toggle thèmes
+  isThemeBarVisible, setIsThemeBarVisible
 }) {
 
   const app = useAppState();
@@ -34,9 +35,7 @@ export default function UnifiedTopBar({
   const [titleValue, setTitleValue] = useState('');
   const [notificationState, setNotificationState] = useState('idle');
   
-  
   const sortMenuRef = useRef(null);
-  
   const titleInputRef = useRef(null);
   const menuRef = useRef(null);
   const userMenuRef = useRef(null);
@@ -94,13 +93,8 @@ export default function UnifiedTopBar({
   };
   
   const handleDayWheel = (e) => {
-    // Empêche la page entière de scroller quand on utilise la molette sur l'input
     e.preventDefault();
-    
-    // Calcule le nouveau jour en fonction de la direction de la molette
     const newDay = currentDay + (e.deltaY < 0 ? 1 : -1);
-    
-    // Met à jour l'état du jour, en s'assurant qu'il ne descend pas en dessous de 1
     setCurrentDay(Math.max(1, newDay));
   };
   
@@ -108,9 +102,6 @@ export default function UnifiedTopBar({
     if (!app.currentChatSession || !app.currentUser) return;
     const otherUser = userManager.getAllUsers().find(u => u.id !== 'duo' && u.id !== app.currentUser.id);
     if (!otherUser) return;
-
-
-
 
     const existingNotif = window.notificationManager?.getNotificationForSession(app.currentChatSession.id, otherUser.id);
     if (existingNotif && notificationState === 'already_notified') {
@@ -161,24 +152,43 @@ export default function UnifiedTopBar({
       case 'memories': {
         const filterIcons = { all: '📋', unexplored: '✨', with_posts: '📄', with_photos: '📸' };
         
-        // Note: Tu devras peut-être passer ces états (showSortMenu, etc.) depuis App.jsx 
-        // ou les définir dans UnifiedTopBar.jsx si ce n'est pas déjà fait.
-        // Pour l'instant, je les définis ici pour que le code soit fonctionnel.
-        
+        // ✅ Compter les thèmes avec contenu
+        const availableThemes = app.masterIndex?.themes || [];
+        const themeCount = availableThemes.filter(theme => {
+          const contents = window.themeAssignments?.getAllContentsByTheme(theme.id) || [];
+          return contents.length > 0;
+        }).length;
 
         return (
           <div className="flex items-center space-x-2">
+            {/* ✅ NOUVEAU : Bouton toggle thèmes */}
+            {themeCount > 0 && (
+              <>
+                <button 
+                  onClick={() => setIsThemeBarVisible?.(!isThemeBarVisible)} 
+                  className={`p-1.5 rounded transition-colors ${
+                    isThemeBarVisible 
+                      ? 'bg-amber-100 text-amber-600' 
+                      : 'text-gray-400 hover:bg-gray-100'
+                  }`} 
+                  title={isThemeBarVisible ? "Masquer les thèmes" : "Afficher les thèmes"}
+                >
+                  <Tag className="w-4 h-4" />
+                </button>
+                <span className="text-gray-300 hidden sm:inline">|</span>
+              </>
+            )}
+
             <div className="flex items-center space-x-1">
-              {/* ✅ CORRECTION ICI : Remplacement de Type par FileText */}
               <button onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))} className={`p-1.5 rounded transition-colors ${displayOptions.showPostText ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}><FileText className="w-4 h-4" /></button>
               <button onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))} className={`p-1.5 rounded transition-colors ${displayOptions.showPostPhotos ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}><ImageIcon className="w-4 h-4" /></button>
               <button onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))} className={`p-1.5 rounded transition-colors ${displayOptions.showMomentPhotos ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}><Camera className="w-4 h-4" /></button>
             </div>
             <span className="text-gray-300 hidden sm:inline">|</span>
-            <div className="relative hidden md:block" ref={sortMenuRef}><button onClick={() => setShowSortMenu(!showSortMenu)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Trier les moments"><ArrowUpDown className="w-4 h-4" /></button>{showSortMenu && (<div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">{/* Menu de tri */}<button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('chrono'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📅</span><span>Chronologique</span></button>
+            <div className="relative hidden md:block" ref={sortMenuRef}><button onClick={() => setShowSortMenu(!showSortMenu)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Trier les moments"><ArrowUpDown className="w-4 h-4" /></button>{showSortMenu && (<div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48"><button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('chrono'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📅</span><span>Chronologique</span></button>
 <button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('recent'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>🕐</span><span>Plus récents</span></button>
 <button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('content'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📸</span><span>Plus de contenu</span></button></div>)}</div>
-            <div className="relative hidden md:block"><button onClick={() => setShowMomentFilterMenu(!showMomentFilterMenu)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Filtrer les moments"><span className="text-lg">{filterIcons[currentMomentFilter]}</span></button>{showMomentFilterMenu && (<div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">{/* Menu de filtre */}<button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('all'); } setCurrentMomentFilter('all'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📋</span><span>Tous les moments</span></button>
+            <div className="relative hidden md:block"><button onClick={() => setShowMomentFilterMenu(!showMomentFilterMenu)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Filtrer les moments"><span className="text-lg">{filterIcons[currentMomentFilter]}</span></button>{showMomentFilterMenu && (<div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48"><button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('all'); } setCurrentMomentFilter('all'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📋</span><span>Tous les moments</span></button>
 <button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('unexplored'); } setCurrentMomentFilter('unexplored'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>✨</span><span>Non explorés</span></button>
 <button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('with_posts'); } setCurrentMomentFilter('with_posts'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📄</span><span>Avec articles</span></button>
 <button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('with_photos'); } setCurrentMomentFilter('with_photos'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📸</span><span>Avec photos</span></button></div>)}</div>

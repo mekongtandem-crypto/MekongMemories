@@ -1,22 +1,19 @@
 /**
- * SettingsPage.jsx v4.0 - Avec gestion des thèmes
+ * SettingsPage.jsx v4.1 - Emoji Picker Natif
+ * ✅ Input text acceptant n'importe quel emoji
+ * ✅ Suggestions optionnelles repliables
+ * ✅ Code nettoyé (duplication supprimée)
  */
 import React, { useState, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
 import { THEME_COLORS, generateThemeId, countThemeContents } from '../../utils/themeUtils.js';
-import { RefreshCw, Database, Users, Info, ChevronDown, Cloud, CloudOff, Smile, Palette, Plus, Edit, Trash2, Tag } from 'lucide-react';
+import { RefreshCw, Database, Users, Info, ChevronDown, Cloud, CloudOff, Plus, Edit, Trash2, Tag } from 'lucide-react';
 
-// Liste d'emojis suggérés pour les thèmes
+// ✅ Liste réduite de suggestions (12 emojis)
 const SUGGESTED_EMOJIS = [
-  '🛕', '🏯', '🏰', '🕌', '⛩️', // Architecture/Temples
-  '🍜', '🍱', '🍛', '🍲', '🥘', // Nourriture
-  '🚂', '🚇', '🚌', '🚕', '🛵', // Transport
-  '🌴', '🏝️', '🌾', '🏔️', '🌊', // Nature
-  '🎭', '🎨', '🎪', '🎬', '🎸', // Culture
-  '👥', '👨‍👩‍👦', '💑', '🤝', '👋', // Personnes
-  '🏙️', '🌃', '🌆', '🏘️', '🏞️', // Lieux
-  '📸', '🎒', '🗺️', '🧳', '⛺'  // Voyage
+  '🏛️', '🍜', '🚂', '🌴', '🎭', '👥',
+  '🏙️', '📸', '🎒', '🗺️', '🧳', '⛺'
 ];
 
 function generateUserActivityStats(sessions, masterIndex, users) {
@@ -73,7 +70,6 @@ function generateUserActivityStats(sessions, masterIndex, users) {
 export default function SettingsPage() {
   const app = useAppState();
   
-  // États sections repliables
   const [openSections, setOpenSections] = useState({
     users: false,
     stats: false,
@@ -82,25 +78,20 @@ export default function SettingsPage() {
     data: false
   });
 
-  // États thèmes
   const [themes, setThemes] = useState([]);
   const [showThemeForm, setShowThemeForm] = useState(false);
   const [editingTheme, setEditingTheme] = useState(null);
   
-  // Form states
   const [themeName, setThemeName] = useState('');
   const [themeIcon, setThemeIcon] = useState('');
   const [themeColor, setThemeColor] = useState('purple');
 
-  // États utilisateurs
   const [editingUser, setEditingUser] = useState({ id: null, type: null });
 
-  // État régénération index
   const [regenerationProgress, setRegenerationProgress] = useState({
     isActive: false, step: '', message: '', progress: 0, logs: []
   });
 
-  // Charger thèmes au montage
   useEffect(() => {
     if (app.masterIndex?.themes) {
       setThemes(app.masterIndex.themes);
@@ -130,7 +121,6 @@ export default function SettingsPage() {
       createdBy: app.currentUser?.id || 'unknown'
     };
 
-    // Vérifier si l'ID existe déjà
     if (themes.some(t => t.id === newTheme.id)) {
       alert('Un thème avec ce nom existe déjà');
       return;
@@ -205,7 +195,6 @@ export default function SettingsPage() {
     const theme = themes.find(t => t.id === themeId);
     if (!theme) return;
 
-    // Compter les contenus taggués
     const stats = countThemeContents(window.themeAssignments, themeId);
     
     const confirmMessage = stats.totalCount > 0
@@ -214,12 +203,10 @@ export default function SettingsPage() {
 
     if (!confirm(confirmMessage)) return;
 
-    // Supprimer les assignments en cascade
     if (stats.totalCount > 0) {
       await window.themeAssignments.deleteThemeAssignments(themeId);
     }
 
-    // Supprimer le thème du masterIndex
     const updatedThemes = themes.filter(t => t.id !== themeId);
     const updatedMasterIndex = {
       ...app.masterIndex,
@@ -237,7 +224,7 @@ export default function SettingsPage() {
   };
 
   // ========================================
-  // GESTION UTILISATEURS (code existant)
+  // GESTION UTILISATEURS
   // ========================================
 
   const forceUserUpdate = () => {
@@ -257,7 +244,7 @@ export default function SettingsPage() {
   };
 
   // ========================================
-  // RÉGÉNÉRATION INDEX (code existant)
+  // RÉGÉNÉRATION INDEX
   // ========================================
 
   const handleRegenerateIndex = async () => {
@@ -294,25 +281,14 @@ export default function SettingsPage() {
     }
   };
 
-// ========================================
-  // Gestion des users et stats
-  // ========================================
-
   const users = userManager.getAllUsers();
   const isOnline = app.connection?.isOnline;
-    const connectionEmail = 'mekongtandem@gmail.com';
-  
-  const stats = {
-    moments: app.masterIndex?.metadata?.total_moments || 0,
-    posts: app.masterIndex?.metadata?.total_posts || 0,
-    photos: app.masterIndex?.metadata?.total_photos || 0,
-    sessions: app.sessions?.length || 0
-  };
+  const connectionEmail = 'mekongtandem@gmail.com';
 
   return (
     <div className="p-4 space-y-4 max-w-4xl mx-auto">
       
-      {/* Section Utilisateurs (code existant inchangé) */}
+      {/* Section Utilisateurs */}
       <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <button
           onClick={() => toggleSection('users')}
@@ -327,7 +303,6 @@ export default function SettingsPage() {
         
         {openSections.users && (
           <div className="p-4 border-t border-gray-100">
-            {/* Contenu utilisateurs identique à l'original - je le garde tel quel */}
             <div className="grid grid-cols-3 gap-3">
               {users.map(user => {
                 const isActive = app.currentUser?.id === user.id;
@@ -392,7 +367,7 @@ export default function SettingsPage() {
         )}
       </section>
 
-      {/* ✅ NOUVELLE SECTION : MES THÈMES */}
+      {/* Section Mes Thèmes */}
       <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <button
           onClick={() => toggleSection('themes')}
@@ -410,7 +385,6 @@ export default function SettingsPage() {
         {openSections.themes && (
           <div className="p-4 border-t border-gray-100 space-y-4">
             
-            {/* Liste des thèmes */}
             {themes.length === 0 && !showThemeForm && !editingTheme && (
               <div className="text-center py-8 text-gray-500">
                 <Tag className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -470,7 +444,7 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* Formulaire création/édition */}
+            {/* ✅ Formulaire avec emoji picker natif */}
             {(showThemeForm || editingTheme) && (
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
                 <h3 className="font-medium text-gray-900">
@@ -490,29 +464,50 @@ export default function SettingsPage() {
                   />
                 </div>
 
+                {/* ✅ NOUVEAU : Emoji Picker Natif */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Icône (emoji) *
                   </label>
-                  <input
-                    type="text"
-                    value={themeIcon}
-                    onChange={(e) => setThemeIcon(e.target.value)}
-                    placeholder="🛕"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-2xl mb-2"
-                    maxLength={2}
-                  />
-                  <div className="grid grid-cols-10 gap-1">
-                    {SUGGESTED_EMOJIS.map((emoji, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setThemeIcon(emoji)}
-                        className="text-xl p-2 hover:bg-gray-200 rounded transition-colors"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
+                  <p className="text-xs text-gray-500 mb-2">
+                    Tapez ou collez n'importe quel emoji de votre clavier
+                  </p>
+                  
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={themeIcon}
+                      onChange={(e) => setThemeIcon(e.target.value)}
+                      placeholder="Tapez un emoji... 🏛️"
+                      className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-lg"
+                      maxLength={4}
+                    />
+                    {themeIcon && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-3xl pointer-events-none">
+                        {themeIcon}
+                      </div>
+                    )}
                   </div>
+                  
+                  {/* ✅ Suggestions repliables */}
+                  <details className="mt-2">
+                    <summary className="text-xs text-gray-500 cursor-pointer hover:text-amber-600 select-none">
+                      Ou choisir parmi des suggestions
+                    </summary>
+                    <div className="grid grid-cols-12 gap-1 mt-2 p-2 bg-white rounded-lg border border-gray-200">
+                      {SUGGESTED_EMOJIS.map((emoji, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setThemeIcon(emoji)}
+                          className="text-xl p-1 hover:bg-gray-100 rounded transition-colors"
+                          title={`Utiliser ${emoji}`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
                 </div>
 
                 <div>
@@ -523,6 +518,7 @@ export default function SettingsPage() {
                     {Object.keys(THEME_COLORS).map(colorKey => (
                       <button
                         key={colorKey}
+                        type="button"
                         onClick={() => setThemeColor(colorKey)}
                         className={`w-10 h-10 rounded-full border-2 transition-all ${
                           THEME_COLORS[colorKey].badge
@@ -536,6 +532,7 @@ export default function SettingsPage() {
 
                 <div className="flex space-x-2 pt-2">
                   <button
+                    type="button"
                     onClick={() => {
                       if (editingTheme) {
                         handleCancelEdit();
@@ -550,6 +547,7 @@ export default function SettingsPage() {
                     Annuler
                   </button>
                   <button
+                    type="button"
                     onClick={editingTheme ? handleSaveEdit : handleCreateTheme}
                     className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium"
                   >
@@ -559,7 +557,6 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* Bouton créer (si pas de form actif) */}
             {!showThemeForm && !editingTheme && (
               <button
                 onClick={() => setShowThemeForm(true)}
@@ -574,7 +571,112 @@ export default function SettingsPage() {
         )}
       </section>
 
-      {/* Section Connexion (inchangée) */}
+      {/* Section Statistiques */}
+      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => toggleSection('stats')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center space-x-2">
+            <Info className="w-5 h-5 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Statistiques d'Activité</h2>
+          </div>
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.stats ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {openSections.stats && (
+          <div className="p-4 border-t border-gray-100 space-y-6">
+            {(() => {
+              const userActivityStats = generateUserActivityStats(app.sessions, app.masterIndex, users);
+              if (!userActivityStats) {
+                return <p className="text-sm text-gray-500">Statistiques indisponibles.</p>;
+              }
+              const totalSessionsCreated = Object.values(userActivityStats.userStats).reduce((sum, s) => sum + s.sessionsCreated, 0);
+
+              return (
+                <>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Vue d'ensemble</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-semibold text-gray-800">🗺️ Exploration du voyage</span>
+                          <span className="font-bold text-blue-600">{Math.round(userActivityStats.explorationRate)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${userActivityStats.explorationRate}%` }}></div>
+                        </div>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg text-center">
+                        <div className="text-3xl font-bold text-amber-600">{userActivityStats.totalMessages}</div>
+                        <div className="text-sm text-gray-600">Messages échangés</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Engagement des utilisateurs</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center text-xs font-medium text-gray-600 mb-1">
+                          {Object.entries(userActivityStats.userStats).map(([userId, stats]) => (
+                            <span key={userId}>{`${userManager.getUser(userId).name} (${stats.messages})`}</span>
+                          ))}
+                        </div>
+                        <div className="w-full flex rounded-full h-4 overflow-hidden bg-gray-200">
+                          {Object.entries(userActivityStats.userStats).map(([userId, stats]) => {
+                            const user = userManager.getUser(userId);
+                            const style = userManager.getUserStyle(userId);
+                            const percentage = userActivityStats.totalMessages > 0 ? (stats.messages / userActivityStats.totalMessages) * 100 : 0;
+                            return <div key={userId} className={`${style.strong_bg}`} style={{ width: `${percentage}%` }} title={`${user.name}: ${stats.messages} messages (${Math.round(percentage)}%)`}></div>;
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center text-xs font-medium text-gray-600 mb-1">
+                          {Object.entries(userActivityStats.userStats).map(([userId, stats]) => (
+                            <span key={userId}>{`${userManager.getUser(userId).name} (${stats.sessionsCreated})`}</span>
+                          ))}
+                        </div>
+                         <div className="w-full flex rounded-full h-4 overflow-hidden bg-gray-200">
+                           {Object.entries(userActivityStats.userStats).map(([userId, stats]) => {
+                            const user = userManager.getUser(userId);
+                            const style = userManager.getUserStyle(userId);
+                            const percentage = totalSessionsCreated > 0 ? (stats.sessionsCreated / totalSessionsCreated) * 100 : 50;
+                            return <div key={userId} className={`${style.strong_bg}`} style={{ width: `${percentage}%` }} title={`${user.name}: ${stats.sessionsCreated} sessions créées (${Math.round(percentage)}%)`}></div>;
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Pleins feux sur les sessions</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {userActivityStats.mostTalkativeSession ? (
+                        <button onClick={() => app.openChatSession(userActivityStats.mostTalkativeSession)} className="text-left bg-gray-50 p-4 rounded-lg hover:bg-gray-100 hover:ring-2 hover:ring-amber-400 transition-all cursor-pointer">
+                          <div className="font-semibold text-gray-800">💬 La plus bavarde</div>
+                          <p className="text-sm text-amber-700 truncate">{userActivityStats.mostTalkativeSession.gameTitle}</p>
+                          <p className="text-xs text-gray-500">{userActivityStats.mostTalkativeSession.notes.length} messages</p>
+                        </button>
+                      ) : <div />}
+                      {userActivityStats.oldestActiveSession ? (
+                        <button onClick={() => app.openChatSession(userActivityStats.oldestActiveSession)} className="text-left bg-gray-50 p-4 rounded-lg hover:bg-gray-100 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer">
+                           <div className="font-semibold text-gray-800">⏳ Le souvenir oublié</div>
+                           <p className="text-sm text-blue-700 truncate">{userActivityStats.oldestActiveSession.gameTitle}</p>
+                           <p className="text-xs text-gray-500">En attente depuis le {new Date(userActivityStats.oldestActiveSession.notes[0].timestamp).toLocaleDateString('fr-FR')}</p>
+                        </button>
+                      ) : <div />}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
+      </section>
+
+      {/* Section Connexion */}
       <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <button
           onClick={() => toggleSection('connection')}
@@ -635,132 +737,6 @@ export default function SettingsPage() {
         )}
       </section>
 
-      {/* Section Statistiques */}
-      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <button
-          onClick={() => toggleSection('stats')}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center space-x-2">
-            <Info className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Statistiques d'Activité</h2>
-          </div>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.stats ? 'rotate-180' : ''}`} />
-        </button>
-        
-        {openSections.stats && (
-          <div className="p-4 border-t border-gray-100 space-y-6">
-            {(() => {
-              const userActivityStats = generateUserActivityStats(app.sessions, app.masterIndex, users);
-              if (!userActivityStats) {
-                return <p className="text-sm text-gray-500">Statistiques indisponibles.</p>;
-              }
-              const totalSessionsCreated = Object.values(userActivityStats.userStats).reduce((sum, s) => sum + s.sessionsCreated, 0);
-
-              return (
-                <>
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Vue d'ensemble</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-semibold text-gray-800">🗺️ Exploration du voyage</span>
-                          <span className="font-bold text-blue-600">{Math.round(userActivityStats.explorationRate)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${userActivityStats.explorationRate}%` }}></div></div>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg text-center">
-                        <div className="text-3xl font-bold text-amber-600">{userActivityStats.totalMessages}</div>
-                        <div className="text-sm text-gray-600">Messages échangés</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Engagement des utilisateurs</h3>
-                    <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-                      <div>
-                        {/* ✅ NOUVEAU : Labels au-dessus du graphique */}
-                        <div className="flex justify-between items-center text-xs font-medium text-gray-600 mb-1">
-                          {Object.entries(userActivityStats.userStats).map(([userId, stats]) => (
-                            <span key={userId}>{`${userManager.getUser(userId).name} (${stats.messages})`}</span>
-                          ))}
-                        </div>
-                        <div className="w-full flex rounded-full h-4 overflow-hidden bg-gray-200">
-                          {Object.entries(userActivityStats.userStats).map(([userId, stats]) => {
-                            const user = userManager.getUser(userId);
-                            const style = userManager.getUserStyle(userId);
-                            const percentage = userActivityStats.totalMessages > 0 ? (stats.messages / userActivityStats.totalMessages) * 100 : 0;
-                            return <div key={userId} className={`${style.strong_bg}`} style={{ width: `${percentage}%` }} title={`${user.name}: ${stats.messages} messages (${Math.round(percentage)}%)`}></div>;
-                          })}
-                        </div>
-                      </div>
-                      <div>
-                        {/* ✅ NOUVEAU : Labels au-dessus du graphique */}
-                        <div className="flex justify-between items-center text-xs font-medium text-gray-600 mb-1">
-                          {Object.entries(userActivityStats.userStats).map(([userId, stats]) => (
-                            <span key={userId}>{`${userManager.getUser(userId).name} (${stats.sessionsCreated})`}</span>
-                          ))}
-                        </div>
-                         <div className="w-full flex rounded-full h-4 overflow-hidden bg-gray-200">
-                           {Object.entries(userActivityStats.userStats).map(([userId, stats]) => {
-                            const user = userManager.getUser(userId);
-                            const style = userManager.getUserStyle(userId);
-                            const percentage = totalSessionsCreated > 0 ? (stats.sessionsCreated / totalSessionsCreated) * 100 : 50;
-                            return <div key={userId} className={`${style.strong_bg}`} style={{ width: `${percentage}%` }} title={`${user.name}: ${stats.sessionsCreated} sessions créées (${Math.round(percentage)}%)`}></div>;
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Pleins feux sur les sessions</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* ✅ NOUVEAU : La carte est maintenant un bouton cliquable */}
-                      {userActivityStats.mostTalkativeSession ? (
-                        <button onClick={() => app.openChatSession(userActivityStats.mostTalkativeSession)} className="text-left bg-gray-50 p-4 rounded-lg hover:bg-gray-100 hover:ring-2 hover:ring-amber-400 transition-all cursor-pointer">
-                          <div className="font-semibold text-gray-800">💬 La plus bavarde</div>
-                          <p className="text-sm text-amber-700 truncate">{userActivityStats.mostTalkativeSession.gameTitle}</p>
-                          <p className="text-xs text-gray-500">{userActivityStats.mostTalkativeSession.notes.length} messages</p>
-                        </button>
-                      ) : <div />}
-                      {/* ✅ NOUVEAU : La carte est maintenant un bouton cliquable */}
-                      {userActivityStats.oldestActiveSession ? (
-                        <button onClick={() => app.openChatSession(userActivityStats.oldestActiveSession)} className="text-left bg-gray-50 p-4 rounded-lg hover:bg-gray-100 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer">
-                           <div className="font-semibold text-gray-800">⏳ Le souvenir oublié</div>
-                           <p className="text-sm text-blue-700 truncate">{userActivityStats.oldestActiveSession.gameTitle}</p>
-                           <p className="text-xs text-gray-500">En attente depuis le {new Date(userActivityStats.oldestActiveSession.notes[0].timestamp).toLocaleDateString('fr-FR')}</p>
-                        </button>
-                      ) : <div />}
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        )}
-      </section>
-
-      {/* Section Connexion */}
-      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <button
-          onClick={() => toggleSection('connection')}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center space-x-2">
-            {isOnline ? <Cloud className="w-5 h-5 text-green-600" /> : <CloudOff className="w-5 h-5 text-red-600" />}
-            <h2 className="text-lg font-semibold text-gray-900">Connexion</h2>
-          </div>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.connection ? 'rotate-180' : ''}`} />
-        </button>
-        {openSections.connection && (
-          <div className="p-4 border-t border-gray-100 text-sm text-gray-600">
-            {isOnline ? (<p>Connecté à Google Drive.</p>) : (<p>Non connecté à Google Drive.</p>)}
-          </div>
-        )}
-      </section>
-
       {/* Section Données */}
       <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <button
@@ -799,7 +775,9 @@ export default function SettingsPage() {
                   <span className="font-medium text-blue-900">{regenerationProgress.message}</span>
                   <span className="text-blue-600 font-mono">{regenerationProgress.progress}%</span>
                 </div>
-                <div className="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden"><div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${regenerationProgress.progress}%` }}/></div>
+                <div className="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden">
+                  <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${regenerationProgress.progress}%` }}/>
+                </div>
               </div>
             )}
             <button
@@ -813,10 +791,9 @@ export default function SettingsPage() {
           </div>
         )}
       </section>
-            
       
       <section className="text-center text-sm text-gray-500 pt-4">
-        <p>Mémoire du Mékong v2.4 - Phase 16a</p>
+        <p>Mémoire du Mékong v2.4 - Phase 16</p>
       </section>
     </div>
   );

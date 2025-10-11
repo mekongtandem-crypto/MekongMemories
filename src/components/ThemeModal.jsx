@@ -1,24 +1,26 @@
 /**
- * ThemeModal.jsx v1.0
- * Modal réutilisable pour assigner des thèmes à des contenus
+ * ThemeModal.jsx v1.1c - Phase 16B
+ * ✅ Encarts plus compacts
+ * ✅ Affichage en 2 colonnes
+ * ✅ Bouton "Créer un thème" en fin de liste
  */
 import React, { useState, useEffect } from 'react';
-import { X, Tag } from 'lucide-react';
+import { X, Tag, Plus } from 'lucide-react';
 import { THEME_COLORS } from '../utils/themeUtils.js';
 
 export default function ThemeModal({ 
   isOpen, 
   onClose, 
-  availableThemes,      // Array des thèmes disponibles depuis masterIndex
-  currentThemes,        // Array des thèmes actuellement assignés à ce contenu
-  onSave,               // Callback(selectedThemes)
+  availableThemes,
+  currentThemes,
+  onSave,
+  onCreateTheme, // ✅ Nouveau callback
   title = "Assigner des thèmes",
   description = null,
-  contentType = null    // 'post', 'photo', 'photos' (pour affichage)
+  contentType = null
 }) {
   const [selectedThemes, setSelectedThemes] = useState([]);
 
-  // Initialiser avec les thèmes actuels
   useEffect(() => {
     if (isOpen) {
       setSelectedThemes(currentThemes || []);
@@ -45,17 +47,23 @@ export default function ThemeModal({
     onClose();
   };
 
+  const handleCreateTheme = () => {
+    if (onCreateTheme) {
+      onCreateTheme();
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
       onClick={handleCancel}
     >
       <div 
-        className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div>
             <div className="flex items-center space-x-2">
               <Tag className="w-5 h-5 text-amber-600" />
@@ -76,8 +84,8 @@ export default function ThemeModal({
           </button>
         </div>
 
-        {/* Liste thèmes */}
-        <div className="p-4 space-y-2">
+        {/* Liste thèmes en grille 2 colonnes */}
+        <div className="p-4">
           {availableThemes.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <Tag className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -85,35 +93,46 @@ export default function ThemeModal({
               <p className="text-sm mt-2">Créez vos thèmes dans Réglages</p>
             </div>
           ) : (
-            availableThemes.map(theme => {
-              const isSelected = selectedThemes.includes(theme.id);
-              const colorClasses = THEME_COLORS[theme.color] || THEME_COLORS.purple;
+            <div className="grid grid-cols-2 gap-2">
+              {availableThemes.map(theme => {
+                const isSelected = selectedThemes.includes(theme.id);
+                const colorClasses = THEME_COLORS[theme.color] || THEME_COLORS.purple;
+                
+                return (
+                  <button
+                    key={theme.id}
+                    onClick={() => toggleTheme(theme.id)}
+                    className={`flex items-center space-x-2 p-2 rounded-lg border-2 transition-all ${
+                      isSelected 
+                        ? `${colorClasses.bg} ${colorClasses.border}` 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                      isSelected ? colorClasses.border : 'border-gray-300'
+                    }`}>
+                      {isSelected && <div className={`w-2.5 h-2.5 rounded ${colorClasses.badge}`} />}
+                    </div>
+                    
+                    <span className="text-lg flex-shrink-0">{theme.icon}</span>
+                    <span className={`flex-1 text-left font-medium text-sm truncate ${
+                      isSelected ? colorClasses.text : 'text-gray-700'
+                    }`}>
+                      {theme.name}
+                    </span>
+                  </button>
+                );
+              })}
               
-              return (
-                <button
-                  key={theme.id}
-                  onClick={() => toggleTheme(theme.id)}
-                  className={`w-full flex items-center space-x-3 p-3 rounded-lg border-2 transition-all ${
-                    isSelected 
-                      ? `${colorClasses.bg} ${colorClasses.border}` 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                    isSelected ? colorClasses.border : 'border-gray-300'
-                  }`}>
-                    {isSelected && <div className={`w-3 h-3 rounded ${colorClasses.badge}`} />}
-                  </div>
-                  
-                  <span className="text-xl flex-shrink-0">{theme.icon}</span>
-                  <span className={`flex-1 text-left font-medium ${
-                    isSelected ? colorClasses.text : 'text-gray-700'
-                  }`}>
-                    {theme.name}
-                  </span>
-                </button>
-              );
-            })
+              {/* ✅ Bouton créer un thème */}
+              <button
+                onClick={handleCreateTheme}
+                className="flex items-center justify-center space-x-2 p-2 rounded-lg border-2 border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50 transition-all"
+              >
+                <Plus className="w-5 h-5 text-gray-500" />
+                <span className="text-sm font-medium text-gray-600">Créer un thème</span>
+              </button>
+            </div>
           )}
         </div>
         
