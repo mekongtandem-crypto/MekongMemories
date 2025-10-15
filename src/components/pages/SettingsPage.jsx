@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
+import { sortThemes } from '../../utils/themeUtils.js';	
 import { THEME_COLORS, generateThemeId, countThemeContents } from '../../utils/themeUtils.js';
 import { RefreshCw, Database, Users, Info, ChevronDown, Cloud, CloudOff, Plus, Edit, Trash2, Tag } from 'lucide-react';
 
@@ -79,6 +80,12 @@ export default function SettingsPage() {
   });
 
   const [themes, setThemes] = useState([]);
+  const [themeSortOrder, setThemeSortOrder] = useState(
+  localStorage.getItem('mekong_theme_sort_order') || 'usage'
+);
+  const [momentTaggingEnabled, setMomentTaggingEnabled] = useState(
+  localStorage.getItem('mekong_moment_tagging') === 'true'
+);
   const [showThemeForm, setShowThemeForm] = useState(false);
   const [editingTheme, setEditingTheme] = useState(null);
   
@@ -399,69 +406,135 @@ export default function SettingsPage() {
           }`} />
         </button>
 
-        {openSections.themes && (
-          <div className="p-4 border-t border-gray-100 space-y-4">
-            
-            {/* Message si aucun thème */}
-            {themes.length === 0 && !showThemeForm && !editingTheme && (
-              <div className="text-center py-8 text-gray-500">
-                <Tag className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p>Aucun thème créé pour l'instant</p>
-                <p className="text-sm mt-2">Créez votre premier thème pour organiser vos souvenirs</p>
-              </div>
-            )}
+{openSections.themes && (
+  <div className="p-4 border-t border-gray-100 space-y-4">
+    
+    {/* ✅ NOUVEAU : Sélecteur ordre d'affichage */}
+    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <label className="block text-sm font-medium text-blue-900 mb-2">
+        Ordre d'affichage des thèmes
+      </label>
+      <select 
+        value={themeSortOrder}
+        onChange={(e) => {
+          const newOrder = e.target.value;
+          setThemeSortOrder(newOrder);
+          localStorage.setItem('mekong_theme_sort_order', newOrder);
+          console.log(`📊 Ordre thèmes changé : ${newOrder}`);
+        }}
+        className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+      >
+        <option value="usage">📊 Par utilisation (plus tagués en premier)</option>
+        <option value="created">📅 Par date de création (récents en premier)</option>
+        <option value="alpha">🔤 Alphabétique (A → Z)</option>
+        <option value="manual">✋ Manuel (ordre personnalisé)</option>
+      </select>
+      <p className="text-xs text-blue-700 mt-2">
+        {themeSortOrder === 'usage' && 'Les thèmes les plus utilisés apparaîtront en premier'}
+        {themeSortOrder === 'created' && 'Les thèmes créés récemment apparaîtront en premier'}
+        {themeSortOrder === 'alpha' && 'Les thèmes seront triés par ordre alphabétique'}
+        {themeSortOrder === 'manual' && 'Utilisez les flèches pour réorganiser (à venir)'}
+      </p>
+    </div>
 
-            {/* Liste des thèmes existants */}
+{/* ✅ NOUVEAU : Toggle moment tagging */}
+    <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <div className="flex items-center space-x-2">
+            <h4 className="font-medium text-purple-900">Tagging de moments entiers</h4>
+            <span className="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full font-medium">
+              EXPÉRIMENTAL
+            </span>
+          </div>
+          <p className="text-sm text-purple-700 mt-1">
+            Permet de tagger un moment complet en une fois (tous ses posts et photos)
+          </p>
+          <p className="text-xs text-purple-600 mt-1">
+            ⚠️ Génère beaucoup d'assignations - confirmation systématique
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            const newState = !momentTaggingEnabled;
+            setMomentTaggingEnabled(newState);
+            localStorage.setItem('mekong_moment_tagging', newState ? 'true' : 'false');
+            
+            // ✅ Activer/désactiver dans ThemeAssignments
+            if (window.themeAssignments) {
+              window.themeAssignments.allowMomentTagging = newState;
+              console.log(`🏷️ Moment tagging ${newState ? 'activé' : 'désactivé'}`);
+            }
+          }}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            momentTaggingEnabled ? 'bg-purple-600' : 'bg-gray-300'
+          }`}
+          title={momentTaggingEnabled ? 'Désactiver' : 'Activer'}
+        >
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            momentTaggingEnabled ? 'translate-x-6' : 'translate-x-1'
+          }`} />
+        </button>
+      </div>
+    </div>
+
+
             {themes.length > 0 && !editingTheme && (
-              <div className="space-y-2">
-                {themes.map(theme => {
-                  const stats = countThemeContents(window.themeAssignments, theme.id);
-                  const colorClasses = THEME_COLORS[theme.color];
-                  
-                  return (
-                    <div 
-                      key={theme.id}
-                      className={`flex items-center justify-between p-3 rounded-lg border ${colorClasses.border} ${colorClasses.bg}`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <span className="text-2xl">{theme.icon}</span>
-                        <div>
-                          <div className={`font-medium ${colorClasses.text}`}>{theme.name}</div>
-                          <div className="text-xs text-gray-600">
-                            {stats.totalCount === 0 ? (
-                              'Aucun contenu'
-                            ) : (
-                              <>
-                                {stats.postCount > 0 && `${stats.postCount} post${stats.postCount > 1 ? 's' : ''}`}
-                                {stats.postCount > 0 && stats.photoCount > 0 && ' • '}
-                                {stats.photoCount > 0 && `${stats.photoCount} photo${stats.photoCount > 1 ? 's' : ''}`}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleStartEdit(theme)}
-                          className="p-2 hover:bg-white/50 rounded transition-colors"
-                          title="Modifier"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteTheme(theme.id)}
-                          className="p-2 hover:bg-red-100 rounded transition-colors"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+      <div className="space-y-2">
+        {sortThemes(themes, window.themeAssignments, themeSortOrder).map(theme => {
+          const stats = countThemeContents(window.themeAssignments, theme.id);
+          const colorClasses = THEME_COLORS[theme.color];
+          
+          return (
+            <div 
+              key={theme.id}
+              className={`flex items-center justify-between p-3 rounded-lg border ${colorClasses.border} ${colorClasses.bg}`}
+            >
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">{theme.icon}</span>
+                <div>
+                  <div className={`font-medium ${colorClasses.text}`}>{theme.name}</div>
+                  <div className="text-xs text-gray-600">
+                    {stats.totalCount === 0 ? (
+                      'Aucun contenu'
+                    ) : (
+                      <>
+                        {stats.postCount > 0 && `${stats.postCount} post${stats.postCount > 1 ? 's' : ''}`}
+                        {stats.postCount > 0 && stats.photoCount > 0 && ' • '}
+                        {stats.photoCount > 0 && `${stats.photoCount} photo${stats.photoCount > 1 ? 's' : ''}`}
+                        {/* ✅ NOUVEAU : Afficher usageCount si trié par usage */}
+                        {themeSortOrder === 'usage' && stats.totalCount > 0 && (
+                          <span className="ml-2 text-blue-600 font-medium">
+                            ({theme.usageCount || stats.totalCount})
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
+              
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => handleStartEdit(theme)}
+                  className="p-2 hover:bg-white/50 rounded transition-colors"
+                  title="Modifier"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => handleDeleteTheme(theme.id)}
+                  className="p-2 hover:bg-red-100 rounded transition-colors"
+                  title="Supprimer"
+                >
+                  <Trash2 className="w-4 h-4 text-red-600" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
 
             {/* ✅ Formulaire avec emoji picker natif */}
             {(showThemeForm || editingTheme) && (

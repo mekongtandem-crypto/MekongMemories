@@ -1,6 +1,7 @@
 /**
- * themeUtils.js v1.0
- * Utilitaires pour gestion des thèmes
+ * themeUtils.js v1.2 - Tagging hiérarchique
+ * ✅ Clés pour tous les niveaux (moment, post, photo)
+ * ✅ Fonctions pour récupérer enfants
  */
 
 // ========================================
@@ -50,10 +51,16 @@ export const THEME_COLORS = {
 // ========================================
 
 /**
+ * Génère une clé unique pour un moment
+ */
+export function generateMomentKey(moment) {
+  return `moment:${moment.id}`;
+}
+
+/**
  * Génère une clé unique pour un post Mastodon
  */
 export function generatePostKey(post) {
-  // Utilise l'URL complète comme clé stable
   return `post:${post.id}`;
 }
 
@@ -84,6 +91,8 @@ export function generatePhotoMastodonKey(photo) {
  */
 export function generateContentKey(content, type) {
   switch (type) {
+    case 'moment':
+      return generateMomentKey(content);
     case 'post':
       return generatePostKey(content);
     case 'photo_moment':
@@ -97,6 +106,64 @@ export function generateContentKey(content, type) {
 }
 
 // ========================================
+// HIÉRARCHIE - RÉCUPÉRATION ENFANTS
+// ========================================
+
+/**
+ * Récupère toutes les clés enfants d'un moment
+ * @param {Object} moment - Moment complet
+ * @returns {Object} { all, posts, postPhotos, momentPhotos }
+ */
+export function getMomentChildrenKeys(moment) {
+  const postKeys = [];
+  const postPhotoKeys = [];
+  const momentPhotoKeys = [];
+  
+  // Posts du moment
+  moment.posts?.forEach(post => {
+    const key = generatePostKey(post);
+    postKeys.push(key);
+  });
+  
+  // Photos des posts
+  moment.posts?.forEach(post => {
+    post.photos?.forEach(photo => {
+      const key = generatePhotoMastodonKey(photo);
+      if (key) postPhotoKeys.push(key);
+    });
+  });
+  
+  // Photos du moment
+  moment.dayPhotos?.forEach(photo => {
+    const key = generatePhotoMomentKey(photo);
+    if (key) momentPhotoKeys.push(key);
+  });
+  
+  return {
+    all: [...postKeys, ...postPhotoKeys, ...momentPhotoKeys],
+    posts: postKeys,
+    postPhotos: postPhotoKeys,
+    momentPhotos: momentPhotoKeys
+  };
+}
+
+/**
+ * Récupère toutes les clés photos d'un post
+ * @param {Object} post - Post complet
+ * @returns {Array<string>} Clés des photos
+ */
+export function getPostChildrenKeys(post) {
+  const keys = [];
+  
+  post.photos?.forEach(photo => {
+    const key = generatePhotoMastodonKey(photo);
+    if (key) keys.push(key);
+  });
+  
+  return keys;
+}
+
+// ========================================
 // GÉNÉRATION ID THÈME
 // ========================================
 
@@ -106,10 +173,10 @@ export function generateContentKey(content, type) {
 export function generateThemeId(name) {
   return name
     .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Retire accents
-    .replace(/[^a-z0-9]/g, '_') // Remplace espaces/caractères spéciaux
-    .replace(/_+/g, '_') // Consolide les underscores multiples
-    .replace(/^_|_$/g, ''); // Retire underscores début/fin
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
 }
 
 // ========================================
@@ -118,24 +185,24 @@ export function generateThemeId(name) {
 
 /**
  * Compte le nombre de contenus taggués pour un thème
- * @param {Object} themeAssignments - Instance de ThemeAssignments
- * @param {string} themeId - ID du thème
- * @returns {Object} { postCount, photoCount, totalCount }
  */
 export function countThemeContents(themeAssignments, themeId) {
   const contents = themeAssignments.getAllContentsByTheme(themeId);
   
+  let momentCount = 0;
   let postCount = 0;
   let photoMomentCount = 0;
   let photoMastodonCount = 0;
   
   contents.forEach(key => {
-    if (key.startsWith('post:')) postCount++;
+    if (key.startsWith('moment:')) momentCount++;
+    else if (key.startsWith('post:')) postCount++;
     else if (key.startsWith('photo_moment:')) photoMomentCount++;
     else if (key.startsWith('photo_mastodon:')) photoMastodonCount++;
   });
   
   return {
+    momentCount,
     postCount,
     photoMomentCount,
     photoMastodonCount,
@@ -145,30 +212,33 @@ export function countThemeContents(themeAssignments, themeId) {
 }
 
 /**
- * Récupère les moments contenant au moins un contenu taggué avec ce thème
- * @param {Array} moments - Tous les moments
- * @param {Object} themeAssignments - Instance de ThemeAssignments
- * @param {string} themeId - ID du thème
- * @returns {Array} Moments filtrés
+ * Récupère les moments contenant au moins un contenu taggué
  */
 export function getMomentsByTheme(moments, themeAssignments, themeId) {
   return moments.filter(moment => {
-    // Vérifier si au moins un post du moment a ce thème
+    // Vérifier le moment lui-même
+    const momentKey = generateMomentKey(moment);
+    const momentThemes = themeAssignments.getThemesForContent(momentKey);
+    if (momentThemes.includes(themeId)) return true;
+    
+    // Vérifier posts
     const hasTaggedPost = moment.posts?.some(post => {
       const key = generatePostKey(post);
       const themes = themeAssignments.getThemesForContent(key);
       return themes.includes(themeId);
     });
+    if (hasTaggedPost) return true;
     
-    // Vérifier si au moins une photo moment a ce thème
+    // Vérifier photos moment
     const hasTaggedPhoto = moment.dayPhotos?.some(photo => {
       const key = generatePhotoMomentKey(photo);
       if (!key) return false;
       const themes = themeAssignments.getThemesForContent(key);
       return themes.includes(themeId);
     });
+    if (hasTaggedPhoto) return true;
     
-    // Vérifier photos Mastodon dans les posts
+    // Vérifier photos Mastodon
     const hasTaggedMastodonPhoto = moment.posts?.some(post => 
       post.photos?.some(photo => {
         const key = generatePhotoMastodonKey(photo);
@@ -178,8 +248,50 @@ export function getMomentsByTheme(moments, themeAssignments, themeId) {
       })
     );
     
-    return hasTaggedPost || hasTaggedPhoto || hasTaggedMastodonPhoto;
+    return hasTaggedMastodonPhoto;
   });
+}
+
+// ========================================
+// TRI DES THÈMES
+// ========================================
+
+/**
+ * Trie les thèmes selon l'ordre choisi
+ */
+export function sortThemes(themes, themeAssignments, sortOrder = 'usage') {
+  if (!themes || themes.length === 0) return [];
+  
+  const themesWithStats = themes.map(theme => {
+    const contents = themeAssignments?.getAllContentsByTheme(theme.id) || [];
+    return {
+      ...theme,
+      usageCount: contents.length
+    };
+  });
+
+  switch (sortOrder) {
+    case 'usage':
+      return themesWithStats.sort((a, b) => b.usageCount - a.usageCount);
+    
+    case 'created':
+      return themesWithStats.sort((a, b) => 
+        new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+      );
+    
+    case 'alpha':
+      return themesWithStats.sort((a, b) => 
+        a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })
+      );
+    
+    case 'manual':
+      return themesWithStats.sort((a, b) => 
+        (a.order || 999) - (b.order || 999)
+      );
+    
+    default:
+      return themesWithStats;
+  }
 }
 
 // ========================================

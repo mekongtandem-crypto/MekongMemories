@@ -1,7 +1,13 @@
 /**
- * MemoriesPage.jsx v6.4 - Phase 16 - Corrections bugs
- * ✅ Bug 1&2 : Header posts cohérent (📸 N · 🏷️ M · 💬)
- * ✅ Bug 3 : Header photos moment "N Photos de..." (pas redondant)
+ * MemoriesPage.jsx v6.5 - PARTIE 1/2 - Tagging hiérarchique
+ * ✅ Badges UNIQUEMENT niveau actuel
+ * ✅ Propagation optionnelle avec checkboxes
+ * ✅ Moment → Posts + Photos
+ * ✅ Post → Photos
+ * 
+ * STRUCTURE FICHIER :
+ * - PARTIE 1 : Imports, États, Handlers tagging (CE FICHIER)
+ * - PARTIE 2 : Composants d'affichage (fichier suivant)
  */
 
 import React, { useState, useEffect, useRef, memo, useCallback, useImperativeHandle } from 'react';
@@ -14,7 +20,15 @@ import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
 import SessionCreationModal from '../SessionCreationModal.jsx';
 import ThemeModal from '../ThemeModal.jsx';
-import { generatePostKey, generatePhotoMomentKey, generatePhotoMastodonKey } from '../../utils/themeUtils.js';
+import { 
+  sortThemes, 
+  generatePostKey, 
+  generatePhotoMomentKey, 
+  generatePhotoMastodonKey,
+  generateMomentKey,
+  getMomentChildrenKeys,
+  getPostChildrenKeys
+} from '../../utils/themeUtils.js';
 
 function MemoriesPage({ 
   isTimelineVisible,
@@ -24,7 +38,7 @@ function MemoriesPage({
   currentDay,
   setCurrentDay,
   displayOptions,
-  isThemeBarVisible // ✅ NOUVEAU
+  isThemeBarVisible
 }, ref) {
 
   const app = useAppState();
@@ -47,20 +61,21 @@ function MemoriesPage({
     isOpen: false,
     contentKey: null,
     contentType: null,
-    currentThemes: []
+    currentThemes: [],
+    momentData: null,
+    postData: null
   });
 
-  const [selectedPhotos, setSelectedPhotos] = useState([]); // Photos cochées
-  const [activePhotoGrid, setActivePhotoGrid] = useState(null); // Quelle grille est en mode sélection
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
+  const [activePhotoGrid, setActivePhotoGrid] = useState(null);
   
-  // ✅ NOUVEAU : Filtre par thème
   const [selectedTheme, setSelectedTheme] = useState(null);
   
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const momentRefs = useRef({});
   
   // ========================================
-  // CALLBACKS TAGGING
+  // CALLBACKS TAGGING HIÉRARCHIQUE
   // ========================================
 
   const executeScrollToElement = useCallback((element) => {
@@ -77,64 +92,127 @@ function MemoriesPage({
     }
   }, []);
 
-  const handleOpenThemeModal = useCallback((contentKey, contentType, currentThemes = []) => {
+  // ✅ MODIFIÉ : accepte momentData et postData
+  const handleOpenThemeModal = useCallback((contentKey, contentType, currentThemes = [], extraData = null) => {
     setThemeModal({
       isOpen: true,
       contentKey,
       contentType,
-      currentThemes
+      currentThemes,
+      momentData: contentType === 'moment' ? extraData : null,
+      postData: contentType === 'post' ? extraData : null
     });
   }, []);
 
-  const handleSaveThemes = useCallback(async (selectedThemes) => {
-    if (!themeModal.contentKey || !app.currentUser) return;
+  // ✅ NOUVEAU : Handler POST avec propagation
+  const handleSavePostThemes = useCallback(async (selectedThemes, propagationOptions, postData) => {
+    if (!postData || !app.currentUser) return;
     
-    await window.themeAssignments.assignThemes(
-      themeModal.contentKey,
+    const keysToTag = [];
+    
+    // 1. Toujours tagger le post lui-même
+    const postKey = generatePostKey(postData.post);
+    keysToTag.push(postKey);
+    
+    // 2. Optionnellement tagger les photos du post
+    if (propagationOptions.applyToPhotos && postData.photoCount > 0) {
+      const photoKeys = getPostChildrenKeys(postData.post);
+      keysToTag.push(...photoKeys);
+    }
+    
+    // 3. Batch assignation
+    const result = await window.themeAssignments.assignThemesBatch(
+      keysToTag,
       selectedThemes,
       app.currentUser.id
     );
     
-    setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
-    setViewerState(prev => ({ ...prev }));
-  }, [themeModal, app.currentUser]);
-
-  const handleCloseThemeModal = useCallback(() => {
-    setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
-  }, []);
-
-  // ✅ MODIFIÉ : Activation mode sélection pour une grille spécifique
-  const activatePhotoSelection = useCallback((gridId) => {
-    setActivePhotoGrid(gridId);
-    setSelectedPhotos([]);
-  }, []);
-
-  // Sélection photo
-  const togglePhotoSelection = useCallback((photo) => {
-    setSelectedPhotos(prev => {
-      const key = photo.google_drive_id;
-      if (prev.some(p => p.google_drive_id === key)) {
-        return prev.filter(p => p.google_drive_id !== key);
-      } else {
-        return [...prev, photo];
-      }
-    });
-  }, []);
-
-  // Bulk tag
-  const handleBulkTagPhotos = useCallback(() => {
-    if (selectedPhotos.length === 0) return;
+    if (result.success) {
+      console.log(`✅ Post taggué (${result.count} élément${result.count > 1 ? 's' : ''})`);
+    }
     
-    setThemeModal({
-      isOpen: true,
-      contentKey: null,
-      contentType: 'photos',
-      currentThemes: [],
-      bulkPhotos: selectedPhotos
+    setThemeModal({ 
+      isOpen: false, 
+      contentKey: null, 
+      contentType: null, 
+      currentThemes: [], 
+      postData: null 
     });
-  }, [selectedPhotos]);
+    setViewerState(prev => ({ ...prev }));
+  }, [app.currentUser]);
 
-  const handleSaveBulkThemes = useCallback(async (selectedThemes) => {
+  // ✅ MODIFIÉ : Handler MOMENT avec propagation + clé moment
+  const handleSaveMomentThemes = useCallback(async (selectedThemes, propagationOptions, momentData) => {
+    if (!momentData || !app.currentUser) return;
+    
+    const keysToTag = [];
+    
+    // 1. Toujours tagger le moment lui-même
+    const momentKey = generateMomentKey(momentData.moment);
+    keysToTag.push(momentKey);
+    
+    // 2. Collecter les enfants selon options
+    const childrenKeys = getMomentChildrenKeys(momentData.moment);
+    
+    if (propagationOptions.applyToPosts) {
+      keysToTag.push(...childrenKeys.posts);
+    }
+    
+    if (propagationOptions.applyToPostPhotos) {
+      keysToTag.push(...childrenKeys.postPhotos);
+    }
+    
+    if (propagationOptions.applyToMomentPhotos) {
+      keysToTag.push(...childrenKeys.momentPhotos);
+    }
+    
+    // 3. Confirmation si propagation
+    const needsConfirmation = keysToTag.length > 1;
+    if (needsConfirmation) {
+      const confirmMessage = `⚠️ CONFIRMATION\n\n` +
+        `Appliquer ${selectedThemes.length} thème${selectedThemes.length > 1 ? 's' : ''} à :\n\n` +
+        `• 1 moment\n` +
+        (propagationOptions.applyToPosts ? `• ${childrenKeys.posts.length} article${childrenKeys.posts.length > 1 ? 's' : ''}\n` : '') +
+        (propagationOptions.applyToPostPhotos ? `• ${childrenKeys.postPhotos.length} photo${childrenKeys.postPhotos.length > 1 ? 's' : ''} d'articles\n` : '') +
+        (propagationOptions.applyToMomentPhotos ? `• ${childrenKeys.momentPhotos.length} photo${childrenKeys.momentPhotos.length > 1 ? 's' : ''} du moment\n` : '') +
+        `\nTotal : ${keysToTag.length} élément${keysToTag.length > 1 ? 's' : ''}\n\n` +
+        `Continuer ?`;
+      
+      if (!confirm(confirmMessage)) {
+        setThemeModal({ 
+          isOpen: false, 
+          contentKey: null, 
+          contentType: null, 
+          currentThemes: [], 
+          momentData: null 
+        });
+        return;
+      }
+    }
+    
+    // 4. Batch assignation
+    const result = await window.themeAssignments.assignThemesBatch(
+      keysToTag,
+      selectedThemes,
+      app.currentUser.id
+    );
+    
+    if (result.success) {
+      alert(`✅ ${result.count} élément${result.count > 1 ? 's' : ''} taggué${result.count > 1 ? 's' : ''} !`);
+    }
+    
+    setThemeModal({ 
+      isOpen: false, 
+      contentKey: null, 
+      contentType: null, 
+      currentThemes: [], 
+      momentData: null 
+    });
+    setViewerState(prev => ({ ...prev }));
+  }, [app.currentUser]);
+
+  // Handler bulk photos (inchangé)
+  const handleSaveBulkThemes = useCallback(async (selectedThemes, propagationOptions) => {
     if (!themeModal.bulkPhotos || !app.currentUser) return;
     
     for (const photo of themeModal.bulkPhotos) {
@@ -148,11 +226,93 @@ function MemoriesPage({
       }
     }
     
-    setThemeModal({ isOpen: false, contentKey: null, contentType: null, currentThemes: [] });
+    setThemeModal({ 
+      isOpen: false, 
+      contentKey: null, 
+      contentType: null, 
+      currentThemes: [] 
+    });
     setSelectedPhotos([]);
     setActivePhotoGrid(null);
     setViewerState(prev => ({ ...prev }));
-  }, [themeModal, app.currentUser]);
+  }, [themeModal.bulkPhotos, app.currentUser]);
+
+  // ✅ MODIFIÉ : Handler principal avec routing
+  const handleSaveThemes = useCallback(async (selectedThemes, propagationOptions) => {
+    if (!themeModal.contentKey && !themeModal.momentData && !themeModal.postData && !themeModal.bulkPhotos) {
+      console.error('❌ Aucune donnée à sauvegarder');
+      return;
+    }
+    
+    // Router selon le type
+    if (themeModal.momentData) {
+      await handleSaveMomentThemes(selectedThemes, propagationOptions, themeModal.momentData);
+    } else if (themeModal.postData) {
+      await handleSavePostThemes(selectedThemes, propagationOptions, themeModal.postData);
+    } else if (themeModal.bulkPhotos) {
+      await handleSaveBulkThemes(selectedThemes, propagationOptions);
+    } else {
+      // Single content (photo individuelle)
+      await window.themeAssignments.assignThemes(
+        themeModal.contentKey,
+        selectedThemes,
+        app.currentUser.id
+      );
+      setThemeModal({ 
+        isOpen: false, 
+        contentKey: null, 
+        contentType: null, 
+        currentThemes: [] 
+      });
+      setViewerState(prev => ({ ...prev }));
+    }
+  }, [
+    themeModal, 
+    app.currentUser, 
+    handleSaveMomentThemes, 
+    handleSavePostThemes, 
+    handleSaveBulkThemes
+  ]);
+
+  const handleCloseThemeModal = useCallback(() => {
+    setThemeModal({ 
+      isOpen: false, 
+      contentKey: null, 
+      contentType: null, 
+      currentThemes: [], 
+      momentData: null, 
+      postData: null 
+    });
+  }, []);
+
+  // Autres handlers (inchangés)
+  const activatePhotoSelection = useCallback((gridId) => {
+    setActivePhotoGrid(gridId);
+    setSelectedPhotos([]);
+  }, []);
+
+  const togglePhotoSelection = useCallback((photo) => {
+    setSelectedPhotos(prev => {
+      const key = photo.google_drive_id;
+      if (prev.some(p => p.google_drive_id === key)) {
+        return prev.filter(p => p.google_drive_id !== key);
+      } else {
+        return [...prev, photo];
+      }
+    });
+  }, []);
+
+  const handleBulkTagPhotos = useCallback(() => {
+    if (selectedPhotos.length === 0) return;
+    
+    setThemeModal({
+      isOpen: true,
+      contentKey: null,
+      contentType: 'photos',
+      currentThemes: [],
+      bulkPhotos: selectedPhotos
+    });
+  }, [selectedPhotos]);
 
   const cancelSelection = useCallback(() => {
     setSelectedPhotos([]);
@@ -342,6 +502,10 @@ function MemoriesPage({
   const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
     if (!source) return;
     
+  const sortOrder = localStorage.getItem('mekong_theme_sort_order') || 'usage';
+  const rawThemes = app.masterIndex?.themes || [];
+  const availableThemes = sortThemes(rawThemes, window.themeAssignments, sortOrder);
+    
     const sessionTitle = options.title || (
       source.filename 
         ? `Souvenirs de ${contextMoment.displayTitle}`
@@ -402,14 +566,14 @@ function MemoriesPage({
 
   // ✅ NOUVEAU : Calculer les stats des thèmes
   const availableThemes = app.masterIndex?.themes || [];
-  const themeStats = availableThemes.map(theme => {
-    const contents = window.themeAssignments?.getAllContentsByTheme(theme.id) || [];
-    return {
-      ...theme,
-      count: contents.length
-    };
-  }).filter(t => t.count > 0);
-
+  
+  const themeStats = availableThemes
+  .map(theme => ({
+    ...theme,
+    count: theme.usageCount || 0
+  }))
+  .filter(t => t.count > 0); // ✅ Filtrer thèmes vides
+  
   return (
     <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden relative">
       
@@ -679,14 +843,55 @@ const MomentCard = memo(React.forwardRef(({
   );
 }));
 
+// ====================================================================
+// COMPOSANT : MomentHeader (MODIFIÉ)
+// ====================================================================
+
 const MomentHeader = memo(({ 
   moment, isSelected, isExplored, onSelect, onOpenWith, onCreateSession, 
   localDisplay, onToggleLocal 
 }) => {
   
-  const handleLinkClick = (e, contentType) => {
+  const momentTaggingEnabled = localStorage.getItem('mekong_moment_tagging') === 'true';
+  
+  // ✅ Badge moment : UNIQUEMENT le moment lui-même
+  const momentKey = generateMomentKey(moment);
+  const momentThemes = window.themeAssignments?.getThemesForContent(momentKey) || [];
+  const hasMomentThemes = momentThemes.length > 0;
+  
+  // Handler pour tagger le moment
+  const handleTagMoment = (e) => {
     e.stopPropagation();
     
+    const childrenKeys = getMomentChildrenKeys(moment);
+    
+    // Stats pour le modal
+    const stats = {
+      postCount: childrenKeys.posts.length,
+      photoMastodonCount: childrenKeys.postPhotos.length,
+      photoMomentCount: childrenKeys.momentPhotos.length,
+      totalCount: childrenKeys.all.length
+    };
+    
+    // Ouvrir modal avec données moment
+    if (window.memoriesPageActions?.openThemeModal) {
+      window.memoriesPageActions.openThemeModal(
+        momentKey,
+        'moment',
+        momentThemes,
+        {
+          moment: moment,
+          momentId: moment.id,
+          momentTitle: moment.displayTitle,
+          contentKeys: childrenKeys.all,
+          stats: stats
+        }
+      );
+    }
+  };
+  
+  const handleLinkClick = (e, contentType) => {
+    e.stopPropagation();
     if (!isSelected) {
       if (contentType === 'posts') {
         onOpenWith({ showPosts: true, showDayPhotos: false });
@@ -706,7 +911,6 @@ const MomentHeader = memo(({
     }
   };
 
-  // Vérifier si session existe pour ce moment
   const sessions = window.app?.sessions || [];
   const hasSession = sessions.some(s => s.gameId === moment.id);
 
@@ -721,6 +925,14 @@ const MomentHeader = memo(({
             <h3 className="text-base font-semibold text-gray-900 truncate flex-1">
               {moment.displayTitle}
             </h3>
+            
+            {/* ✅ Badge thèmes MOMENT UNIQUEMENT */}
+            {hasMomentThemes && (
+              <span className="flex items-center space-x-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+                <Tag className="w-3 h-3" />
+                <span>{momentThemes.length}</span>
+              </span>
+            )}
           </div>
           {moment.location && (
             <span className="flex items-center text-xs text-gray-500 mt-1.5 ml-1">
@@ -739,11 +951,8 @@ const MomentHeader = memo(({
           <button
             onClick={(e) => handleLinkClick(e, 'posts')}
             className="flex items-center font-medium text-blue-600 hover:text-blue-700 transition-all"
-            title={localDisplay.showPosts ? "Masquer les posts" : "Afficher les posts"}
           >
-            <FileText className={`w-4 h-4 mr-1.5 transition-colors ${
-              localDisplay.showPosts ? 'text-blue-600' : 'text-gray-400'
-            }`} /> 
+            <FileText className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts ? 'text-blue-600' : 'text-gray-400'}`} /> 
             {moment.postCount} post{moment.postCount > 1 ? 's' : ''}
           </button>
         )}
@@ -752,12 +961,25 @@ const MomentHeader = memo(({
           <button
             onClick={(e) => handleLinkClick(e, 'photos')}
             className="flex items-center font-medium text-green-600 hover:text-green-700 transition-all"
-            title={localDisplay.showDayPhotos ? "Masquer les photos du moment" : "Afficher les photos du moment"}
           >
-            <Camera className={`w-4 h-4 mr-1.5 transition-colors ${
-              localDisplay.showDayPhotos ? 'text-green-600' : 'text-gray-400'
-            }`} /> 
+            <Camera className={`w-4 h-4 mr-1.5 ${localDisplay.showDayPhotos ? 'text-green-600' : 'text-gray-400'}`} /> 
             {moment.dayPhotoCount} photo{moment.dayPhotoCount > 1 ? 's' : ''}
+          </button>
+        )}
+        
+        {/* ✅ Bouton tag moment (si feature activée) */}
+        {momentTaggingEnabled && (
+          <button
+            onClick={handleTagMoment}
+            className={`flex items-center font-medium transition-all ${
+              hasMomentThemes 
+                ? 'text-purple-600 hover:text-purple-700' 
+                : 'text-gray-400 hover:text-gray-500'
+            }`}
+            title="Tagger ce moment"
+          >
+            <Tag className="w-4 h-4 mr-1.5" /> 
+            Moment
           </button>
         )}
         
@@ -864,6 +1086,10 @@ const MomentContent = memo(({
   </div>
 ));
 
+// ====================================================================
+// COMPOSANT : PostArticle (MODIFIÉ)
+// ====================================================================
+
 const PostArticle = memo(({ 
   post, moment, displayOptions, onPhotoClick, onCreateSession,
   activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
@@ -884,7 +1110,8 @@ const PostArticle = memo(({
     onCreateSession(post, moment);
   };
 
-  const handleTagPost = (e) => {
+  // ✅ MODIFIÉ : Handler tag post avec postData
+   const handleTagPost = (e) => {
     e.stopPropagation();
     const postKey = generatePostKey(post);
     const currentThemes = window.themeAssignments?.getThemesForContent(postKey) || [];
