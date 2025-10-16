@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
-import { sortThemes } from '../../utils/themeUtils.js';	
+import { sortThemes } from '../../utils/themeUtils.js';
 import { THEME_COLORS, generateThemeId, countThemeContents } from '../../utils/themeUtils.js';
 import { RefreshCw, Database, Users, Info, ChevronDown, Cloud, CloudOff, Plus, Edit, Trash2, Tag } from 'lucide-react';
 
@@ -197,51 +197,88 @@ export default function SettingsPage() {
   };
 
   const handleDeleteTheme = async (themeId) => {
-    const theme = themes.find(t => t.id === themeId);
-    if (!theme) return;
+  console.log('🔴 handleDeleteTheme appelé avec:', themeId);
+  
+  const theme = themes.find(t => t.id === themeId);
+  console.log('🔴 Thème trouvé:', theme);
+  if (!theme) {
+    console.log('🔴 Thème non trouvé, sortie');
+    return;
+  }
 
-    const stats = countThemeContents(window.themeAssignments, themeId);
-    
-    // ✅ Message adapté selon le nombre d'assignations
-    let confirmMessage;
-    if (stats.totalCount === 0) {
-      confirmMessage = `Supprimer le thème "${theme.name}" ?`;
-    } else if (stats.totalCount > 10) {
-      // ✅ NOUVEAU : Confirmation renforcée si >10
-      confirmMessage = `⚠️ ATTENTION : Ce thème est utilisé sur ${stats.totalCount} contenus !\n\n` +
-        `• ${stats.postCount} article${stats.postCount > 1 ? 's' : ''}\n` +
-        `• ${stats.photoCount} photo${stats.photoCount > 1 ? 's' : ''}\n\n` +
-        `Si vous le supprimez, tous ces contenus seront détaggués.\n\n` +
-        `Êtes-vous VRAIMENT sûr de vouloir continuer ?`;
-    } else {
-      confirmMessage = `⚠️ Ce thème est utilisé sur ${stats.totalCount} contenu${stats.totalCount > 1 ? 's' : ''}.\n\n` +
-        `Si vous le supprimez, ${stats.totalCount === 1 ? 'ce contenu sera détaggué' : 'ces contenus seront détaggués'}.\n\n` +
-        `Continuer ?`;
-    }
+  console.log('🔴 window.themeAssignments existe ?', !!window.themeAssignments);
+  
+  let stats;
+  try {
+    stats = countThemeContents(window.themeAssignments, themeId);
+    console.log('🔴 Stats récupérées:', stats);
+  } catch (error) {
+    console.error('🔴 Erreur countThemeContents:', error);
+    alert('Erreur lors du calcul des stats: ' + error.message);
+    return;
+  }
+  
+  let confirmMessage;
+  if (stats.totalCount === 0) {
+    confirmMessage = `Supprimer le thème "${theme.name}" ?`;
+  } else if (stats.totalCount > 10) {
+    confirmMessage = `⚠️ ATTENTION : Ce thème est utilisé sur ${stats.totalCount} contenus !\n\n` +
+      `• ${stats.postCount} article${stats.postCount > 1 ? 's' : ''}\n` +
+      `• ${stats.photoCount} photo${stats.photoCount > 1 ? 's' : ''}\n\n` +
+      `Si vous le supprimez, tous ces contenus seront détaggués.\n\n` +
+      `Êtes-vous VRAIMENT sûr de vouloir continuer ?`;
+  } else {
+    confirmMessage = `⚠️ Ce thème est utilisé sur ${stats.totalCount} contenu${stats.totalCount > 1 ? 's' : ''}.\n\n` +
+      `Si vous le supprimez, ${stats.totalCount === 1 ? 'ce contenu sera détaggué' : 'ces contenus seront détaggués'}.\n\n` +
+      `Continuer ?`;
+  }
 
-    if (!confirm(confirmMessage)) return;
+  console.log('🔴 Affichage confirmation');
+  const confirmed = confirm(confirmMessage);
+  console.log('🔴 Confirmation résultat:', confirmed);
+  
+  if (!confirmed) {
+    console.log('🔴 Annulé par utilisateur');
+    return;
+  }
 
-    // Cascade delete des assignations
-    if (stats.totalCount > 0) {
+  console.log('🔴 Début suppression...');
+
+  if (stats.totalCount > 0) {
+    try {
+      console.log('🔴 Suppression assignations...');
       await window.themeAssignments.deleteThemeAssignments(themeId);
+      console.log('🔴 Assignations supprimées');
+    } catch (error) {
+      console.error('🔴 Erreur deleteThemeAssignments:', error);
+      alert('Erreur lors de la suppression des assignations: ' + error.message);
+      return;
     }
+  }
 
-    // Suppression du thème dans masterIndex
-    const updatedThemes = themes.filter(t => t.id !== themeId);
-    const updatedMasterIndex = {
-      ...app.masterIndex,
-      themes: updatedThemes
-    };
+  const updatedThemes = themes.filter(t => t.id !== themeId);
+  const updatedMasterIndex = {
+    ...app.masterIndex,
+    themes: updatedThemes
+  };
 
+  console.log('🔴 Sauvegarde masterIndex...');
+  try {
     const result = await window.dataManager.saveMasterIndex(updatedMasterIndex);
-
+    console.log('🔴 Résultat sauvegarde:', result);
+    
     if (result.success) {
       setThemes(updatedThemes);
       console.log(`✅ Thème supprimé (${stats.totalCount} assignations nettoyées)`);
+      alert('✅ Thème supprimé avec succès !');
     } else {
       alert('Erreur lors de la suppression du thème');
     }
-  };
+  } catch (error) {
+    console.error('🔴 Erreur saveMasterIndex:', error);
+    alert('Erreur lors de la sauvegarde: ' + error.message);
+  }
+};
 
   // ========================================
   // GESTION UTILISATEURS
@@ -476,12 +513,16 @@ export default function SettingsPage() {
                     <Edit className="w-4 h-4" />
                   </button>
                   <button 
-                    onClick={() => handleDeleteTheme(theme.id)}
-                    className="p-2 hover:bg-red-100 rounded transition-colors"
-                    title="Supprimer"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </button>
+  onClick={(e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    handleDeleteTheme(theme.id);
+  }}
+  className="p-2 hover:bg-red-100 rounded transition-colors"
+  title="Supprimer"
+>
+  <Trash2 className="w-4 h-4 text-red-600" />
+</button>
                 </div>
               </div>
             );

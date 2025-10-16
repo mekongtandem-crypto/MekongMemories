@@ -89,17 +89,17 @@ export default function ThemeModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <div className="flex items-center space-x-2">
-            <Tag className="w-5 h-5 text-amber-600" />
-            <h3 className="font-semibold text-gray-900">Assigner des thèmes</h3>
-          </div>
-          <button
-            onClick={handleCancel}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
+  <div>
+    <div className="flex items-center space-x-2">
+      <Tag className="w-5 h-5 text-amber-600" />
+      <h3 className="font-semibold text-gray-900">Gérer les thèmes</h3>
+    </div>
+    <p className="text-xs text-gray-500 mt-1 ml-7">Cochez pour ajouter, décochez pour retirer</p>
+  </div>
+  <button onClick={handleCancel} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+    <X className="w-5 h-5 text-gray-500" />
+  </button>
+</div>
 
         {/* ✅ PREVIEW POST */}
         {contentType === 'post' && postData && (
@@ -190,34 +190,38 @@ export default function ThemeModal({
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {availableThemes.map(theme => {
-                const isSelected = selectedThemes.includes(theme.id);
-                const colorClasses = THEME_COLORS[theme.color] || THEME_COLORS.purple;
-                
-                return (
-                  <button
-                    key={theme.id}
-                    onClick={() => toggleTheme(theme.id)}
-                    className={`flex items-center space-x-2 p-2 rounded-lg border-2 transition-all ${
-                      isSelected 
-                        ? `${colorClasses.bg} ${colorClasses.border}` 
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                      isSelected ? colorClasses.border : 'border-gray-300'
-                    }`}>
-                      {isSelected && <div className={`w-2.5 h-2.5 rounded ${colorClasses.badge}`} />}
-                    </div>
-                    
-                    <span className="text-lg flex-shrink-0">{theme.icon}</span>
-                    <span className={`flex-1 text-left font-medium text-sm truncate ${
-                      isSelected ? colorClasses.text : 'text-gray-700'
-                    }`}>
-                      {theme.name}
-                    </span>
-                  </button>
-                );
-              })}
+  const isSelected = selectedThemes.includes(theme.id);
+  const wasInitiallySelected = currentThemes.includes(theme.id); // ✅ NOUVEAU
+  const colorClasses = THEME_COLORS[theme.color] || THEME_COLORS.purple;
+  
+  return (
+    <button
+      key={theme.id}
+      onClick={() => toggleTheme(theme.id)}
+      className={`flex items-center space-x-2 p-2 rounded-lg border-2 transition-all ${
+        isSelected 
+          ? `${colorClasses.bg} ${colorClasses.border}` 
+          : 'border-gray-200 hover:border-gray-300'
+      }`}
+    >
+      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+        isSelected ? colorClasses.border : 'border-gray-300'
+      }`}>
+        {isSelected && <div className={`w-2.5 h-2.5 rounded ${colorClasses.badge}`} />}
+      </div>
+      
+      <span className="text-lg flex-shrink-0">{theme.icon}</span>
+      <span className={`flex-1 text-left font-medium text-sm truncate ${
+        isSelected ? colorClasses.text : 'text-gray-700'
+      }`}>
+        {theme.name}
+        {wasInitiallySelected && ( // ✅ NOUVEAU
+          <span className="text-xs opacity-60 ml-1">(actuel)</span>
+        )}
+      </span>
+    </button>
+  );
+})}
               
               <button
                 onClick={handleCreateTheme}
