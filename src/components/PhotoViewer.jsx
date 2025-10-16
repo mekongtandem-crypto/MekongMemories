@@ -181,34 +181,44 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
           
           {/* Boutons d'action (Session + Tag) */}
           <div className="flex items-center space-x-2">
-            <button 
-              onClick={handleCreateSession}
-              className="flex items-center space-x-2 bg-amber-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-amber-600 shadow-xl transition-colors"
-              title="Créer une session de chat"
-            >
-              <MessageCircle className="w-5 h-5" /> 
-              <span className="hidden sm:inline">Session</span>
-            </button>
-            
-            {/* Bouton Tag avec badge */}
-            <button 
-              onClick={handleOpenThemeModal}
-              className={`relative flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold shadow-xl transition-colors ${
-                hasThemes 
-                  ? 'bg-amber-500 text-white hover:bg-amber-600' 
-                  : 'bg-white/20 text-white hover:bg-white/30'
-              }`}
-              title="Assigner des thèmes"
-            >
-              <Tag className="w-5 h-5" />
-              <span className="hidden sm:inline">Thèmes</span>
-              {hasThemes && (
-                <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-black">
-                  {photoThemes.length}
-                </span>
-              )}
-            </button>
-          </div>
+  {/* ✅ Bouton Session avec état */}
+  <button 
+    onClick={handleCreateSession}
+    className={`relative flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold shadow-xl transition-colors ${
+      contextMoment && window.app?.sessions?.some(s => s.gameId === contextMoment.id)
+        ? 'bg-amber-500 text-white hover:bg-amber-600'
+        : 'bg-white/20 text-white hover:bg-white/30'
+    }`}
+    title={contextMoment && window.app?.sessions?.some(s => s.gameId === contextMoment.id) ? "Session existante" : "Créer une session"}
+  >
+    <MessageCircle className="w-5 h-5" />
+    <span className="hidden sm:inline">Session</span>
+    {contextMoment && window.app?.sessions?.some(s => s.gameId === contextMoment.id) && (
+      <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-black">
+        1
+      </span>
+    )}
+  </button>
+  
+  {/* ✅ Bouton Thèmes avec état */}
+  <button 
+    onClick={handleOpenThemeModal}
+    className={`relative flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold shadow-xl transition-colors ${
+      hasThemes 
+        ? 'bg-amber-500 text-white hover:bg-amber-600' 
+        : 'bg-white/20 text-white hover:bg-white/30'
+    }`}
+    title={hasThemes ? `${photoThemes.length} thème${photoThemes.length > 1 ? 's' : ''} assigné${photoThemes.length > 1 ? 's' : ''}` : "Assigner des thèmes"}
+  >
+    <Tag className="w-5 h-5" />
+    <span className="hidden sm:inline">Thèmes</span>
+    {hasThemes && (
+      <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-black">
+        {photoThemes.length}
+      </span>
+    )}
+  </button>
+</div>
           
           <div className="text-white bg-black/70 rounded-full px-4 py-2 text-sm font-medium shadow-lg">
             {currentIndex + 1} / {gallery.length}

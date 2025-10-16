@@ -1,8 +1,5 @@
 /**
- * ThemeModal.jsx v1.3 - Tagging hiérarchique avec checkboxes
- * ✅ Preview moment avec 3 checkboxes
- * ✅ Preview post avec 1 checkbox
- * ✅ Propagation optionnelle
+ * ThemeModal.jsx v1.4 - Message uniforme + compact
  */
 import React, { useState, useEffect } from 'react';
 import { X, Tag, Plus } from 'lucide-react';
@@ -22,18 +19,16 @@ export default function ThemeModal({
 }) {
   const [selectedThemes, setSelectedThemes] = useState([]);
   
-  // ✅ Options de propagation hiérarchique
   const [propagationOptions, setPropagationOptions] = useState({
     applyToPosts: false,
     applyToPostPhotos: false,
     applyToMomentPhotos: false,
-    applyToPhotos: false // Pour post → photos
+    applyToPhotos: false
   });
 
   useEffect(() => {
     if (isOpen) {
       setSelectedThemes(currentThemes || []);
-      // Reset options à chaque ouverture
       setPropagationOptions({
         applyToPosts: false,
         applyToPostPhotos: false,
@@ -94,20 +89,9 @@ export default function ThemeModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <div>
-            <div className="flex items-center space-x-2">
-              <Tag className="w-5 h-5 text-amber-600" />
-              <h3 className="font-semibold text-gray-900">{title}</h3>
-            </div>
-            {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
-            {contentType && (
-              <p className="text-xs text-gray-500 mt-1">
-                {contentType === 'photos' ? 'Plusieurs photos' : 
-                 contentType === 'photo' ? 'Une photo' : 
-                 contentType === 'post' ? 'Un article' :
-                 contentType === 'moment' ? 'Un moment' : contentType}
-              </p>
-            )}
+          <div className="flex items-center space-x-2">
+            <Tag className="w-5 h-5 text-amber-600" />
+            <h3 className="font-semibold text-gray-900">Assigner des thèmes</h3>
           </div>
           <button
             onClick={handleCancel}
@@ -117,156 +101,80 @@ export default function ThemeModal({
           </button>
         </div>
 
-        {/* ✅ PREVIEW MOMENT avec checkboxes */}
-        {contentType === 'moment' && momentData && (
-          <div className="p-4 border-b border-gray-200">
-            <div className="bg-purple-50 rounded-lg border border-purple-200 p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <span className="text-2xl">🗺️</span>
-                <h4 className="font-medium text-purple-900">{momentData.momentTitle}</h4>
-              </div>
-              
-              <p className="text-sm text-purple-700 mb-3 font-medium">
-                Où appliquer les thèmes sélectionnés ?
-              </p>
-              
-              <div className="space-y-3">
-                {/* Moment lui-même (toujours appliqué) */}
-                <div className="flex items-center space-x-2 pl-1">
-                  <div className="w-4 h-4 rounded bg-purple-600 flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </div>
-                  <span className="text-sm text-purple-900 font-medium">
-                    🗺️ Le moment "{momentData.momentTitle}"
-                  </span>
-                  <span className="text-xs text-purple-600">(toujours)</span>
-                </div>
-                
-                {/* Posts */}
-                {momentData.stats.postCount > 0 && (
-                  <label className="flex items-start space-x-2 cursor-pointer hover:bg-purple-100 p-2 rounded transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={propagationOptions.applyToPosts}
-                      onChange={(e) => setPropagationOptions(prev => ({
-                        ...prev,
-                        applyToPosts: e.target.checked
-                      }))}
-                      className="w-4 h-4 text-purple-600 rounded mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm text-purple-900 font-medium">
-                        📄 Les {momentData.stats.postCount} article{momentData.stats.postCount > 1 ? 's' : ''} de ce moment
-                      </span>
-                    </div>
-                  </label>
-                )}
-                
-                {/* Photos des posts */}
-                {momentData.stats.photoMastodonCount > 0 && (
-                  <label className="flex items-start space-x-2 cursor-pointer hover:bg-purple-100 p-2 rounded transition-colors ml-6">
-                    <input
-                      type="checkbox"
-                      checked={propagationOptions.applyToPostPhotos}
-                      onChange={(e) => setPropagationOptions(prev => ({
-                        ...prev,
-                        applyToPostPhotos: e.target.checked
-                      }))}
-                      className="w-4 h-4 text-purple-600 rounded mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm text-purple-800">
-                        📸 Les {momentData.stats.photoMastodonCount} photo{momentData.stats.photoMastodonCount > 1 ? 's' : ''} des articles
-                      </span>
-                    </div>
-                  </label>
-                )}
-                
-                {/* Photos du moment */}
-                {momentData.stats.photoMomentCount > 0 && (
-                  <label className="flex items-start space-x-2 cursor-pointer hover:bg-purple-100 p-2 rounded transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={propagationOptions.applyToMomentPhotos}
-                      onChange={(e) => setPropagationOptions(prev => ({
-                        ...prev,
-                        applyToMomentPhotos: e.target.checked
-                      }))}
-                      className="w-4 h-4 text-purple-600 rounded mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm text-purple-900 font-medium">
-                        📸 Les {momentData.stats.photoMomentCount} photo{momentData.stats.photoMomentCount > 1 ? 's' : ''} du moment
-                      </span>
-                    </div>
-                  </label>
-                )}
-              </div>
-              
-              <div className="mt-3 pt-3 border-t border-purple-200">
-                <p className="text-xs text-purple-700 italic">
-                  💡 Les thèmes seront ajoutés aux éléments cochés (les thèmes existants sont conservés)
-                </p>
-              </div>
-            </div>
+        {/* ✅ PREVIEW POST */}
+        {contentType === 'post' && postData && (
+          <div className="px-4 py-2.5 border-b border-gray-200 bg-blue-50">
+            <p className="text-sm text-blue-900 mb-2">
+              Assigner les thèmes suivants à <span className="font-semibold">📄 "{postData.postTitle}"</span>
+            </p>
+            {postData.photoCount > 0 && (
+              <label className="flex items-center text-sm text-blue-800 cursor-pointer hover:text-blue-900 ml-6">
+                <input
+                  type="checkbox"
+                  checked={propagationOptions.applyToPhotos}
+                  onChange={(e) => setPropagationOptions(prev => ({
+                    ...prev,
+                    applyToPhotos: e.target.checked
+                  }))}
+                  className="w-3.5 h-3.5 text-blue-600 rounded mr-2"
+                />
+                <span>📸 {postData.photoCount} photo{postData.photoCount > 1 ? 's' : ''}</span>
+              </label>
+            )}
           </div>
         )}
-        
-        {/* ✅ PREVIEW POST avec checkbox */}
-        {contentType === 'post' && postData && (
-          <div className="p-4 border-b border-gray-200">
-            <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <span className="text-2xl">📄</span>
-                <h4 className="font-medium text-blue-900 line-clamp-1">{postData.postTitle}</h4>
-              </div>
+
+        {/* ✅ PREVIEW MOMENT */}
+        {contentType === 'moment' && momentData && (
+          <div className="px-4 py-2.5 border-b border-gray-200 bg-purple-50">
+            <p className="text-sm text-purple-900 mb-2">
+              Assigner les thèmes suivants à <span className="font-semibold">🗺️ "{momentData.momentTitle}"</span>
+            </p>
+            <div className="space-y-1 text-sm text-purple-800 ml-6">
+              {momentData.stats.postCount > 0 && (
+                <label className="flex items-center cursor-pointer hover:text-purple-900">
+                  <input
+                    type="checkbox"
+                    checked={propagationOptions.applyToPosts}
+                    onChange={(e) => setPropagationOptions(prev => ({
+                      ...prev,
+                      applyToPosts: e.target.checked
+                    }))}
+                    className="w-3.5 h-3.5 text-purple-600 rounded mr-2"
+                  />
+                  <span>📄 {momentData.stats.postCount} article{momentData.stats.postCount > 1 ? 's' : ''}</span>
+                </label>
+              )}
               
-              <p className="text-sm text-blue-700 mb-3 font-medium">
-                Où appliquer les thèmes sélectionnés ?
-              </p>
+              {momentData.stats.photoMastodonCount > 0 && (
+                <label className="flex items-center cursor-pointer hover:text-purple-900 ml-5">
+                  <input
+                    type="checkbox"
+                    checked={propagationOptions.applyToPostPhotos}
+                    onChange={(e) => setPropagationOptions(prev => ({
+                      ...prev,
+                      applyToPostPhotos: e.target.checked
+                    }))}
+                    className="w-3.5 h-3.5 text-purple-600 rounded mr-2"
+                  />
+                  <span>📸 {momentData.stats.photoMastodonCount} photo{momentData.stats.photoMastodonCount > 1 ? 's' : ''} (articles)</span>
+                </label>
+              )}
               
-              <div className="space-y-3">
-                {/* Post lui-même (toujours appliqué) */}
-                <div className="flex items-center space-x-2 pl-1">
-                  <div className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </div>
-                  <span className="text-sm text-blue-900 font-medium">
-                    📄 Cet article
-                  </span>
-                  <span className="text-xs text-blue-600">(toujours)</span>
-                </div>
-                
-                {/* Photos du post */}
-                {postData.photoCount > 0 && (
-                  <label className="flex items-start space-x-2 cursor-pointer hover:bg-blue-100 p-2 rounded transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={propagationOptions.applyToPhotos}
-                      onChange={(e) => setPropagationOptions(prev => ({
-                        ...prev,
-                        applyToPhotos: e.target.checked
-                      }))}
-                      className="w-4 h-4 text-blue-600 rounded mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm text-blue-900 font-medium">
-                        📸 Les {postData.photoCount} photo{postData.photoCount > 1 ? 's' : ''} de cet article
-                      </span>
-                    </div>
-                  </label>
-                )}
-              </div>
-              
-              <div className="mt-3 pt-3 border-t border-blue-200">
-                <p className="text-xs text-blue-700 italic">
-                  💡 Les thèmes seront ajoutés aux éléments cochés
-                </p>
-              </div>
+              {momentData.stats.photoMomentCount > 0 && (
+                <label className="flex items-center cursor-pointer hover:text-purple-900">
+                  <input
+                    type="checkbox"
+                    checked={propagationOptions.applyToMomentPhotos}
+                    onChange={(e) => setPropagationOptions(prev => ({
+                      ...prev,
+                      applyToMomentPhotos: e.target.checked
+                    }))}
+                    className="w-3.5 h-3.5 text-purple-600 rounded mr-2"
+                  />
+                  <span>📸 {momentData.stats.photoMomentCount} photo{momentData.stats.photoMomentCount > 1 ? 's' : ''} (moment)</span>
+                </label>
+              )}
             </div>
           </div>
         )}

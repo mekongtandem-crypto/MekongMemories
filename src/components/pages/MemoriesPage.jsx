@@ -169,14 +169,19 @@ function MemoriesPage({
     // 3. Confirmation si propagation
     const needsConfirmation = keysToTag.length > 1;
     if (needsConfirmation) {
-      const confirmMessage = `⚠️ CONFIRMATION\n\n` +
-        `Appliquer ${selectedThemes.length} thème${selectedThemes.length > 1 ? 's' : ''} à :\n\n` +
-        `• 1 moment\n` +
-        (propagationOptions.applyToPosts ? `• ${childrenKeys.posts.length} article${childrenKeys.posts.length > 1 ? 's' : ''}\n` : '') +
-        (propagationOptions.applyToPostPhotos ? `• ${childrenKeys.postPhotos.length} photo${childrenKeys.postPhotos.length > 1 ? 's' : ''} d'articles\n` : '') +
-        (propagationOptions.applyToMomentPhotos ? `• ${childrenKeys.momentPhotos.length} photo${childrenKeys.momentPhotos.length > 1 ? 's' : ''} du moment\n` : '') +
-        `\nTotal : ${keysToTag.length} élément${keysToTag.length > 1 ? 's' : ''}\n\n` +
-        `Continuer ?`;
+      // ✅ NOUVEAU : Version compacte
+const parts = ['1 moment'];
+if (propagationOptions.applyToPosts) 
+  parts.push(`${childrenKeys.posts.length} post${childrenKeys.posts.length > 1 ? 's' : ''}`);
+if (propagationOptions.applyToPostPhotos) 
+  parts.push(`${childrenKeys.postPhotos.length} photo${childrenKeys.postPhotos.length > 1 ? 's' : ''} (articles)`);
+if (propagationOptions.applyToMomentPhotos) 
+  parts.push(`${childrenKeys.momentPhotos.length} photo${childrenKeys.momentPhotos.length > 1 ? 's' : ''} (moment)`);
+
+const confirmMessage = 
+  `Appliquer ${selectedThemes.length} thème${selectedThemes.length > 1 ? 's' : ''} à :\n` +
+  `• ${parts.join(' + ')} (${keysToTag.length} total)\n\n` +
+  `Continuer ?`;
       
       if (!confirm(confirmMessage)) {
         setThemeModal({ 
@@ -680,6 +685,8 @@ function MemoriesPage({
         onSave={themeModal.bulkPhotos ? handleSaveBulkThemes : handleSaveThemes}
         title={themeModal.bulkPhotos ? "Assigner des thèmes aux photos" : "Assigner des thèmes"}
         contentType={themeModal.contentType}
+        momentData={themeModal.momentData}
+		postData={themeModal.postData}
       />
 
       {sessionModal && (
@@ -852,8 +859,6 @@ const MomentHeader = memo(({
   localDisplay, onToggleLocal 
 }) => {
   
-  const momentTaggingEnabled = localStorage.getItem('mekong_moment_tagging') === 'true';
-  
   // ✅ Badge moment : UNIQUEMENT le moment lui-même
   const momentKey = generateMomentKey(moment);
   const momentThemes = window.themeAssignments?.getThemesForContent(momentKey) || [];
@@ -925,14 +930,6 @@ const MomentHeader = memo(({
             <h3 className="text-base font-semibold text-gray-900 truncate flex-1">
               {moment.displayTitle}
             </h3>
-            
-            {/* ✅ Badge thèmes MOMENT UNIQUEMENT */}
-            {hasMomentThemes && (
-              <span className="flex items-center space-x-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
-                <Tag className="w-3 h-3" />
-                <span>{momentThemes.length}</span>
-              </span>
-            )}
           </div>
           {moment.location && (
             <span className="flex items-center text-xs text-gray-500 mt-1.5 ml-1">
@@ -967,36 +964,42 @@ const MomentHeader = memo(({
           </button>
         )}
         
-        {/* ✅ Bouton tag moment (si feature activée) */}
-        {momentTaggingEnabled && (
-          <button
-            onClick={handleTagMoment}
-            className={`flex items-center font-medium transition-all ${
-              hasMomentThemes 
-                ? 'text-purple-600 hover:text-purple-700' 
-                : 'text-gray-400 hover:text-gray-500'
+{/* Boutons d'action à droite */}
+<div className="ml-auto flex items-center space-x-2 flex-shrink-0">
+  {/* ✅ Bouton thèmes avec badge intégré */}
+  <button
+    onClick={handleTagMoment}
+    className={`relative p-1.5 rounded transition-colors ${
+      hasMomentThemes 
+        ? 'bg-purple-100 text-purple-600 hover:bg-purple-200' 
+        : 'hover:bg-purple-50 text-gray-600'
+    }`}
+    title={hasMomentThemes ? `${momentThemes.length} thème${momentThemes.length > 1 ? 's' : ''}` : "Tagger ce moment"}
+  >
+    <Tag className="w-4 h-4" />
+    {hasMomentThemes && (
+      <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center border border-white">
+        {momentThemes.length}
+      </span>
+    )}
+  </button>
+              
+          
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onCreateSession(moment, moment);
+            }}
+            className={`p-1.5 rounded transition-colors ${
+              hasSession 
+                ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
+                : 'hover:bg-amber-50 text-gray-600'
             }`}
-            title="Tagger ce moment"
+            title={hasSession ? "Session existante" : "Créer une session"}
           >
-            <Tag className="w-4 h-4 mr-1.5" /> 
-            Moment
+            <span className="text-base">💬</span>
           </button>
-        )}
-        
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            onCreateSession(moment, moment);
-          }}
-          className={`ml-auto p-1.5 rounded transition-colors ${
-            hasSession 
-              ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
-              : 'hover:bg-amber-50 text-gray-600'
-          }`}
-          title={hasSession ? "Session existante" : "Créer une session"}
-        >
-          <span className="text-base">💬</span>
-        </button>
+        </div>
       </div>
     </>
   );
@@ -1112,14 +1115,26 @@ const PostArticle = memo(({
 
   // ✅ MODIFIÉ : Handler tag post avec postData
    const handleTagPost = (e) => {
-    e.stopPropagation();
-    const postKey = generatePostKey(post);
-    const currentThemes = window.themeAssignments?.getThemesForContent(postKey) || [];
-    
-    if (window.memoriesPageActions?.openThemeModal) {
-      window.memoriesPageActions.openThemeModal(postKey, 'post', currentThemes);
-    }
+  e.stopPropagation();
+  const postKey = generatePostKey(post);
+  const currentThemes = window.themeAssignments?.getThemesForContent(postKey) || [];
+  
+  // ✅ AJOUTER : Préparer les données du post
+  const postData = {
+    post: post,
+    postTitle: post.content?.split('\n')[0] || `Article du jour ${post.dayNumber}`,
+    photoCount: post.photos?.length || 0
   };
+  
+  if (window.memoriesPageActions?.openThemeModal) {
+    window.memoriesPageActions.openThemeModal(
+      postKey, 
+      'post', 
+      currentThemes,
+      postData  // ✅ AJOUTER ce 4ème paramètre
+    );
+  }
+};
 
   const postKey = generatePostKey(post);
   const postThemes = window.themeAssignments?.getThemesForContent(postKey) || [];
@@ -1366,12 +1381,7 @@ const PhotoThumbnail = memo(({
         </div>
       )}
 
-      {/* Badge thèmes */}
-      {!selectionMode && hasThemes && (
-        <div className="absolute top-1 right-1 bg-amber-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center z-10">
-          {photoThemes.length}
-        </div>
-      )}
+      {/* ❌ Badge thèmes retiré des vignettes (conservé uniquement dans PhotoViewer) */}
 
       {status === 'loading' && (
         <div className="w-full h-full animate-pulse flex items-center justify-center">

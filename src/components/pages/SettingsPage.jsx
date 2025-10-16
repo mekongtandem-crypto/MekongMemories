@@ -83,9 +83,7 @@ export default function SettingsPage() {
   const [themeSortOrder, setThemeSortOrder] = useState(
   localStorage.getItem('mekong_theme_sort_order') || 'usage'
 );
-  const [momentTaggingEnabled, setMomentTaggingEnabled] = useState(
-  localStorage.getItem('mekong_moment_tagging') === 'true'
-);
+ 
   const [showThemeForm, setShowThemeForm] = useState(false);
   const [editingTheme, setEditingTheme] = useState(null);
   
@@ -389,279 +387,232 @@ export default function SettingsPage() {
         )}
       </section>
 
- {/* ✅ Section Thèmes avec data-section pour ciblage */}
-      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <button
-          data-section="themes" // ✅ NOUVEAU : Pour ciblage automatique
-          data-open={openSections.themes ? "true" : undefined}
-          onClick={() => toggleSection('themes')}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center space-x-2">
-            <Tag className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Mes thèmes</h2>
-          </div>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${
-            openSections.themes ? 'rotate-180' : ''
-          }`} />
-        </button>
-
-{openSections.themes && (
-  <div className="p-4 border-t border-gray-100 space-y-4">
-    
-    {/* ✅ NOUVEAU : Sélecteur ordre d'affichage */}
-    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-      <label className="block text-sm font-medium text-blue-900 mb-2">
-        Ordre d'affichage des thèmes
-      </label>
-      <select 
-        value={themeSortOrder}
-        onChange={(e) => {
-          const newOrder = e.target.value;
-          setThemeSortOrder(newOrder);
-          localStorage.setItem('mekong_theme_sort_order', newOrder);
-          console.log(`📊 Ordre thèmes changé : ${newOrder}`);
-        }}
-        className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-      >
-        <option value="usage">📊 Par utilisation (plus tagués en premier)</option>
-        <option value="created">📅 Par date de création (récents en premier)</option>
-        <option value="alpha">🔤 Alphabétique (A → Z)</option>
-        <option value="manual">✋ Manuel (ordre personnalisé)</option>
-      </select>
-      <p className="text-xs text-blue-700 mt-2">
-        {themeSortOrder === 'usage' && 'Les thèmes les plus utilisés apparaîtront en premier'}
-        {themeSortOrder === 'created' && 'Les thèmes créés récemment apparaîtront en premier'}
-        {themeSortOrder === 'alpha' && 'Les thèmes seront triés par ordre alphabétique'}
-        {themeSortOrder === 'manual' && 'Utilisez les flèches pour réorganiser (à venir)'}
-      </p>
+ {/* Section Thèmes */}
+{/* Section Thèmes */}
+<section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+  <button
+    data-section="themes"
+    data-open={openSections.themes ? "true" : undefined}
+    onClick={() => toggleSection('themes')}
+    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+  >
+    <div className="flex items-center space-x-2">
+      <Tag className="w-5 h-5 text-gray-600" />
+      <h2 className="text-lg font-semibold text-gray-900">Mes thèmes</h2>
     </div>
+    <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${
+      openSections.themes ? 'rotate-180' : ''
+    }`} />
+  </button>
 
-{/* ✅ NOUVEAU : Toggle moment tagging */}
-    <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center space-x-2">
-            <h4 className="font-medium text-purple-900">Tagging de moments entiers</h4>
-            <span className="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full font-medium">
-              EXPÉRIMENTAL
-            </span>
-          </div>
-          <p className="text-sm text-purple-700 mt-1">
-            Permet de tagger un moment complet en une fois (tous ses posts et photos)
-          </p>
-          <p className="text-xs text-purple-600 mt-1">
-            ⚠️ Génère beaucoup d'assignations - confirmation systématique
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            const newState = !momentTaggingEnabled;
-            setMomentTaggingEnabled(newState);
-            localStorage.setItem('mekong_moment_tagging', newState ? 'true' : 'false');
-            
-            // ✅ Activer/désactiver dans ThemeAssignments
-            if (window.themeAssignments) {
-              window.themeAssignments.allowMomentTagging = newState;
-              console.log(`🏷️ Moment tagging ${newState ? 'activé' : 'désactivé'}`);
-            }
+  {openSections.themes && (
+    <div className="p-4 border-t border-gray-100 space-y-4">
+      
+      {/* Sélecteur ordre d'affichage */}
+      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <label className="block text-sm font-medium text-blue-900 mb-2">
+          Ordre d'affichage des thèmes
+        </label>
+        <select 
+          value={themeSortOrder}
+          onChange={(e) => {
+            const newOrder = e.target.value;
+            setThemeSortOrder(newOrder);
+            localStorage.setItem('mekong_theme_sort_order', newOrder);
+            console.log(`📊 Ordre thèmes changé : ${newOrder}`);
           }}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            momentTaggingEnabled ? 'bg-purple-600' : 'bg-gray-300'
-          }`}
-          title={momentTaggingEnabled ? 'Désactiver' : 'Activer'}
+          className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
         >
-          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-            momentTaggingEnabled ? 'translate-x-6' : 'translate-x-1'
-          }`} />
-        </button>
+          <option value="usage">📊 Par utilisation (plus tagués en premier)</option>
+          <option value="created">📅 Par date de création (récents en premier)</option>
+          <option value="alpha">🔤 Alphabétique (A → Z)</option>
+          <option value="manual">✋ Manuel (ordre personnalisé)</option>
+        </select>
+        <p className="text-xs text-blue-700 mt-2">
+          {themeSortOrder === 'usage' && 'Les thèmes les plus utilisés apparaîtront en premier'}
+          {themeSortOrder === 'created' && 'Les thèmes créés récemment apparaîtront en premier'}
+          {themeSortOrder === 'alpha' && 'Les thèmes seront triés par ordre alphabétique'}
+          {themeSortOrder === 'manual' && 'Utilisez les flèches pour réorganiser (à venir)'}
+        </p>
       </div>
-    </div>
 
 
-            {themes.length > 0 && !editingTheme && (
-      <div className="space-y-2">
-        {sortThemes(themes, window.themeAssignments, themeSortOrder).map(theme => {
-          const stats = countThemeContents(window.themeAssignments, theme.id);
-          const colorClasses = THEME_COLORS[theme.color];
-          
-          return (
-            <div 
-              key={theme.id}
-              className={`flex items-center justify-between p-3 rounded-lg border ${colorClasses.border} ${colorClasses.bg}`}
-            >
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">{theme.icon}</span>
-                <div>
-                  <div className={`font-medium ${colorClasses.text}`}>{theme.name}</div>
-                  <div className="text-xs text-gray-600">
-                    {stats.totalCount === 0 ? (
-                      'Aucun contenu'
-                    ) : (
-                      <>
-                        {stats.postCount > 0 && `${stats.postCount} post${stats.postCount > 1 ? 's' : ''}`}
-                        {stats.postCount > 0 && stats.photoCount > 0 && ' • '}
-                        {stats.photoCount > 0 && `${stats.photoCount} photo${stats.photoCount > 1 ? 's' : ''}`}
-                        {/* ✅ NOUVEAU : Afficher usageCount si trié par usage */}
-                        {themeSortOrder === 'usage' && stats.totalCount > 0 && (
-                          <span className="ml-2 text-blue-600 font-medium">
-                            ({theme.usageCount || stats.totalCount})
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex space-x-2">
-                <button 
-                  onClick={() => handleStartEdit(theme)}
-                  className="p-2 hover:bg-white/50 rounded transition-colors"
-                  title="Modifier"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => handleDeleteTheme(theme.id)}
-                  className="p-2 hover:bg-red-100 rounded transition-colors"
-                  title="Supprimer"
-                >
-                  <Trash2 className="w-4 h-4 text-red-600" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    )}
-
-            {/* ✅ Formulaire avec emoji picker natif */}
-            {(showThemeForm || editingTheme) && (
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
-                <h3 className="font-medium text-gray-900">
-                  {editingTheme ? 'Modifier le thème' : 'Créer un thème'}
-                </h3>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nom du thème *
-                  </label>
-                  <input
-                    type="text"
-                    value={themeName}
-                    onChange={(e) => setThemeName(e.target.value)}
-                    placeholder="Ex: Temples, Gastronomie..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-
-                {/* ✅ NOUVEAU : Emoji Picker Natif */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Icône (emoji) *
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">
-                    Tapez ou collez n'importe quel emoji de votre clavier
-                  </p>
-                  
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={themeIcon}
-                      onChange={(e) => setThemeIcon(e.target.value)}
-                      placeholder="Tapez un emoji... 🏛️"
-                      className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-lg"
-                      maxLength={4}
-                    />
-                    {themeIcon && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-3xl pointer-events-none">
-                        {themeIcon}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* ✅ Suggestions repliables */}
-                  <details className="mt-2">
-                    <summary className="text-xs text-gray-500 cursor-pointer hover:text-amber-600 select-none">
-                      Ou choisir parmi des suggestions
-                    </summary>
-                    <div className="grid grid-cols-12 gap-1 mt-2 p-2 bg-white rounded-lg border border-gray-200">
-                      {SUGGESTED_EMOJIS.map((emoji, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setThemeIcon(emoji)}
-                          className="text-xl p-1 hover:bg-gray-100 rounded transition-colors"
-                          title={`Utiliser ${emoji}`}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  </details>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Couleur
-                  </label>
-                  <div className="flex space-x-2">
-                    {Object.keys(THEME_COLORS).map(colorKey => (
-                      <button
-                        key={colorKey}
-                        type="button"
-                        onClick={() => setThemeColor(colorKey)}
-                        className={`w-10 h-10 rounded-full border-2 transition-all ${
-                          THEME_COLORS[colorKey].badge
-                        } ${
-                          themeColor === colorKey ? 'ring-2 ring-offset-2 ring-amber-500' : 'opacity-60'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex space-x-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (editingTheme) {
-                        handleCancelEdit();
-                      } else {
-                        setShowThemeForm(false);
-                        setThemeName('');
-                        setThemeIcon('');
-                      }
-                    }}
-                    className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="button"
-                    onClick={editingTheme ? handleSaveEdit : handleCreateTheme}
-                    className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium"
-                  >
-                    {editingTheme ? 'Enregistrer' : 'Créer'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {!showThemeForm && !editingTheme && (
-              <button
-                onClick={() => setShowThemeForm(true)}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Créer un thème</span>
-              </button>
-            )}
+      {/* Liste des thèmes existants */}
+      {themes.length > 0 && !editingTheme && (
+        <div className="space-y-2">
+          {sortThemes(themes, window.themeAssignments, themeSortOrder).map(theme => {
+            const stats = countThemeContents(window.themeAssignments, theme.id);
+            const colorClasses = THEME_COLORS[theme.color];
             
+            return (
+              <div 
+                key={theme.id}
+                className={`flex items-center justify-between p-3 rounded-lg border ${colorClasses.border} ${colorClasses.bg}`}
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">{theme.icon}</span>
+                  <div>
+                    <div className={`font-medium ${colorClasses.text}`}>{theme.name}</div>
+                    <div className="text-xs text-gray-600">
+                      {stats.totalCount === 0 ? (
+                        'Aucun contenu'
+                      ) : (
+                        <>
+                          {stats.postCount > 0 && `${stats.postCount} post${stats.postCount > 1 ? 's' : ''}`}
+                          {stats.postCount > 0 && stats.photoCount > 0 && ' • '}
+                          {stats.photoCount > 0 && `${stats.photoCount} photo${stats.photoCount > 1 ? 's' : ''}`}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={() => handleStartEdit(theme)}
+                    className="p-2 hover:bg-white/50 rounded transition-colors"
+                    title="Modifier"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteTheme(theme.id)}
+                    className="p-2 hover:bg-red-100 rounded transition-colors"
+                    title="Supprimer"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Formulaire création/édition */}
+      {(showThemeForm || editingTheme) && (
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
+          <h3 className="font-medium text-gray-900">
+            {editingTheme ? 'Modifier le thème' : 'Créer un thème'}
+          </h3>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nom du thème *
+            </label>
+            <input
+              type="text"
+              value={themeName}
+              onChange={(e) => setThemeName(e.target.value)}
+              placeholder="Ex: Temples, Gastronomie..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+            />
           </div>
-        )}
-      </section>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Icône (emoji) *
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Tapez ou collez n'importe quel emoji de votre clavier
+            </p>
+            
+            <div className="relative">
+              <input
+                type="text"
+                value={themeIcon}
+                onChange={(e) => setThemeIcon(e.target.value)}
+                placeholder="Tapez un emoji... 🛕"
+                className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-lg"
+                maxLength={4}
+              />
+              {themeIcon && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-3xl pointer-events-none">
+                  {themeIcon}
+                </div>
+              )}
+            </div>
+            
+            <details className="mt-2">
+              <summary className="text-xs text-gray-500 cursor-pointer hover:text-amber-600 select-none">
+                Ou choisir parmi des suggestions
+              </summary>
+              <div className="grid grid-cols-12 gap-1 mt-2 p-2 bg-white rounded-lg border border-gray-200">
+                {['🛕', '🍜', '🚂', '🌴', '🎭', '👥', '🏙️', '📸', '🎒', '🗺️', '🧳', '⛺'].map((emoji, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setThemeIcon(emoji)}
+                    className="text-xl p-1 hover:bg-gray-100 rounded transition-colors"
+                    title={`Utiliser ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </details>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Couleur
+            </label>
+            <div className="flex space-x-2">
+              {Object.keys(THEME_COLORS).map(colorKey => (
+                <button
+                  key={colorKey}
+                  type="button"
+                  onClick={() => setThemeColor(colorKey)}
+                  className={`w-10 h-10 rounded-full border-2 transition-all ${
+                    THEME_COLORS[colorKey].badge
+                  } ${
+                    themeColor === colorKey ? 'ring-2 ring-offset-2 ring-amber-500' : 'opacity-60'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex space-x-2 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (editingTheme) {
+                  handleCancelEdit();
+                } else {
+                  setShowThemeForm(false);
+                  setThemeName('');
+                  setThemeIcon('');
+                }
+              }}
+              className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={editingTheme ? handleSaveEdit : handleCreateTheme}
+              className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium"
+            >
+              {editingTheme ? 'Enregistrer' : 'Créer'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bouton créer nouveau thème */}
+      {!showThemeForm && !editingTheme && (
+        <button
+          onClick={() => setShowThemeForm(true)}
+          className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
+        >
+          <Plus className="w-5 h-5" />
+          <span>Créer un thème</span>
+        </button>
+      )}
+    </div>
+  )}
+</section>
 
       {/* Section Statistiques */}
       <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">

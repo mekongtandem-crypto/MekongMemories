@@ -13,7 +13,6 @@ class ThemeAssignments {
     this.invertedIndex = {}; // { themeId: Set([contentKey, ...]) } - NOUVEAU
     this.listeners = new Set();
     this.isLoaded = false;
-    this.allowMomentTagging = false; // ✅ NOUVEAU : Option pour tagging moments entiers
     console.log('🏷️ ThemeAssignments v2.0: Ready');
   }
 
@@ -272,11 +271,6 @@ class ThemeAssignments {
    * @param {string} userId - ID utilisateur
    */
   async assignThemesToMoment(moment, themeIds, userId) {
-    if (!this.allowMomentTagging) {
-      console.warn('⚠️ Moment tagging désactivé');
-      return { success: false, error: 'Feature désactivée' };
-    }
-
     try {
       const contentKeys = [];
 
