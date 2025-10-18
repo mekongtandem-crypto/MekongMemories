@@ -46,6 +46,7 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   const app = useAppState();
   
+  
   const [isTimelineVisible, setIsTimelineVisible] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [currentDay, setCurrentDay] = useState(1);
@@ -56,7 +57,8 @@ export default function App() {
   });
   
   const [editingChatTitle, setEditingChatTitle] = useState(false);
-  const [isThemeBarVisible, setIsThemeBarVisible] = useState(true); // Visible par défaut
+  const [isThemeBarVisible, setIsThemeBarVisible] = useState(false); // non Visible par défaut
+  
 
   const memoriesPageRef = useRef(null);
 

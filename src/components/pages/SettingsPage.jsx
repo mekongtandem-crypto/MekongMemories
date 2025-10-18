@@ -68,6 +68,41 @@ function generateUserActivityStats(sessions, masterIndex, users) {
   };
 }
 
+// Composant de confirmation personnalisé
+function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+      onClick={onCancel}
+    >
+      <div 
+        className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">{title}</h3>
+        <p className="text-sm text-gray-600 whitespace-pre-line mb-6">{message}</p>
+        
+        <div className="flex space-x-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium"
+          >
+            Supprimer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const app = useAppState();
   
@@ -96,6 +131,12 @@ export default function SettingsPage() {
   const [regenerationProgress, setRegenerationProgress] = useState({
     isActive: false, step: '', message: '', progress: 0, logs: []
   });
+
+const [confirmDelete, setConfirmDelete] = useState({
+  isOpen: false,
+  themeId: null,
+  message: ''
+});
 
   useEffect(() => {
     if (app.masterIndex?.themes) {
@@ -197,26 +238,10 @@ export default function SettingsPage() {
   };
 
   const handleDeleteTheme = async (themeId) => {
-  console.log('🔴 handleDeleteTheme appelé avec:', themeId);
-  
   const theme = themes.find(t => t.id === themeId);
-  console.log('🔴 Thème trouvé:', theme);
-  if (!theme) {
-    console.log('🔴 Thème non trouvé, sortie');
-    return;
-  }
+  if (!theme) return;
 
-  console.log('🔴 window.themeAssignments existe ?', !!window.themeAssignments);
-  
-  let stats;
-  try {
-    stats = countThemeContents(window.themeAssignments, themeId);
-    console.log('🔴 Stats récupérées:', stats);
-  } catch (error) {
-    console.error('🔴 Erreur countThemeContents:', error);
-    alert('Erreur lors du calcul des stats: ' + error.message);
-    return;
-  }
+  const stats = countThemeContents(window.themeAssignments, themeId);
   
   let confirmMessage;
   if (stats.totalCount === 0) {
@@ -233,27 +258,21 @@ export default function SettingsPage() {
       `Continuer ?`;
   }
 
-  console.log('🔴 Affichage confirmation');
-  const confirmed = confirm(confirmMessage);
-  console.log('🔴 Confirmation résultat:', confirmed);
+  // ✅ Ouvrir le modal React au lieu de confirm()
+  setConfirmDelete({
+    isOpen: true,
+    themeId: themeId,
+    message: confirmMessage,
+    stats: stats
+  });
+};
+
+// ✅ NOUVELLE fonction pour exécuter la suppression
+const executeDeleteTheme = async () => {
+  const { themeId, stats } = confirmDelete;
   
-  if (!confirmed) {
-    console.log('🔴 Annulé par utilisateur');
-    return;
-  }
-
-  console.log('🔴 Début suppression...');
-
   if (stats.totalCount > 0) {
-    try {
-      console.log('🔴 Suppression assignations...');
-      await window.themeAssignments.deleteThemeAssignments(themeId);
-      console.log('🔴 Assignations supprimées');
-    } catch (error) {
-      console.error('🔴 Erreur deleteThemeAssignments:', error);
-      alert('Erreur lors de la suppression des assignations: ' + error.message);
-      return;
-    }
+    await window.themeAssignments.deleteThemeAssignments(themeId);
   }
 
   const updatedThemes = themes.filter(t => t.id !== themeId);
@@ -262,22 +281,17 @@ export default function SettingsPage() {
     themes: updatedThemes
   };
 
-  console.log('🔴 Sauvegarde masterIndex...');
-  try {
-    const result = await window.dataManager.saveMasterIndex(updatedMasterIndex);
-    console.log('🔴 Résultat sauvegarde:', result);
-    
-    if (result.success) {
-      setThemes(updatedThemes);
-      console.log(`✅ Thème supprimé (${stats.totalCount} assignations nettoyées)`);
-      alert('✅ Thème supprimé avec succès !');
-    } else {
-      alert('Erreur lors de la suppression du thème');
-    }
-  } catch (error) {
-    console.error('🔴 Erreur saveMasterIndex:', error);
-    alert('Erreur lors de la sauvegarde: ' + error.message);
+  const result = await window.dataManager.saveMasterIndex(updatedMasterIndex);
+
+  if (result.success) {
+    setThemes(updatedThemes);
+    console.log(`✅ Thème supprimé (${stats.totalCount} assignations nettoyées)`);
+  } else {
+    alert('Erreur lors de la suppression du thème');
   }
+  
+  // Fermer le modal
+  setConfirmDelete({ isOpen: false, themeId: null, message: '' });
 };
 
   // ========================================
@@ -879,6 +893,14 @@ export default function SettingsPage() {
       <section className="text-center text-sm text-gray-500 pt-4">
         <p>Mémoire du Mékong v2.4 - Phase 16</p>
       </section>
+{/* Modal de confirmation de suppression */}
+      <ConfirmModal
+        isOpen={confirmDelete.isOpen}
+        title="Supprimer ce thème ?"
+        message={confirmDelete.message}
+        onConfirm={executeDeleteTheme}
+        onCancel={() => setConfirmDelete({ isOpen: false, themeId: null, message: '' })}
+      />
     </div>
   );
 }

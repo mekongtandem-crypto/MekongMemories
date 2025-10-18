@@ -10,7 +10,7 @@
  * - PARTIE 2 : Composants d'affichage (fichier suivant)
  */
 
-import React, { useState, useEffect, useRef, memo, useCallback, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, memo, useCallback, useImperativeHandle } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
@@ -42,6 +42,7 @@ function MemoriesPage({
 }, ref) {
 
   const app = useAppState();
+  
   
   const [selectedMoments, setSelectedMoments] = useState([]);
   const [displayMode, setDisplayMode] = useState('focus');
@@ -569,15 +570,26 @@ const confirmMessage =
     return <div className="p-12 text-center text-red-500">Aucun moment à afficher.</div>;
   }
 
-  // ✅ NOUVEAU : Calculer les stats des thèmes
-  const availableThemes = app.masterIndex?.themes || [];
-  
-  const themeStats = availableThemes
-  .map(theme => ({
-    ...theme,
-    count: theme.usageCount || 0
-  }))
-  .filter(t => t.count > 0); // ✅ Filtrer thèmes vides
+ const availableThemes = app.masterIndex?.themes || [];
+
+// ✅ Calcul direct sans useMemo
+const themeStats = window.themeAssignments && availableThemes.length > 0
+  ? availableThemes
+      .map(theme => {
+        const contents = window.themeAssignments.getAllContentsByTheme(theme.id) || [];
+        return {
+          id: theme.id,
+          name: theme.name,
+          icon: theme.icon,
+          color: theme.color,
+          count: contents.length
+        };
+      })
+      .filter(t => t.count > 0)
+      .sort((a, b) => b.count - a.count)
+  : [];
+
+console.log('🔍 themeStats calculé:', themeStats);
   
   return (
     <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden relative">
@@ -616,6 +628,7 @@ const confirmMessage =
         </div>
       )}
 
+      
       {/* ✅ Filtres par thème (conditionnel) */}
       {isThemeBarVisible && themeStats.length > 0 && (
         <div className="bg-white border-b border-gray-200 px-4 py-3">
