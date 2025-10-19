@@ -19,8 +19,8 @@ export function BottomNavigation({ currentPage, onPageChange, app }) {
   }, [app.sessions, app.currentUser]);
 
   const navItems = [
-    { id: 'memories', icon: Sparkles, label: 'Souvenirs' },
     { id: 'sessions', icon: MessageSquare, label: 'Sessions', badge: pendingSessionsCount },
+    { id: 'memories', icon: Sparkles, label: 'Souvenirs' },
     { id: 'settings', icon: Settings, label: 'Réglages' }
   ];
 
