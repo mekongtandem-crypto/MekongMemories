@@ -20,14 +20,6 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
   // ✅ NOUVEAU Phase 17b : Preview photo attachée
   const [attachedPhoto, setAttachedPhoto] = useState(null);
   
-  // ✅ DEBUG
-  useEffect(() => {
-    console.log('🔍 ChatPage - attachedPhoto changed:', attachedPhoto);
-  }, [attachedPhoto]);
-  
-  useEffect(() => {
-    console.log('🔍 ChatPage - navigationContext:', navigationContext);
-  }, [navigationContext]);
   
   const [viewerState, setViewerState] = useState({ 
     isOpen: false, photo: null 
@@ -84,14 +76,14 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
     if (!newMessage.trim() && !attachedPhoto) return;
 
     try {
-      console.log('=== DÉBUT ENVOI MESSAGE ===');
-      console.log('📝 Texte:', newMessage.trim());
-      console.log('📸 Photo attachée:', attachedPhoto);
-      console.log('📸 Photo détails:', {
-        filename: attachedPhoto?.filename,
-        google_drive_id: attachedPhoto?.google_drive_id,
-        type: attachedPhoto?.type
-      });
+      // console.log('=== DÉBUT ENVOI MESSAGE ===');
+      // console.log('📝 Texte:', newMessage.trim());
+      // console.log('📸 Photo attachée:', attachedPhoto);
+      // console.log('📸 Photo détails:', {
+      //  filename: attachedPhoto?.filename,
+      //  google_drive_id: attachedPhoto?.google_drive_id,
+      //   type: attachedPhoto?.type
+      // });
       
       await app.addMessageToSession(
         app.currentChatSession.id, 
@@ -99,9 +91,9 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
         attachedPhoto
       );
       
-      console.log('✅ addMessageToSession terminé');
-      console.log('📋 Session après envoi:', app.currentChatSession);
-      console.log('📋 Dernier message:', app.currentChatSession.notes[app.currentChatSession.notes.length - 1]);
+      // console.log('✅ addMessageToSession terminé');
+      // console.log('📋 Session après envoi:', app.currentChatSession);
+      // console.log('📋 Dernier message:', app.currentChatSession.notes[app.currentChatSession.notes.length - 1]);
       
       setNewMessage('');
       setAttachedPhoto(null);
@@ -215,16 +207,9 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
           </div>
         )}
 
-        {app.currentChatSession.notes?.map((message) => {
-          console.log('🔍 Rendu message:', {
-            id: message.id,
-            author: message.author,
-            content: message.content?.substring(0, 30),
-            hasPhotoData: !!message.photoData,
-            photoData: message.photoData
-          });
+        {app.currentChatSession.notes?.map((message) => (
           
-          return (
+          
           <div
             key={message.id}
             className={`flex ${getCurrentUserStyle(message.author)} max-w-xs sm:max-w-md lg:max-w-lg`}
@@ -305,8 +290,7 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
               </div>
             </div>
           </div>
-          );
-        })}
+        ))}
         <div ref={messagesEndRef} />
       </div>
 

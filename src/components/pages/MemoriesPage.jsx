@@ -644,8 +644,6 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
       .filter(t => t.count > 0)
       .sort((a, b) => b.count - a.count)
   : [];
-
-console.log('🔍 themeStats calculé:', themeStats);
   
   return (
     <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden relative">

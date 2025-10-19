@@ -157,7 +157,7 @@ export default function App() {
             navigationContext={navigationContext}
             onNavigateBack={navigateBack}
             onAttachToChat={(item) => {
-              console.log('📎 App.jsx - onAttachToChat called with:', item);
+            //  console.log('📎 App.jsx - onAttachToChat called with:', item);
               
               // 1. Set attachment AVANT de naviguer
               setNavigationContext(prev => {
@@ -165,7 +165,7 @@ export default function App() {
                   ...prev,
                   pendingAttachment: item
                 };
-                console.log('✅ App.jsx - navigationContext updated:', newContext);
+             //   console.log('✅ App.jsx - navigationContext updated:', newContext);
                 return newContext;
               });
               
