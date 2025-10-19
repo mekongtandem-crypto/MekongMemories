@@ -273,7 +273,7 @@ export default function UnifiedTopBar({
                 <span className="text-gray-300">·</span>
                 {notifiedCount > 0 && (<button onClick={() => window.sessionPageFilters?.setGroupFilter('notified')} className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${activeFilter === 'notified' ? 'bg-orange-500 text-white shadow-md' : 'bg-orange-100 hover:bg-orange-200 text-orange-700'}`}><span>🔔</span><span>{notifiedCount}</span></button>)}
                 {pendingYouCount > 0 && (<button onClick={() => window.sessionPageFilters?.setGroupFilter('pending_you')} className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${activeFilter === 'pending_you' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-100 hover:bg-amber-200 text-amber-700'}`}><span>🟡</span><span>{pendingYouCount}</span></button>)}
-                {pendingOtherCount > 0 && (<button onClick={() => window.sessionPageFilters?.setGroupFilter('pending_other')} className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${activeFilter === 'pending_other' ? 'bg-blue-500 text-white shadow-md' : 'bg-blue-100 hover:bg-blue-200 text-blue-700'}`}><span>🔵</span><span>{pendingOtherCount}</span></button>)}
+                {pendingOtherCount > 0 && (<button onClick={() => window.sessionPageFilters?.setGroupFilter('pending_other')} className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${activeFilter === 'pending_other' ? 'bg-green-500 text-white shadow-md' : 'bg-green-100 hover:bg-green-200 text-green-700'}`}><span>🟢</span><span>{pendingOtherCount}</span></button>)}
             </div>
         );
       }

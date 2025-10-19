@@ -220,13 +220,13 @@ export default function SessionsPage() {
       
       {/* Message filtre actif */}
       {groupFilter && (
-        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-sm text-blue-900">
+        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2 text-sm text-green-900">
             <span className="font-medium">Filtre actif :</span>
             <span className="text-2xl">
               {groupFilter === 'notified' && '🔔'}
               {groupFilter === 'pending_you' && '🟡'}
-              {groupFilter === 'pending_other' && '🔵'}
+              {groupFilter === 'pending_other' && '🟢'}
             </span>
             <span>
               {groupFilter === 'notified' && 'Notifiées'}
@@ -236,7 +236,7 @@ export default function SessionsPage() {
           </div>
           <button
             onClick={() => setGroupFilter(null)}
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1"
+            className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center space-x-1"
           >
             <X className="w-4 h-4" />
             <span>Voir tout</span>
@@ -309,12 +309,12 @@ export default function SessionsPage() {
           {/* Groupe EN ATTENTE */}
           {filteredGroups.pending_other && filteredGroups.pending_other.length > 0 && (
             <SessionGroup
-              emoji="🔵"
+              emoji="🟢"
               subtitle="Attente d'autres utilisateurs"
               sessions={filteredGroups.pending_other}
               isOpen={openSections.pending_other}
               onToggle={() => toggleSection('pending_other')}
-              color="blue"
+              color="green"
               currentUserId={app.currentUser}
               editingSession={editingSession}
               editTitle={editTitle}
@@ -335,12 +335,12 @@ export default function SessionsPage() {
           {/* Groupe TERMINÉES */}
           {filteredGroups.completed && filteredGroups.completed.length > 0 && (
             <SessionGroup
-              emoji="✅"
+              emoji="☑️"
               subtitle="Sessions complétées"
               sessions={filteredGroups.completed}
               isOpen={openSections.completed}
               onToggle={() => toggleSection('completed')}
-              color="green"
+              color="blue"
               currentUserId={app.currentUser}
               editingSession={editingSession}
               editTitle={editTitle}
@@ -388,8 +388,8 @@ function SessionGroup({
   const colorClasses = {
     orange: { bg: 'bg-orange-50', border: 'border-orange-200', hover: 'hover:bg-orange-100', badgeBg: 'bg-orange-500' },
     amber: { bg: 'bg-amber-50', border: 'border-amber-200', hover: 'hover:bg-amber-100', badgeBg: 'bg-amber-500' },
-    blue: { bg: 'bg-blue-50', border: 'border-blue-200', hover: 'hover:bg-blue-100', badgeBg: 'bg-blue-500' },
-    green: { bg: 'bg-green-50', border: 'border-green-200', hover: 'hover:bg-green-100', badgeBg: 'bg-green-500' }
+    green: { bg: 'bg-green-50', border: 'border-green-200', hover: 'hover:bg-green-100', badgeBg: 'bg-green-500' },
+    blue: { bg: 'bg-blue-50', border: 'border-blue-200', hover: 'hover:bg-blue-100', badgeBg: 'bg-blue-500' }
   };
   
   const colors = colorClasses[color];

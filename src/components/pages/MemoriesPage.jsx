@@ -1076,7 +1076,7 @@ const MomentHeader = memo(({
     onClick={handleTagMoment}
     className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors ${
       hasMomentThemes 
-        ? 'bg-purple-100 text-purple-600 hover:bg-purple-200' 
+        ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-200' 
         : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
     }`}
     title="Thèmes"
@@ -1288,7 +1288,7 @@ const PostArticle = memo(({
               onClick={handleTagPost} 
               className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors ${
                 hasThemes 
-                  ? 'bg-purple-100 text-purple-600 hover:bg-purple-200' 
+                  ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-200' 
                   : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
               }`}
               title="Thèmes"
@@ -1567,7 +1567,7 @@ const PhotoContextMenu = memo(({
         
         <button
           onClick={onAssignThemes}
-          className="w-full text-left px-4 py-2 text-sm hover:bg-purple-50 flex items-center space-x-2 text-purple-600"
+          className="w-full text-left px-4 py-2 text-sm hover:bg-yellow-50 flex items-center space-x-2 text-yellow-600"
         >
           <Tag className="w-4 h-4" />
           <span>Thèmes</span>
