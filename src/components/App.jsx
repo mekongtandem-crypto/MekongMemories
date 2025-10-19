@@ -1,6 +1,7 @@
 /**
  * App.jsx v2.4 - Phase 17c : Auto-ouvrir moment du chat
  * ✅ sessionMomentId dans navigationContext
+ * ✅ Détection auto Chat → Memories (TopBar OU BottomNav)
  */
 import React, { useState, useRef } from 'react';
 import { useAppState } from '../hooks/useAppState.js';
@@ -57,11 +58,10 @@ export default function App() {
   const [editingChatTitle, setEditingChatTitle] = useState(false);
   const [isThemeBarVisible, setIsThemeBarVisible] = useState(false);
   
-  // ✅ MODIFIÉ Phase 17c : Ajouter sessionMomentId
   const [navigationContext, setNavigationContext] = useState({
     previousPage: null,
     pendingAttachment: null,
-    sessionMomentId: null  // ← AJOUT
+    sessionMomentId: null
   });
 
   const memoriesPageRef = useRef(null);
@@ -105,17 +105,42 @@ export default function App() {
     }
   };
 
-  // ✅ MODIFIÉ Phase 17c : Support sessionMomentId
+  // ✅ Handler explicite avec sessionMomentId (pour TopBar "Explorer")
   const handleNavigateWithContext = (targetPage, context = {}) => {
     console.log('🧭 Navigation avec contexte:', targetPage, context);
     
     setNavigationContext({
       previousPage: app.currentPage,
       pendingAttachment: context.attachment || null,
-      sessionMomentId: context.sessionMomentId || null  // ← AJOUT
+      sessionMomentId: context.sessionMomentId || null
     });
     
     app.updateCurrentPage(targetPage);
+  };
+
+  // ✅ Handler générique (pour BottomNav) avec détection auto
+  const handlePageChange = (newPage) => {
+    console.log('📄 Changement page:', app.currentPage, '→', newPage);
+    
+    // Si on va vers Memories DEPUIS Chat → transmettre le momentId
+    if (newPage === 'memories' && app.currentPage === 'chat' && app.currentChatSession?.gameId) {
+      console.log('🎯 Navigation Chat → Memories détectée, momentId:', app.currentChatSession.gameId);
+      
+      setNavigationContext({
+        previousPage: 'chat',
+        pendingAttachment: null,
+        sessionMomentId: app.currentChatSession.gameId
+      });
+    } else {
+      // Navigation normale
+      setNavigationContext({
+        previousPage: null,
+        pendingAttachment: null,
+        sessionMomentId: null
+      });
+    }
+    
+    app.updateCurrentPage(newPage);
   };
 
   const handleNavigateBack = () => {
@@ -125,7 +150,7 @@ export default function App() {
     setNavigationContext({
       previousPage: null,
       pendingAttachment: null,
-      sessionMomentId: null  // ← AJOUT
+      sessionMomentId: null
     });
     
     app.updateCurrentPage(previousPage);
@@ -137,7 +162,7 @@ export default function App() {
     setNavigationContext(prev => ({
       ...prev,
       pendingAttachment: attachment,
-      sessionMomentId: null  // ← Clear au retour
+      sessionMomentId: null
     }));
     
     app.updateCurrentPage('chat');
@@ -226,7 +251,7 @@ export default function App() {
         {app.isInitialized && (
           <BottomNavigation 
             currentPage={app.currentPage}
-            onPageChange={app.updateCurrentPage}
+            onPageChange={handlePageChange}
             app={app}
           />
         )}

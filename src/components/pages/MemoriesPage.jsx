@@ -46,7 +46,6 @@ function MemoriesPage({
 
   const app = useAppState();
   
-  
   const [selectedMoments, setSelectedMoments] = useState([]);
   const [displayMode, setDisplayMode] = useState('focus');
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,6 +81,7 @@ function MemoriesPage({
     position: { x: 0, y: 0 }
   });
   
+
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   
   const momentRefs = useRef({});
@@ -515,48 +515,29 @@ const confirmMessage =
     }
   }, [selectedMoments]);
   
-  // ========================================
+// ========================================
   // Phase 17c : Auto-ouvrir moment du chat
   // ========================================
+  
   useEffect(() => {
-    // Guards : S'assurer que tout est chargé
-    if (!app?.isInitialized || !navigationContext?.sessionMomentId || momentsData.length === 0) {
-      return;
-    }
-    
-    const targetMomentId = navigationContext.sessionMomentId;
-    console.log('🎯 Auto-ouverture moment du chat:', targetMomentId);
-    
-    // Trouver le moment correspondant
-    const targetMoment = momentsData.find(m => m.id === targetMomentId);
-    
-    if (!targetMoment) {
-      console.warn('⚠️ Moment non trouvé:', targetMomentId);
-      return;
-    }
-    
-    // Attendre que le DOM soit prêt
-    const timeoutId = setTimeout(() => {
-      // Ouvrir le moment
-      setSelectedMoments([targetMoment]);
+    // Si on reçoit un momentId depuis le chat
+    if (navigationContext?.sessionMomentId && momentsData.length > 0) {
+      const targetMoment = momentsData.find(m => m.id === navigationContext.sessionMomentId);
       
-      // Scroller après un court délai
-      setTimeout(() => {
-        const element = momentRefs.current[targetMomentId];
-        if (element) {
-          executeScrollToElement(element);
-          console.log('✅ Moment ouvert et scrollé');
-        }
-      }, 300);
-    }, 150);
-    
-    return () => clearTimeout(timeoutId);
-  }, [
-    navigationContext?.sessionMomentId, 
-    momentsData, 
-    app?.isInitialized,
-    executeScrollToElement
-  ]);
+      if (targetMoment) {
+        console.log('🎯 Ouverture moment:', targetMoment.displayTitle);
+        
+        // Ouvrir le moment
+        setSelectedMoments([targetMoment]);
+        
+        // Scroller après délai
+        setTimeout(() => {
+          const element = momentRefs.current[navigationContext.sessionMomentId];
+          if (element) executeScrollToElement(element);
+        }, 300);
+      }
+    }
+  }, [navigationContext?.sessionMomentId]); // ← Dépendance UNIQUEMENT sur sessionMomentId
 
   // Puis continuer avec les callbacks...
   const scrollToMoment = useCallback((momentId) => {
