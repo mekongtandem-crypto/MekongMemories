@@ -891,7 +891,7 @@ const executeDeleteTheme = async () => {
       </section>
       
       <section className="text-center text-sm text-gray-500 pt-4">
-        <p>Mémoire du Mékong v2.4 - Phase 16</p>
+        <p>Mémoire du Mékong v2.5 - Phase 17b - build 5</p>
       </section>
 {/* Modal de confirmation de suppression */}
       <ConfirmModal

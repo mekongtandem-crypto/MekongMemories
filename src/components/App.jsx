@@ -113,7 +113,7 @@ export default function App() {
           Chargement de vos souvenirs...
         </p>
         <div className="absolute bottom-4 text-xs text-gray-400 dark:text-gray-500">
-          Version 2.5 - Phase 17a
+          Version 2.5 - Phase 17b chat with attached photos
         </div>
       </div>
     );
