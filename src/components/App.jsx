@@ -1,7 +1,7 @@
 /**
- * App.jsx v2.2 - TopBar fixe
- * ✅ TopBar reste en haut au scroll
- * ✅ Ajustement padding pour compenser la barre fixe
+ * App.jsx v2.3 - Phase 17a : Navigation contextuelle
+ * ✅ State navigationContext pour Chat ↔️ Memories
+ * ✅ Fonction navigateWithContext()
  */
 import React, { useState, useRef } from 'react';
 import { useAppState } from '../hooks/useAppState.js';
@@ -46,7 +46,7 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   const app = useAppState();
   
-  
+  // États existants
   const [isTimelineVisible, setIsTimelineVisible] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [currentDay, setCurrentDay] = useState(1);
@@ -57,10 +57,48 @@ export default function App() {
   });
   
   const [editingChatTitle, setEditingChatTitle] = useState(false);
-  const [isThemeBarVisible, setIsThemeBarVisible] = useState(false); // non Visible par défaut
+  const [isThemeBarVisible, setIsThemeBarVisible] = useState(false);
   
+  // ✅ NOUVEAU Phase 17a : Context navigation
+  const [navigationContext, setNavigationContext] = useState({
+    previousPage: null,        // Page d'où on vient
+    previousChatId: null,      // ID du chat pour y retourner
+    pendingAttachment: null    // Photo/post/moment à attacher (Phase 17b)
+  });
 
   const memoriesPageRef = useRef(null);
+  
+  // ✅ NOUVEAU : Fonction navigation avec contexte
+  const navigateWithContext = (targetPage, context = {}) => {
+    setNavigationContext({
+      previousPage: app.currentPage,
+      previousChatId: app.currentChatSession?.id,
+      ...context
+    });
+    app.updateCurrentPage(targetPage);
+  };
+  
+  // ✅ NOUVEAU : Fonction retour intelligent
+  const navigateBack = () => {
+    const target = navigationContext.previousPage || 'sessions';
+    
+    // Retour au chat si besoin
+    if (target === 'chat' && navigationContext.previousChatId) {
+      const session = app.sessions?.find(s => s.id === navigationContext.previousChatId);
+      if (session) {
+        app.openChatSession(session);
+      }
+    } else {
+      app.updateCurrentPage(target);
+    }
+    
+    // Clear context
+    setNavigationContext({
+      previousPage: null,
+      previousChatId: null,
+      pendingAttachment: navigationContext.pendingAttachment // Conserver pour Phase 17b
+    });
+  };
 
   if (!app.isInitialized) {
     return (
@@ -75,7 +113,7 @@ export default function App() {
           Chargement de vos souvenirs...
         </p>
         <div className="absolute bottom-4 text-xs text-gray-400 dark:text-gray-500">
-          Version 2.4 - Plein Écran
+          Version 2.5 - Phase 17a
         </div>
       </div>
     );
@@ -98,6 +136,8 @@ export default function App() {
           <ChatPage 
             editingTitle={editingChatTitle}
             setEditingTitle={setEditingChatTitle}
+            navigationContext={navigationContext}
+            onClearAttachment={() => setNavigationContext(prev => ({ ...prev, pendingAttachment: null }))}
           />
         );
       
@@ -114,6 +154,15 @@ export default function App() {
             setCurrentDay={setCurrentDay}
             displayOptions={displayOptions}
             isThemeBarVisible={isThemeBarVisible}
+            navigationContext={navigationContext}
+            onNavigateBack={navigateBack}
+            onAttachToChat={(item) => {
+              setNavigationContext(prev => ({
+                ...prev,
+                pendingAttachment: item
+              }));
+              navigateBack();
+            }}
           />
         );
     }
@@ -134,7 +183,10 @@ export default function App() {
             currentDay={currentDay}
             setCurrentDay={setCurrentDay}
             isThemeBarVisible={isThemeBarVisible}
-  			setIsThemeBarVisible={setIsThemeBarVisible}
+            setIsThemeBarVisible={setIsThemeBarVisible}
+            navigationContext={navigationContext}
+            onNavigateWithContext={navigateWithContext}
+            onNavigateBack={navigateBack}
             jumpToDay={(day) => {
               setCurrentDay(day);
               if (memoriesPageRef.current?.jumpToDay) {

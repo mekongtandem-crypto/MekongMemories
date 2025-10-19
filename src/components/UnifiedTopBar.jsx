@@ -1,6 +1,7 @@
 /**
- * UnifiedTopBar.jsx v2.5 - Ajout toggle thèmes
- * ✅ Bouton 🏷️ pour afficher/masquer barre thèmes
+ * UnifiedTopBar.jsx v2.6 - Phase 17a : Navigation contextuelle
+ * ✅ Bouton "Explorer souvenirs" dans TopBar Chat
+ * ✅ Bouton gauche Memories adaptatif (← Retour au chat / ← Sessions)
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { 
@@ -19,8 +20,9 @@ export default function UnifiedTopBar({
   currentPage, onCloseChatSession, isTimelineVisible, setIsTimelineVisible, 
   isSearchOpen, setIsSearchOpen, displayOptions, setDisplayOptions, jumpToRandomMoment,
   currentDay, setCurrentDay, jumpToDay,
-  // ✅ NOUVEAU : props pour toggle thèmes
-  isThemeBarVisible, setIsThemeBarVisible
+  isThemeBarVisible, setIsThemeBarVisible,
+  // ✅ NOUVEAU Phase 17a
+  navigationContext, onNavigateWithContext, onNavigateBack
 }) {
 
   const app = useAppState();
@@ -130,14 +132,65 @@ export default function UnifiedTopBar({
 
   const renderLeftAction = () => {
     switch (currentPage) {
-	  case 'memories':
+	  case 'memories': {
+        // ✅ MODIFIÉ : Bouton adaptatif selon contexte
+        const isFromChat = navigationContext?.previousPage === 'chat';
+        const backLabel = isFromChat ? 'Retour au chat' : 'Sessions';
+        
         return (
-          <button onClick={() => setIsSearchOpen(!isSearchOpen)} className={`p-2 rounded-lg ${isSearchOpen ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`} title={isSearchOpen ? "Fermer la recherche" : "Rechercher (/)"}>
-            {isSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+          <button 
+            onClick={() => {
+              if (isFromChat && onNavigateBack) {
+                onNavigateBack();
+              } else {
+                setIsSearchOpen(!isSearchOpen);
+              }
+            }} 
+            className={`p-2 rounded-lg ${
+              isFromChat 
+                ? 'text-amber-600 hover:bg-amber-100' 
+                : isSearchOpen 
+                  ? 'bg-blue-100 text-blue-600' 
+                  : 'text-gray-600 hover:bg-gray-100'
+            }`} 
+            title={isFromChat ? backLabel : (isSearchOpen ? "Fermer la recherche" : "Rechercher (/)")}
+          >
+            {isFromChat ? (
+              <>
+                <ArrowLeft className="w-5 h-5 inline mr-1" />
+                <span className="text-sm hidden sm:inline">{backLabel}</span>
+              </>
+            ) : (
+              isSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />
+            )}
           </button>
         );
-      case 'chat': 
-        return <button onClick={onCloseChatSession} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Retour"><ArrowLeft className="w-5 h-5" /></button>;
+      }
+      
+      case 'chat': {
+        // ✅ NOUVEAU : 2 boutons (Retour + Explorer)
+        return (
+          <div className="flex items-center space-x-1">
+            <button 
+              onClick={onCloseChatSession} 
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" 
+              title="Retour Sessions"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            
+            {/* ✅ NOUVEAU : Bouton Explorer souvenirs */}
+            <button 
+              onClick={() => onNavigateWithContext?.('memories', { fromChat: true })}
+              className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg hidden sm:flex" 
+              title="Explorer souvenirs"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+          </div>
+        );
+      }
+      
       case 'sessions': 
         return <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Nouvelle session"><Plus className="w-5 h-5" /></button>;
       case 'settings': 
@@ -152,7 +205,6 @@ export default function UnifiedTopBar({
       case 'memories': {
         const filterIcons = { all: '📋', unexplored: '✨', with_posts: '📄', with_photos: '📸' };
         
-        // ✅ Compter les thèmes avec contenu
         const availableThemes = app.masterIndex?.themes || [];
         const themeCount = availableThemes.filter(theme => {
           const contents = window.themeAssignments?.getAllContentsByTheme(theme.id) || [];
@@ -161,7 +213,6 @@ export default function UnifiedTopBar({
 
         return (
           <div className="flex items-center space-x-2">
-            {/* ✅ NOUVEAU : Bouton toggle thèmes */}
             {themeCount > 0 && (
               <>
                 <button 

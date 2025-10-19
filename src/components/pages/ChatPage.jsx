@@ -1,20 +1,24 @@
 /**
- * ChatPage.jsx v2.3 - Phase 16
- * ✅ Suppression en-tête (déplacé dans UnifiedTopBar)
+ * ChatPage.jsx v2.4 - Phase 17b : Attachement photo
+ * ✅ Détection pendingAttachment
+ * ✅ Preview photo dans input
+ * ✅ Envoi message avec photo
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
-import { userManager } from '../../core/UserManager.js'; // <-- LIGNE À AJOUTER
-import { Send, Trash2, Check, X, Edit } from 'lucide-react';
+import { userManager } from '../../core/UserManager.js';
+import { Send, Trash2, Check, X, Edit, Camera } from 'lucide-react';
 import PhotoViewer from '../PhotoViewer.jsx';
 
-export default function ChatPage() {
+export default function ChatPage({ navigationContext, onClearAttachment }) {
   const app = useAppState();
   const [newMessage, setNewMessage] = useState('');
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState(null);
-  // ❌ SUPPRIMÉ : États du titre (editingTitle, titleValue, titleInputRef)
+  
+  // ✅ NOUVEAU Phase 17b : Preview photo attachée
+  const [attachedPhoto, setAttachedPhoto] = useState(null);
   
   const [viewerState, setViewerState] = useState({ 
     isOpen: false, photo: null 
@@ -29,16 +33,28 @@ export default function ChatPage() {
     }
   }, [app.currentChatSession?.notes]);
 
-  // ❌ SUPPRIMÉ : useEffect pour le focus sur l'input du titre
-  // ❌ SUPPRIMÉ : Tous les handlers du titre (handleStartEditTitle, handleSaveTitle, handleCancelEditTitle)
+  // ✅ NOUVEAU Phase 17b : Détecter photo attachée depuis Memories
+  useEffect(() => {
+    if (navigationContext?.pendingAttachment) {
+      const { type, data } = navigationContext.pendingAttachment;
+      
+      if (type === 'photo') {
+        setAttachedPhoto(data);
+        console.log('📎 Photo attachée:', data.filename);
+      }
+      
+      // Clear attachment
+      onClearAttachment?.();
+    }
+  }, [navigationContext?.pendingAttachment, onClearAttachment]);
 
-useEffect(() => {
+  useEffect(() => {
     window.chatPageActions = {
       showFeedback: (message) => {
         setFeedbackMessage(message);
         setTimeout(() => {
           setFeedbackMessage(null);
-        }, 2500); // Le message disparaît après 2.5 secondes
+        }, 2500);
       }
     };
     return () => {
@@ -51,11 +67,21 @@ useEffect(() => {
   // ========================================
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
+    // ✅ MODIFIÉ Phase 17b : Vérifier si texte OU photo
+    if (!newMessage.trim() && !attachedPhoto) return;
 
     try {
-      await app.addMessageToSession(app.currentChatSession.id, newMessage);
+      // ✅ NOUVEAU : Construire message avec photo si présente
+      const messageData = {
+        content: newMessage.trim(),
+        ...(attachedPhoto && { photoData: attachedPhoto })
+      };
+      
+      await app.addMessageToSession(app.currentChatSession.id, messageData.content, attachedPhoto);
+      
+      // Clear inputs
       setNewMessage('');
+      setAttachedPhoto(null);
     } catch (error) {
       console.error('❌ Erreur envoi message:', error);
     }
@@ -132,14 +158,11 @@ useEffect(() => {
 
   const getUserBubbleStyle = (author) => {
     const isCurrentUser = author === app.currentUser?.id;
-    // On récupère l'objet de style complet depuis notre UserManager amélioré
     const style = userManager.getUserStyle(author);
 
     if (isCurrentUser) {
-      // Style pour les messages de l'utilisateur actuel (fond vif)
       return `${style.strong_bg} text-white rounded-l-lg rounded-tr-lg shadow-lg`;
     } else {
-      // Style pour les messages des autres (fond clair)
       return `${style.bg} ${style.text} rounded-r-lg rounded-tl-lg border ${style.border}`;
     }
   };  
@@ -156,8 +179,6 @@ useEffect(() => {
   
   return (
     <div className="flex flex-col h-full bg-gray-50">
-      
-      {/* ❌ SUPPRIMÉ : L'en-tête complet avec titre éditable a été retiré d'ici */}
 
       {/* Zone des messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -257,6 +278,28 @@ useEffect(() => {
 
       {/* Zone de saisie */}
       <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
+        {/* ✅ NOUVEAU Phase 17b : Preview photo attachée */}
+        {attachedPhoto && (
+          <div className="mb-2 p-2 bg-purple-50 border border-purple-200 rounded-lg flex items-center space-x-3">
+            <div className="w-12 h-12 bg-gray-200 rounded overflow-hidden flex-shrink-0">
+              <PhotoPreview photo={attachedPhoto} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {attachedPhoto.filename || 'Photo'}
+              </p>
+              <p className="text-xs text-gray-500">Prête à envoyer</p>
+            </div>
+            <button
+              onClick={() => setAttachedPhoto(null)}
+              className="p-1 hover:bg-purple-100 rounded text-gray-600"
+              title="Retirer photo"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         <div className="flex space-x-3">
           <textarea
             value={newMessage}
@@ -267,15 +310,15 @@ useEffect(() => {
                 handleSendMessage();
               }
             }}
-            placeholder="Tapez votre message... (Shift+Entrée pour envoyer)"
+            placeholder={attachedPhoto ? "Ajouter un message (optionnel)..." : "Tapez votre message... (Shift+Entrée pour envoyer)"}
             className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             rows="2"
           />
           <button
             onClick={handleSendMessage}
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() && !attachedPhoto}
             className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center transition-colors"
-            title="Envoyer message (Shift+Entrée)"
+            title={attachedPhoto ? "Envoyer photo + message" : "Envoyer message (Shift+Entrée)"}
           >
             <Send className="w-5 h-5" />
           </button>
@@ -293,15 +336,13 @@ useEffect(() => {
         />
       )}
       
-  {/* ✅ NOUVEAU : Message de feedback temporaire */}
-  {feedbackMessage && (
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-pulse">
-      {feedbackMessage}
-    </div>
-  )}
-
-</div> 
-      
+      {/* Feedback temporaire */}
+      {feedbackMessage && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-pulse">
+          {feedbackMessage}
+        </div>
+      )}
+    </div> 
   );
 }
 
@@ -383,5 +424,49 @@ function PhotoMessage({ photo, onPhotoClick }) {
       />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-lg"></div>
     </div>
+  );
+}
+
+// ========================================
+// COMPOSANT PhotoPreview (pour input)
+// ========================================
+
+function PhotoPreview({ photo }) {
+  const [imageUrl, setImageUrl] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    const resolveUrl = async () => {
+      if (!photo) return;
+      
+      try {
+        const url = await window.photoDataV2.resolveImageUrl(photo, true);
+        if (isMounted && url && !url.startsWith('data:image/svg+xml')) {
+          setImageUrl(url);
+        }
+      } catch (err) {
+        console.error('❌ Erreur preview photo:', err);
+      }
+    };
+    
+    resolveUrl();
+    return () => { isMounted = false; };
+  }, [photo]);
+
+  if (!imageUrl) {
+    return (
+      <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+        <Camera className="w-5 h-5 text-gray-500" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt={photo.filename}
+      className="w-full h-full object-cover"
+    />
   );
 }

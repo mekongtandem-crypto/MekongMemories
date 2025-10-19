@@ -38,7 +38,10 @@ function MemoriesPage({
   currentDay,
   setCurrentDay,
   displayOptions,
-  isThemeBarVisible
+  isThemeBarVisible,
+  navigationContext,
+  onNavigateBack,
+  onAttachToChat
 }, ref) {
 
   const app = useAppState();
@@ -72,7 +75,15 @@ function MemoriesPage({
   
   const [selectedTheme, setSelectedTheme] = useState(null);
   
+  // ✅ NOUVEAU Phase 17b : Menu contextuel photo
+  const [photoContextMenu, setPhotoContextMenu] = useState({
+    isOpen: false,
+    photo: null,
+    position: { x: 0, y: 0 }
+  });
+  
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
+  
   const momentRefs = useRef({});
   
   // ========================================
@@ -325,11 +336,56 @@ const confirmMessage =
     setActivePhotoGrid(null);
   }, []);
 
+  // ✅ NOUVEAU Phase 17b : Handlers menu contextuel photo
+  const handleOpenPhotoContextMenu = useCallback((photo, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    setPhotoContextMenu({
+      isOpen: true,
+      photo: photo,
+      position: {
+        x: event.clientX || event.touches?.[0]?.clientX || 0,
+        y: event.clientY || event.touches?.[0]?.clientY || 0
+      }
+    });
+  }, []);
+
+  const handleClosePhotoContextMenu = useCallback(() => {
+    setPhotoContextMenu({
+      isOpen: false,
+      photo: null,
+      position: { x: 0, y: 0 }
+    });
+  }, []);
+
+  const handleAttachPhotoToChat = useCallback((photo) => {
+    if (!photo || !onAttachToChat) return;
+    
+    // Fermer menu
+    handleClosePhotoContextMenu();
+    
+    // Attacher photo et retourner au chat
+    onAttachToChat({
+      type: 'photo',
+      data: photo
+    });
+  }, [onAttachToChat, handleClosePhotoContextMenu]);
+
   const filteredMoments = getFilteredMoments(momentsData, searchQuery, momentFilter, app.sessions, selectedTheme);
 
   // ========================================
   // EFFECTS
   // ========================================
+  
+  // ✅ NOUVEAU Phase 17b : Fermer menu contextuel au clic outside
+  useEffect(() => {
+    if (photoContextMenu.isOpen) {
+      const handleClickOutside = () => handleClosePhotoContextMenu();
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [photoContextMenu.isOpen, handleClosePhotoContextMenu]);
   
   useEffect(() => {
     window.memoriesPageFilters = {
@@ -685,9 +741,25 @@ console.log('🔍 themeStats calculé:', themeStats);
             onTogglePhotoSelection={togglePhotoSelection}
             onBulkTagPhotos={handleBulkTagPhotos}
             onCancelSelection={cancelSelection}
+            isFromChat={navigationContext?.previousPage === 'chat'}
+            onOpenPhotoContextMenu={handleOpenPhotoContextMenu}
           />
         </div>
       </main>
+
+      {/* ✅ NOUVEAU Phase 17b : Menu contextuel photo */}
+      {photoContextMenu.isOpen && photoContextMenu.photo && (
+        <PhotoContextMenu
+          photo={photoContextMenu.photo}
+          position={photoContextMenu.position}
+          onViewFull={() => {
+            handleClosePhotoContextMenu();
+            openPhotoViewer(photoContextMenu.photo, null, [photoContextMenu.photo]);
+          }}
+          onAttachToChat={() => handleAttachPhotoToChat(photoContextMenu.photo)}
+          onClose={handleClosePhotoContextMenu}
+        />
+      )}
 
       {/* ThemeModal */}
       <ThemeModal
@@ -737,7 +809,8 @@ const MomentsList = memo(({
   moments, selectedMoments, displayOptions, momentFilter, sessions, 
   onMomentSelect, onPhotoClick, onCreateSession, momentRefs,
   activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
-  onBulkTagPhotos, onCancelSelection
+  onBulkTagPhotos, onCancelSelection,
+  isFromChat, onOpenPhotoContextMenu
 }) => {
   return (
     <div className="space-y-3">
@@ -766,6 +839,8 @@ const MomentsList = memo(({
             onTogglePhotoSelection={onTogglePhotoSelection}
             onBulkTagPhotos={onBulkTagPhotos}
             onCancelSelection={onCancelSelection}
+            isFromChat={isFromChat}
+            onOpenPhotoContextMenu={onOpenPhotoContextMenu}
           />
         );
       })}
@@ -777,7 +852,8 @@ const MomentCard = memo(React.forwardRef(({
   moment, isSelected, isExplored, matchesFilter, displayOptions, 
   onSelect, onPhotoClick, onCreateSession,
   activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
-  onBulkTagPhotos, onCancelSelection
+  onBulkTagPhotos, onCancelSelection,
+  isFromChat, onOpenPhotoContextMenu
 }, ref) => { 
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
@@ -857,6 +933,8 @@ const MomentCard = memo(React.forwardRef(({
           onTogglePhotoSelection={onTogglePhotoSelection}
           onBulkTagPhotos={onBulkTagPhotos}
           onCancelSelection={onCancelSelection}
+          isFromChat={isFromChat}
+          onOpenPhotoContextMenu={onOpenPhotoContextMenu}
         />
       )}
     </div>
@@ -1022,7 +1100,8 @@ const MomentContent = memo(({
   moment, displayOptions, localDisplay, visibleDayPhotos, photosPerLoad, 
   onPhotoClick, onCreateSession, onLoadMorePhotos, onToggleDayPhotos,
   activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
-  onBulkTagPhotos, onCancelSelection
+  onBulkTagPhotos, onCancelSelection,
+  isFromChat, onOpenPhotoContextMenu
 }) => (
   <div className="px-3 pb-3">
     {localDisplay.showPosts && moment.posts?.map(post => (
@@ -1039,6 +1118,8 @@ const MomentContent = memo(({
         onTogglePhotoSelection={onTogglePhotoSelection}
         onBulkTagPhotos={onBulkTagPhotos}
         onCancelSelection={onCancelSelection}
+        isFromChat={isFromChat}
+        onOpenPhotoContextMenu={onOpenPhotoContextMenu}
       />
     ))}
     
@@ -1085,6 +1166,8 @@ const MomentContent = memo(({
           onTogglePhotoSelection={onTogglePhotoSelection}
           onBulkTagPhotos={onBulkTagPhotos}
           onCancelSelection={onCancelSelection}
+          isFromChat={isFromChat}
+          onOpenPhotoContextMenu={onOpenPhotoContextMenu}
         />
         
         {visibleDayPhotos < moment.dayPhotoCount && (
@@ -1109,7 +1192,8 @@ const MomentContent = memo(({
 const PostArticle = memo(({ 
   post, moment, displayOptions, onPhotoClick, onCreateSession,
   activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
-  onBulkTagPhotos, onCancelSelection
+  onBulkTagPhotos, onCancelSelection,
+  isFromChat, onOpenPhotoContextMenu
 }) => {
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
@@ -1225,14 +1309,16 @@ const PostArticle = memo(({
           photos={post.photos}
           moment={moment}
           onPhotoClick={onPhotoClick}
-          allPhotos={post.photos}
-          gridId={`post_${post.id}`}
+          allPhotos={moment.dayPhotos}
+          gridId={`moment_${moment.id}_day`}
           activePhotoGrid={activePhotoGrid}
           selectedPhotos={selectedPhotos}
           onActivateSelection={onActivateSelection}
           onTogglePhotoSelection={onTogglePhotoSelection}
           onBulkTagPhotos={onBulkTagPhotos}
           onCancelSelection={onCancelSelection}
+          isFromChat={isFromChat}
+          onOpenPhotoContextMenu={onOpenPhotoContextMenu}
         />
       )}
     </div>
@@ -1242,7 +1328,8 @@ const PostArticle = memo(({
 const PhotoGrid = memo(({ 
   photos, moment, onPhotoClick, allPhotos, gridId,
   activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
-  onBulkTagPhotos, onCancelSelection
+  onBulkTagPhotos, onCancelSelection,
+  isFromChat, onOpenPhotoContextMenu
 }) => {
   const isThisGridActive = activePhotoGrid === gridId;
   const hasSelection = isThisGridActive && selectedPhotos.length > 0;
@@ -1290,6 +1377,8 @@ const PhotoGrid = memo(({
               isSelected={isSelected}
               onToggleSelect={onTogglePhotoSelection}
               onActivateSelection={onActivateSelection}
+              isFromChat={isFromChat}
+              onOpenContextMenu={onOpenPhotoContextMenu}
             />
           );
         })}
@@ -1300,7 +1389,8 @@ const PhotoGrid = memo(({
 
 const PhotoThumbnail = memo(({ 
   photo, moment, onClick, gridId, selectionMode, isSelected, 
-  onToggleSelect, onActivateSelection 
+  onToggleSelect, onActivateSelection,
+  isFromChat, onOpenContextMenu
 }) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [status, setStatus] = useState('loading');
@@ -1330,13 +1420,19 @@ const PhotoThumbnail = memo(({
     return () => { isMounted = false; };
   }, [photo]);
 
-  // ✅ Longpress pour activer le mode sélection
+  // ✅ MODIFIÉ Phase 17b : Longpress ouvre menu si fromChat, sinon mode sélection
   const handleTouchStart = (e) => {
     if (selectionMode) return; // Déjà en mode sélection
     
     longPressTimerRef.current = setTimeout(() => {
-      onActivateSelection(gridId);
-      onToggleSelect(photo);
+      if (isFromChat && onOpenContextMenu) {
+        // Ouvrir menu contextuel
+        onOpenContextMenu(photo, e);
+      } else {
+        // Mode sélection classique
+        onActivateSelection(gridId);
+        onToggleSelect(photo);
+      }
     }, 500); // 500ms = longpress
   };
 
@@ -1394,7 +1490,14 @@ const PhotoThumbnail = memo(({
         </div>
       )}
 
-      {/* ❌ Badge thèmes retiré des vignettes (conservé uniquement dans PhotoViewer) */}
+      {/* ✅ NOUVEAU Phase 17b : Badge 📎 si fromChat */}
+      {isFromChat && !selectionMode && (
+        <div className="absolute top-1 right-1 z-10">
+          <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center shadow-md">
+            <span className="text-white text-xs">📎</span>
+          </div>
+        </div>
+      )}
 
       {status === 'loading' && (
         <div className="w-full h-full animate-pulse flex items-center justify-center">
@@ -1427,6 +1530,47 @@ const PhotoThumbnail = memo(({
     </div>
   );
 });
+
+// ====================================================================
+// COMPOSANT : PhotoContextMenu (Phase 17b)
+// ====================================================================
+
+const PhotoContextMenu = memo(({ photo, position, onViewFull, onAttachToChat, onClose }) => {
+  return (
+    <div 
+      className="fixed z-50"
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        transform: 'translate(-50%, -100%)'
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="bg-white rounded-lg shadow-xl border border-gray-200 py-1 min-w-48">
+        <button
+          onClick={onViewFull}
+          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+        >
+          <ZoomIn className="w-4 h-4 text-gray-600" />
+          <span>Voir en grand</span>
+        </button>
+        
+        <button
+          onClick={onAttachToChat}
+          className="w-full text-left px-4 py-2 text-sm hover:bg-amber-50 flex items-center space-x-2 text-amber-600"
+        >
+          <span className="text-base">📎</span>
+          <span className="font-medium">Attacher au chat</span>
+        </button>
+      </div>
+    </div>
+  );
+});
+
+// ====================================================================
+// HELPERS
+// ====================================================================
+
 
 // ====================================================================
 // HELPERS
