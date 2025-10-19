@@ -1,7 +1,7 @@
 /**
- * App.jsx v2.4 - Phase 17c : Auto-ouvrir moment du chat
- * ✅ sessionMomentId dans navigationContext
- * ✅ Détection auto Chat → Memories (TopBar OU BottomNav)
+ * App.jsx v2.6 - Phase 18b Étape 2 : Mode sélection
+ * ✅ État selectionMode pour workflow liens
+ * ✅ Handlers startSelection / cancelSelection / onContentSelected
  */
 import React, { useState, useRef } from 'react';
 import { useAppState } from '../hooks/useAppState.js';
@@ -64,6 +64,13 @@ export default function App() {
     sessionMomentId: null
   });
 
+  // ⭐ NOUVEAU Phase 18b : Mode sélection pour liens
+  const [selectionMode, setSelectionMode] = useState({
+  active: true,  // ⭐ FORCÉ À TRUE POUR TEST
+  type: 'link',
+  callback: (data) => console.log('✅ Contenu sélectionné:', data)
+});
+
   const memoriesPageRef = useRef(null);
 
   if (!app.isInitialized) {
@@ -79,7 +86,7 @@ export default function App() {
           Chargement de vos souvenirs...
         </p>
         <div className="absolute bottom-4 text-xs text-gray-400 dark:text-gray-500">
-          Version 2.5 - Phase 17c
+          Version 2.6 - Phase 18b Étape 2
         </div>
       </div>
     );
@@ -105,7 +112,6 @@ export default function App() {
     }
   };
 
-  // ✅ Handler explicite avec sessionMomentId (pour TopBar "Explorer")
   const handleNavigateWithContext = (targetPage, context = {}) => {
     console.log('🧭 Navigation avec contexte:', targetPage, context);
     
@@ -118,7 +124,6 @@ export default function App() {
     app.updateCurrentPage(targetPage);
   };
 
-  // ✅ Handler générique (pour BottomNav) avec détection auto
   const handlePageChange = (newPage) => {
     console.log('📄 Changement page:', app.currentPage, '→', newPage);
     
@@ -176,6 +181,72 @@ export default function App() {
     }));
   };
 
+  // ⭐ NOUVEAU : Handlers mode sélection
+  const handleStartSelectionMode = (type, callback) => {
+    console.log('🔗 Démarrage mode sélection:', type);
+    
+    setSelectionMode({
+      active: true,
+      type: type,
+      callback: callback
+    });
+    
+    // Navigation automatique vers Memories
+    setNavigationContext({
+      previousPage: app.currentPage,
+      pendingAttachment: null,
+      sessionMomentId: null
+    });
+    
+    app.updateCurrentPage('memories');
+  };
+
+  const handleCancelSelectionMode = () => {
+    console.log('✖️ Annulation mode sélection');
+    
+    const previousPage = navigationContext.previousPage || 'chat';
+    
+    setSelectionMode({
+      active: false,
+      type: null,
+      callback: null
+    });
+    
+    // Retour page précédente
+    setNavigationContext({
+      previousPage: null,
+      pendingAttachment: null,
+      sessionMomentId: null
+    });
+    
+    app.updateCurrentPage(previousPage);
+  };
+
+  const handleContentSelected = (contentData) => {
+    console.log('✅ Contenu sélectionné:', contentData);
+    
+    if (selectionMode.callback) {
+      selectionMode.callback(contentData);
+    }
+    
+    // Retour automatique page précédente (Chat)
+    const previousPage = navigationContext.previousPage || 'chat';
+    
+    setSelectionMode({
+      active: false,
+      type: null,
+      callback: null
+    });
+    
+    setNavigationContext({
+      previousPage: null,
+      pendingAttachment: null,
+      sessionMomentId: null
+    });
+    
+    app.updateCurrentPage(previousPage);
+  };
+
   const renderPage = () => {
     switch (app.currentPage) {
       case 'memories':
@@ -193,6 +264,8 @@ export default function App() {
             navigationContext={navigationContext}
             onNavigateBack={handleNavigateBack}
             onAttachToChat={handleAttachToChat}
+            selectionMode={selectionMode}
+            onContentSelected={handleContentSelected}
           />
         );
       
@@ -204,6 +277,7 @@ export default function App() {
           <ChatPage 
             navigationContext={navigationContext}
             onClearAttachment={handleClearAttachment}
+            onStartSelectionMode={handleStartSelectionMode}
           />
         );
       
@@ -239,6 +313,8 @@ export default function App() {
             navigationContext={navigationContext}
             onNavigateWithContext={handleNavigateWithContext}
             onNavigateBack={handleNavigateBack}
+            selectionMode={selectionMode}
+            onCancelSelectionMode={handleCancelSelectionMode}
           />
         </div>
 
@@ -248,14 +324,14 @@ export default function App() {
         </main>
 
         {/* BottomNavigation fixe */}
-{app.isInitialized && (
-  <BottomNavigation 
-    currentPage={app.currentPage}
-    onPageChange={handlePageChange}
-    app={app}
-    navigationContext={navigationContext}  // ⭐ AJOUT
-  />
-)}
+        {app.isInitialized && (
+          <BottomNavigation 
+            currentPage={app.currentPage}
+            onPageChange={handlePageChange}
+            app={app}
+            navigationContext={navigationContext}
+          />
+        )}
         
         {/* Spinner création session */}
         {app.isCreatingSession && <SessionCreationSpinner />}
