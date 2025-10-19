@@ -179,10 +179,10 @@ export default function UnifiedTopBar({
               <ArrowLeft className="w-5 h-5" />
             </button>
             
-            {/* ✅ NOUVEAU : Bouton Explorer souvenirs */}
+            {/* ✅ NOUVEAU : Bouton Explorer souvenirs - TOUJOURS VISIBLE */}
             <button 
               onClick={() => onNavigateWithContext?.('memories', { fromChat: true })}
-              className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg hidden sm:flex" 
+              className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg flex-shrink-0" 
               title="Explorer souvenirs"
             >
               <Search className="w-5 h-5" />
@@ -285,7 +285,12 @@ export default function UnifiedTopBar({
           );
         } else {
           return (
-            <div className="flex items-center justify-between w-full"><div onClick={handleStartEditTitle} className="group flex items-center min-w-0 pr-4 cursor-pointer" title="Modifier le titre"><h2 className="text-sm font-semibold text-amber-600 line-clamp-2">{app.currentChatSession.gameTitle}</h2><Edit className="w-4 h-4 ml-2 text-gray-500 opacity-0 group-hover:opacity-100" /></div></div>
+            <div className="flex items-center justify-between w-full">
+				<div onClick={handleStartEditTitle} className="group flex items-center min-w-0 pr-2 cursor-pointer flex-1" title="Modifier le titre">
+              		<h2 className="text-sm font-semibold text-amber-600 truncate">{app.currentChatSession.gameTitle}</h2>
+              		<Edit className="w-4 h-4 ml-2 text-gray-500 opacity-0 group-hover:opacity-100 flex-shrink-0" />
+            		</div>            
+            </div>
           );
         }
       }

@@ -20,6 +20,15 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
   // ✅ NOUVEAU Phase 17b : Preview photo attachée
   const [attachedPhoto, setAttachedPhoto] = useState(null);
   
+  // ✅ DEBUG
+  useEffect(() => {
+    console.log('🔍 ChatPage - attachedPhoto changed:', attachedPhoto);
+  }, [attachedPhoto]);
+  
+  useEffect(() => {
+    console.log('🔍 ChatPage - navigationContext:', navigationContext);
+  }, [navigationContext]);
+  
   const [viewerState, setViewerState] = useState({ 
     isOpen: false, photo: null 
   });
@@ -33,20 +42,25 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
     }
   }, [app.currentChatSession?.notes]);
 
-  // ✅ NOUVEAU Phase 17b : Détecter photo attachée depuis Memories
+  // ✅ MODIFIÉ Phase 17b : Détecter photo attachée depuis Memories
   useEffect(() => {
     if (navigationContext?.pendingAttachment) {
       const { type, data } = navigationContext.pendingAttachment;
       
       if (type === 'photo') {
+        console.log('📎 Photo reçue depuis Memories:', data);
         setAttachedPhoto(data);
-        console.log('📎 Photo attachée:', data.filename);
       }
-      
-      // Clear attachment
+    }
+  }, [navigationContext?.pendingAttachment]);
+  
+  // Clear attachment après mise à jour state
+  useEffect(() => {
+    if (attachedPhoto && navigationContext?.pendingAttachment) {
+      console.log('✅ Photo attachée, clear context');
       onClearAttachment?.();
     }
-  }, [navigationContext?.pendingAttachment, onClearAttachment]);
+  }, [attachedPhoto, navigationContext?.pendingAttachment, onClearAttachment]);
 
   useEffect(() => {
     window.chatPageActions = {
@@ -278,25 +292,26 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
 
       {/* Zone de saisie */}
       <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
-        {/* ✅ NOUVEAU Phase 17b : Preview photo attachée */}
+        {/* ✅ MODIFIÉ Phase 17b : Preview photo grande taille */}
         {attachedPhoto && (
-          <div className="mb-2 p-2 bg-purple-50 border border-purple-200 rounded-lg flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gray-200 rounded overflow-hidden flex-shrink-0">
+          <div className="mb-3 relative group">
+            <div className="relative rounded-lg overflow-hidden border-2 border-purple-300 shadow-md">
               <PhotoPreview photo={attachedPhoto} />
+              
+              {/* Bouton retirer en overlay */}
+              <button
+                onClick={() => setAttachedPhoto(null)}
+                className="absolute top-2 right-2 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-all opacity-90 hover:opacity-100"
+                title="Retirer photo"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              {/* Badge "Photo attachée" discret */}
+              <div className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-xs font-medium">
+                📎 Photo attachée
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {attachedPhoto.filename || 'Photo'}
-              </p>
-              <p className="text-xs text-gray-500">Prête à envoyer</p>
-            </div>
-            <button
-              onClick={() => setAttachedPhoto(null)}
-              className="p-1 hover:bg-purple-100 rounded text-gray-600"
-              title="Retirer photo"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         )}
 
@@ -433,6 +448,7 @@ function PhotoMessage({ photo, onPhotoClick }) {
 
 function PhotoPreview({ photo }) {
   const [imageUrl, setImageUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -441,12 +457,15 @@ function PhotoPreview({ photo }) {
       if (!photo) return;
       
       try {
-        const url = await window.photoDataV2.resolveImageUrl(photo, true);
+        setLoading(true);
+        const url = await window.photoDataV2.resolveImageUrl(photo, false); // ✅ false = haute résolution
         if (isMounted && url && !url.startsWith('data:image/svg+xml')) {
           setImageUrl(url);
         }
       } catch (err) {
         console.error('❌ Erreur preview photo:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
     
@@ -454,10 +473,18 @@ function PhotoPreview({ photo }) {
     return () => { isMounted = false; };
   }, [photo]);
 
+  if (loading) {
+    return (
+      <div className="w-full aspect-[4/3] bg-gray-200 flex items-center justify-center animate-pulse">
+        <Camera className="w-8 h-8 text-gray-400" />
+      </div>
+    );
+  }
+
   if (!imageUrl) {
     return (
-      <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-        <Camera className="w-5 h-5 text-gray-500" />
+      <div className="w-full aspect-[4/3] bg-gray-300 flex items-center justify-center">
+        <Camera className="w-8 h-8 text-gray-500" />
       </div>
     );
   }
@@ -466,7 +493,7 @@ function PhotoPreview({ photo }) {
     <img
       src={imageUrl}
       alt={photo.filename}
-      className="w-full h-full object-cover"
+      className="w-full max-h-96 object-contain bg-gray-100"
     />
   );
 }

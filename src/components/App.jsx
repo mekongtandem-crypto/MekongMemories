@@ -157,11 +157,36 @@ export default function App() {
             navigationContext={navigationContext}
             onNavigateBack={navigateBack}
             onAttachToChat={(item) => {
+              console.log('📎 App.jsx - onAttachToChat called with:', item);
+              
+              // 1. Set attachment AVANT de naviguer
+              setNavigationContext(prev => {
+                const newContext = {
+                  ...prev,
+                  pendingAttachment: item
+                };
+                console.log('✅ App.jsx - navigationContext updated:', newContext);
+                return newContext;
+              });
+              
+              // 2. Navigate back SANS effacer pendingAttachment
+              const targetPage = navigationContext.previousPage || 'sessions';
+              
+              if (targetPage === 'chat' && navigationContext.previousChatId) {
+                const session = app.sessions?.find(s => s.id === navigationContext.previousChatId);
+                if (session) {
+                  app.openChatSession(session);
+                }
+              } else {
+                app.updateCurrentPage(targetPage);
+              }
+              
+              // 3. Clear UNIQUEMENT previousPage/previousChatId (pas pendingAttachment)
               setNavigationContext(prev => ({
-                ...prev,
-                pendingAttachment: item
+                previousPage: null,
+                previousChatId: null,
+                pendingAttachment: prev.pendingAttachment // ✅ CONSERVER !
               }));
-              navigateBack();
             }}
           />
         );
