@@ -6,7 +6,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, Settings, Plus, MoreVertical, Edit, Trash2, Check, X, Bell,
-  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown, Tag
+  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown, Tag, Sparkles
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
@@ -185,7 +185,7 @@ export default function UnifiedTopBar({
               className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg flex-shrink-0" 
               title="Explorer souvenirs"
             >
-              <Search className="w-5 h-5" />
+              <Sparkles className="w-5 h-5" />
             </button>
           </div>
         );

@@ -3,7 +3,7 @@
  * ✅ Suppression md:hidden pour être visible sur tous écrans
  */
 import React from 'react';
-import { Home, BookOpen, Settings } from 'lucide-react';
+import { Sparkles, MessageSquare, Settings } from 'lucide-react';
 
 export function BottomNavigation({ currentPage, onPageChange, app }) {
   const pendingSessionsCount = React.useMemo(() => {
@@ -19,8 +19,8 @@ export function BottomNavigation({ currentPage, onPageChange, app }) {
   }, [app.sessions, app.currentUser]);
 
   const navItems = [
-    { id: 'memories', icon: Home, label: 'Souvenirs' },
-    { id: 'sessions', icon: BookOpen, label: 'Sessions', badge: pendingSessionsCount },
+    { id: 'memories', icon: Sparkles, label: 'Souvenirs' },
+    { id: 'sessions', icon: MessageSquare, label: 'Sessions', badge: pendingSessionsCount },
     { id: 'settings', icon: Settings, label: 'Réglages' }
   ];
 

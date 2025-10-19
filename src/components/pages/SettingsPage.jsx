@@ -4,7 +4,8 @@
  * ✅ Cascade delete avec confirmation si >10 assignations
  */
  
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { APP_VERSION, APP_NAME, PHASE, BUILD_DATE } from '../../config/version.js';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
 import { sortThemes } from '../../utils/themeUtils.js';
@@ -114,6 +115,21 @@ export default function SettingsPage() {
     data: false
   });
 
+// ✅ Mémoriser l'état openSections pour éviter fermeture au changement d'user
+  const openSectionsRef = useRef(openSections);
+  
+  useEffect(() => {
+    openSectionsRef.current = openSections;
+  }, [openSections]);
+  
+  // ✅ Restaurer openSections après changement d'utilisateur
+  useEffect(() => {
+    if (app.currentUser) {
+      setOpenSections(openSectionsRef.current);
+    }
+  }, [app.currentUser]);
+	
+	
   const [themes, setThemes] = useState([]);
   const [themeSortOrder, setThemeSortOrder] = useState(
   localStorage.getItem('mekong_theme_sort_order') || 'usage'
@@ -299,13 +315,40 @@ const executeDeleteTheme = async () => {
   // ========================================
 
   const forceUserUpdate = () => {
-    const currentId = app.currentUser.id;
+    const currentId = app.currentUser?.id;
+    if (!currentId) return;
+    
+    // ✅ CRITIQUE : Sauvegarder l'état des sections ouvertes
+    const savedOpenSections = { ...openSections };
+    const savedEditingUser = { ...editingUser };
+    
     app.setCurrentUser(null);
-    setTimeout(() => app.setCurrentUser(currentId), 10);
+    
+    requestAnimationFrame(() => {
+      app.setCurrentUser(currentId);
+      
+      // ✅ CRITIQUE : Restaurer l'état après le cycle
+      setTimeout(() => {
+        setOpenSections(savedOpenSections);
+        setEditingUser(savedEditingUser);
+      }, 50);
+    });
   };
   
   const handleChangeAvatar = (userId, newEmoji) => {
-    userManager.updateUserEmoji(userId, newEmoji);
+    // Validation : emoji non vide et pas juste des espaces
+    const trimmed = newEmoji.trim();
+    if (!trimmed || trimmed.length === 0) {
+      // ✅ Ne pas alerter pour chaque touche, juste revenir à l'emoji précédent
+      return;
+    }
+    
+    // Validation : pas de caractères alphanumériques simples
+    if (/^[a-zA-Z0-9\s]+$/.test(trimmed)) {
+      return; // Bloquer silencieusement
+    }
+    
+    userManager.updateUserEmoji(userId, trimmed);
     forceUserUpdate();
   };
 
@@ -397,6 +440,7 @@ const executeDeleteTheme = async () => {
                 );
               })}
             </div>
+            {/* Boutons modifier avatar */}
             <div className="grid grid-cols-3 gap-3 mt-3">
               {users.map(user => (
                 <button 
@@ -413,25 +457,159 @@ const executeDeleteTheme = async () => {
                 </button>
               ))}
             </div>
+            
+            {/* Boutons modifier couleur */}
+            <div className="grid grid-cols-3 gap-3 mt-3">
+              {users.map(user => {
+                const style = userManager.getUserStyle(user.id);
+                return (
+                  <button 
+                    key={`${user.id}-color`} 
+                    onClick={() => setEditingUser(prev => 
+                      prev.id === user.id && prev.type === 'color' 
+                        ? { id: null, type: null } 
+                        : { id: user.id, type: 'color' }
+                    )} 
+                    className={`w-full p-3 ${style.bg} hover:opacity-80 font-medium text-sm rounded-lg transition-colors flex items-center justify-center space-x-2`}
+                  >
+                    <span className="text-xl">🎨</span>
+                    <span>Couleur</span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Éditeur avatar */}
             {editingUser.id && editingUser.type === 'avatar' && (
+              <div className="mt-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    Avatar libre pour {userManager.getUser(editingUser.id).name}
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="text"
+                      inputMode="text"
+                      value={userManager.getUser(editingUser.id).emoji}
+                      onFocus={(e) => {
+                        // ✅ Sélectionner tout le contenu au focus
+                        e.target.select();
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value.slice(0, 2);
+                        // ✅ Validation immédiate : bloquer texte alphanumérique
+                        if (value && /^[a-zA-Z0-9]+$/.test(value)) {
+                          return; // Bloquer la saisie
+                        }
+                        handleChangeAvatar(editingUser.id, value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          // Validation finale à l'Enter
+                          const value = e.target.value.trim();
+                          if (!value) {
+                            alert('⚠️ Avatar vide. Choisissez un emoji.');
+                            return;
+                          }
+                          if (/^[a-zA-Z0-9\s]+$/.test(value)) {
+                            alert('⚠️ Veuillez utiliser un emoji, pas du texte.');
+                            return;
+                          }
+                          // Fermer l'éditeur si valide
+                          setEditingUser({id: null, type: null});
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // ✅ Validation au blur (perte de focus)
+                        const value = e.target.value.trim();
+                        if (!value) {
+                          // Remettre emoji par défaut si vide
+                          handleChangeAvatar(editingUser.id, '👤');
+                        }
+                      }}
+                      className="w-20 px-3 py-2 text-3xl text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                      placeholder="😊"
+                      maxLength={2}
+                    />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500">
+                        Tapez ou collez n'importe quel emoji de votre clavier
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    Ou choisir parmi des suggestions
+                  </label>
+                  <div className="grid grid-cols-9 sm:grid-cols-12 gap-1 p-2 bg-white rounded border border-gray-200">
+                    {['🚴', '🧗', '🏃', '🚶', '🧘', '🏊', '🚣', '👩', '🕺', '😊', '😎', '🤔', '🧐', '🥳', '🤗', '👤', '🧑', '👨', '🙋'].map((emoji, idx) => (
+                      <button 
+                        key={idx} 
+                        onClick={() => handleChangeAvatar(editingUser.id, emoji)} 
+                        className="text-2xl p-1 rounded transition-all hover:bg-gray-100"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* ✅ Bouton Fermer */}
+                <button
+                  onClick={() => setEditingUser({id: null, type: null})}
+                  className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
+                >
+                  Fermer
+                </button>
+              </div>
+            )}
+            
+            {/* Éditeur couleur */}
+            {editingUser.id && editingUser.type === 'color' && (
               <div className="mt-6">
                 <label className="block text-sm font-medium text-gray-600 mb-2">
-                  Changer l'avatar de {userManager.getUser(editingUser.id).name}
+                  Changer la couleur de {userManager.getUser(editingUser.id).name}
                 </label>
-                <div className="grid grid-cols-9 sm:grid-cols-12 gap-1 p-2 bg-white rounded border border-gray-200">
-                  {['🚴', '🧗', '🏃', '🚶', '🧘', '🏊', '🚣', '👩', '🕺', '😊', '😎', '🤔', '🧐', '🥳', '🤗'].map((emoji, idx) => (
-                    <button 
-                      key={idx} 
-                      onClick={() => { 
-                        handleChangeAvatar(editingUser.id, emoji); 
-                        setEditingUser({id: null, type: null}); 
-                      }} 
-                      className="text-2xl p-1 rounded transition-all hover:bg-gray-100"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 p-4 bg-white rounded border border-gray-200">
+                  {['blue', 'amber', 'purple', 'green', 'red', 'pink', 'indigo', 'orange'].map(color => {
+                    const colorClasses = {
+                      blue: 'bg-blue-100 hover:bg-blue-200 border-blue-300',
+                      amber: 'bg-amber-100 hover:bg-amber-200 border-amber-300',
+                      purple: 'bg-purple-100 hover:bg-purple-200 border-purple-300',
+                      green: 'bg-green-100 hover:bg-green-200 border-green-300',
+                      red: 'bg-red-100 hover:bg-red-200 border-red-300',
+                      pink: 'bg-pink-100 hover:bg-pink-200 border-pink-300',
+                      indigo: 'bg-indigo-100 hover:bg-indigo-200 border-indigo-300',
+                      orange: 'bg-orange-100 hover:bg-orange-200 border-orange-300'
+                    };
+                    
+                    const currentColor = userManager.getUser(editingUser.id).color || 'blue';
+                    const isSelected = currentColor === color;
+                    
+                    return (
+                      <button
+                        key={color}
+                        onClick={() => handleChangeColor(editingUser.id, color)}
+                        className={`w-full aspect-square rounded-lg border-2 transition-all ${
+                          colorClasses[color]
+                        } ${
+                          isSelected ? 'ring-4 ring-offset-2 ring-amber-500 scale-110' : ''
+                        }`}
+                        title={color.charAt(0).toUpperCase() + color.slice(1)}
+                      />
+                    );
+                  })}
                 </div>
+                
+                {/* ✅ Bouton Fermer */}
+                <button
+                  onClick={() => setEditingUser({id: null, type: null})}
+                  className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors mt-4"
+                >
+                  Fermer
+                </button>
               </div>
             )}
           </div>
@@ -477,12 +655,14 @@ const executeDeleteTheme = async () => {
           <option value="usage">📊 Par utilisation (plus tagués en premier)</option>
           <option value="created">📅 Par date de création (récents en premier)</option>
           <option value="alpha">🔤 Alphabétique (A → Z)</option>
+          <option value="color">🎨 Par couleur</option>
           <option value="manual">✋ Manuel (ordre personnalisé)</option>
         </select>
         <p className="text-xs text-blue-700 mt-2">
           {themeSortOrder === 'usage' && 'Les thèmes les plus utilisés apparaîtront en premier'}
           {themeSortOrder === 'created' && 'Les thèmes créés récemment apparaîtront en premier'}
           {themeSortOrder === 'alpha' && 'Les thèmes seront triés par ordre alphabétique'}
+          {themeSortOrder === 'color' && 'Les thèmes seront groupés par couleur (violet → orange → bleu → vert → rouge)'}
           {themeSortOrder === 'manual' && 'Utilisez les flèches pour réorganiser (à venir)'}
         </p>
       </div>
@@ -890,9 +1070,14 @@ const executeDeleteTheme = async () => {
         )}
       </section>
       
-      <section className="text-center text-sm text-gray-500 pt-4">
-        <p>Mémoire du Mékong v2.5 - Phase 17b - build 5</p>
+      {/* Version en bas */}
+      <section className="mt-8 pt-4 border-t border-gray-200 text-center text-sm text-gray-500 space-y-1">
+        <p className="font-semibold text-gray-700">{APP_NAME}</p>
+        <p>Version {APP_VERSION}</p>
+        <p className="text-gray-400">{PHASE}</p>
+        <p className="text-gray-400 text-xs">{BUILD_DATE}</p>
       </section>
+      
 {/* Modal de confirmation de suppression */}
       <ConfirmModal
         isOpen={confirmDelete.isOpen}
@@ -901,6 +1086,7 @@ const executeDeleteTheme = async () => {
         onConfirm={executeDeleteTheme}
         onCancel={() => setConfirmDelete({ isOpen: false, themeId: null, message: '' })}
       />
+      
     </div>
   );
 }

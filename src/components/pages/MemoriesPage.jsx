@@ -1074,19 +1074,15 @@ const MomentHeader = memo(({
   {/* ✅ Bouton thèmes avec badge intégré */}
   <button
     onClick={handleTagMoment}
-    className={`relative p-1.5 rounded transition-colors ${
+    className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors ${
       hasMomentThemes 
         ? 'bg-purple-100 text-purple-600 hover:bg-purple-200' 
-        : 'hover:bg-purple-50 text-gray-600'
+        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
     }`}
-    title={hasMomentThemes ? `${momentThemes.length} thème${momentThemes.length > 1 ? 's' : ''}` : "Tagger ce moment"}
+    title="Thèmes"
   >
     <Tag className="w-4 h-4" />
-    {hasMomentThemes && (
-      <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center border border-white">
-        {momentThemes.length}
-      </span>
-    )}
+    {hasMomentThemes && <span className="text-xs font-bold">{momentThemes.length}</span>}
   </button>
               
           
@@ -1292,10 +1288,10 @@ const PostArticle = memo(({
               onClick={handleTagPost} 
               className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors ${
                 hasThemes 
-                  ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
+                  ? 'bg-purple-100 text-purple-600 hover:bg-purple-200' 
                   : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
               }`}
-              title="Assigner des thèmes"
+              title="Thèmes"
             >
               <Tag className="w-4 h-4" />
               {hasThemes && <span className="text-xs font-bold">{postThemes.length}</span>}

@@ -4,6 +4,7 @@
  * ✅ Fonction navigateWithContext()
  */
 import React, { useState, useRef } from 'react';
+import { APP_VERSION, APP_NAME, PHASE } from '../config/version.js';
 import { useAppState } from '../hooks/useAppState.js';
 import UnifiedTopBar from './UnifiedTopBar.jsx';
 import { BottomNavigation } from './Navigation.jsx';
@@ -113,7 +114,7 @@ export default function App() {
           Chargement de vos souvenirs...
         </p>
         <div className="absolute bottom-4 text-xs text-gray-400 dark:text-gray-500">
-          Version 2.5 - Phase 17b chat with attached photos
+          v{APP_VERSION} - {PHASE}
         </div>
       </div>
     );
