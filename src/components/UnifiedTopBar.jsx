@@ -5,7 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, Settings, Plus, MoreVertical, Edit, Trash2, Check, X, Bell,
-  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown, Tag, Sparkles
+  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown, Tag, Sparkles, BarChart3
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
@@ -131,69 +131,48 @@ export default function UnifiedTopBar({
   const renderLeftAction = () => {
     switch (currentPage) {
 	  case 'memories': {
-        const isFromChat = navigationContext?.previousPage === 'chat';
-        const backLabel = isFromChat ? 'Retour au chat' : 'Sessions';
-        
-        return (
-          <button 
-            onClick={() => {
-              if (isFromChat && onNavigateBack) {
-                onNavigateBack();
-              } else {
-                setIsSearchOpen(!isSearchOpen);
-              }
-            }} 
-            className={`p-2 rounded-lg ${
-              isFromChat 
-                ? 'text-amber-600 hover:bg-amber-100' 
-                : isSearchOpen 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'text-gray-600 hover:bg-gray-100'
-            }`} 
-            title={isFromChat ? backLabel : (isSearchOpen ? "Fermer la recherche" : "Rechercher (/)")}
-          >
-            {isFromChat ? (
-              <>
-                <ArrowLeft className="w-5 h-5 inline mr-1" />
-                <span className="text-sm hidden sm:inline">{backLabel}</span>
-              </>
-            ) : (
-              isSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />
-            )}
-          </button>
-        );
-      }
+  const isFromChat = navigationContext?.previousPage === 'chat';
+  
+  // ⭐ Si mode exploration (depuis chat) → pas de bouton Retour (déjà en Bottom)
+  if (isFromChat) {
+    return (
+      <button 
+        onClick={() => setIsSearchOpen(!isSearchOpen)} 
+        className={isSearchOpen ? 'p-2 bg-blue-100 text-blue-600 rounded-lg' : 'p-2 text-gray-600 hover:bg-gray-100 rounded-lg'} 
+        title={isSearchOpen ? "Fermer la recherche" : "Rechercher (/)"}
+      >
+        {isSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+      </button>
+    );
+  }
+  
+  // Mode normal : bouton recherche
+  return (
+    <button 
+      onClick={() => setIsSearchOpen(!isSearchOpen)} 
+      className={isSearchOpen ? 'p-2 bg-blue-100 text-blue-600 rounded-lg' : 'p-2 text-gray-600 hover:bg-gray-100 rounded-lg'} 
+      title={isSearchOpen ? "Fermer la recherche" : "Rechercher (/)"}
+    >
+      {isSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+    </button>
+  );
+}
+
+case 'chat': {
+  return (
+    <div className="flex items-center space-x-1">
+      <button 
+        onClick={onCloseChatSession} 
+        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" 
+        title="Retour Sessions"
+      >
+        <ArrowLeft className="w-5 h-5" />
+      </button>
       
-      case 'chat': {
-        return (
-          <div className="flex items-center space-x-1">
-            <button 
-              onClick={onCloseChatSession} 
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" 
-              title="Retour Sessions"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            
-            {/* ✅ MODIFIÉ Phase 17c : Transmettre sessionMomentId */}
-            <button 
-              onClick={() => {
-                const momentId = app.currentChatSession?.gameId;
-                console.log('🧭 Navigation vers Memories avec momentId:', momentId);
-                
-                onNavigateWithContext?.('memories', { 
-                  fromChat: true,
-                  sessionMomentId: momentId  // ← AJOUT
-                });
-              }}
-              className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg flex-shrink-0" 
-              title="Explorer souvenirs"
-            >
-              <Sparkles className="w-5 h-5" />
-            </button>
-          </div>
-        );
-      }
+      {/* ⭐ SUPPRIMÉ : Bouton "✨ Souvenirs" (redondant avec Bottom Bar) */}
+    </div>
+  );
+}
       
       case 'sessions': 
         return <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Nouvelle session"><Plus className="w-5 h-5" /></button>;
@@ -327,20 +306,99 @@ export default function UnifiedTopBar({
   };
 
   const renderUserMenu = () => {
-    const isOnline = app.connection?.isOnline;
-    const allUsers = userManager.getAllUsers();
-    const otherUsers = allUsers.filter(u => u.id !== app.currentUser?.id);
+  const isOnline = app.connection?.isOnline;
+  const allUsers = userManager.getAllUsers();
+  const otherUsers = allUsers.filter(u => u.id !== app.currentUser?.id);
 
-    return (
-      <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-64">
-        <div className="px-4 py-3 border-b border-gray-200">
-          <div className="flex items-center space-x-2"><span className="text-2xl">{app.currentUser?.emoji || '👤'}</span><div className="flex-1"><div className="text-sm font-medium text-gray-900">{app.currentUser?.name}</div><div className="text-xs text-gray-500 flex items-center space-x-1">{isOnline ? (<><Cloud className="w-3 h-3 text-green-500" /><span>Connecté</span></>) : (<><CloudOff className="w-3 h-3 text-red-500" /><span>Déconnecté</span></>)}</div></div></div>
+  return (
+    <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-64">
+      
+      {/* Section utilisateur actuel */}
+      <div className="px-4 py-3 border-b border-gray-200">
+        <div className="flex items-center space-x-2">
+          <span className="text-2xl">{app.currentUser?.emoji || '👤'}</span>
+          <div className="flex-1">
+            <div className="text-sm font-medium text-gray-900">{app.currentUser?.name}</div>
+            <div className="text-xs text-gray-500 flex items-center space-x-1">
+              {isOnline ? (
+                <><Cloud className="w-3 h-3 text-green-500" /><span>Connecté</span></>
+              ) : (
+                <><CloudOff className="w-3 h-3 text-red-500" /><span>Déconnecté</span></>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="px-4 py-2 border-b border-gray-200"><div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Changer d'utilisateur</div>{otherUsers.map(user => { const style = userManager.getUserStyle(user.id); return (<button key={user.id} onClick={() => { setShowUserMenu(false); app.setCurrentUser(user.id); }} className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg mb-1 transition-all hover:bg-gray-100"><div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${style.bg}`}>{user.emoji}</div><span className="text-sm font-medium text-gray-900">{user.name}</span></button>)})}</div>
-        {!isOnline && (<button onClick={() => { setShowUserMenu(false); app.connect(); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600 flex items-center space-x-2"><Cloud className="w-4 h-4" /><span>Se reconnecter</span></button>)}
       </div>
-    );
-  };
+
+      {/* Section changement utilisateur */}
+      <div className="px-4 py-2 border-b border-gray-200">
+        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+          Changer d'utilisateur
+        </div>
+        {otherUsers.map(user => {
+          const style = userManager.getUserStyle(user.id);
+          return (
+            <button 
+              key={user.id} 
+              onClick={() => {
+                setShowUserMenu(false);
+                app.setCurrentUser(user.id);
+              }}
+              className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg mb-1 transition-all hover:bg-gray-100"
+            >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${style.bg}`}>
+                {user.emoji}
+              </div>
+              <span className="text-sm font-medium text-gray-900">{user.name}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ⭐ NOUVEAU : Section menu principal */}
+      <div className="py-1">
+        <button 
+          onClick={() => {
+            setShowUserMenu(false);
+            app.updateCurrentPage('settings');
+          }}
+          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+        >
+          <Settings className="w-4 h-4 text-gray-600" />
+          <span>Réglages</span>
+        </button>
+        
+        <button 
+          onClick={() => {
+            setShowUserMenu(false);
+            // TODO Phase 18+ : Ouvrir modal statistiques
+            console.log('📊 Statistiques à implémenter');
+          }}
+          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+        >
+          <div className="w-4 h-4 text-gray-600">📊</div>
+          <span>Statistiques</span>
+        </button>
+      </div>
+
+      {/* Reconnexion si hors ligne */}
+      {!isOnline && (
+        <div className="border-t border-gray-200 pt-1">
+          <button 
+            onClick={() => {
+              setShowUserMenu(false);
+              app.connect();
+            }}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-blue-600 flex items-center space-x-2"
+          >
+            <Cloud className="w-4 h-4" />
+            <span>Se reconnecter</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
   const currentUserObj = app.currentUser;
   const userStyle = userManager.getUserStyle(currentUserObj?.id);

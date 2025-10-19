@@ -248,13 +248,14 @@ export default function App() {
         </main>
 
         {/* BottomNavigation fixe */}
-        {app.isInitialized && (
-          <BottomNavigation 
-            currentPage={app.currentPage}
-            onPageChange={handlePageChange}
-            app={app}
-          />
-        )}
+{app.isInitialized && (
+  <BottomNavigation 
+    currentPage={app.currentPage}
+    onPageChange={handlePageChange}
+    app={app}
+    navigationContext={navigationContext}  // ⭐ AJOUT
+  />
+)}
         
         {/* Spinner création session */}
         {app.isCreatingSession && <SessionCreationSpinner />}

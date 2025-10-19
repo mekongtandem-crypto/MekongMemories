@@ -1,11 +1,14 @@
 /**
- * Navigation.jsx v4.1 - BottomNavigation toujours visible
- * ✅ Suppression md:hidden pour être visible sur tous écrans
+ * Navigation.jsx v5.1 - Phase 18a : Bouton contextuel + mode exploration
+ * ✅ Bottom Bar dynamique : 
+ *    - Chat : [💬] [✨] [← Retour]
+ *    - Exploration (depuis chat) : [💬] [✨] [← Retour]
+ *    - Autres : [💬] [✨] [🎮 Jeux]
  */
 import React from 'react';
-import { Sparkles, MessageSquare, Settings } from 'lucide-react';
+import { Sparkles, MessageSquare, ArrowLeft, Gamepad2 } from 'lucide-react';
 
-export function BottomNavigation({ currentPage, onPageChange, app }) {
+export function BottomNavigation({ currentPage, onPageChange, app, navigationContext }) {
   const pendingSessionsCount = React.useMemo(() => {
     if (!app.sessions || !app.currentUser) return 0;
     
@@ -18,15 +21,41 @@ export function BottomNavigation({ currentPage, onPageChange, app }) {
     }).length;
   }, [app.sessions, app.currentUser]);
 
+  // ⭐ Détecter mode exploration : dans Memories mais venant de Chat
+  const isInChat = currentPage === 'chat';
+  const isExplorationMode = currentPage === 'memories' && navigationContext?.previousPage === 'chat';
+  const showReturnButton = isInChat || isExplorationMode;
+
   const navItems = [
-    { id: 'sessions', icon: MessageSquare, label: 'Sessions', badge: pendingSessionsCount },
-    { id: 'memories', icon: Sparkles, label: 'Souvenirs' },
-    { id: 'settings', icon: Settings, label: 'Réglages' }
+    { 
+      id: 'sessions', 
+      icon: MessageSquare, 
+      label: 'Sessions', 
+      badge: pendingSessionsCount 
+    },
+    { 
+      id: 'memories', 
+      icon: Sparkles, 
+      label: 'Souvenirs' 
+    }
   ];
+
+  // Handler retour intelligent
+  const handleReturn = () => {
+    if (isExplorationMode) {
+      // Retour au chat depuis exploration
+      onPageChange('chat');
+    } else {
+      // Retour sessions depuis chat
+      onPageChange('sessions');
+    }
+  };
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 z-50">
       <div className="flex justify-around py-2">
+        
+        {/* Boutons fixes : Sessions + Souvenirs */}
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentPage === item.id;
@@ -50,6 +79,26 @@ export function BottomNavigation({ currentPage, onPageChange, app }) {
             </button>
           );
         })}
+
+        {/* Bouton contextuel : Retour (si chat OU exploration) OU Jeux */}
+        {showReturnButton ? (
+          <button 
+            onClick={handleReturn}
+            className="flex flex-col items-center py-2 px-3 text-gray-600"
+          >
+            <ArrowLeft className="w-5 h-5 mb-1" />
+            <span className="text-xs">Retour</span>
+          </button>
+        ) : (
+          <button 
+            disabled
+            className="flex flex-col items-center py-2 px-3 text-gray-400 opacity-40 cursor-not-allowed"
+          >
+            <Gamepad2 className="w-5 h-5 mb-1" />
+            <span className="text-xs">Jeux</span>
+          </button>
+        )}
+        
       </div>
     </div>
   );
