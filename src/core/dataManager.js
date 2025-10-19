@@ -287,31 +287,36 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
     this.updateState({ sessions: filteredSessions });
   }
 
-  addMessageToSession = async (sessionId, messageContent) => {
+  addMessageToSession = async (sessionId, messageContent, photoData = null) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
     if (!session) return;
-    
+        
     const newMessage = {
       id: `msg_${Date.now()}`, 
       author: this.appState.currentUser,
       content: messageContent, 
       timestamp: new Date().toISOString(), 
-      edited: false
+      edited: false,
+      // ✅ NOUVEAU Phase 17b : Support photo
+      ...(photoData && { photoData: photoData })
     };
     
+    console.log('💾 dataManager - Création message:', newMessage);
+        
     const updatedSession = { ...session, notes: [...session.notes, newMessage] };
     await this.updateSession(updatedSession);
-    
-  // ✅ NOUVEAU : Marquer notification comme lue
-  const notif = this.notificationManager.getNotificationForSession(
-    sessionId, 
-    this.appState.currentUser
-  );
-  if (notif) {
-    await this.notificationManager.markAsRead(notif.id);
-    console.log('✅ Notification marquée lue après envoi message');
-  }
+       
+    // ✅ Marquer notification comme lue
+    const notif = this.notificationManager.getNotificationForSession(
+      sessionId, 
+      this.appState.currentUser
+    );
+    if (notif) {
+      await this.notificationManager.markAsRead(notif.id);
+      console.log('✅ Notification marquée lue après envoi message');
+    }
 }
+
 
 openChatSession = (session) => {
   this.updateState({ currentChatSession: session, currentPage: 'chat' });

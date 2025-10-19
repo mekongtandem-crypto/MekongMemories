@@ -262,6 +262,7 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
                       </div>
                     )}
                     
+                    {/* Badge modifié */}
                     {message.edited && (
                       <div className="text-xs opacity-70 italic mt-1">modifié</div>
                     )}
