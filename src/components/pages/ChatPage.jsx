@@ -81,17 +81,20 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
   // ========================================
 
   const handleSendMessage = async () => {
-    // ✅ MODIFIÉ Phase 17b : Vérifier si texte OU photo
+    // ✅ Vérifier si texte OU photo
     if (!newMessage.trim() && !attachedPhoto) return;
 
     try {
-      // ✅ NOUVEAU : Construire message avec photo si présente
-      const messageData = {
-        content: newMessage.trim(),
-        ...(attachedPhoto && { photoData: attachedPhoto })
-      };
+      console.log('📤 Envoi message avec photo:', attachedPhoto ? 'OUI' : 'NON');
       
-      await app.addMessageToSession(app.currentChatSession.id, messageData.content, attachedPhoto);
+      // ✅ Envoyer avec photo si présente
+      await app.addMessageToSession(
+        app.currentChatSession.id, 
+        newMessage.trim(), 
+        attachedPhoto
+      );
+      
+      console.log('✅ Message envoyé !');
       
       // Clear inputs
       setNewMessage('');
@@ -298,17 +301,19 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
             <div className="relative rounded-lg overflow-hidden border-2 border-purple-300 shadow-md">
               <PhotoPreview photo={attachedPhoto} />
               
-              {/* Bouton retirer en overlay */}
-              <button
-                onClick={() => setAttachedPhoto(null)}
-                className="absolute top-2 right-2 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-all opacity-90 hover:opacity-100"
-                title="Retirer photo"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              {/* Bouton retirer discret (hover) */}
+              <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-bl-lg shadow-lg p-1">
+                <button
+                  onClick={() => setAttachedPhoto(null)}
+                  className="p-1 hover:bg-red-100 rounded"
+                  title="Retirer photo"
+                >
+                  <Trash2 className="w-4 h-4 text-red-600" />
+                </button>
+              </div>
               
-              {/* Badge "Photo attachée" discret */}
-              <div className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-xs font-medium">
+              {/* Badge visible au hover uniquement */}
+              <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                 📎 Photo attachée
               </div>
             </div>
@@ -332,9 +337,13 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
           <button
             onClick={handleSendMessage}
             disabled={!newMessage.trim() && !attachedPhoto}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center transition-colors"
-            title={attachedPhoto ? "Envoyer photo + message" : "Envoyer message (Shift+Entrée)"}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center space-x-1 transition-colors"
+            title={attachedPhoto 
+              ? (newMessage.trim() ? "Envoyer photo + message" : "Envoyer photo") 
+              : "Envoyer message (Shift+Entrée)"
+            }
           >
+            {attachedPhoto && <span className="text-base">📎</span>}
             <Send className="w-5 h-5" />
           </button>
         </div>

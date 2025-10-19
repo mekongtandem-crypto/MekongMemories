@@ -752,9 +752,25 @@ console.log('🔍 themeStats calculé:', themeStats);
         <PhotoContextMenu
           photo={photoContextMenu.photo}
           position={photoContextMenu.position}
+          isFromChat={navigationContext?.previousPage === 'chat'}
           onViewFull={() => {
             handleClosePhotoContextMenu();
             openPhotoViewer(photoContextMenu.photo, null, [photoContextMenu.photo]);
+          }}
+          onAssignThemes={() => {
+            handleClosePhotoContextMenu();
+            const photoKey = photoContextMenu.photo.type === 'day_photo' 
+              ? generatePhotoMomentKey(photoContextMenu.photo)
+              : generatePhotoMastodonKey(photoContextMenu.photo);
+            const currentThemes = photoKey ? (window.themeAssignments?.getThemesForContent(photoKey) || []) : [];
+            
+            if (window.memoriesPageActions?.openThemeModal) {
+              window.memoriesPageActions.openThemeModal(
+                photoKey,
+                'photo',
+                currentThemes
+              );
+            }
           }}
           onAttachToChat={() => handleAttachPhotoToChat(photoContextMenu.photo)}
           onClose={handleClosePhotoContextMenu}
@@ -1490,15 +1506,7 @@ const PhotoThumbnail = memo(({
         </div>
       )}
 
-      {/* ✅ NOUVEAU Phase 17b : Badge 📎 si fromChat */}
-      {isFromChat && !selectionMode && (
-        <div className="absolute top-1 right-1 z-10">
-          <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center shadow-md">
-            <span className="text-white text-xs">📎</span>
-          </div>
-        </div>
-      )}
-
+  
       {status === 'loading' && (
         <div className="w-full h-full animate-pulse flex items-center justify-center">
           <Camera className="w-6 h-6 text-gray-400" />
@@ -1535,7 +1543,15 @@ const PhotoThumbnail = memo(({
 // COMPOSANT : PhotoContextMenu (Phase 17b)
 // ====================================================================
 
-const PhotoContextMenu = memo(({ photo, position, onViewFull, onAttachToChat, onClose }) => {
+const PhotoContextMenu = memo(({ 
+  photo, 
+  position, 
+  onViewFull, 
+  onAttachToChat, 
+  onAssignThemes, 
+  onClose,
+  isFromChat 
+}) => {
   return (
     <div 
       className="fixed z-50"
@@ -1546,7 +1562,7 @@ const PhotoContextMenu = memo(({ photo, position, onViewFull, onAttachToChat, on
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="bg-white rounded-lg shadow-xl border border-gray-200 py-1 min-w-48">
+      <div className="bg-white rounded-lg shadow-xl border border-gray-200 py-1 min-w-44">
         <button
           onClick={onViewFull}
           className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
@@ -1556,12 +1572,22 @@ const PhotoContextMenu = memo(({ photo, position, onViewFull, onAttachToChat, on
         </button>
         
         <button
-          onClick={onAttachToChat}
-          className="w-full text-left px-4 py-2 text-sm hover:bg-amber-50 flex items-center space-x-2 text-amber-600"
+          onClick={onAssignThemes}
+          className="w-full text-left px-4 py-2 text-sm hover:bg-purple-50 flex items-center space-x-2 text-purple-600"
         >
-          <span className="text-base">📎</span>
-          <span className="font-medium">Attacher au chat</span>
+          <Tag className="w-4 h-4" />
+          <span>Thèmes</span>
         </button>
+        
+        {isFromChat && (
+          <button
+            onClick={onAttachToChat}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-amber-50 flex items-center space-x-2 text-amber-600 border-t border-gray-200"
+          >
+            <span className="text-base">📎</span>
+            <span className="font-medium">Envoyer au chat</span>
+          </button>
+        )}
       </div>
     </div>
   );
