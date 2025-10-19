@@ -1,10 +1,8 @@
 /**
- * App.jsx v2.3 - Phase 17a : Navigation contextuelle
- * ✅ State navigationContext pour Chat ↔️ Memories
- * ✅ Fonction navigateWithContext()
+ * App.jsx v2.4 - Phase 17c : Auto-ouvrir moment du chat
+ * ✅ sessionMomentId dans navigationContext
  */
 import React, { useState, useRef } from 'react';
-import { APP_VERSION, APP_NAME, PHASE } from '../config/version.js';
 import { useAppState } from '../hooks/useAppState.js';
 import UnifiedTopBar from './UnifiedTopBar.jsx';
 import { BottomNavigation } from './Navigation.jsx';
@@ -47,7 +45,6 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   const app = useAppState();
   
-  // États existants
   const [isTimelineVisible, setIsTimelineVisible] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [currentDay, setCurrentDay] = useState(1);
@@ -60,46 +57,14 @@ export default function App() {
   const [editingChatTitle, setEditingChatTitle] = useState(false);
   const [isThemeBarVisible, setIsThemeBarVisible] = useState(false);
   
-  // ✅ NOUVEAU Phase 17a : Context navigation
+  // ✅ MODIFIÉ Phase 17c : Ajouter sessionMomentId
   const [navigationContext, setNavigationContext] = useState({
-    previousPage: null,        // Page d'où on vient
-    previousChatId: null,      // ID du chat pour y retourner
-    pendingAttachment: null    // Photo/post/moment à attacher (Phase 17b)
+    previousPage: null,
+    pendingAttachment: null,
+    sessionMomentId: null  // ← AJOUT
   });
 
   const memoriesPageRef = useRef(null);
-  
-  // ✅ NOUVEAU : Fonction navigation avec contexte
-  const navigateWithContext = (targetPage, context = {}) => {
-    setNavigationContext({
-      previousPage: app.currentPage,
-      previousChatId: app.currentChatSession?.id,
-      ...context
-    });
-    app.updateCurrentPage(targetPage);
-  };
-  
-  // ✅ NOUVEAU : Fonction retour intelligent
-  const navigateBack = () => {
-    const target = navigationContext.previousPage || 'sessions';
-    
-    // Retour au chat si besoin
-    if (target === 'chat' && navigationContext.previousChatId) {
-      const session = app.sessions?.find(s => s.id === navigationContext.previousChatId);
-      if (session) {
-        app.openChatSession(session);
-      }
-    } else {
-      app.updateCurrentPage(target);
-    }
-    
-    // Clear context
-    setNavigationContext({
-      previousPage: null,
-      previousChatId: null,
-      pendingAttachment: navigationContext.pendingAttachment // Conserver pour Phase 17b
-    });
-  };
 
   if (!app.isInitialized) {
     return (
@@ -114,38 +79,83 @@ export default function App() {
           Chargement de vos souvenirs...
         </p>
         <div className="absolute bottom-4 text-xs text-gray-400 dark:text-gray-500">
-          v{APP_VERSION} - {PHASE}
+          Version 2.5 - Phase 17c
         </div>
       </div>
     );
   }
 
   if (!app.currentUser) {
-    return <UserSelectionPage />;
+    return (
+      <ErrorBoundary>
+        <UserSelectionPage />
+      </ErrorBoundary>
+    );
   }
+
+  const handleJumpToRandomMoment = () => {
+    if (memoriesPageRef.current?.jumpToRandomMoment) {
+      memoriesPageRef.current.jumpToRandomMoment();
+    }
+  };
+
+  const handleJumpToDay = (day) => {
+    if (memoriesPageRef.current?.jumpToDay) {
+      memoriesPageRef.current.jumpToDay(day);
+    }
+  };
+
+  // ✅ MODIFIÉ Phase 17c : Support sessionMomentId
+  const handleNavigateWithContext = (targetPage, context = {}) => {
+    console.log('🧭 Navigation avec contexte:', targetPage, context);
+    
+    setNavigationContext({
+      previousPage: app.currentPage,
+      pendingAttachment: context.attachment || null,
+      sessionMomentId: context.sessionMomentId || null  // ← AJOUT
+    });
+    
+    app.updateCurrentPage(targetPage);
+  };
+
+  const handleNavigateBack = () => {
+    const previousPage = navigationContext.previousPage || 'sessions';
+    console.log('← Retour vers:', previousPage);
+    
+    setNavigationContext({
+      previousPage: null,
+      pendingAttachment: null,
+      sessionMomentId: null  // ← AJOUT
+    });
+    
+    app.updateCurrentPage(previousPage);
+  };
+
+  const handleAttachToChat = (attachment) => {
+    console.log('📎 Attachement vers chat:', attachment);
+    
+    setNavigationContext(prev => ({
+      ...prev,
+      pendingAttachment: attachment,
+      sessionMomentId: null  // ← Clear au retour
+    }));
+    
+    app.updateCurrentPage('chat');
+  };
+
+  const handleClearAttachment = () => {
+    console.log('🧹 Clear attachment');
+    setNavigationContext(prev => ({
+      ...prev,
+      pendingAttachment: null
+    }));
+  };
 
   const renderPage = () => {
     switch (app.currentPage) {
-      case 'settings':
-        return <SettingsPage />;
-      
-      case 'sessions':
-        return <SessionsPage />;
-      
-      case 'chat':
-        return (
-          <ChatPage 
-            editingTitle={editingChatTitle}
-            setEditingTitle={setEditingChatTitle}
-            navigationContext={navigationContext}
-            onClearAttachment={() => setNavigationContext(prev => ({ ...prev, pendingAttachment: null }))}
-          />
-        );
-      
       case 'memories':
-      default:
         return (
-          <MemoriesPage 
+          <MemoriesPage
             ref={memoriesPageRef}
             isTimelineVisible={isTimelineVisible}
             setIsTimelineVisible={setIsTimelineVisible}
@@ -156,99 +166,72 @@ export default function App() {
             displayOptions={displayOptions}
             isThemeBarVisible={isThemeBarVisible}
             navigationContext={navigationContext}
-            onNavigateBack={navigateBack}
-            onAttachToChat={(item) => {
-            //  console.log('📎 App.jsx - onAttachToChat called with:', item);
-              
-              // 1. Set attachment AVANT de naviguer
-              setNavigationContext(prev => {
-                const newContext = {
-                  ...prev,
-                  pendingAttachment: item
-                };
-             //   console.log('✅ App.jsx - navigationContext updated:', newContext);
-                return newContext;
-              });
-              
-              // 2. Navigate back SANS effacer pendingAttachment
-              const targetPage = navigationContext.previousPage || 'sessions';
-              
-              if (targetPage === 'chat' && navigationContext.previousChatId) {
-                const session = app.sessions?.find(s => s.id === navigationContext.previousChatId);
-                if (session) {
-                  app.openChatSession(session);
-                }
-              } else {
-                app.updateCurrentPage(targetPage);
-              }
-              
-              // 3. Clear UNIQUEMENT previousPage/previousChatId (pas pendingAttachment)
-              setNavigationContext(prev => ({
-                previousPage: null,
-                previousChatId: null,
-                pendingAttachment: prev.pendingAttachment // ✅ CONSERVER !
-              }));
-            }}
+            onNavigateBack={handleNavigateBack}
+            onAttachToChat={handleAttachToChat}
           />
         );
+      
+      case 'sessions':
+        return <SessionsPage />;
+      
+      case 'chat':
+        return (
+          <ChatPage 
+            navigationContext={navigationContext}
+            onClearAttachment={handleClearAttachment}
+          />
+        );
+      
+      case 'settings':
+        return <SettingsPage />;
+      
+      default:
+        return <div>Page inconnue</div>;
     }
   };
-  
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        {/* ✅ TopBar fixe en haut */}
+        
+        {/* TopBar fixe */}
         <div className="fixed top-0 left-0 right-0 z-40">
-          <UnifiedTopBar 
+          <UnifiedTopBar
             currentPage={app.currentPage}
-            onPageChange={app.updateCurrentPage}
+            onCloseChatSession={app.closeChatSession}
             isTimelineVisible={isTimelineVisible}
             setIsTimelineVisible={setIsTimelineVisible}
             isSearchOpen={isSearchOpen}
             setIsSearchOpen={setIsSearchOpen}
+            displayOptions={displayOptions}
+            setDisplayOptions={setDisplayOptions}
+            jumpToRandomMoment={handleJumpToRandomMoment}
             currentDay={currentDay}
             setCurrentDay={setCurrentDay}
+            jumpToDay={handleJumpToDay}
             isThemeBarVisible={isThemeBarVisible}
             setIsThemeBarVisible={setIsThemeBarVisible}
             navigationContext={navigationContext}
-            onNavigateWithContext={navigateWithContext}
-            onNavigateBack={navigateBack}
-            jumpToDay={(day) => {
-              setCurrentDay(day);
-              if (memoriesPageRef.current?.jumpToDay) {
-                memoriesPageRef.current.jumpToDay(day);
-              }
-            }}
-            navigateDay={(delta) => {
-              const newDay = Math.max(0, Math.min(currentDay + delta, 200));
-              setCurrentDay(newDay);
-            }}
-            displayOptions={displayOptions}
-            setDisplayOptions={setDisplayOptions}
-            jumpToRandomMoment={() => {
-              if (memoriesPageRef.current?.jumpToRandomMoment) {
-                memoriesPageRef.current.jumpToRandomMoment();
-              }
-            }}
-            chatSession={app.currentChatSession}
-            onEditChatTitle={() => setEditingChatTitle(true)}
-            onCloseChatSession={app.closeChatSession}
+            onNavigateWithContext={handleNavigateWithContext}
+            onNavigateBack={handleNavigateBack}
           />
         </div>
-        
-        {/* ✅ Contenu avec padding-top pour compenser TopBar fixe */}
+
+        {/* Contenu principal */}
         <main className="flex-1 pt-12 pb-16 overflow-auto">
-          <div className="max-w-7xl mx-auto">
-            {renderPage()}
-          </div>
+          {renderPage()}
         </main>
+
+        {/* BottomNavigation fixe */}
+        {app.isInitialized && (
+          <BottomNavigation 
+            currentPage={app.currentPage}
+            onPageChange={app.updateCurrentPage}
+            app={app}
+          />
+        )}
         
-        <BottomNavigation 
-          currentPage={app.currentPage} 
-          onPageChange={app.updateCurrentPage} 
-          app={app}
-        />
-        
+        {/* Spinner création session */}
         {app.isCreatingSession && <SessionCreationSpinner />}
       </div>
     </ErrorBoundary>

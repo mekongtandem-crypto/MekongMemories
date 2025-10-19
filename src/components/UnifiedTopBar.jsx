@@ -1,7 +1,6 @@
 /**
- * UnifiedTopBar.jsx v2.6 - Phase 17a : Navigation contextuelle
- * ✅ Bouton "Explorer souvenirs" dans TopBar Chat
- * ✅ Bouton gauche Memories adaptatif (← Retour au chat / ← Sessions)
+ * UnifiedTopBar.jsx v2.7 - Phase 17c : Transmettre sessionMomentId
+ * ✅ Passage du gameId au clic sur "Souvenirs"
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { 
@@ -21,7 +20,6 @@ export default function UnifiedTopBar({
   isSearchOpen, setIsSearchOpen, displayOptions, setDisplayOptions, jumpToRandomMoment,
   currentDay, setCurrentDay, jumpToDay,
   isThemeBarVisible, setIsThemeBarVisible,
-  // ✅ NOUVEAU Phase 17a
   navigationContext, onNavigateWithContext, onNavigateBack
 }) {
 
@@ -133,7 +131,6 @@ export default function UnifiedTopBar({
   const renderLeftAction = () => {
     switch (currentPage) {
 	  case 'memories': {
-        // ✅ MODIFIÉ : Bouton adaptatif selon contexte
         const isFromChat = navigationContext?.previousPage === 'chat';
         const backLabel = isFromChat ? 'Retour au chat' : 'Sessions';
         
@@ -168,7 +165,6 @@ export default function UnifiedTopBar({
       }
       
       case 'chat': {
-        // ✅ NOUVEAU : 2 boutons (Retour + Explorer)
         return (
           <div className="flex items-center space-x-1">
             <button 
@@ -179,9 +175,17 @@ export default function UnifiedTopBar({
               <ArrowLeft className="w-5 h-5" />
             </button>
             
-            {/* ✅ NOUVEAU : Bouton Explorer souvenirs - TOUJOURS VISIBLE */}
+            {/* ✅ MODIFIÉ Phase 17c : Transmettre sessionMomentId */}
             <button 
-              onClick={() => onNavigateWithContext?.('memories', { fromChat: true })}
+              onClick={() => {
+                const momentId = app.currentChatSession?.gameId;
+                console.log('🧭 Navigation vers Memories avec momentId:', momentId);
+                
+                onNavigateWithContext?.('memories', { 
+                  fromChat: true,
+                  sessionMomentId: momentId  // ← AJOUT
+                });
+              }}
               className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg flex-shrink-0" 
               title="Explorer souvenirs"
             >

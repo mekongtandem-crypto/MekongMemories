@@ -514,7 +514,51 @@ const confirmMessage =
       scrollToMoment(lastSelected.id, 'start');
     }
   }, [selectedMoments]);
+  
+  // ========================================
+  // Phase 17c : Auto-ouvrir moment du chat
+  // ========================================
+  useEffect(() => {
+    // Guards : S'assurer que tout est chargé
+    if (!app?.isInitialized || !navigationContext?.sessionMomentId || momentsData.length === 0) {
+      return;
+    }
+    
+    const targetMomentId = navigationContext.sessionMomentId;
+    console.log('🎯 Auto-ouverture moment du chat:', targetMomentId);
+    
+    // Trouver le moment correspondant
+    const targetMoment = momentsData.find(m => m.id === targetMomentId);
+    
+    if (!targetMoment) {
+      console.warn('⚠️ Moment non trouvé:', targetMomentId);
+      return;
+    }
+    
+    // Attendre que le DOM soit prêt
+    const timeoutId = setTimeout(() => {
+      // Ouvrir le moment
+      setSelectedMoments([targetMoment]);
+      
+      // Scroller après un court délai
+      setTimeout(() => {
+        const element = momentRefs.current[targetMomentId];
+        if (element) {
+          executeScrollToElement(element);
+          console.log('✅ Moment ouvert et scrollé');
+        }
+      }, 300);
+    }, 150);
+    
+    return () => clearTimeout(timeoutId);
+  }, [
+    navigationContext?.sessionMomentId, 
+    momentsData, 
+    app?.isInitialized,
+    executeScrollToElement
+  ]);
 
+  // Puis continuer avec les callbacks...
   const scrollToMoment = useCallback((momentId) => {
     const element = momentRefs.current[momentId];
     if (element) {
@@ -1429,6 +1473,8 @@ const PhotoThumbnail = memo(({
     resolveAndSetUrl();
     return () => { isMounted = false; };
   }, [photo]);
+  
+  
 
   // ✅ MODIFIÉ Phase 17b : Longpress ouvre menu si fromChat, sinon mode sélection
   const handleTouchStart = (e) => {
