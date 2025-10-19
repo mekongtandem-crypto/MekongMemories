@@ -1,9 +1,12 @@
-// src/main.jsx
+/**
+ * main.jsx v2.6 - Phase 18b : Injection ContentLinks
+ */
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './components/App.jsx';
 import { themeAssignments } from './core/ThemeAssignments.js';
+import { contentLinks } from './core/ContentLinks.js';  // ⭐ AJOUT
 import './index.css';
 
 // --- Import de TOUS les modules ---
@@ -14,21 +17,21 @@ import { photoDataV2 } from './core/PhotoDataV2.js';
 import { mastodonData } from './core/MastodonData.js';
 import { masterIndexGenerator } from './core/MasterIndexGenerator.js';
 import { stateManager } from './core/StateManager.js';
-import { notificationManager } from './core/NotificationManager.js'; // ✅ NOUVEAU
+import { notificationManager } from './core/NotificationManager.js';
 
-console.log('🚀 Démarrage de Mémoire du Mékong v2.4 (Phase 15a)...');
+console.log('🚀 Démarrage de Mémoire du Mékong v2.6 (Phase 18b)...');
 
 // --- Injection de TOUTES les dépendances ---
 driveSync.initialize({ connectionManager });
 photoDataV2.initializeDependencies({ stateManager });
 
-// ✅ NOUVEAU : Initialiser themeAssignments
 dataManager.initializeDependencies({
   connectionManager,
   driveSync,
   stateManager,
   notificationManager,
-  themeAssignments  // ✅ AJOUTÉ
+  themeAssignments,
+  contentLinks  // ⭐ AJOUT
 });
 
 masterIndexGenerator.initialize({
@@ -36,13 +39,15 @@ masterIndexGenerator.initialize({
   mastodonData,
 });
 
-console.log('✅ Dépendances injectées. Prêt à démarrer.');
-
-// ✅ AJOUTER CES LIGNES :
-// Init themeAssignments au démarrage
+// Init themeAssignments et contentLinks au démarrage
 connectionManager.subscribe(async (connectionState) => {
-  if (connectionState.isOnline && !themeAssignments.isLoaded) {
-    await themeAssignments.init();
+  if (connectionState.isOnline) {
+    if (!themeAssignments.isLoaded) {
+      await themeAssignments.init();
+    }
+    if (!contentLinks.isLoaded) {  // ⭐ AJOUT
+      await contentLinks.init();
+    }
   }
 });
 

@@ -301,13 +301,14 @@ addMessageToSession = async (sessionId, messageContent, photoData = null) => {
     }
         
     const newMessage = {
-      id: `msg_${Date.now()}`, 
-      author: this.appState.currentUser,
-      content: messageContent, 
-      timestamp: new Date().toISOString(), 
-      edited: false,
-      ...(photoData && { photoData: photoData })
-    };
+  id: `msg_${Date.now()}`, 
+  author: this.appState.currentUser,
+  content: messageContent, 
+  timestamp: new Date().toISOString(), 
+  edited: false,
+  ...(photoData && { photoData: photoData }),
+  ...(linkedContent && { linkedContent })  // ⭐ AJOUT
+};
     
     console.log('💾 Message créé:', newMessage);
     console.log('💾 Message a photoData?', 'photoData' in newMessage);
