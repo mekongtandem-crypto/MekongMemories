@@ -81,22 +81,28 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
   // ========================================
 
   const handleSendMessage = async () => {
-    // ✅ Vérifier si texte OU photo
     if (!newMessage.trim() && !attachedPhoto) return;
 
     try {
-      console.log('📤 Envoi message avec photo:', attachedPhoto ? 'OUI' : 'NON');
+      console.log('=== DÉBUT ENVOI MESSAGE ===');
+      console.log('📝 Texte:', newMessage.trim());
+      console.log('📸 Photo attachée:', attachedPhoto);
+      console.log('📸 Photo détails:', {
+        filename: attachedPhoto?.filename,
+        google_drive_id: attachedPhoto?.google_drive_id,
+        type: attachedPhoto?.type
+      });
       
-      // ✅ Envoyer avec photo si présente
       await app.addMessageToSession(
         app.currentChatSession.id, 
         newMessage.trim(), 
         attachedPhoto
       );
       
-      console.log('✅ Message envoyé !');
+      console.log('✅ addMessageToSession terminé');
+      console.log('📋 Session après envoi:', app.currentChatSession);
+      console.log('📋 Dernier message:', app.currentChatSession.notes[app.currentChatSession.notes.length - 1]);
       
-      // Clear inputs
       setNewMessage('');
       setAttachedPhoto(null);
     } catch (error) {
@@ -209,7 +215,16 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
           </div>
         )}
 
-        {app.currentChatSession.notes?.map((message) => (
+        {app.currentChatSession.notes?.map((message) => {
+          console.log('🔍 Rendu message:', {
+            id: message.id,
+            author: message.author,
+            content: message.content?.substring(0, 30),
+            hasPhotoData: !!message.photoData,
+            photoData: message.photoData
+          });
+          
+          return (
           <div
             key={message.id}
             className={`flex ${getCurrentUserStyle(message.author)} max-w-xs sm:max-w-md lg:max-w-lg`}
@@ -290,7 +305,8 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 

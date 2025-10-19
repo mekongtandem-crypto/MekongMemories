@@ -56,7 +56,10 @@ export function useAppState() {
   const deleteSession = useCallback((sessionId) => dataManager.deleteSession(sessionId), []);
   const openChatSession = useCallback((session) => dataManager.openChatSession(session), []);
   const closeChatSession = useCallback(() => dataManager.closeChatSession(), []);
-  const addMessageToSession = useCallback((sessionId, content) => dataManager.addMessageToSession(sessionId, content), []);
+  const addMessageToSession = useCallback(async (sessionId, content, photoData = null) => {
+  console.log('🔗 useAppState.addMessageToSession - photoData:', photoData);
+  await dataManager.addMessageToSession(sessionId, content, photoData);
+}, []);
   const regenerateMasterIndex = useCallback(() => dataManager.regenerateMasterIndex(), []);
 
   // Actions notifications (Phase 15a)

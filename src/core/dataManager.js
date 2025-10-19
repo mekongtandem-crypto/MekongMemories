@@ -287,9 +287,18 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
     this.updateState({ sessions: filteredSessions });
   }
 
-  addMessageToSession = async (sessionId, messageContent, photoData = null) => {
+addMessageToSession = async (sessionId, messageContent, photoData = null) => {
+    console.log('=== dataManager.addMessageToSession ===');
+    console.log('📨 sessionId:', sessionId);
+    console.log('📨 messageContent:', messageContent);
+    console.log('📨 photoData reçu:', photoData);
+    console.log('📨 photoData truthy?', !!photoData);
+    
     const session = this.appState.sessions.find(s => s.id === sessionId);
-    if (!session) return;
+    if (!session) {
+        console.error('❌ Session introuvable:', sessionId);
+        return;
+    }
         
     const newMessage = {
       id: `msg_${Date.now()}`, 
@@ -297,23 +306,24 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
       content: messageContent, 
       timestamp: new Date().toISOString(), 
       edited: false,
-      // ✅ NOUVEAU Phase 17b : Support photo
       ...(photoData && { photoData: photoData })
     };
     
-    console.log('💾 dataManager - Création message:', newMessage);
+    console.log('💾 Message créé:', newMessage);
+    console.log('💾 Message a photoData?', 'photoData' in newMessage);
+    console.log('💾 Message.photoData:', newMessage.photoData);
         
     const updatedSession = { ...session, notes: [...session.notes, newMessage] };
     await this.updateSession(updatedSession);
+    
+    console.log('✅ Session mise à jour');
        
-    // ✅ Marquer notification comme lue
     const notif = this.notificationManager.getNotificationForSession(
       sessionId, 
       this.appState.currentUser
     );
     if (notif) {
       await this.notificationManager.markAsRead(notif.id);
-      console.log('✅ Notification marquée lue après envoi message');
     }
 }
 
