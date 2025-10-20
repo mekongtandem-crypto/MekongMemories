@@ -61,12 +61,30 @@ class DataManager {
       if (cachedUser) console.log(`👤 Utilisateur en cache trouvé : ${cachedUser}`);
       
       const loadedFiles = await this.driveSync.loadAllData();
-      const masterIndex = (loadedFiles?.masterIndex) ? 
-        (typeof loadedFiles.masterIndex === 'string' ? JSON.parse(loadedFiles.masterIndex) : loadedFiles.masterIndex) 
-        : null;
-      const sessions = loadedFiles.sessions || [];
-      // ✅ NOUVEAU : Charger notifications
-    await this.notificationManager.init();
+
+let masterIndex = (loadedFiles?.masterIndex) ? 
+  (typeof loadedFiles.masterIndex === 'string' ? JSON.parse(loadedFiles.masterIndex) : loadedFiles.masterIndex) 
+  : null;
+
+// ⭐ NOUVEAU : Enrichir moments avec IDs si absents
+if (masterIndex?.moments) {
+  masterIndex.moments = masterIndex.moments.map((moment, index) => {
+    // Si pas d'ID, le générer
+    if (!moment.id) {
+      return {
+        ...moment,
+        id: `moment_${moment.dayStart}_${moment.dayEnd}_${index}`
+      };
+    }
+    return moment;
+  });
+  console.log(`✅ ${masterIndex.moments.length} moments chargés avec IDs`);
+}
+
+const sessions = loadedFiles.sessions || [];
+
+// ⭐ Charger notifications
+await this.notificationManager.init();
 
       this.updateState({
         masterIndex, 

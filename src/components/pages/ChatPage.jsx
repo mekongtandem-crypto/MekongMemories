@@ -6,6 +6,7 @@
  * ✅ Envoi message avec linkedContent
  */
 import React, { useState, useRef, useEffect } from 'react';
+import LinkedContent from '../LinkedContent.jsx';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
 import { Send, Trash2, Edit, Camera, Link, FileText, MapPin, Image as ImageIcon } from 'lucide-react';
@@ -178,6 +179,12 @@ useEffect(() => {
       console.error('❌ Erreur suppression message:', error);
     }
   };
+  
+  const handleNavigateToContent = (linkedContent) => {
+  console.log('🧭 Navigation vers contenu:', linkedContent);
+  // TODO Phase 18b Étape 3c : Implémenter navigation
+  alert(`Navigation vers ${linkedContent.type}: ${linkedContent.title}\n(À implémenter étape 3c)`);
+};
 
   // ========================================
   // PHOTO VIEWER
@@ -216,6 +223,24 @@ useEffect(() => {
   // ========================================
   // RENDER
   // ========================================
+
+// ⭐ DEBUG linkedContent
+useEffect(() => {
+  if (app.currentChatSession?.notes) {
+    const messagesWithLinks = app.currentChatSession.notes.filter(m => m.linkedContent);
+    if (messagesWithLinks.length > 0) {
+      console.log('🔗 Messages avec liens:', messagesWithLinks.map(m => ({
+  id: m.id,
+  linkedContent: m.linkedContent,
+  // ⭐ Voir la structure complète
+  linkedContentFull: JSON.stringify(m.linkedContent, null, 2)
+})));
+    }
+  }
+}, [app.currentChatSession?.notes]);
+
+
+
 
   if (!app.currentChatSession) {
     return (
@@ -303,15 +328,14 @@ useEffect(() => {
                   </div>
                 ) : (
                   <>
-                    {/* ⭐ NOUVEAU : Lien si présent */}
-                    {message.linkedContent && (
-                      <div className={`mb-2 inline-flex items-center space-x-2 px-3 py-2 rounded-lg border ${getLinkColor(message.linkedContent.type)}`}>
-                        {getLinkIcon(message.linkedContent.type)}
-                        <span className="font-medium text-sm">
-                          {message.linkedContent.title}
-                        </span>
-                      </div>
-                    )}
+                    {/* ⭐ Lien enrichi */}
+{message.linkedContent && (
+  <LinkedContent 
+    linkedContent={message.linkedContent}
+    onNavigate={handleNavigateToContent}
+    masterIndex={app.masterIndex}
+  />
+)}
                     
                     {/* Photo si présente */}
                     {message.photoData && (

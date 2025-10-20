@@ -368,12 +368,19 @@ const handleLongPressForSelection = useCallback((element, type) => {
       break;
     
     case 'photo':
-      contentData = {
-        type: 'photo',
-        id: element.filename,
-        title: element.filename
-      };
-      break;
+  contentData = {
+    type: 'photo',
+    id: element.filename,
+    title: element.filename,
+    // ⭐ AJOUTER toutes les métadonnées
+    google_drive_id: element.google_drive_id,
+    url: element.url,
+    width: element.width,
+    height: element.height,
+    mime_type: element.mime_type || element.mediaType,
+    photoType: element.type || 'day_photo'
+  };
+  break;
     
     default:
       return;
