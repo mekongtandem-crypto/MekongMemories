@@ -187,17 +187,24 @@ export default function App() {
   const handleStartSelectionMode = (type, callback) => {
   console.log('🔗 Démarrage mode sélection:', type);
   
+  // ⭐ Récupérer gameId si vient d'une session
+  const gameId = (app.currentPage === 'chat' && app.currentChatSession?.gameId) 
+    ? app.currentChatSession.gameId 
+    : null;
+  
+  console.log('🎯 Auto-open moment:', gameId);
+  
   setSelectionMode({
     active: true,
     type: type,
-    callback: callback  // ⭐ On garde le callback pour compatibilité
+    callback: callback
   });
   
   setNavigationContext({
     previousPage: app.currentPage,
     pendingAttachment: null,
-    sessionMomentId: null,
-    pendingLink: null  // ⭐ AJOUTER
+    sessionMomentId: gameId,  // ⭐ Transmet gameId
+    pendingLink: null
   });
   
   app.updateCurrentPage('memories');

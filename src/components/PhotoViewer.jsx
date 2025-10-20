@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, MessageCircle, Tag } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, MessageCircle, Tag, Link } from 'lucide-react';
 import { photoDataV2 } from '../core/PhotoDataV2.js';
 import ThemeModal from './ThemeModal.jsx';
 import { generatePhotoMomentKey, generatePhotoMastodonKey } from '../utils/themeUtils.js';
 
-export default function PhotoViewer({ photo, gallery, contextMoment, onClose, onCreateSession }) {
+export default function PhotoViewer({ photo, gallery, contextMoment, onClose, onCreateSession, globalSelectionMode, onContentSelected }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentPhoto, setCurrentPhoto] = useState(photo);
   const [imageUrl, setImageUrl] = useState(null);
@@ -91,6 +91,27 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
       currentThemes
     });
   };
+
+// Handler Link
+const handleLinkPhoto = () => {
+  if (onContentSelected) {
+    const contentData = {
+      type: 'photo',
+      id: currentPhoto.filename,
+      title: currentPhoto.filename,
+      google_drive_id: currentPhoto.google_drive_id,
+      url: currentPhoto.url,
+      width: currentPhoto.width,
+      height: currentPhoto.height,
+      mime_type: currentPhoto.mime_type,
+      photoType: currentPhoto.type || 'day_photo'
+    };
+    
+    onContentSelected(contentData, 'photo');
+  }
+  
+  onClose();
+};
 
   const handleSaveThemes = async (selectedThemes) => {
     // ✅ CORRECTION : Récupérer currentUser depuis dataManager
@@ -199,6 +220,18 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
       </span>
     )}
   </button>
+  
+  {/* ⭐ NOUVEAU : Bouton Link (si mode sélection) */}
+{globalSelectionMode?.active && (
+  <button 
+    onClick={handleLinkPhoto}
+    className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-purple-600 border border-gray-300 hover:bg-purple-50 rounded-lg font-semibold shadow-xl transition-colors"
+    title="Lier cette photo"
+  >
+    <Link className="w-5 h-5" />
+    <span className="hidden sm:inline">Lier</span>
+  </button>
+)}
   
   {/* ✅ Bouton Thèmes avec état */}
   <button 

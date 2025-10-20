@@ -14,7 +14,7 @@ import React, { useState, useEffect, useRef, forwardRef, memo, useCallback, useI
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown, X, Tag
+  AlertCircle, ChevronDown, X, Tag, Link
 } from 'lucide-react';
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
@@ -578,7 +578,8 @@ const handleLongPressForSelection = useCallback((element, type) => {
       const targetMoment = momentsData.find(m => m.id === navigationContext.sessionMomentId);
       
       if (targetMoment) {
-        console.log('🎯 Ouverture moment:', targetMoment.displayTitle);
+      	  const mode = selectionMode?.active ? '[MODE SÉLECTION]' : '[MODE NORMAL]';
+  		console.log(`🎯 ${mode} Ouverture moment:`, targetMoment.displayTitle);
         
         // Ouvrir le moment
         setSelectedMoments([targetMoment]);
@@ -883,14 +884,16 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
       )}
 
       {viewerState.isOpen && (
-        <PhotoViewer 
-          photo={viewerState.photo}
-          gallery={viewerState.gallery}
-          contextMoment={viewerState.contextMoment}
-          onClose={closePhotoViewer}
-          onCreateSession={handleOpenSessionModal}
-        />
-      )}
+  <PhotoViewer 
+    photo={viewerState.photo}
+    gallery={viewerState.gallery}
+    contextMoment={viewerState.contextMoment}
+    onClose={closePhotoViewer}
+    onCreateSession={handleOpenSessionModal}
+    globalSelectionMode={selectionMode}
+    onContentSelected={handleLongPressForSelection}
+  />
+)}
     </div>
   );
 }
@@ -1118,12 +1121,6 @@ const MomentHeader = memo(({
       {/* ⭐ MODIFIÉ : Ajout onContextMenu pour sélection */}
       <div 
 		onClick={handleChevronClick}
-        onContextMenu={(e) => {
-  if (selectionMode?.active) {
-    e.preventDefault();
-    onContentSelected?.(moment, 'moment');  // ✅ Appel handleLongPressForSelection
-  }
-}}
         className="cursor-pointer flex items-start justify-between"
       >
         <div className="flex-1 min-w-0">
@@ -1135,12 +1132,7 @@ const MomentHeader = memo(({
               {moment.displayTitle}
             </h3>
             
-            {/* ⭐ Badge sélection moment */}
-            {selectionMode?.active && (
-              <span className="bg-purple-500 text-white rounded-full px-2 py-1 text-xs flex items-center flex-shrink-0">
-                🔗 Lier
-              </span>
-            )}
+            
           </div>
           {moment.location && (
             <span className="flex items-center text-xs text-gray-500 mt-1.5 ml-1">
@@ -1176,36 +1168,52 @@ const MomentHeader = memo(({
         )}
         
         {/* Boutons d'action à droite */}
-        <div className="ml-auto flex items-center space-x-2 flex-shrink-0">
-          {/* Bouton thèmes avec badge intégré */}
-          <button
-            onClick={handleTagMoment}
-            className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors ${
-              hasMomentThemes 
-                ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-200' 
-                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-            }`}
-            title="Thèmes"
-          >
-            <Tag className="w-4 h-4" />
-            {hasMomentThemes && <span className="text-xs font-bold">{momentThemes.length}</span>}
-          </button>
-          
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onCreateSession(moment, moment);
-            }}
-            className={`p-1.5 rounded transition-colors ${
-              hasSession 
-                ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
-                : 'hover:bg-amber-50 text-gray-600'
-            }`}
-            title={hasSession ? "Session existante" : "Créer une session"}
-          >
-            <span className="text-base">💬</span>
-          </button>
-        </div>
+<div className="ml-auto flex items-center space-x-2 flex-shrink-0">
+  
+  {/* Bouton thèmes avec badge intégré */}
+  <button
+    onClick={handleTagMoment}
+    className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors ${
+      hasMomentThemes 
+        ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-200' 
+        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+    }`}
+    title="Thèmes"
+  >
+    <Tag className="w-4 h-4" />
+    {hasMomentThemes && <span className="text-xs font-bold">{momentThemes.length}</span>}
+  </button>
+  
+  {/* ⭐ NOUVEAU : Bouton lier (si mode sélection) */}
+  {selectionMode?.active && (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onContentSelected?.(moment, 'moment');
+      }}
+      className="p-1.5 bg-gray-100 text-purple-600 border border-gray-300 hover:bg-purple-50 rounded transition-colors"
+      title="Lier ce moment"
+    >
+      <Link className="w-4 h-4" />
+    </button>
+  )}
+  
+  {/* Bouton session */}
+  <button 
+    onClick={(e) => {
+      e.stopPropagation();
+      onCreateSession(moment, moment);
+    }}
+    className={`p-1.5 rounded transition-colors ${
+      hasSession 
+        ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
+        : 'hover:bg-amber-50 text-gray-600'
+    }`}
+    title={hasSession ? "Session existante" : "Créer une session"}
+  >
+    <span className="text-base">💬</span>
+  </button>
+</div>
       </div>
     </>
   );
@@ -1244,32 +1252,82 @@ const MomentContent = memo(({
     
     {/* ✅ CORRECTION BUG 3 : Header simplifié */}
     {moment.dayPhotoCount > 0 && (
-      <div className="mt-2 border-b border-gray-100 pb-2">
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleDayPhotos();
-            }}
-            className="w-full flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200 hover:bg-gray-100 transition-colors"
-          >
-            {/* ✅ Format: 📸 20 Photos de "Titre" */}
-            <div className="flex items-center gap-x-3 flex-1">
-              <Camera className={`w-4 h-4 ${
-                localDisplay.showDayPhotos ? 'text-green-600' : 'text-gray-400'
-              }`} />
-              <h4 className="font-semibold text-gray-800 text-sm">
-                {moment.dayPhotoCount} Photo{moment.dayPhotoCount > 1 ? 's' : ''} de "{moment.displayTitle}"
-              </h4>
-            </div>
-            
-            <ChevronDown className={`w-4 h-4 transition-transform ${
-              localDisplay.showDayPhotos ? 'rotate-180' : ''
-            }`} />
-          </button>
+  <div className="mt-2 border-b border-gray-100 pb-2">
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleDayPhotos();
+        }}
+        className="w-full flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200 hover:bg-gray-100 transition-colors"
+      >
+        {/* Gauche : Titre */}
+        <div className="flex items-center gap-x-3 flex-1">
+          <Camera className={`w-4 h-4 ${
+            localDisplay.showDayPhotos ? 'text-green-600' : 'text-gray-400'
+          }`} />
+          <h4 className="font-semibold text-gray-800 text-sm">
+            {moment.dayPhotoCount} Photo{moment.dayPhotoCount > 1 ? 's' : ''} de "{moment.displayTitle}"
+          </h4>
         </div>
-      </div>
-    )}
+        
+        {/* ⭐ NOUVEAU : Boutons à droite */}
+        <div className="flex items-center space-x-2 mr-2">
+          
+          {/* ⭐ Bouton toggle tagging multiple */}
+<button
+  onClick={(e) => {
+    e.stopPropagation();
+    const gridId = `moment_${moment.id}_day`;
+    
+    // Toggle : si déjà actif, annuler
+    if (activePhotoGrid === gridId) {
+      onCancelSelection();
+    } else {
+      onActivateSelection(gridId);
+    }
+  }}
+  className={`p-1.5 rounded transition-colors ${
+    activePhotoGrid === `moment_${moment.id}_day`
+      ? 'bg-yellow-100 text-yellow-600'  // Actif
+      : 'text-yellow-600 hover:bg-yellow-50'  // Inactif
+  }`}
+  title={
+    activePhotoGrid === `moment_${moment.id}_day`
+      ? "Annuler sélection"
+      : "Sélectionner photos pour tagging"
+  }
+>
+  <Tag className="w-4 h-4" />
+</button>
+          
+          {/* Bouton lier (si mode sélection) */}
+          {selectionMode?.active && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // Lier la première photo du moment comme représentant
+                const firstPhoto = moment.dayPhotos[0];
+                if (firstPhoto) {
+                  onContentSelected?.(firstPhoto, 'photo');
+                }
+              }}
+              className="p-1.5 bg-gray-100 text-purple-600 border border-gray-300 hover:bg-purple-50 rounded transition-colors"
+              title="Lier une photo de ce moment"
+            >
+              <Link className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        
+        {/* ChevronDown */}
+        <ChevronDown className={`w-4 h-4 transition-transform ${
+          localDisplay.showDayPhotos ? 'rotate-180' : ''
+        }`} />
+      </button>
+    </div>
+  </div>
+)}
     
     {localDisplay.showDayPhotos && moment.dayPhotoCount > 0 && (
       <div className="mt-2">
@@ -1366,12 +1424,6 @@ const PostArticle = memo(({
     <div className="mt-2">
       <div 
         className="border border-gray-200 rounded-lg overflow-hidden"
-        onContextMenu={(e) => {
-  if (selectionMode?.active) {
-    e.preventDefault();
-    onContentSelected?.(post, 'post');  // ✅ Bon ordre
-  }
-}}
       >
         <div className="flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200">
           {/* Gauche : Titre + indicateur photos inline */}
@@ -1392,47 +1444,57 @@ const PostArticle = memo(({
               {title}
             </h4>
             
-            {/* ⭐ Badge sélection post */}
-            {selectionMode?.active && (
-              <span className="bg-blue-500 text-white rounded-full px-2 py-1 text-xs flex items-center ml-2 flex-shrink-0">
-                🔗 Lier
-              </span>
-            )}
+            
           </div>
           
           {/* Droite = Indicateurs compacts + Boutons */}
-          <div className="flex items-center gap-x-2 flex-shrink-0 ml-2">
-            {/* 📸 Indicateur photos (si hasPhotos) */}
-            {hasPhotos && (
-              <div className="flex items-center space-x-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                <Camera className="w-3 h-3" />
-                <span className="font-medium">{post.photos.length}</span>
-              </div>
-            )}
-            
-            {/* 🏷️ Bouton Tag avec compteur intégré */}
-            <button 
-              onClick={handleTagPost} 
-              className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors ${
-                hasThemes 
-                  ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-200' 
-                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-              }`}
-              title="Thèmes"
-            >
-              <Tag className="w-4 h-4" />
-              {hasThemes && <span className="text-xs font-bold">{postThemes.length}</span>}
-            </button>
-            
-            {/* 💬 Bouton session */}
-            <button 
-              onClick={handleCreateSession} 
-              className="px-2 py-1 rounded hover:bg-amber-50 transition-colors" 
-              title="Créer une session"
-            >
-              <span className="text-base">💬</span>
-            </button>
-          </div>
+<div className="flex items-center gap-x-2 flex-shrink-0 ml-2">
+  
+  {/* 📸 Indicateur photos */}
+  {hasPhotos && (
+    <div className="flex items-center space-x-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+      <Camera className="w-3 h-3" />
+      <span className="font-medium">{post.photos.length}</span>
+    </div>
+  )}
+  
+  {/* 🏷️ Bouton Tag */}
+  <button 
+    onClick={handleTagPost} 
+    className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors ${
+      hasThemes 
+        ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-200' 
+        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+    }`}
+    title="Thèmes"
+  >
+    <Tag className="w-4 h-4" />
+    {hasThemes && <span className="text-xs font-bold">{postThemes.length}</span>}
+  </button>
+  
+  {/* ⭐ NOUVEAU : Bouton lier (si mode sélection) */}
+  {selectionMode?.active && (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onContentSelected?.(post, 'post');
+      }}
+      className="px-2 py-1 bg-gray-100 text-purple-600 border border-gray-300 hover:bg-purple-50 rounded transition-colors"
+      title="Lier cet article"
+    >
+      <Link className="w-4 h-4" />
+    </button>
+  )}
+  
+  {/* 💬 Bouton session */}
+  <button 
+    onClick={handleCreateSession} 
+    className="px-2 py-1 rounded hover:bg-amber-50 transition-colors" 
+    title="Créer une session"
+  >
+    <span className="text-base">💬</span>
+  </button>
+</div>
         </div>
         
         {displayOptions.showPostText && (
@@ -1537,7 +1599,6 @@ const PhotoThumbnail = memo(({
 }) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [status, setStatus] = useState('loading');
-  const longPressTimerRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -1562,38 +1623,25 @@ const PhotoThumbnail = memo(({
     resolveAndSetUrl();
     return () => { isMounted = false; };
   }, [photo]);
-  
-  // ⭐ MODIFIÉ Phase 18b : Gérer mode sélection global (liens)
-  const handleTouchStart = (e) => {
-    if (selectionMode) return; // Déjà en mode sélection photo (bulk)
-    
-    longPressTimerRef.current = setTimeout(() => {
-      if (globalSelectionMode?.active) {
-  // Mode sélection lien actif → sélectionner photo
-  onContentSelected?.(photo, 'photo');  // ✅ Ordre correct
-      } else if (isFromChat && onOpenContextMenu) {
-        // Mode normal depuis chat → menu contextuel
-        onOpenContextMenu(photo, e);
-      } else {
-        // Mode normal → sélection bulk photos
-        onActivateSelection(gridId);
-        onToggleSelect(photo);
-      }
-    }, 500);
-  };
 
-  const handleTouchEnd = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
+  // ⭐ SIMPLIFIÉ : Juste le clic
+  const handleClick = (e) => {
+    if (selectionMode) {
+      // Mode sélection bulk (tagging) → toggle
+      e.stopPropagation();
+      onToggleSelect(photo);
+    } else {
+      // Mode normal → ouvrir visionneuse
+      onClick(photo, moment);
     }
   };
 
-  const handleClick = (e) => {
-    if (selectionMode) {
+  // ⭐ Menu contextuel sur clic droit (si depuis chat)
+  const handleContextMenu = (e) => {
+    if (isFromChat && onOpenContextMenu) {
+      e.preventDefault();
       e.stopPropagation();
-      onToggleSelect(photo);
-    } else if (status === 'loaded') {
-      onClick(photo, moment);
+      onOpenContextMenu(photo, e);
     }
   };
 
@@ -1607,11 +1655,7 @@ const PhotoThumbnail = memo(({
     <div 
       className="aspect-square bg-gray-200 rounded-md group relative cursor-pointer overflow-hidden" 
       onClick={handleClick}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={handleTouchStart}
-      onMouseUp={handleTouchEnd}
-      onMouseLeave={handleTouchEnd}
+      onContextMenu={handleContextMenu}
     >
       {/* Checkbox visible uniquement en mode sélection bulk */}
       {selectionMode && (
@@ -1635,6 +1679,20 @@ const PhotoThumbnail = memo(({
           </div>
         </div>
       )}
+      
+      {/* ⭐ NOUVEAU : Pastille Link (si mode sélection global) */}
+{globalSelectionMode?.active && !selectionMode && (
+  <button
+    className="absolute top-1 right-1 z-10 w-7 h-7 bg-purple-500 hover:bg-purple-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg transition-all"
+    onClick={(e) => {
+      e.stopPropagation();
+      onContentSelected?.(photo, 'photo');
+    }}
+    title="Lier cette photo"
+  >
+    <Link className="w-4 h-4 text-white" />
+  </button>
+)}
 
       {status === 'loading' && (
         <div className="w-full h-full animate-pulse flex items-center justify-center">
