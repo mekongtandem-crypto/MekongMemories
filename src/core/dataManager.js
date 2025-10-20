@@ -287,12 +287,12 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
     this.updateState({ sessions: filteredSessions });
   }
 
-addMessageToSession = async (sessionId, messageContent, photoData = null) => {
+addMessageToSession = async (sessionId, messageContent, photoData = null, linkedContent = null) => {
     console.log('=== dataManager.addMessageToSession ===');
     console.log('📨 sessionId:', sessionId);
     console.log('📨 messageContent:', messageContent);
     console.log('📨 photoData reçu:', photoData);
-    console.log('📨 photoData truthy?', !!photoData);
+    console.log('📨 linkedContent reçu:', linkedContent);  // ⭐ NOUVEAU
     
     const session = this.appState.sessions.find(s => s.id === sessionId);
     if (!session) {
@@ -301,18 +301,18 @@ addMessageToSession = async (sessionId, messageContent, photoData = null) => {
     }
         
     const newMessage = {
-  id: `msg_${Date.now()}`, 
-  author: this.appState.currentUser,
-  content: messageContent, 
-  timestamp: new Date().toISOString(), 
-  edited: false,
-  ...(photoData && { photoData: photoData }),
-  ...(linkedContent && { linkedContent })  // ⭐ AJOUT
-};
+      id: `msg_${Date.now()}`, 
+      author: this.appState.currentUser,
+      content: messageContent, 
+      timestamp: new Date().toISOString(), 
+      edited: false,
+      ...(photoData && { photoData: photoData }),
+      ...(linkedContent && { linkedContent })  // ✅ Maintenant linkedContent existe
+    };
     
     console.log('💾 Message créé:', newMessage);
     console.log('💾 Message a photoData?', 'photoData' in newMessage);
-    console.log('💾 Message.photoData:', newMessage.photoData);
+    console.log('💾 Message a linkedContent?', 'linkedContent' in newMessage);
         
     const updatedSession = { ...session, notes: [...session.notes, newMessage] };
     await this.updateSession(updatedSession);

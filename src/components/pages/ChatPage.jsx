@@ -1,25 +1,28 @@
 /**
- * ChatPage.jsx v2.4 - Phase 17b : Attachement photo
- * ✅ Détection pendingAttachment
- * ✅ Preview photo dans input
- * ✅ Envoi message avec photo
+ * ChatPage.jsx v2.5 - Phase 18b : Liens + Photos
+ * ✅ Bouton [🔗 Liens/Photos]
+ * ✅ État pendingLink + attachedPhoto
+ * ✅ Preview lien avant envoi
+ * ✅ Envoi message avec linkedContent
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
-import { Send, Trash2, Check, X, Edit, Camera } from 'lucide-react';
+import { Send, Trash2, Edit, Camera, Link, FileText, MapPin, Image as ImageIcon } from 'lucide-react';
 import PhotoViewer from '../PhotoViewer.jsx';
 
-export default function ChatPage({ navigationContext, onClearAttachment }) {
+export default function ChatPage({ navigationContext, onClearAttachment, onStartSelectionMode }) {
   const app = useAppState();
   const [newMessage, setNewMessage] = useState('');
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState(null);
   
-  // ✅ NOUVEAU Phase 17b : Preview photo attachée
+  // Phase 17b : Photo attachée
   const [attachedPhoto, setAttachedPhoto] = useState(null);
   
+  // ⭐ NOUVEAU Phase 18b : Lien en attente
+  const [pendingLink, setPendingLink] = useState(null);
   
   const [viewerState, setViewerState] = useState({ 
     isOpen: false, photo: null 
@@ -28,75 +31,108 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
   const messagesEndRef = useRef(null);
 
   // Scroll vers dernier message
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [app.currentChatSession?.notes]);
+useEffect(() => {
+  if (messagesEndRef.current) {
+    messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  }
+}, [app.currentChatSession?.notes]);
 
-  // ✅ MODIFIÉ Phase 17b : Détecter photo attachée depuis Memories
-  useEffect(() => {
-    if (navigationContext?.pendingAttachment) {
-      const { type, data } = navigationContext.pendingAttachment;
-      
-      if (type === 'photo') {
-        console.log('📎 Photo reçue depuis Memories:', data);
-        setAttachedPhoto(data);
-      }
-    }
-  }, [navigationContext?.pendingAttachment]);
+/// Détecter photo attachée ou lien depuis Memories
+useEffect(() => {
+  let hasCleared = false;
   
-  // Clear attachment après mise à jour state
-  useEffect(() => {
-    if (attachedPhoto && navigationContext?.pendingAttachment) {
-      console.log('✅ Photo attachée, clear context');
-      onClearAttachment?.();
-    }
-  }, [attachedPhoto, navigationContext?.pendingAttachment, onClearAttachment]);
-
-  useEffect(() => {
-    window.chatPageActions = {
-      showFeedback: (message) => {
-        setFeedbackMessage(message);
-        setTimeout(() => {
-          setFeedbackMessage(null);
-        }, 2500);
+  if (navigationContext?.pendingAttachment) {
+    const { type, data } = navigationContext.pendingAttachment;
+    
+    if (type === 'photo') {
+      console.log('📎 Photo reçue depuis Memories:', data);
+      setAttachedPhoto(data);
+      
+      if (!hasCleared) {
+        console.log('🧹 Clear pendingAttachment');
+        onClearAttachment?.();
+        hasCleared = true;
       }
-    };
-    return () => {
-      delete window.chatPageActions;
-    };
-  }, []);
+    }
+  }
+  
+  if (navigationContext?.pendingLink) {
+    console.log('🔗 Lien reçu depuis Memories:', navigationContext.pendingLink);
+    setPendingLink(navigationContext.pendingLink);
+    
+    if (!hasCleared) {
+      console.log('🧹 Clear pendingLink');
+      onClearAttachment?.();
+      hasCleared = true;
+    }
+  }
+  // ⭐ MODIFIÉ : Retirer onClearAttachment des dépendances
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [navigationContext?.pendingAttachment, navigationContext?.pendingLink]);
+
+useEffect(() => {
+  window.chatPageActions = {
+    showFeedback: (message) => {
+      setFeedbackMessage(message);
+      setTimeout(() => {
+        setFeedbackMessage(null);
+      }, 2500);
+    }
+  };
+  return () => {
+    delete window.chatPageActions;
+  };
+}, []);
+
+  // ========================================
+  // ⭐ NOUVEAU Phase 18b : HANDLERS LIENS
+  // ========================================
+
+  const handleOpenLinkPicker = () => {
+    console.log('🔗 Ouverture sélecteur de liens');
+    
+    if (!onStartSelectionMode) {
+      console.error('❌ onStartSelectionMode non fourni !');
+      return;
+    }
+    
+    // ⭐ MODIFIÉ : Plus besoin de callback, passage via navigationContext
+    onStartSelectionMode('link', null);
+  };
+
+  const handleClearPendingLink = () => {
+    console.log('🧹 Clear pending link');
+    setPendingLink(null);
+  };
 
   // ========================================
   // HANDLERS MESSAGES
   // ========================================
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() && !attachedPhoto) return;
+    if (!newMessage.trim() && !attachedPhoto && !pendingLink) return;
 
     try {
-      // console.log('=== DÉBUT ENVOI MESSAGE ===');
-      // console.log('📝 Texte:', newMessage.trim());
-      // console.log('📸 Photo attachée:', attachedPhoto);
-      // console.log('📸 Photo détails:', {
-      //  filename: attachedPhoto?.filename,
-      //  google_drive_id: attachedPhoto?.google_drive_id,
-      //   type: attachedPhoto?.type
-      // });
+      // ⭐ MODIFIÉ : Support linkedContent
+      const messageData = {
+        content: newMessage.trim(),
+        linkedContent: pendingLink ? {
+          type: pendingLink.type,
+          id: pendingLink.id,
+          title: pendingLink.title
+        } : null
+      };
       
       await app.addMessageToSession(
         app.currentChatSession.id, 
-        newMessage.trim(), 
-        attachedPhoto
+        messageData.content, 
+        attachedPhoto,
+        messageData.linkedContent  // ⭐ Nouveau param
       );
-      
-      // console.log('✅ addMessageToSession terminé');
-      // console.log('📋 Session après envoi:', app.currentChatSession);
-      // console.log('📋 Dernier message:', app.currentChatSession.notes[app.currentChatSession.notes.length - 1]);
       
       setNewMessage('');
       setAttachedPhoto(null);
+      setPendingLink(null);
     } catch (error) {
       console.error('❌ Erreur envoi message:', error);
     }
@@ -156,6 +192,28 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
   };
 
   // ========================================
+  // HELPERS ICÔNES LIENS
+  // ========================================
+
+  const getLinkIcon = (type) => {
+    switch(type) {
+      case 'moment': return <MapPin className="w-4 h-4" />;
+      case 'post': return <FileText className="w-4 h-4" />;
+      case 'photo': return <ImageIcon className="w-4 h-4" />;
+      default: return <Link className="w-4 h-4" />;
+    }
+  };
+
+  const getLinkColor = (type) => {
+    switch(type) {
+      case 'moment': return 'bg-purple-50 border-purple-200 text-purple-700';
+      case 'post': return 'bg-blue-50 border-blue-200 text-blue-700';
+      case 'photo': return 'bg-green-50 border-green-200 text-green-700';
+      default: return 'bg-gray-50 border-gray-200 text-gray-700';
+    }
+  };
+
+  // ========================================
   // RENDER
   // ========================================
 
@@ -208,8 +266,6 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
         )}
 
         {app.currentChatSession.notes?.map((message) => (
-          
-          
           <div
             key={message.id}
             className={`flex ${getCurrentUserStyle(message.author)} max-w-xs sm:max-w-md lg:max-w-lg`}
@@ -247,6 +303,16 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
                   </div>
                 ) : (
                   <>
+                    {/* ⭐ NOUVEAU : Lien si présent */}
+                    {message.linkedContent && (
+                      <div className={`mb-2 inline-flex items-center space-x-2 px-3 py-2 rounded-lg border ${getLinkColor(message.linkedContent.type)}`}>
+                        {getLinkIcon(message.linkedContent.type)}
+                        <span className="font-medium text-sm">
+                          {message.linkedContent.title}
+                        </span>
+                      </div>
+                    )}
+                    
                     {/* Photo si présente */}
                     {message.photoData && (
                       <PhotoMessage 
@@ -295,60 +361,101 @@ export default function ChatPage({ navigationContext, onClearAttachment }) {
       </div>
 
       {/* Zone de saisie */}
-      <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
-        {/* ✅ MODIFIÉ Phase 17b : Preview photo grande taille */}
-        {attachedPhoto && (
-          <div className="mb-3 relative group">
-            <div className="relative rounded-lg overflow-hidden border-2 border-purple-300 shadow-md">
-              <PhotoPreview photo={attachedPhoto} />
-              
-              {/* Bouton retirer discret (hover) */}
-              <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-bl-lg shadow-lg p-1">
-                <button
-                  onClick={() => setAttachedPhoto(null)}
-                  className="p-1 hover:bg-red-100 rounded"
-                  title="Retirer photo"
-                >
-                  <Trash2 className="w-4 h-4 text-red-600" />
-                </button>
-              </div>
-              
-              {/* Badge visible au hover uniquement */}
-              <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                📎 Photo attachée
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex space-x-3">
-          <textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            placeholder={attachedPhoto ? "Ajouter un message (optionnel)..." : "Tapez votre message... (Shift+Entrée pour envoyer)"}
-            className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-            rows="2"
-          />
+<div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
+  
+  {/* ⭐ Preview lien (si présent) */}
+  {pendingLink && (
+    <div className={`mb-3 rounded-lg border-2 p-3 ${getLinkColor(pendingLink.type)}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2 flex-1 min-w-0">
+          {getLinkIcon(pendingLink.type)}
+          <span className="font-medium truncate">{pendingLink.title}</span>
+        </div>
+        <button
+          onClick={handleClearPendingLink}
+          className="p-1 hover:bg-white/50 rounded flex-shrink-0"
+          title="Retirer lien"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  )}
+  
+  {/* Preview photo (si présente) */}
+  {attachedPhoto && (
+    <div className="mb-3 relative group">
+      <div className="relative rounded-lg overflow-hidden border-2 border-purple-300 shadow-md">
+        <PhotoPreview photo={attachedPhoto} />
+        
+        <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-bl-lg shadow-lg p-1">
           <button
-            onClick={handleSendMessage}
-            disabled={!newMessage.trim() && !attachedPhoto}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center space-x-1 transition-colors"
-            title={attachedPhoto 
-              ? (newMessage.trim() ? "Envoyer photo + message" : "Envoyer photo") 
-              : "Envoyer message (Shift+Entrée)"
-            }
+            onClick={() => setAttachedPhoto(null)}
+            className="p-1 hover:bg-red-100 rounded"
+            title="Retirer photo"
           >
-            {attachedPhoto && <span className="text-base">📎</span>}
-            <Send className="w-5 h-5" />
+            <Trash2 className="w-4 h-4 text-red-600" />
           </button>
         </div>
+        
+        <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+          📎 Photo attachée
+        </div>
       </div>
+    </div>
+  )}
+
+  {/* ⭐ NOUVEAU LAYOUT : [🔗+] Input [✉️] */}
+  <div className="flex items-end space-x-2">
+    
+    {/* Bouton Liens/Photos à GAUCHE */}
+    <button
+      onClick={handleOpenLinkPicker}
+      className="flex-shrink-0 p-3 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+      title="Ajouter lien ou photo"
+    >
+      <Link className="w-6 h-6" />
+    </button>
+    
+    {/* Input message au CENTRE */}
+    <textarea
+      value={newMessage}
+      onChange={(e) => setNewMessage(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && e.shiftKey) {
+          e.preventDefault();
+          handleSendMessage();
+        }
+      }}
+      placeholder={
+        pendingLink || attachedPhoto 
+          ? "Ajouter un message (optionnel)..." 
+          : "Tapez votre message... (Shift+Entrée pour envoyer)"
+      }
+      className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+      rows="2"
+    />
+    
+    {/* Bouton Envoyer à DROITE */}
+    <button
+      onClick={handleSendMessage}
+      disabled={!newMessage.trim() && !attachedPhoto && !pendingLink}
+      className="flex-shrink-0 p-3 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+      title="Envoyer (Shift+Entrée)"
+    >
+      <Send className="w-6 h-6" />
+    </button>
+  </div>
+  
+  {/* ⭐ Indicateur discret (en dessous si quelque chose attaché) */}
+  {(pendingLink || attachedPhoto) && (
+    <div className="mt-2 text-xs text-gray-500 flex items-center justify-center space-x-2">
+      {pendingLink && <span>🔗 1 lien</span>}
+      {pendingLink && attachedPhoto && <span>•</span>}
+      {attachedPhoto && <span>📷 1 photo</span>}
+    </div>
+  )}
+</div>
 
       {/* PhotoViewer */}
       {viewerState.isOpen && viewerState.photo && (
@@ -390,9 +497,7 @@ function PhotoMessage({ photo, onPhotoClick }) {
       }
       
       try {
-        // Support URL directe (fallback si pas de google_drive_id)
         if (!photo.google_drive_id && photo.url) {
-          console.log('📸 Photo Mastodon (URL directe):', photo.url);
           if (isMounted) {
             setImageUrl(photo.url);
             setLoading(false);
@@ -400,7 +505,6 @@ function PhotoMessage({ photo, onPhotoClick }) {
           return;
         }
         
-        // Résolution normale via PhotoDataV2
         const url = await window.photoDataV2.resolveImageUrl(photo, true);
         if (isMounted) {
           if (url && !url.startsWith('data:image/svg+xml')) {
@@ -468,7 +572,7 @@ function PhotoPreview({ photo }) {
       
       try {
         setLoading(true);
-        const url = await window.photoDataV2.resolveImageUrl(photo, false); // ✅ false = haute résolution
+        const url = await window.photoDataV2.resolveImageUrl(photo, false);
         if (isMounted && url && !url.startsWith('data:image/svg+xml')) {
           setImageUrl(url);
         }

@@ -5,7 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, Settings, Plus, MoreVertical, Edit, Trash2, Check, X, Bell,
-  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown, Tag, Sparkles, BarChart3
+  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown, Tag, Sparkles, BarChart3, Link
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
@@ -20,7 +20,8 @@ export default function UnifiedTopBar({
   isSearchOpen, setIsSearchOpen, displayOptions, setDisplayOptions, jumpToRandomMoment,
   currentDay, setCurrentDay, jumpToDay,
   isThemeBarVisible, setIsThemeBarVisible,
-  navigationContext, onNavigateWithContext, onNavigateBack
+  navigationContext, onNavigateWithContext, onNavigateBack,
+  selectionMode, onCancelSelectionMode
 }) {
 
   const app = useAppState();
@@ -185,53 +186,131 @@ case 'chat': {
 
   const renderContext = () => {
     switch (currentPage) {
-      case 'memories': {
-        const filterIcons = { all: '📋', unexplored: '✨', with_posts: '📄', with_photos: '📸' };
-        
-        const availableThemes = app.masterIndex?.themes || [];
-        const themeCount = availableThemes.filter(theme => {
-          const contents = window.themeAssignments?.getAllContentsByTheme(theme.id) || [];
-          return contents.length > 0;
-        }).length;
+case 'memories': {
+  const filterIcons = { all: '📋', unexplored: '✨', with_posts: '📄', with_photos: '📸' };
+  
+  const availableThemes = app.masterIndex?.themes || [];
+  const themeCount = availableThemes.filter(theme => {
+    const contents = window.themeAssignments?.getAllContentsByTheme(theme.id) || [];
+    return contents.length > 0;
+  }).length;
 
-        return (
-          <div className="flex items-center space-x-2">
-            {themeCount > 0 && (
-              <>
-                <button 
-                  onClick={() => setIsThemeBarVisible?.(!isThemeBarVisible)} 
-                  className={`p-1.5 rounded transition-colors ${
-                    isThemeBarVisible 
-                      ? 'bg-amber-100 text-amber-600' 
-                      : 'text-gray-400 hover:bg-gray-100'
-                  }`} 
-                  title={isThemeBarVisible ? "Masquer les thèmes" : "Afficher les thèmes"}
-                >
-                  <Tag className="w-4 h-4" />
-                </button>
-                <span className="text-gray-300 hidden sm:inline">|</span>
-              </>
-            )}
-
-            <div className="flex items-center space-x-1">
-              <button onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))} className={`p-1.5 rounded transition-colors ${displayOptions.showPostText ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}><FileText className="w-4 h-4" /></button>
-              <button onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))} className={`p-1.5 rounded transition-colors ${displayOptions.showPostPhotos ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}><ImageIcon className="w-4 h-4" /></button>
-              <button onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))} className={`p-1.5 rounded transition-colors ${displayOptions.showMomentPhotos ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}><Camera className="w-4 h-4" /></button>
-            </div>
-            <span className="text-gray-300 hidden sm:inline">|</span>
-            <div className="relative hidden md:block" ref={sortMenuRef}><button onClick={() => setShowSortMenu(!showSortMenu)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Trier les moments"><ArrowUpDown className="w-4 h-4" /></button>{showSortMenu && (<div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48"><button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('chrono'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📅</span><span>Chronologique</span></button>
-<button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('recent'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>🕐</span><span>Plus récents</span></button>
-<button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('content'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📸</span><span>Plus de contenu</span></button></div>)}</div>
-            <div className="relative hidden md:block"><button onClick={() => setShowMomentFilterMenu(!showMomentFilterMenu)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Filtrer les moments"><span className="text-lg">{filterIcons[currentMomentFilter]}</span></button>{showMomentFilterMenu && (<div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48"><button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('all'); } setCurrentMomentFilter('all'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📋</span><span>Tous les moments</span></button>
-<button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('unexplored'); } setCurrentMomentFilter('unexplored'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>✨</span><span>Non explorés</span></button>
-<button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('with_posts'); } setCurrentMomentFilter('with_posts'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📄</span><span>Avec articles</span></button>
-<button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('with_photos'); } setCurrentMomentFilter('with_photos'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📸</span><span>Avec photos</span></button></div>)}</div>
-            <div className="flex items-center space-x-2 md:hidden"><button onClick={jumpToRandomMoment} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Moment au hasard"><Dices className="w-4 h-4" /></button><input type="number" value={currentDay} onChange={(e) => { const day = parseInt(e.target.value, 10); if (!isNaN(day)) setCurrentDay(day);}} onKeyDown={(e) => { if (e.key === 'Enter') jumpToDay(currentDay); }} className="w-14 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:ring-2 focus:ring-blue-500" /></div>
-            <span className="text-gray-300 hidden md:inline">|</span> 
-            <div className="hidden md:flex items-center space-x-2"><button onClick={jumpToRandomMoment} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Moment au hasard"><Dices className="w-4 h-4" /></button><input type="number" value={currentDay} onChange={(e) => { const day = parseInt(e.target.value, 10); if (!isNaN(day)) setCurrentDay(day); }} onKeyDown={(e) => { if (e.key === 'Enter') jumpToDay(currentDay); }} onWheel={handleDayWheel} className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-blue-500" /></div>
+  return (
+    <div className="flex items-center space-x-2">
+      
+      {/* ⭐ Badge mode sélection (si actif) */}
+      {selectionMode?.active && (
+        <>
+          <div className="flex items-center space-x-2 px-3 py-1 bg-purple-100 rounded-lg">
+            <Link className="w-4 h-4 text-purple-600" />
+            <span className="text-purple-700 font-medium text-sm">Sélectionner</span>
           </div>
-        );
-      }
+          <button 
+            onClick={onCancelSelectionMode}
+            className="p-1.5 hover:bg-red-100 rounded"
+            title="Annuler la sélection"
+          >
+            <X className="w-5 h-5 text-red-600" />
+          </button>
+          <span className="text-gray-300">|</span>
+        </>
+      )}
+      
+      {/* Bouton thèmes (toujours visible) */}
+      {themeCount > 0 && (
+        <>
+          <button 
+            onClick={() => setIsThemeBarVisible?.(!isThemeBarVisible)} 
+            className={`p-1.5 rounded transition-colors ${
+              isThemeBarVisible 
+                ? 'bg-amber-100 text-amber-600' 
+                : 'text-gray-400 hover:bg-gray-100'
+            }`} 
+            title={isThemeBarVisible ? "Masquer les thèmes" : "Afficher les thèmes"}
+          >
+            <Tag className="w-4 h-4" />
+          </button>
+          <span className="text-gray-300 hidden sm:inline">|</span>
+        </>
+      )}
+
+      {/* Boutons filtres affichage (toujours visibles) */}
+      <div className="flex items-center space-x-1">
+        <button 
+          onClick={() => setDisplayOptions(prev => ({...prev, showPostText: !prev.showPostText}))} 
+          className={`p-1.5 rounded transition-colors ${displayOptions.showPostText ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} 
+          title={`${displayOptions.showPostText ? 'Masquer' : 'Afficher'} texte articles`}
+        >
+          <FileText className="w-4 h-4" />
+        </button>
+        <button 
+          onClick={() => setDisplayOptions(prev => ({...prev, showPostPhotos: !prev.showPostPhotos}))} 
+          className={`p-1.5 rounded transition-colors ${displayOptions.showPostPhotos ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} 
+          title={`${displayOptions.showPostPhotos ? 'Masquer' : 'Afficher'} photos articles`}
+        >
+          <ImageIcon className="w-4 h-4" />
+        </button>
+        <button 
+          onClick={() => setDisplayOptions(prev => ({...prev, showMomentPhotos: !prev.showMomentPhotos}))} 
+          className={`p-1.5 rounded transition-colors ${displayOptions.showMomentPhotos ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-100'}`} 
+          title={`${displayOptions.showMomentPhotos ? 'Masquer' : 'Afficher'} photos moments`}
+        >
+          <Camera className="w-4 h-4" />
+        </button>
+      </div>
+      
+      {/* ⭐ MASQUER les boutons inutiles en mode sélection */}
+      {!selectionMode?.active && (
+        <>
+          <span className="text-gray-300 hidden sm:inline">|</span>
+          <div className="relative hidden md:block" ref={sortMenuRef}>
+            <button onClick={() => setShowSortMenu(!showSortMenu)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Trier les moments">
+              <ArrowUpDown className="w-4 h-4" />
+            </button>
+            {showSortMenu && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
+                <button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('chrono'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📅</span><span>Chronologique</span></button>
+                <button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('recent'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>🕐</span><span>Plus récents</span></button>
+                <button onClick={() => { if (window.memoriesPageFilters?.setSortBy) { window.memoriesPageFilters.setSortBy('content'); } setShowSortMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📸</span><span>Plus de contenu</span></button>
+              </div>
+            )}
+          </div>
+          
+          <div className="relative hidden md:block">
+            <button onClick={() => setShowMomentFilterMenu(!showMomentFilterMenu)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Filtrer les moments">
+              <span className="text-lg">{filterIcons[currentMomentFilter]}</span>
+            </button>
+            {showMomentFilterMenu && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 w-48">
+                <button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('all'); } setCurrentMomentFilter('all'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📋</span><span>Tous les moments</span></button>
+                <button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('unexplored'); } setCurrentMomentFilter('unexplored'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>✨</span><span>Non explorés</span></button>
+                <button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('with_posts'); } setCurrentMomentFilter('with_posts'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📄</span><span>Avec articles</span></button>
+                <button onClick={() => { if (window.memoriesPageFilters?.setMomentFilter) { window.memoriesPageFilters.setMomentFilter('with_photos'); } setCurrentMomentFilter('with_photos'); setShowMomentFilterMenu(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"><span>📸</span><span>Avec photos</span></button>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-2 md:hidden">
+            <button onClick={jumpToRandomMoment} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Moment au hasard">
+              <Dices className="w-4 h-4" />
+            </button>
+            <input type="number" value={currentDay} onChange={(e) => { const day = parseInt(e.target.value, 10); if (!isNaN(day)) setCurrentDay(day);}} onKeyDown={(e) => { if (e.key === 'Enter') jumpToDay(currentDay); }} className="w-14 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:ring-2 focus:ring-blue-500" />
+          </div>
+          
+          <span className="text-gray-300 hidden md:inline">|</span> 
+          
+          <div className="hidden md:flex items-center space-x-2">
+            <button onClick={jumpToRandomMoment} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Moment au hasard">
+              <Dices className="w-4 h-4" />
+            </button>
+            <input type="number" value={currentDay} onChange={(e) => { const day = parseInt(e.target.value, 10); if (!isNaN(day)) setCurrentDay(day); }} onKeyDown={(e) => { if (e.key === 'Enter') jumpToDay(currentDay); }} onWheel={handleDayWheel} className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
       case 'sessions': {
         const currentUserId = app.currentUser?.id;
         if (!currentUserId) return null;

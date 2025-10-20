@@ -56,9 +56,10 @@ export function useAppState() {
   const deleteSession = useCallback((sessionId) => dataManager.deleteSession(sessionId), []);
   const openChatSession = useCallback((session) => dataManager.openChatSession(session), []);
   const closeChatSession = useCallback(() => dataManager.closeChatSession(), []);
-  const addMessageToSession = useCallback(async (sessionId, content, photoData = null) => {
+  const addMessageToSession = useCallback(async (sessionId, content, photoData = null, linkedContent = null) => {
   // console.log('🔗 useAppState.addMessageToSession - photoData:', photoData);
-  await dataManager.addMessageToSession(sessionId, content, photoData);
+  // console.log('🔗 useAppState.addMessageToSession - linkedContent:', linkedContent);
+  await dataManager.addMessageToSession(sessionId, content, photoData, linkedContent);
 }, []);
   const regenerateMasterIndex = useCallback(() => dataManager.regenerateMasterIndex(), []);
 

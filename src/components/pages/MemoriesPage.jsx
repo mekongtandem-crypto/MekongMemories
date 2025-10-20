@@ -1110,13 +1110,13 @@ const MomentHeader = memo(({
     <>
       {/* ⭐ MODIFIÉ : Ajout onContextMenu pour sélection */}
       <div 
-        onClick={!selectionMode?.active ? handleChevronClick : undefined}
+		onClick={handleChevronClick}
         onContextMenu={(e) => {
-          if (selectionMode?.active) {
-            e.preventDefault();
-            onContentSelected?.(moment, 'moment');
-          }
-        }}
+  if (selectionMode?.active) {
+    e.preventDefault();
+    onContentSelected?.(moment, 'moment');  // ✅ Appel handleLongPressForSelection
+  }
+}}
         className="cursor-pointer flex items-start justify-between"
       >
         <div className="flex-1 min-w-0">
@@ -1360,11 +1360,11 @@ const PostArticle = memo(({
       <div 
         className="border border-gray-200 rounded-lg overflow-hidden"
         onContextMenu={(e) => {
-          if (selectionMode?.active) {
-            e.preventDefault();
-            onContentSelected?.(post, 'post');
-          }
-        }}
+  if (selectionMode?.active) {
+    e.preventDefault();
+    onContentSelected?.(post, 'post');  // ✅ Bon ordre
+  }
+}}
       >
         <div className="flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200">
           {/* Gauche : Titre + indicateur photos inline */}
@@ -1562,8 +1562,8 @@ const PhotoThumbnail = memo(({
     
     longPressTimerRef.current = setTimeout(() => {
       if (globalSelectionMode?.active) {
-        // Mode sélection lien actif → sélectionner photo
-        onContentSelected?.(photo, 'photo');
+  // Mode sélection lien actif → sélectionner photo
+  onContentSelected?.(photo, 'photo');  // ✅ Ordre correct
       } else if (isFromChat && onOpenContextMenu) {
         // Mode normal depuis chat → menu contextuel
         onOpenContextMenu(photo, e);
