@@ -1,6 +1,7 @@
 /**
- * LinkedContent.jsx v1.0 - Phase 18b Étape 3a
+ * LinkedContent.jsx v1.1 - Phase 18b Étape 3b
  * Affichage enrichi des liens dans messages
+ * ✅ Troncature stricte pour mobile
  */
 import React, { useState, useEffect } from 'react';
 import { MapPin, FileText, Image as ImageIcon, ChevronRight } from 'lucide-react';
@@ -49,7 +50,6 @@ function LinkedPhoto({ linkedContent, onClick }) {
           url: linkedContent.url
         });
         
-        // ⭐ Utiliser les métadonnées complètes de linkedContent
         const photoData = {
           filename: linkedContent.id,
           google_drive_id: linkedContent.google_drive_id,
@@ -111,7 +111,6 @@ function LinkedPhoto({ linkedContent, onClick }) {
         className="max-w-[200px] rounded-lg shadow-md group-hover:shadow-lg transition-shadow"
       />
       
-      {/* Overlay hover */}
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all rounded-lg">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="opacity-0 group-hover:opacity-100 bg-white px-3 py-1.5 rounded-full text-sm font-medium text-gray-800 shadow-lg transition-opacity">
@@ -131,7 +130,6 @@ function LinkedPost({ linkedContent, onClick, masterIndex }) {
   const [postData, setPostData] = useState(null);
 
   useEffect(() => {
-    // Trouver le post dans masterIndex
     if (!masterIndex?.moments) return;
     
     for (const moment of masterIndex.moments) {
@@ -144,7 +142,6 @@ function LinkedPost({ linkedContent, onClick, masterIndex }) {
   }, [linkedContent.id, masterIndex]);
 
   if (!postData) {
-    // Fallback si post non trouvé
     return (
       <div 
         onClick={onClick}
@@ -206,36 +203,15 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
   const [momentData, setMomentData] = useState(null);
 
   useEffect(() => {
-	console.log('🔍 LinkedMoment - Recherche moment:', linkedContent.id);
-  	console.log('🔍 masterIndex disponible?', !!masterIndex);
-  	console.log('🔍 masterIndex.moments?', masterIndex?.moments?.length);
-
-    // Trouver le moment dans masterIndex
-    if (masterIndex?.moments) {
-  console.log('🔍 Premier moment exemple:', masterIndex.moments[0]);
-  console.log('🔍 IDs disponibles (5 premiers):', masterIndex.moments.slice(0, 5).map(m => m.id));
-  
-  const found = masterIndex.moments.find(m => m.id === linkedContent.id);
-  console.log('🔍 Résultat find pour', linkedContent.id, ':', found ? '✅ TROUVÉ' : '❌ NON TROUVÉ');
-}
+    if (!masterIndex?.moments) return;
     
     const moment = masterIndex.moments.find(m => m.id === linkedContent.id);
     if (moment) {
-      console.log('✅ Moment trouvé:', {
-        id: moment.id,
-        title: moment.title,
-        posts: moment.posts?.length,
-        dayPhotos: moment.dayPhotos?.length,
-        postPhotos: moment.postPhotos?.length
-      });
       setMomentData(moment);
-    } else {
-      console.warn('⚠️ Moment non trouvé:', linkedContent.id);
     }
   }, [linkedContent.id, masterIndex]);
 
   if (!momentData) {
-    // Fallback si moment non trouvé
     return (
       <div 
         onClick={onClick}
@@ -243,24 +219,21 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
       >
         <div className="flex items-center space-x-2">
           <MapPin className="w-5 h-5 text-purple-600 flex-shrink-0" />
-          <div className="flex-1">
-            <span className="font-medium text-purple-700">{linkedContent.title}</span>
+          <div className="flex-1 min-w-0">
+            <span className="font-medium text-purple-700 line-clamp-1">{linkedContent.title}</span>
             <div className="text-xs text-purple-500 mt-1">Chargement...</div>
           </div>
-          <ChevronRight className="w-4 h-4 text-purple-400" />
+          <ChevronRight className="w-4 h-4 text-purple-400 flex-shrink-0" />
         </div>
       </div>
     );
   }
 
   const postCount = momentData.posts?.length || 0;
-  
-  // ⭐ Calculer photoCount en tenant compte de la structure
   const dayPhotoCount = momentData.dayPhotos?.length || 0;
   const postPhotoCount = momentData.postPhotos?.length || 0;
   const photoCount = dayPhotoCount + postPhotoCount;
   
-  // Extraire titres des posts
   const postTitles = (momentData.posts || [])
     .map(p => {
       const firstLine = p.content?.split('\n')[0]?.trim();
@@ -268,19 +241,19 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
     })
     .filter(Boolean);
 
-  console.log('📊 Stats moment:', { postCount, photoCount, postTitles });
-
   return (
-  <div 
-    onClick={onClick}
-    className="mb-2 p-3 bg-purple-50 border border-purple-200 rounded-lg cursor-pointer hover:bg-purple-100 transition-colors group max-w-full"
-  >
+    <div 
+      onClick={onClick}
+      // ⭐ COPIE LinkedPost : PAS de w-full, juste les classes de base
+      className="mb-2 p-3 bg-purple-50 border border-purple-200 rounded-lg cursor-pointer hover:bg-purple-100 transition-colors group"
+    >
+      {/* ⭐ COPIE EXACTE structure LinkedPost */}
       <div className="flex items-start space-x-2">
         <MapPin className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
         
         <div className="flex-1 min-w-0">
-          {/* Titre */}
-          <div className="font-semibold text-purple-900 text-sm mb-1.5">
+          {/* Titre - ⭐ line-clamp-1 comme LinkedPost */}
+          <div className="font-semibold text-purple-900 text-sm mb-1 line-clamp-1">
             {linkedContent.title}
           </div>
           
@@ -297,28 +270,27 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
             )}
           </div>
           
-          {/* Liste posts avec troncature stricte */}
-{postTitles.length > 0 && (
-  // ⭐ AJOUT : overflow-hidden pour forcer la contrainte
-  <div className="text-xs text-purple-600 space-y-0.5 w-full overflow-hidden">
-    {postTitles.slice(0, 3).map((title, i) => (
-      <div 
-        key={i} 
-        className="truncate overflow-hidden text-ellipsis whitespace-nowrap"
-        title={title}
-      >
-        • {title}
-      </div>
-    ))}
-    {postTitles.length > 3 && (
-      <div className="text-purple-500 italic mt-1 text-xs">
-        (+{postTitles.length - 3} autre{postTitles.length - 3 > 1 ? 's' : ''}...)
-      </div>
-    )}
-  </div>
-)}
+          {/* Liste posts - ⭐ SIMPLE comme preview dans LinkedPost */}
+          {postTitles.length > 0 && (
+            <div className="text-xs text-purple-600 space-y-1">
+              {postTitles.slice(0, 3).map((title, i) => (
+                <div 
+                  key={i}
+                  // ⭐ line-clamp-1 au lieu de truncate
+                  className="line-clamp-1"
+                >
+                  • {title}
+                </div>
+              ))}
+              {postTitles.length > 3 && (
+                <div className="text-purple-500 italic mt-1">
+                  (+{postTitles.length - 3} autre{postTitles.length - 3 > 1 ? 's' : ''}...)
+                </div>
+              )}
+            </div>
+          )}
           
-          {/* Cas où pas de contenu */}
+          {/* Cas vide */}
           {postCount === 0 && photoCount === 0 && (
             <div className="text-xs text-purple-500 italic">
               Moment sans contenu
@@ -326,7 +298,7 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
           )}
         </div>
         
-        <ChevronRight className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <ChevronRight className="w-4 h-4 text-purple-400 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     </div>
   );

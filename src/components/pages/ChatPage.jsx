@@ -19,10 +19,7 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   const [editContent, setEditContent] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState(null);
   
-  // Phase 17b : Photo attachée
   const [attachedPhoto, setAttachedPhoto] = useState(null);
-  
-  // ⭐ NOUVEAU Phase 18b : Lien en attente
   const [pendingLink, setPendingLink] = useState(null);
   
   const [viewerState, setViewerState] = useState({ 
@@ -30,78 +27,78 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   });
   
   const messagesEndRef = useRef(null);
+  // ⭐ NOUVEAU : Ref pour le textarea
+  const textareaRef = useRef(null);
 
   // Scroll vers dernier message
-useEffect(() => {
-  if (messagesEndRef.current) {
-    messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-  }
-}, [app.currentChatSession?.notes]);
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [app.currentChatSession?.notes]);
 
-/// Détecter photo attachée ou lien depuis Memories
-useEffect(() => {
-  let hasCleared = false;
-  
-  if (navigationContext?.pendingAttachment) {
-    const { type, data } = navigationContext.pendingAttachment;
+  // Détecter photo attachée ou lien depuis Memories
+  useEffect(() => {
+    let hasCleared = false;
     
-    if (type === 'photo') {
-      console.log('📎 Photo reçue depuis Memories:', data);
-      setAttachedPhoto(data);
+    if (navigationContext?.pendingAttachment) {
+      const { type, data } = navigationContext.pendingAttachment;
+      
+      if (type === 'photo') {
+        console.log('📎 Photo reçue depuis Memories:', data);
+        setAttachedPhoto(data);
+        
+        if (!hasCleared) {
+          console.log('🧹 Clear pendingAttachment');
+          onClearAttachment?.();
+          hasCleared = true;
+        }
+      }
+    }
+    
+    if (navigationContext?.pendingLink) {
+      console.log('🔗 Lien reçu depuis Memories:', navigationContext.pendingLink);
+      setPendingLink(navigationContext.pendingLink);
       
       if (!hasCleared) {
-        console.log('🧹 Clear pendingAttachment');
+        console.log('🧹 Clear pendingLink');
         onClearAttachment?.();
         hasCleared = true;
       }
     }
-  }
-  
-  if (navigationContext?.pendingLink) {
-    console.log('🔗 Lien reçu depuis Memories:', navigationContext.pendingLink);
-    setPendingLink(navigationContext.pendingLink);
-    
-    if (!hasCleared) {
-      console.log('🧹 Clear pendingLink');
-      onClearAttachment?.();
-      hasCleared = true;
-    }
-  }
-  // ⭐ MODIFIÉ : Retirer onClearAttachment des dépendances
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [navigationContext?.pendingAttachment, navigationContext?.pendingLink]);
+  }, [navigationContext?.pendingAttachment, navigationContext?.pendingLink]);
 
-useEffect(() => {
-  window.chatPageActions = {
-    showFeedback: (message) => {
-      setFeedbackMessage(message);
-      setTimeout(() => {
-        setFeedbackMessage(null);
-      }, 2500);
-    }
-  };
-  return () => {
-    delete window.chatPageActions;
-  };
-}, []);
-
-// ⭐ NOUVEAU : Scroll vers input quand lien/photo ajouté
-useEffect(() => {
-  if (pendingLink || attachedPhoto) {
-    // Scroll vers le bas
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-    
-    // Focus input après un court délai
-    setTimeout(() => {
-      const textarea = document.querySelector('textarea[placeholder*="message"]');
-      if (textarea) {
-        textarea.focus();
+  useEffect(() => {
+    window.chatPageActions = {
+      showFeedback: (message) => {
+        setFeedbackMessage(message);
+        setTimeout(() => {
+          setFeedbackMessage(null);
+        }, 2500);
       }
-    }, 300);
-  }
-}, [pendingLink, attachedPhoto]);
+    };
+    return () => {
+      delete window.chatPageActions;
+    };
+  }, []);
+
+  // ⭐ MODIFIÉ : Focus amélioré avec ref
+  useEffect(() => {
+    if (pendingLink || attachedPhoto) {
+      // Scroll vers le bas
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+      
+      // Focus textarea avec ref (plus fiable)
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          console.log('✅ Focus textarea après sélection contenu');
+        }
+      }, 100); // Délai réduit à 100ms
+    }
+  }, [pendingLink, attachedPhoto]);
 
   // ========================================
   // ⭐ NOUVEAU Phase 18b : HANDLERS LIENS
@@ -399,55 +396,60 @@ function LinkPhotoPreview({ photo }) {
                   </div>
                 ) : (
                   <>
+                  
                     {/* ⭐ Lien enrichi */}
-{message.linkedContent && (
-  <LinkedContent 
-    linkedContent={message.linkedContent}
-    onNavigate={handleNavigateToContent}
-    masterIndex={app.masterIndex}
-  />
-)}
-                    
-                    {/* Photo si présente */}
-                    {message.photoData && (
-                      <PhotoMessage 
-                        photo={message.photoData}
-                        onPhotoClick={openPhotoViewer}
-                      />
-                    )}
-                    
-                    {/* Texte */}
-                    {message.content && (
-                      <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                        {message.content}
-                      </div>
-                    )}
-                    
-                    {/* Badge modifié */}
-                    {message.edited && (
-                      <div className="text-xs opacity-70 italic mt-1">modifié</div>
-                    )}
+                    {/* ⭐ NOUVEAU : Wrapper avec contraintes strictes */}
+    {message.linkedContent && (
+      <div className="w-full max-w-full overflow-hidden mb-2">
+        <LinkedContent 
+          linkedContent={message.linkedContent}
+          onNavigate={handleNavigateToContent}
+          masterIndex={app.masterIndex}
+        />
+      </div>
+    )}
+    
+    {/* Photo si présente */}
+    {message.photoData && (
+      <PhotoMessage 
+        photo={message.photoData}
+        onPhotoClick={openPhotoViewer}
+      />
+    )}
+    
+    {/* Texte */}
+    {message.content && (
+      <div className="text-sm whitespace-pre-wrap leading-relaxed">
+        {message.content}
+      </div>
+    )}
+    
+    {/* Badge modifié */}
+    {message.edited && (
+      <div className="text-xs opacity-70 italic mt-1">modifié</div>
+    )}
 
-                    {app.currentUser && message.author === app.currentUser.id && (
-                      <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded shadow-lg p-1 -mr-2 -mt-2">
-                        <button 
-                          onClick={() => handleEditMessage(message)} 
-                          className="p-1 hover:bg-gray-100 rounded" 
-                          title="Modifier"
-                        >
-                          <Edit className="w-3 h-3 text-gray-600" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteMessage(message.id)} 
-                          className="p-1 hover:bg-red-100 rounded ml-1" 
-                          title="Supprimer"
-                        >
-                          <Trash2 className="w-3 h-3 text-red-600" />
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
+    {/* Boutons édition/suppression */}
+    {app.currentUser && message.author === app.currentUser.id && (
+      <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded shadow-lg p-1 -mr-2 -mt-2">
+        <button 
+          onClick={() => handleEditMessage(message)} 
+          className="p-1 hover:bg-gray-100 rounded" 
+          title="Modifier"
+        >
+          <Edit className="w-3 h-3 text-gray-600" />
+        </button>
+        <button 
+          onClick={() => handleDeleteMessage(message.id)} 
+          className="p-1 hover:bg-red-100 rounded ml-1" 
+          title="Supprimer"
+        >
+          <Trash2 className="w-3 h-3 text-red-600" />
+        </button>
+      </div>
+    )}
+  </>
+)}
               </div>
             </div>
           </div>
@@ -521,24 +523,27 @@ function LinkPhotoPreview({ photo }) {
       <Link className="w-6 h-6" />
     </button>
     
+    
+    
     {/* Input message au CENTRE */}
     <textarea
-      value={newMessage}
-      onChange={(e) => setNewMessage(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' && e.shiftKey) {
-          e.preventDefault();
-          handleSendMessage();
-        }
-      }}
-      placeholder={
-        pendingLink || attachedPhoto 
-          ? "Ajouter un message (optionnel)..." 
-          : "Tapez votre message... (Shift+Entrée pour envoyer)"
-      }
-      className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-      rows="2"
-    />
+            ref={textareaRef}
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            placeholder={
+              pendingLink || attachedPhoto 
+                ? "Ajouter un message (optionnel)..." 
+                : "Tapez votre message... (Shift+Entrée pour envoyer)"
+            }
+            className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            rows="2"
+          />
     
     {/* Bouton Envoyer à DROITE */}
 <button
