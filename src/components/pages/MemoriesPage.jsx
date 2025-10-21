@@ -1191,7 +1191,7 @@ const MomentHeader = memo(({
         e.stopPropagation();
         onContentSelected?.(moment, 'moment');
       }}
-      className="p-1.5 bg-gray-100 text-purple-600 border border-gray-300 hover:bg-purple-50 rounded transition-colors"
+      className="p-1.5 bg-purple-100 text-purple-600 border border-purple-200 hover:bg-purple-400 rounded transition-colors"
       title="Lier ce moment"
     >
       <Link className="w-4 h-4" />
@@ -1479,7 +1479,7 @@ const PostArticle = memo(({
         e.stopPropagation();
         onContentSelected?.(post, 'post');
       }}
-      className="px-2 py-1 bg-gray-100 text-purple-600 border border-gray-300 hover:bg-purple-50 rounded transition-colors"
+      className="p-1.5 bg-purple-100 text-purple-600 border border-purple-200 hover:bg-purple-400 rounded transition-colors"
       title="Lier cet article"
     >
       <Link className="w-4 h-4" />
@@ -1682,16 +1682,17 @@ const PhotoThumbnail = memo(({
       
       {/* ⭐ NOUVEAU : Pastille Link (si mode sélection global) */}
 {globalSelectionMode?.active && !selectionMode && (
-  <button
-    className="absolute top-1 right-1 z-10 w-7 h-7 bg-purple-500 hover:bg-purple-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg transition-all"
-    onClick={(e) => {
-      e.stopPropagation();
-      onContentSelected?.(photo, 'photo');
-    }}
-    title="Lier cette photo"
-  >
-    <Link className="w-4 h-4 text-white" />
-  </button>
+<button
+  className="absolute top-1 right-1 z-10 w-6 h-6 bg-purple-300 hover:bg-purple-400 border-1 border-white rounded-full flex items-center justify-center shadow-lg transition-all"
+  onClick={(e) => {
+    e.stopPropagation();
+    onContentSelected?.(photo, 'photo');
+  }}
+  title="Lier cette photo"
+>
+  <Link className="w-4 h-4 text-purple-800" />
+</button>
+
 )}
 
       {status === 'loading' && (
