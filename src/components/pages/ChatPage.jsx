@@ -85,6 +85,24 @@ useEffect(() => {
   };
 }, []);
 
+// ⭐ NOUVEAU : Scroll vers input quand lien/photo ajouté
+useEffect(() => {
+  if (pendingLink || attachedPhoto) {
+    // Scroll vers le bas
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // Focus input après un court délai
+    setTimeout(() => {
+      const textarea = document.querySelector('textarea[placeholder*="message"]');
+      if (textarea) {
+        textarea.focus();
+      }
+    }, 300);
+  }
+}, [pendingLink, attachedPhoto]);
+
   // ========================================
   // ⭐ NOUVEAU Phase 18b : HANDLERS LIENS
   // ========================================
@@ -275,6 +293,59 @@ useEffect(() => {
     }
   };
   
+  // ========================================
+// COMPOSANT LinkPhotoPreview
+// ========================================
+
+function LinkPhotoPreview({ photo }) {
+  const [imageUrl, setImageUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    const resolveUrl = async () => {
+      if (!photo) return;
+      
+      try {
+        const url = await window.photoDataV2?.resolveImageUrl(photo, true);
+        if (isMounted && url && !url.startsWith('data:image/svg+xml')) {
+          setImageUrl(url);
+        }
+      } catch (err) {
+        console.error('❌ Erreur preview photo lien:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    
+    resolveUrl();
+    return () => { isMounted = false; };
+  }, [photo]);
+
+  if (loading) {
+    return (
+      <div className="w-48 h-32 bg-gray-200 animate-pulse flex items-center justify-center">
+        <Camera className="w-8 h-8 text-gray-400" />
+      </div>
+    );
+  }
+
+  if (!imageUrl) return null;
+
+  return (
+    // ⭐ MODIFIÉ : max-w-48 au lieu de w-full
+    <div className="max-w-48 max-h-32 overflow-hidden bg-gray-100 rounded-t-lg">
+      <img
+        src={imageUrl}
+        alt={photo.title}
+        className="w-full h-full object-cover"
+      />
+    </div>
+  );
+}
+  
+  
   return (
     <div className="flex flex-col h-full bg-gray-50">
 
@@ -388,8 +459,16 @@ useEffect(() => {
 <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
   
   {/* ⭐ Preview lien (si présent) */}
-  {pendingLink && (
-    <div className={`mb-3 rounded-lg border-2 p-3 ${getLinkColor(pendingLink.type)}`}>
+{pendingLink && (
+  <div className={`mb-3 rounded-lg border-2 overflow-hidden ${getLinkColor(pendingLink.type)}`}>
+    
+    {/* ⭐ Preview photo avec thumbnail */}
+    {pendingLink.type === 'photo' && pendingLink.google_drive_id && (
+      <LinkPhotoPreview photo={pendingLink} />
+    )}
+    
+    {/* Infos + bouton retirer */}
+    <div className="p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2 flex-1 min-w-0">
           {getLinkIcon(pendingLink.type)}
@@ -404,7 +483,8 @@ useEffect(() => {
         </button>
       </div>
     </div>
-  )}
+  </div>
+)}
   
   {/* Preview photo (si présente) */}
   {attachedPhoto && (
@@ -461,24 +541,24 @@ useEffect(() => {
     />
     
     {/* Bouton Envoyer à DROITE */}
-    <button
-      onClick={handleSendMessage}
-      disabled={!newMessage.trim() && !attachedPhoto && !pendingLink}
-      className="flex-shrink-0 p-3 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-      title="Envoyer (Shift+Entrée)"
-    >
-      <Send className="w-6 h-6" />
-    </button>
-  </div>
+<button
+  onClick={handleSendMessage}
+  disabled={!newMessage.trim() && !attachedPhoto && !pendingLink}
+  className="relative flex-shrink-0 p-3 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+  title="Envoyer (Shift+Entrée)"
+>
+  <Send className="w-6 h-6" />
   
-  {/* ⭐ Indicateur discret (en dessous si quelque chose attaché) */}
+  {/* ⭐ NOUVEAU : Pastille si contenu attaché */}
   {(pendingLink || attachedPhoto) && (
-    <div className="mt-2 text-xs text-gray-500 flex items-center justify-center space-x-2">
-      {pendingLink && <span>🔗 1 lien</span>}
-      {pendingLink && attachedPhoto && <span>•</span>}
-      {attachedPhoto && <span>📷 1 photo</span>}
+    <div className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-purple-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg">
+      {(pendingLink ? 1 : 0) + (attachedPhoto ? 1 : 0)}
     </div>
   )}
+</button>
+  </div>
+  
+  
 </div>
 
       {/* PhotoViewer */}

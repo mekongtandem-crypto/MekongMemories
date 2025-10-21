@@ -102,1035 +102,216 @@ src/
 
 ---
 
-## 🧩 Composants principaux
-
-### 1. App.jsx (v2.5) - Phase 18a
-
-**Nouveautés Phase 18a :**
-
-**État `selectionMode` :**
-```javascript
-const [selectionMode, setSelectionMode] = useState({
-  active: false,
-  type: null,        // 'link' | 'attach'
-  callback: null     // Fonction appelée à la sélection
-});
-```
-
-**Handler mode sélection :**
-```javascript
-const handleStartSelection = (type, callback) => {
-  setSelectionMode({ active: true, type, callback });
-  setCurrentPage('memories');  // Navigation auto vers Memories
-};
-
-const handleCancelSelection = () => {
-  setSelectionMode({ active: false, type: null, callback: null });
-};
-
-const handleContentSelected = (contentData) => {
-  if (selectionMode.callback) {
-    selectionMode.callback(contentData);
-  }
-  setSelectionMode({ active: false, type: null, callback: null });
-  setCurrentPage('chat');  // Retour auto vers Chat
-};
-```
+## 
 
 ---
 
-### 2. Navigation.jsx (v5.0) - Phase 18a ⭐
+## 🔧 Méthodologie de travail
 
-**Bottom Bar dynamique selon contexte :**
+### Ce qui fonctionne
 
-```jsx
-function Navigation({ currentPage, onPageChange, isInChat }) {
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30">
-      <div className="flex justify-around items-center h-16">
-        
-        {/* Sessions */}
-        <button onClick={() => onPageChange('sessions')}>
-          <MessageSquare className={currentPage === 'sessions' ? 'text-amber-600' : 'text-gray-400'} />
-          <span>Sessions</span>
-        </button>
+1. **Étapes incrémentales** : Petites modifications testables
+2. **Tests immédiats** : Vérifier après chaque changement
+3. **Documentation synchrone** : Mettre à jour le guide en même temps
+4. **Git commits fréquents** : Historique clair
+5. **Analyse méthodique** : Logs → hypothèses → tests
+6. **Fichiers complets** : Éviter copier/coller fragmenté
+7. **Console.log debugging** : Tracer exécution pas à pas
+8. **Prendre du recul** : Si bug >3 tentatives, revoir approche globale
 
-        {/* Souvenirs */}
-        <button onClick={() => onPageChange('memories')}>
-          <Sparkles className={currentPage === 'memories' ? 'text-purple-600' : 'text-gray-400'} />
-          <span>Souvenirs</span>
-        </button>
+### Checklist debug
 
-        {/* Bouton contextuel */}
-        {isInChat ? (
-          <button onClick={() => onPageChange('sessions')}>
-            <ArrowLeft className="text-gray-600" />
-            <span>Retour</span>
-          </button>
-        ) : (
-          <button disabled className="opacity-40">
-            <Gamepad2 className="text-gray-400" />
-            <span>Jeux</span>
-          </button>
-        )}
-        
-      </div>
-    </nav>
-  );
-}
-```
-
-**Logique dans App.jsx :**
-```javascript
-<Navigation 
-  currentPage={app.currentPage}
-  onPageChange={handlePageChange}
-  isInChat={app.currentPage === 'chat'}  // ⭐ Détermine bouton contextuel
-/>
-```
+- [ ] Console logs (erreurs rouges)
+- [ ] État app (`app.masterIndex`, `app.sessions`)
+- [ ] Fichiers Drive (vérifier JSON)
+- [ ] localStorage.clear() si structure changée
+- [ ] Hard refresh après déploiement
+- [ ] Vérifier `currentUser.id` vs `currentUser`
+- [ ] Inspecter DOM (éléments cachés ?)
+- [ ] Tests console rapides avant modification code
 
 ---
 
-### 3. UnifiedTopBar.jsx (v2.8) - Phase 18a ⭐
+## ✨ Phases complétées
 
-**Settings dans dropdown Avatar :**
+### Phase 13B : Messages riches + TopBar unifiée + Photos Mastodon
 
-```jsx
-{/* Avatar + Menu dropdown */}
-<div className="relative">
-  <button onClick={() => setIsMenuOpen(!isMenuOpen)}>
-    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getUserColor()}`}>
-      {getUserInitials()}
-    </div>
-  </button>
+**Date :** Décembre 2024
 
-  {isMenuOpen && (
-    <div className="absolute right-0 top-12 bg-white border rounded-lg shadow-lg w-48 z-50">
-      
-      {/* Changement utilisateur */}
-      <div className="p-2 border-b">
-        <p className="text-xs text-gray-500 px-2 pb-1">Utilisateur</p>
-        {users.map(user => (
-          <button 
-            key={user.id}
-            onClick={() => handleUserChange(user.id)}
-            className={`w-full text-left px-3 py-2 rounded ${
-              user.id === currentUserId ? 'bg-purple-50' : 'hover:bg-gray-50'
-            }`}
-          >
-            {user.name}
-          </button>
-        ))}
-      </div>
+**Réalisations :**
 
-      {/* Menu principal */}
-      <div className="p-2">
-        <button 
-          onClick={handleOpenSettings}
-          className="w-full flex items-center space-x-2 px-3 py-2 hover:bg-gray-50 rounded"
-        >
-          <Settings className="w-4 h-4" />
-          <span>Réglages</span>
-        </button>
-        
-        <button 
-          onClick={handleOpenStats}
-          className="w-full flex items-center space-x-2 px-3 py-2 hover:bg-gray-50 rounded"
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span>Statistiques</span>
-        </button>
-      </div>
-      
-    </div>
-  )}
-</div>
-```
+- Messages avec photos dans bulles utilisateur
+- TopBar contextuelle unifiée
+- Photos Mastodon avec mapping plat
+- Stats corrigées dans SettingsPage
 
-**TopBar Memories en mode sélection :**
-```jsx
-{selectionMode?.active && (
-  <div className="flex items-center space-x-3">
-    <Link className="w-5 h-5 text-purple-600" />
-    <span className="text-purple-600 font-medium">
-      Sélectionner un souvenir
-    </span>
-    <button 
-      onClick={onCancelSelection}
-      className="ml-auto p-1.5 hover:bg-gray-100 rounded"
-    >
-      <X className="w-5 h-5" />
-    </button>
-  </div>
-)}
-```
+### Phase 14.1 : Dashboard sessions (Option A+)
+
+**Date :** Janvier 2025
+
+**Réalisations :**
+
+- Dashboard avec volets Activité/Suggestions/Stats
+- Filtres par statut (onglets)
+- Toggle vue cards/compact
+- **Note :** Dashboard supprimé en Phase 14.2 (redondant)
+
+### Phase 14.2 : Niveau 1 Minimalisme
+
+**Date :** Janvier 2025
+
+**Réalisations :**
+
+- **SUPPRESSION Dashboard** (maximum espace pour sessions)
+- TopBar enrichie avec badges cliquables (🔴🟡🔵✨)
+- Liste groupée automatique par statut
+- Sections repliables avec mémorisation
+- Filtrage 1 clic via badges TopBar
+- **70% moins de code** vs v5.1
+
+### Phase 14.3 : Système visuel unifié
+
+**Date :** 5 janvier 2025
+
+**Réalisations :**
+
+- **Philosophie design clarifiée** : Couleurs discrètes + Icônes explicites
+- TopBar MemoriesPage v2.0 :
+  - Dropdown filtre (Tous/Non explorés/Avec articles/Avec photos)
+  - Options affichage inline [📄] [🖼️] [📸]
+  - Suppression menu "..." (options désormais visibles)
+- Filtrage intelligent moments avec callbacks exposés
+- Icônes unifiées : 💬 Sessions, ✨ Moments non explorés
+- Badge ✨ redirige vers Memories
+
+### Phase 15 : Système de notifications push 🔔
+
+**Date :** 6 janvier 2025
+
+**Réalisations :**
+
+- NotificationManager.js v1.0
+- Stockage notifications.json sur Drive
+- Système de statuts avec 4 priorités
+- TopBar Sessions avec badges cliquables
+- Bouton 🔔 dans ChatPage
+- Auto markAsRead à l'ouverture/réponse
+- sessionUtils v2.0 avec SESSION_STATUS.NOTIFIED
 
 ---
 
-## 🔗 Navigation et liens internes
+### Phase 16 : Système de thèmes 🏷️ ⭐
 
-### Architecture (Phase 18b/c)
+**Date :** 18 octobre 2025
 
-**3 composants clés :**
+**Objectif :** Permettre l'organisation thématique des contenus (temples, gastronomie, transport, etc.)
 
-1. **ContentLinks.js** : Manager liens bidirectionnels
-2. **content-links.json** : Stockage Drive
-3. **LinkedContent.jsx** : Composant affichage lien
+**Réalisations :**
 
----
+**Architecture séparée (décision clé) :**
 
-### 1. content-links.json
+- ✅ `ThemeAssignments.js` v1.0 : Manager Map-based
+- ✅ `theme-assignments.json` : Fichier Drive séparé
+- ✅ `themeUtils.js` v1.0 : Utilitaires (THEME_COLORS, generateThemeId, countThemeContents)
+- ✅ Clés standardisées : `moment:X`, `post:X`, `photo:X`
 
-**Structure :**
-```json
-{
-  "version": "1.0",
-  "links": [
-    {
-      "id": "link_1234567890",
-      "sessionId": "session_abc123",
-      "messageId": "msg_456789",
-      "contentType": "moment",
-      "contentId": "moment_8_9",
-      "contentTitle": "Jour 8-9 : Chiang Mai",
-      "linkedAt": "2025-10-20T14:30:00Z",
-      "linkedBy": "lambert"
-    },
-    {
-      "id": "link_1234567891",
-      "sessionId": "session_abc123",
-      "messageId": "msg_456790",
-      "contentType": "post",
-      "contentId": "post_12345",
-      "contentTitle": "Visite Wat Phra Singh",
-      "linkedAt": "2025-10-20T14:32:00Z",
-      "linkedBy": "tom"
-    },
-    {
-      "id": "link_1234567892",
-      "sessionId": "session_abc123",
-      "messageId": "msg_456791",
-      "contentType": "photo",
-      "contentId": "IMG20221022.jpg",
-      "contentTitle": "IMG20221022.jpg",
-      "linkedAt": "2025-10-20T14:35:00Z",
-      "linkedBy": "lambert"
-    }
-  ]
-}
-```
+**Composants modifiés :**
 
-**Types de contenu supportés :**
-- `moment` : Moment du voyage
-- `post` : Article Mastodon
-- `photo` : Photo (moment ou post)
+- ✅ `SettingsPage.jsx` v4.2 :
+  - Section "Mes thèmes" avec CRUD
+  - Formulaire création (nom + emoji + couleur)
+  - Liste avec compteurs dynamiques
+  - Modal React pour suppression (pas confirm navigateur)
+- ✅ `ThemeModal.jsx` v1.0 : Composant réutilisable
+  - Props flexibles (moment/post/photo)
+  - Options propagation intelligentes
+  - Indication "(actuel)" sur thèmes assignés
+  - Message unifié : "Gérer les thèmes"
+- ✅ `MemoriesPage.jsx` v7.0 :
+  - Barre filtres thèmes (toggle TopBar 🏷️)
+  - Calcul `themeStats` avec `useMemo`
+  - Bouton 🏷️ sur MomentHeader
+  - Badge thèmes au niveau sous-titre (pastille numérotée)
+- ✅ `UnifiedTopBar.jsx` v2.5 :
+  - Bouton toggle thèmes avec compteur
+  - Intégration contextuelle Memories
+- ✅ `PhotoViewer.jsx` v2.7 :
+  - Bouton thèmes avec pastille si >0
+  - Icône uniformisée (light si 0, pleine si >0)
+- ✅ `App.jsx` v2.3 :
+  - State `isThemeBarVisible`
+  - Props passées à composants
 
----
+**Propagation intelligente :**
 
-### 2. ContentLinks.js (v1.0) ⭐
+- Moment → Articles + Photos articles + Photos moment (options)
+- Post → Photos de l'article (option)
+- Photo → Direct (pas d'options)
 
-**Manager de liens** avec index bidirectionnel.
+**Différences avec plan original :**
 
-**API publique :**
-```javascript
-class ContentLinks {
-  async init()
+| Aspect           | Prévu                   | Réalisé                       | Impact                                    |
+| ---------------- | ----------------------- | ----------------------------- | ----------------------------------------- |
+| Architecture     | Thèmes dans masterIndex | ThemeAssignments séparé       | ✅ Meilleur (performance + maintenabilité) |
+| Propagation      | Héritage auto simple    | Options dans modal            | ✅ Meilleur (contrôle granulaire)          |
+| Sélection photos | Longpress bulk          | Pas implémenté                | ⚠️ À ajouter Phase 16b si besoin          |
+| Badge placement  | Partout                 | Stratégique (header + viewer) | ✅ Meilleur (interface épurée)             |
 
-  // Création lien
-  async addLink({
-    sessionId,
-    messageId,
-    contentType,
-    contentId,
-    contentTitle,
-    linkedBy
-  })
+**Décisions architecturales clés :**
 
-  // Lecture
-  getLinksForSession(sessionId)
-  getLinksForContent(contentType, contentId)
-  getSessionsForContent(contentType, contentId)  // Compteur bulles
-  getLinkInMessage(messageId)
+1. **ThemeAssignments séparé** (vs intégré masterIndex)
+   - Raison : Pas de régénération masterIndex à chaque tag
+   - Avantage : Performance Map-based vs array search
+2. **Modal React suppression** (vs confirm navigateur)
+   - Raison : confirm() peut être bloqué par paramètres navigateur
+   - Avantage : UX cohérente garantie
+3. **Pas de sélection multiple photos** (report Phase 16b)
+   - Raison : Complexité vs usage réel
+   - Workaround : Tag par moment avec propagation
 
-  // Suppression
-  async removeLink(linkId)
-  async removeLinksForSession(sessionId)
-  async removeLinksForMessage(messageId)
+**Impact utilisateur :**
 
-  // Stats
-  getLinkStats(sessionId)
-  // → { momentCount, postCount, photoCount, totalCount }
-}
-```
+- ✅ Création thème : 30 secondes
 
-**Architecture interne (Maps pour performance) :**
-```javascript
-constructor() {
-  this.links = new Map();              // linkId → link
-  this.sessionIndex = new Map();       // sessionId → Set<linkId>
-  this.contentIndex = new Map();       // contentKey → Set<linkId>
-  this.messageIndex = new Map();       // messageId → linkId
-}
-```
+- ✅ Tag moment : 10 secondes (avec propagation)
 
-**Exemple usage :**
-```javascript
-// Ajouter lien moment → session
-await window.contentLinks.addLink({
-  sessionId: 'session_abc',
-  messageId: 'msg_123',
-  contentType: 'moment',
-  contentId: 'moment_8_9',
-  contentTitle: 'Jour 8-9 : Chiang Mai',
-  linkedBy: 'lambert'
-});
+- ✅ Filtrage : 1 clic
 
-// Récupérer sessions liées à un moment
-const sessions = window.contentLinks.getSessionsForContent('moment', 'moment_8_9');
-// → ['session_abc', 'session_def']
-
-// Compteur pour badge 💬
-const count = sessions.length;
-```
-
----
-
-### 3. Structure message avec lien
-
-```javascript
-{
-  id: "msg_1234567890",
-  author: "lambert",
-  content: "Regarde ce temple ! ",  // Texte avant lien
-  timestamp: "2025-10-20T14:30:00Z",
-  linkedContent: {
-    type: "moment",           // 'moment' | 'post' | 'photo'
-    id: "moment_8_9",
-    title: "Jour 8-9 : Chiang Mai",
-    linkId: "link_1234567890" // Référence dans content-links.json
-  },
-  // Optionnel : photoData si message avec photo
-  photoData: null
-}
-```
-
-**Types de messages étendus :**
-
-| Type             | Author | linkedContent | photoData | Usage                   |
-|------------------|--------|---------------|-----------|-------------------------|
-| Texte seul       | user   | ❌            | ❌        | Message normal          |
-| Texte + lien     | user   | ✅            | ❌        | Référence souvenir      |
-| Photo + texte    | user   | ❌            | ✅        | Photo existante         |
-| Lien photo       | user   | ✅            | ✅        | Lien vers photo souvenir|
-| Système          | duo    | ❌            | ❌        | Session post/moment     |
-
----
-
-### 4. LinkedContent.jsx (v1.0) ⭐
-
-**Composant d'affichage lien cliquable.**
-
-**Props :**
-```javascript
-{
-  linkedContent: {
-    type: 'moment' | 'post' | 'photo',
-    id: string,
-    title: string
-  },
-  onNavigate: function  // Callback navigation vers Memories
-}
-```
-
-**Rendu :**
-```jsx
-<button 
-  onClick={handleNavigate}
-  onMouseEnter={loadPreview}
-  onMouseLeave={hidePreview}
-  className="inline-flex items-center space-x-1 bg-purple-50 border border-purple-200 rounded px-2 py-1 hover:bg-purple-100"
->
-  {getIcon(type)}  {/* 📍 📄 📸 */}
-  <span className="text-purple-700 font-medium underline">
-    {title}
-  </span>
-</button>
-
-{/* Preview hover */}
-{showPreview && (
-  <div className="absolute z-50 bg-white border rounded-lg shadow-lg p-3 w-64">
-    {renderPreview()}
-  </div>
-)}
-```
-
-**Preview selon type :**
-- **Moment** : Photo couverture + "X articles • Y photos"
-- **Post** : Titre + première phrase (max 2 lignes)
-- **Photo** : Thumbnail 200x200px
-
----
-
-### 5. Flow complet ajout lien
-
-**1. User dans Chat clique [📎 Liens/Photos] :**
-```jsx
-<div className="flex items-center justify-between border-t border-gray-200 p-2">
-  <button 
-    onClick={handleOpenLinkPicker}
-    className="flex items-center space-x-2 px-3 py-2 text-purple-600 hover:bg-purple-50 rounded"
-  >
-    <Link className="w-5 h-5" />
-    <span>Liens/Photos</span>
-  </button>
-</div>
-```
-
-**2. Navigation vers Memories (mode sélection) :**
-```javascript
-const handleOpenLinkPicker = () => {
-  app.startSelectionMode('link', handleContentSelected);
-  // → Navigation automatique vers Memories
-};
-```
-
-**3. Memories affiche badges de sélection :**
-```jsx
-{/* Badge sur volet moment */}
-{selectionMode?.active && (
-  <div className="absolute top-2 right-2">
-    <span className="bg-purple-500 text-white rounded-full px-2 py-1 text-xs flex items-center">
-      <Link className="w-3 h-3 mr-1" />
-      Lier
-    </span>
-  </div>
-)}
-```
-
-**4. User fait appui long sur moment/post/photo :**
-```javascript
-const handleLongPress = (content) => {
-  if (!selectionMode?.active) return;
+- ⚠️ Tag 100 photos individuellement : Pénible (→ Phase 16b)
   
-  const contentData = {
-    type: content.type,        // 'moment' | 'post' | 'photo'
-    id: content.id,
-    title: content.title || content.filename
-  };
+  ---
   
-  app.onContentSelected(contentData);
-  // → Retour automatique vers Chat avec contenu sélectionné
-};
-```
-
-**5. Chat affiche preview avant envoi :**
-```jsx
-{pendingLink && (
-  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-2">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-2">
-        {getIcon(pendingLink.type)}
-        <span className="font-medium">{pendingLink.title}</span>
-      </div>
-      <button onClick={clearPendingLink}>
-        <X className="w-4 h-4 text-gray-400" />
-      </button>
-    </div>
-  </div>
-)}
-```
-
-**6. Envoi message avec lien :**
-```javascript
-const handleSendMessage = async () => {
-  const messageData = {
-    content: inputText,
-    linkedContent: pendingLink ? {
-      type: pendingLink.type,
-      id: pendingLink.id,
-      title: pendingLink.title
-    } : null
-  };
+  ## Phase 17 : 1er essai de Navigation Chat ↔ Memories avec attachements photos
   
-  await app.addMessageToSession(sessionId, messageData);
   
-  // Créer entrée dans content-links.json
-  if (pendingLink) {
-    await window.contentLinks.addLink({
-      sessionId: sessionId,
-      messageId: messageData.id,
-      contentType: pendingLink.type,
-      contentId: pendingLink.id,
-      contentTitle: pendingLink.title,
-      linkedBy: app.currentUser.id
-    });
-  }
   
-  setPendingLink(null);
-  setInputText('');
-};
-```
+  ---
 
-**7. Affichage dans conversation :**
-```jsx
-{message.linkedContent && (
-  <LinkedContent 
-    linkedContent={message.linkedContent}
-    onNavigate={handleNavigateToContent}
-  />
-)}
-```
+##### ✅ PHASE 18b COMPLÉTÉE - Système de liens souvenirs
 
----
+### **Livrables validés**
 
-### 6. Compteurs bulles 💬 (Phase 18c)
+#### **Étape 2 : Mode sélection (100%)**
 
-**Badge dans MemoriesPage :**
+- ✅ Navigation Chat → [🔗+] → Memories (mode sélection) → Sélection → Retour Chat
+- ✅ État `selectionMode` + `navigationContext.pendingLink`
+- ✅ TopBar : Badge "🔗 Sélectionner" + bouton ❌
+- ✅ Conservation filtres essentiels (📄 📷 🏷️) en mode sélection
 
-```jsx
-const getLinkedSessionsCount = (contentType, contentId) => {
-  if (!window.contentLinks) return 0;
-  const sessions = window.contentLinks.getSessionsForContent(contentType, contentId);
-  return sessions.length;
-};
+#### **Étape 3a-b : LinkedContent & UX (100%)**
 
-// Dans MomentHeader
-const sessionCount = getLinkedSessionsCount('moment', moment.id);
-
-{sessionCount > 0 && (
-  <button 
-    onClick={() => handleShowLinkedSessions(moment)}
-    className="flex items-center space-x-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded text-amber-700"
-  >
-    <MessageSquare className="w-4 h-4" />
-    <span>{sessionCount}</span>
-  </button>
-)}
-```
-
-**Modal liste sessions (SessionListModal.jsx) :**
-
-```jsx
-function SessionListModal({ isOpen, onClose, content, sessions }) {
-  return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <h2 className="text-lg font-bold mb-4">
-        Sessions liées à "{content.title}"
-      </h2>
-      
-      <div className="space-y-2">
-        {sessions.map(session => (
-          <button
-            key={session.id}
-            onClick={() => handleOpenSession(session.id)}
-            className="w-full text-left p-3 border rounded-lg hover:bg-gray-50"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{session.title}</p>
-                <p className="text-sm text-gray-500">
-                  {session.notes.length} messages
-                </p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
-            </div>
-          </button>
-        ))}
-      </div>
-    </Modal>
-  );
-}
-```
+- ✅ **LinkedContent.jsx v1.0** créé
+  - Photo : 200px avec hover "📷 Voir galerie"
+  - Post : Card bleue (titre + preview + compteur photos)
+  - Moment : Card violette (titre + stats + liste posts)
+- ✅ **Interface unifiée** : Boutons [🔗] discrets gris/violet
+- ✅ **Pastilles [🔗]** sur thumbnails photos
+- ✅ **Bouton [🔗]** dans PhotoViewer
+- ✅ **Auto-open moment** en mode sélection (depuis gameId session)
 
 ---
 
-### 7. Navigation clic sur lien
-
-**Handler dans ChatPage :**
-```javascript
-const handleNavigateToContent = (linkedContent) => {
-  // Préparer contexte navigation
-  const navigationContext = {
-    previousPage: 'chat',
-    sessionId: app.currentChatSession.id,
-    targetContent: {
-      type: linkedContent.type,
-      id: linkedContent.id
-    }
-  };
-  
-  // Navigation vers Memories avec contexte
-  app.navigateToMemories(navigationContext);
-};
-```
-
-**Auto-ouverture dans MemoriesPage :**
-```javascript
-useEffect(() => {
-  if (navigationContext?.targetContent) {
-    const { type, id } = navigationContext.targetContent;
-    
-    // Trouver et ouvrir le contenu
-    if (type === 'moment') {
-      const moment = momentsData.find(m => m.id === id);
-      if (moment) {
-        setSelectedMoments([moment]);
-        scrollToElement(moment.id);
-      }
-    } else if (type === 'post') {
-      // Trouver moment contenant le post
-      const moment = momentsData.find(m => 
-        m.posts?.some(p => p.id === id)
-      );
-      if (moment) {
-        setSelectedMoments([moment]);
-        scrollToElement(`post-${id}`);
-      }
-    } else if (type === 'photo') {
-      // Ouvrir PhotoViewer directement
-      const photo = findPhotoById(id);
-      if (photo) {
-        openPhotoViewer(photo);
-      }
-    }
-  }
-}, [navigationContext?.targetContent]);
-```
-
----
-
-## 📊 Sessions → Souvenirs conversationnels (Phase 18d)
-
-### Conversion session archivée
-
-**Bouton dans SessionsPage :**
-```jsx
-{session.archived && (
-  <button
-    onClick={() => handleConvertToMemory(session)}
-    className="flex items-center space-x-2 px-3 py-2 bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
-  >
-    <Sparkles className="w-4 h-4" />
-    <span>Convertir en souvenir</span>
-  </button>
-)}
-```
-
-**Fonction conversion :**
-```javascript
-const handleConvertToMemory = async (session) => {
-  // Créer snapshot de la session
-  const conversationMemory = {
-    type: "conversation",
-    id: `conv_${session.id}`,
-    title: session.title,
-    date: session.createdAt,
-    archived: true,
-    messageCount: session.notes.length,
-    messages: session.notes.map(msg => ({
-      author: msg.author,
-      content: msg.content,
-      timestamp: msg.timestamp,
-      photoData: msg.photoData,
-      linkedContent: msg.linkedContent
-    })),
-    participants: [session.user1, session.user2],
-    linkedContents: extractLinkedContents(session),
-    themes: [] // Possibilité de taguer avec thèmes
-  };
-  
-  // Ajouter dans masterIndex
-  await app.addConversationMemory(conversationMemory);
-  
-  // Marquer session comme convertie
-  session.convertedToMemory = true;
-  await app.updateSession(session);
-};
-```
-
-### Affichage dans MemoriesPage
-
-**Filtre étendu :**
-```jsx
-<select value={momentFilter} onChange={e => setMomentFilter(e.target.value)}>
-  <option value="all">Tous</option>
-  <option value="text">Texte (articles)</option>
-  <option value="postImages">Images de posts</option>
-  <option value="momentPhotos">Photos de moment</option>
-  <option value="conversations">💬 Chats/Souvenirs</option>
-  <option value="unexplored">Non explorés</option>
-</select>
-```
-
-**Composant ConversationMemoryCard :**
-```jsx
-function ConversationMemoryCard({ conversation, onOpen }) {
-  return (
-    <div className="bg-white border border-amber-200 rounded-lg p-4 hover:shadow-lg transition">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-2">
-          <MessageSquare className="w-5 h-5 text-amber-600" />
-          <h3 className="font-bold text-amber-900">{conversation.title}</h3>
-        </div>
-        <span className="text-sm text-gray-500">
-          {formatDate(conversation.date)}
-        </span>
-      </div>
-      
-      <div className="text-sm text-gray-600 mb-3">
-        {conversation.messageCount} messages • {conversation.participants.join(' & ')}
-      </div>
-      
-      {/* Preview premiers messages */}
-      <div className="bg-gray-50 rounded p-2 mb-3 space-y-2">
-        {conversation.messages.slice(0, 3).map(msg => (
-          <div key={msg.timestamp} className="text-sm">
-            <span className="font-medium">{msg.author}:</span> {msg.content.slice(0, 60)}...
-          </div>
-        ))}
-      </div>
-      
-      {/* Photos échangées */}
-      {conversation.messages.some(m => m.photoData) && (
-        <div className="flex space-x-2 mb-3">
-          {conversation.messages
-            .filter(m => m.photoData)
-            .slice(0, 4)
-            .map((msg, i) => (
-              <img 
-                key={i}
-                src={getPhotoThumbnail(msg.photoData)}
-                className="w-16 h-16 object-cover rounded"
-              />
-            ))}
-        </div>
-      )}
-      
-      <button 
-        onClick={() => onOpen(conversation)}
-        className="w-full py-2 bg-amber-500 text-white rounded hover:bg-amber-600"
-      >
-        Ouvrir la conversation
-      </button>
-    </div>
-  );
-}
-```
-
----
-
-## 💬 Messages lus/nouveaux (Phase 18d - priorité moyenne)
-
-### Section "Nouveaux messages"
-
-**TopBar SessionsPage enrichie :**
-```jsx
-<div className="flex items-center space-x-4">
-  <div className="flex items-center space-x-2">
-    <span className="text-gray-600">{totalSessions} Sessions</span>
-    
-    {newMessagesCount > 0 && (
-      <span className="flex items-center space-x-1 text-blue-600">
-        <Inbox className="w-4 h-4" />
-        <span>{newMessagesCount}</span>
-      </span>
-    )}
-    
-    {/* Compteurs existants */}
-    {notifiedCount > 0 && <Badge color="orange">{notifiedCount}</Badge>}
-    {pendingCount > 0 && <Badge color="amber">{pendingCount}</Badge>}
-    {waitingCount > 0 && <Badge color="blue">{waitingCount}</Badge>}
-  </div>
-</div>
-```
-
-**Groupe en haut de page :**
-```jsx
-{newMessagesSessions.length > 0 && (
-  <SessionGroup
-    title="📬 NOUVEAUX MESSAGES"
-    count={newMessagesSessions.length}
-    sessions={newMessagesSessions}
-    defaultOpen={true}
-    color="blue"
-  />
-)}
-```
-
-**Logique détection nouveaux messages :**
-```javascript
-const getNewMessagesSessions = () => {
-  return app.sessions.filter(session => {
-    // Dernier message pas de moi
-    const lastMessage = session.notes[session.notes.length - 1];
-    if (lastMessage.author === app.currentUser.id) return false;
-    
-    // Je n'ai pas ouvert depuis ce message
-    const lastVisit = session.lastVisitedBy?.[app.currentUser.id];
-    if (!lastVisit) return true;
-    
-    return new Date(lastMessage.timestamp) > new Date(lastVisit);
-  });
-};
-```
-
-**Marquage "visité" à l'ouverture :**
-```javascript
-const openSession = async (sessionId) => {
-  const session = app.sessions.find(s => s.id === sessionId);
-  
-  // Marquer visite
-  session.lastVisitedBy = session.lastVisitedBy || {};
-  session.lastVisitedBy[app.currentUser.id] = new Date().toISOString();
-  
-  await app.updateSession(session);
-  
-  // Ouvrir chat
-  app.openChatSession(sessionId);
-};
-```
-
-**Différence avec notifications :**
-- **Notification** : Action explicite "🔔 Notifier" (priorité haute)
-- **Nouveau message** : Détection passive (priorité moyenne)
-- Notification → disparaît **seulement si je réponds**
-- Nouveau message → disparaît **dès que j'ouvre**
-
----
-
-## ✅ Bonnes pratiques Phase 18
-
-### 1. Liens internes
-
-**✅ FAIRE** : Toujours créer entrée ContentLinks lors de l'envoi
-```javascript
-// BON
-await app.addMessageToSession(sessionId, messageData);
-await window.contentLinks.addLink({...});
-```
-
-**❌ NE PAS** : Oublier de nettoyer liens à la suppression
-```javascript
-// Supprimer message → supprimer lien
-await window.contentLinks.removeLinksForMessage(messageId);
-```
-
-### 2. Mode sélection
-
-**✅ FAIRE** : Nettoyer état si navigation interrompue
-```javascript
-useEffect(() => {
-  return () => {
-    if (selectionMode?.active) {
-      app.cancelSelectionMode();
-    }
-  };
-}, []);
-```
-
-**✅ FAIRE** : Feedback visuel clair
-```jsx
-{selectionMode?.active && (
-  <div className="bg-purple-100 border-b border-purple-300 p-2">
-    <p className="text-purple-700 text-center text-sm">
-      👉 Appui long sur un élément pour le sélectionner
-    </p>
-  </div>
-)}
-```
-
-### 3. Compteurs bulles
-
-**✅ FAIRE** : Utiliser useMemo pour éviter recalculs
-```javascript
-const sessionCounts = useMemo(() => {
-  if (!window.contentLinks) return new Map();
-  
-  return momentsData.reduce((acc, moment) => {
-    const count = window.contentLinks.getSessionsForContent('moment', moment.id).length;
-    acc.set(moment.id, count);
-    return acc;
-  }, new Map());
-}, [momentsData, window.contentLinks?.links.size]);
-```
-
-### 4. Preview hover
-
-**✅ FAIRE** : Debounce pour éviter flickering
-```javascript
-let previewTimeout;
-
-const handleMouseEnter = () => {
-  previewTimeout = setTimeout(() => {
-    setShowPreview(true);
-  }, 300);
-};
-
-const handleMouseLeave = () => {
-  clearTimeout(previewTimeout);
-  setShowPreview(false);
-};
-```
-
----
-
-## 🚀 Roadmap Phase 18
-
-### Phase 18a : Navigation contextuelle ⭐ PRIORITÉ HAUTE (2 jours)
-
-**Objectif :** Simplifier navigation Bottom Bar + Settings accessible
-
-**Fichiers modifiés :**
-1. `Navigation.jsx` v5.0 - Bouton contextuel (← Retour | 🎮 Jeux)
-2. `UnifiedTopBar.jsx` v2.8 - Dropdown Avatar avec Settings
-3. `App.jsx` v2.5 - État `isInChat`, handlers
-
-**Livrables :**
-- ✅ Bottom Bar : [💬][✨][← ou 🎮]
-- ✅ Settings dans menu Avatar
-- ✅ Bouton "Retour" intelligent dans Chat
-
----
-
-### Phase 18b : Système de liens souvenirs ⭐ PRIORITÉ MOYENNE+ (5 jours)
-
-**Objectif :** Lier contenus Memories → Sessions
-
-**Sous-étapes :**
-
-**Jour 1-2 : Architecture données**
-- `ContentLinks.js` v1.0 - Manager + Maps
-- `content-links.json` - Structure Drive
-- `linkUtils.js` - Utilitaires
-- `dataManager.js` v3.7 - Support liens messages
-
-**Jour 3 : Mode sélection Memories**
-- `App.jsx` - État `selectionMode`
-- `MemoriesPage.jsx` v7.1 - Badges + appui long généralisé
-- `UnifiedTopBar.jsx` - Badge "Sélectionner un souvenir"
-
-**Jour 4 : Input Chat + affichage**
-- `ChatPage.jsx` v2.5 - Bouton [📎], `pendingLink`, preview
-- `LinkedContent.jsx` v1.0 - Composant lien cliquable
-- Structure message étendue (`linkedContent`)
-
-**Jour 5 : Preview + navigation**
-- `LinkedContent.jsx` - Tooltip hover avec preview
-- Navigation clic lien → Memories (auto-open)
-
-**Livrables :**
-- ✅ Workflow complet : Chat → 🔗 → Memories → sélection → envoi
-- ✅ Affichage liens dans messages : 📍 Jour 8-9 : Chiang Mai
-- ✅ Preview hover (photo/texte selon type)
-- ✅ Navigation clic → ouvre dans Memories
-
----
-
-### Phase 18c : Compteurs bulles sessions ⭐ PRIORITÉ MOYENNE+ (2 jours)
-
-**Objectif :** Afficher nb sessions liées à chaque contenu
-
-**Fichiers modifiés :**
-1. `MemoriesPage.jsx` v7.2 - Badge 💬 sur moments/posts/photos
-2. `SessionListModal.jsx` v1.0 - Modal liste sessions
-3. `ContentLinks.js` - Méthode `getSessionsForContent()`
-
-**Livrables :**
-- ✅ Badge 💬 3 sur moments (cliquable)
-- ✅ Modal avec liste sessions liées
-- ✅ Navigation vers ChatPage depuis modal
-
----
-
-### Phase 18d : Messages lus + Conversations souvenirs - PRIORITÉ MOYENNE (4 jours)
-
-**Sous-étapes :**
-
-**Jour 1-2 : Nouveaux messages**
-- `SessionsPage.jsx` v6.3 - Section "📬 NOUVEAUX MESSAGES"
-- `dataManager.js` - Tracking `lastVisitedBy`
-- Logique détection nouveaux (depuis dernière visite)
-
-**Jour 3-4 : Sessions → Souvenirs**
-- `SessionsPage.jsx` - Bouton "✨ Convertir en souvenir"
-- `MasterIndexGenerator.js` v4.2 - Support type "conversation"
-- `MemoriesPage.jsx` v7.3 - Filtre + `ConversationMemoryCard`
-
-**Livrables :**
-- ✅ Section "Nouveaux messages" en haut Sessions
-- ✅ Badge 📬 disparaît à l'ouverture (pas besoin réponse)
-- ✅ Conversion session → souvenir conversationnel
-- ✅ Affichage dans Memories avec filtre dédié
-
----
-
-### Phase 18e : Audit architecture - PRIORITÉ MOYENNE (3 jours)
-
-**Objectif :** Préparer centralisation données v3.0
-
-**Tâches :**
-1. **Audit complet** : Documenter tous accès données actuels
-2. **Identifier redondances** : Maps vs Arrays, indexes multiples
-3. **Proposer architecture unifiée** : Store normalisé
-4. **Plan migration** : Étapes sans casser l'existant
-
-**Livrables :**
-- 📄 Document audit (ajout au Dev Guide)
-- 🏗️ Architecture v3.0 proposée
-- 📋 Roadmap migration (Phase 19+)
-
----
-
-## 📋 Ordre d'exécution proposé
-
-**IMMÉDIAT (Semaine 1) :**
-1. ✅ Phase 18a : Navigation (2j) → Fondation pour le reste
-2. ✅ Phase 18c : Compteurs bulles (2j) → Si dev facile, sinon après 18b
-
-**COURT TERME (Semaine 2) :**
-3. Phase 18b : Système liens (5j) → Fonctionnalité clé
-
-**MOYEN TERME (Semaine 3) :**
-4. Phase 18d : Messages lus + Conversations (4j)
-5. Phase 18e : Audit architecture (3j)
-
----
-
-## 📝 Checklist validation Phase 18
-
-### Phase 18a
-- [ ] Bottom Bar : bouton contextuel fonctionnel (← | 🎮)
-- [ ] Settings dans dropdown Avatar
-- [ ] Menu Avatar : changement user + réglages + stats
-- [ ] Bouton 🎮 grisé (disabled)
-
-### Phase 18b
-- [ ] ContentLinks.js opérationnel
-- [ ] content-links.json créé sur Drive
-- [ ] Mode sélection : TopBar badge + badges contenus
-- [ ] Appui long généralisé (moment/post/photo)
-- [ ] Input Chat : bouton [📎 Liens/Photos]
-- [ ] Preview avant envoi (pendingLink)
-- [ ] Affichage lien dans message (📍 surligné)
-- [ ] Preview hover (photo + titre)
-- [ ] Navigation clic lien → Memories + auto-open
-- [ ] Bouton "← Retour au chat" présent
-
-### Phase 18c
-- [ ] Badge 💬 sur moments avec compteur
-- [ ] Badge 💬 sur posts avec compteur
-- [ ] Badge 💬 sur photos avec compteur
-- [ ] Modal SessionListModal opérationnel
-- [ ] Navigation vers ChatPage depuis modal
-- [ ] Performance OK (useMemo)
-
-### Phase 18d
-- [ ] Section "📬 NOUVEAUX MESSAGES" fonctionnelle
-- [ ] Badge disparaît à l'ouverture (pas réponse nécessaire)
-- [ ] Bouton "✨ Convertir en souvenir" sur sessions archivées
-- [ ] Filtre "Conversations" dans Memories
-- [ ] ConversationMemoryCard affiche correctement
-- [ ] Différence claire notifications vs nouveaux messages
+⏳ RESTE À FAIRE - Phase 18b/c ### **Étape 3c : Navigation retour (1h)** - [ ] Clic sur lien dans message → Navigation Memories - [ ] Auto-open + scroll vers contenu cible - [ ] Support 3 types : moment (ouvrir), post (trouver parent + scroll), photo (visionneuse) ### **Phase 18c : Compteurs bulles 💬 (2j)** - [ ] Badge 💬 avec compteur sur contenus - [ ] Modal SessionListModal.jsx - [ ] Navigation vers ChatPage ### **Phase 18d : Messages lus (4j)** - [ ] Section "📬 NOUVEAUX MESSAGES" - [ ] Conversion sessions → souvenirs --- ## 🧪 VALIDATION WORKFLOW COMPLET ``` ✅ Chat [🔗+] ↓ ✅ Mode sélection activé + scroll moment session ↓ ✅ Boutons [🔗] visibles (moment/post/photo/visionneuse) ↓ ✅ Clic [🔗] → Retour Chat ↓ ✅ Preview lien (badge coloré) ↓ ✅ Envoi → Message avec LinkedContent ↓ ✅ Affichage enrichi dans conversation ↓ ⏳ TODO: Clic lien → Navigation retour Memories
 
 ---
 

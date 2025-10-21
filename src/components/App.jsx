@@ -128,6 +128,16 @@ export default function App() {
   const handlePageChange = (newPage) => {
   console.log('🔄 Changement page:', app.currentPage, '→', newPage);
   
+  // ⭐ IMPORTANT : Désactiver mode sélection si actif
+  if (selectionMode.active) {
+    console.log('❌ Annulation mode sélection lors navigation manuelle');
+    setSelectionMode({
+      active: false,
+      type: null,
+      callback: null
+    });
+  }
+  
   if (newPage === 'memories' && app.currentPage === 'chat' && app.currentChatSession?.gameId) {
     console.log('🎯 Navigation Chat → Memories détectée, momentId:', app.currentChatSession.gameId);
     
@@ -135,14 +145,14 @@ export default function App() {
       previousPage: 'chat',
       pendingAttachment: null,
       sessionMomentId: app.currentChatSession.gameId,
-      pendingLink: null  // ⭐ AJOUTER
+      pendingLink: null
     });
   } else {
     setNavigationContext({
       previousPage: null,
       pendingAttachment: null,
       sessionMomentId: null,
-      pendingLink: null  // ⭐ AJOUTER
+      pendingLink: null
     });
   }
   

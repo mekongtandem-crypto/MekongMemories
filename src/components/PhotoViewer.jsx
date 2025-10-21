@@ -95,19 +95,8 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
 // Handler Link
 const handleLinkPhoto = () => {
   if (onContentSelected) {
-    const contentData = {
-      type: 'photo',
-      id: currentPhoto.filename,
-      title: currentPhoto.filename,
-      google_drive_id: currentPhoto.google_drive_id,
-      url: currentPhoto.url,
-      width: currentPhoto.width,
-      height: currentPhoto.height,
-      mime_type: currentPhoto.mime_type,
-      photoType: currentPhoto.type || 'day_photo'
-    };
-    
-    onContentSelected(contentData, 'photo');
+    // ⭐ Passer currentPhoto directement comme element
+    onContentSelected(currentPhoto, 'photo');
   }
   
   onClose();

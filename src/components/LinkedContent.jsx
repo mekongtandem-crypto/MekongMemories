@@ -271,10 +271,10 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
   console.log('📊 Stats moment:', { postCount, photoCount, postTitles });
 
   return (
-    <div 
-      onClick={onClick}
-      className="mb-2 p-3 bg-purple-50 border border-purple-200 rounded-lg cursor-pointer hover:bg-purple-100 transition-colors group"
-    >
+  <div 
+    onClick={onClick}
+    className="mb-2 p-3 bg-purple-50 border border-purple-200 rounded-lg cursor-pointer hover:bg-purple-100 transition-colors group max-w-full"
+  >
       <div className="flex items-start space-x-2">
         <MapPin className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
         
@@ -297,19 +297,26 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
             )}
           </div>
           
-          {/* Liste posts */}
-          {postTitles.length > 0 && (
-            <div className="text-xs text-purple-600 space-y-0.5">
-              {postTitles.slice(0, 3).map((title, i) => (
-                <div key={i} className="truncate">• {title}</div>
-              ))}
-              {postTitles.length > 3 && (
-                <div className="text-purple-500 italic mt-1">
-                  (+{postTitles.length - 3} autre{postTitles.length - 3 > 1 ? 's' : ''}...)
-                </div>
-              )}
-            </div>
-          )}
+          {/* Liste posts avec troncature stricte */}
+{postTitles.length > 0 && (
+  // ⭐ AJOUT : overflow-hidden pour forcer la contrainte
+  <div className="text-xs text-purple-600 space-y-0.5 w-full overflow-hidden">
+    {postTitles.slice(0, 3).map((title, i) => (
+      <div 
+        key={i} 
+        className="truncate overflow-hidden text-ellipsis whitespace-nowrap"
+        title={title}
+      >
+        • {title}
+      </div>
+    ))}
+    {postTitles.length > 3 && (
+      <div className="text-purple-500 italic mt-1 text-xs">
+        (+{postTitles.length - 3} autre{postTitles.length - 3 > 1 ? 's' : ''}...)
+      </div>
+    )}
+  </div>
+)}
           
           {/* Cas où pas de contenu */}
           {postCount === 0 && photoCount === 0 && (
