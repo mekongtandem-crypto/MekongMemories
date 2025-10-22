@@ -88,13 +88,12 @@ export default function ThemeModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+        <div className="flex items-center justify-between p-1 border-b border-gray-200 sticky top-0 bg-white z-10">
   <div>
     <div className="flex items-center space-x-2">
       <Tag className="w-5 h-5 text-amber-600" />
-      <h3 className="font-semibold text-gray-900">Gérer les thèmes</h3>
+      <h3 className="font-semibold text-gray-900">Assignez les thèmes suivants à :</h3>
     </div>
-    <p className="text-xs text-gray-500 mt-1 ml-7">Cochez pour ajouter, décochez pour retirer</p>
   </div>
   <button onClick={handleCancel} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
     <X className="w-5 h-5 text-gray-500" />
@@ -103,10 +102,10 @@ export default function ThemeModal({
 
         {/* ✅ PREVIEW POST */}
         {contentType === 'post' && postData && (
-          <div className="px-4 py-2.5 border-b border-gray-200 bg-blue-50">
-            <p className="text-sm text-blue-900 mb-2">
-              Assigner les thèmes suivants à <span className="font-semibold">📄 "{postData.postTitle}"</span>
-            </p>
+          <div className="px-4 py-2.5 border-b border-gray-200 bg-amber-100">
+            <p className="text-sm text-blue-900 mb-0">
+            <span className="font-semibold">📄 "{postData.postTitle}"</span>  
+             et à ses :</p>
             {postData.photoCount > 0 && (
               <label className="flex items-center text-sm text-blue-800 cursor-pointer hover:text-blue-900 ml-6">
                 <input
@@ -126,10 +125,10 @@ export default function ThemeModal({
 
         {/* ✅ PREVIEW MOMENT */}
         {contentType === 'moment' && momentData && (
-          <div className="px-4 py-2.5 border-b border-gray-200 bg-purple-50">
-            <p className="text-sm text-purple-900 mb-2">
-              Assigner les thèmes suivants à <span className="font-semibold">🗺️ "{momentData.momentTitle}"</span>
-            </p>
+          <div className="px-4 py-2.5 border-b border-gray-200 bg-amber-100">
+            <p className="text-sm text-blue-900 mb-0">
+              <span className="font-semibold">🗺️ "{momentData.momentTitle}"</span> 
+             et à ses:</p>
             <div className="space-y-1 text-sm text-purple-800 ml-6">
               {momentData.stats.postCount > 0 && (
                 <label className="flex items-center cursor-pointer hover:text-purple-900">
@@ -198,7 +197,7 @@ export default function ThemeModal({
     <button
       key={theme.id}
       onClick={() => toggleTheme(theme.id)}
-      className={`flex items-center space-x-2 p-2 rounded-lg border-2 transition-all ${
+      className={`flex items-center space-x-1 p-0 rounded-lg border-2 transition-all ${
         isSelected 
           ? `${colorClasses.bg} ${colorClasses.border}` 
           : 'border-gray-200 hover:border-gray-300'
@@ -225,7 +224,7 @@ export default function ThemeModal({
               
               <button
                 onClick={handleCreateTheme}
-                className="flex items-center justify-center space-x-2 p-2 rounded-lg border-2 border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50 transition-all"
+                className="flex items-center justify-center space-x-2 p-1 rounded-lg border-2 border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50 transition-all"
                 title="Ouvrir Réglages → Thèmes"
               >
                 <Plus className="w-5 h-5 text-gray-500" />
@@ -236,7 +235,7 @@ export default function ThemeModal({
         </div>
         
         {/* Footer */}
-        <div className="flex items-center justify-end space-x-2 p-4 border-t bg-gray-50 sticky bottom-0">
+        <div className="flex items-center justify-end space-x-2 p-2 border-t bg-gray-50 sticky bottom-0">
           <button
             onClick={handleCancel}
             className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors"
