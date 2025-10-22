@@ -30,7 +30,7 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
     { 
       id: 'sessions', 
       icon: MessageSquare, 
-      label: 'Sessions', 
+      label: 'Causeries', 
       badge: pendingSessionsCount 
     },
     { 
@@ -46,7 +46,7 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
       // Retour au chat depuis exploration
       onPageChange('chat');
     } else {
-      // Retour sessions depuis chat
+      // Retour Session=causeries depuis chat
       onPageChange('sessions');
     }
   };

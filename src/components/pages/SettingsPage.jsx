@@ -885,16 +885,13 @@ const executeDeleteTheme = async () => {
                           <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${userActivityStats.explorationRate}%` }}></div>
                         </div>
                       </div>
-                      <div className="bg-gray-50 p-4 rounded-lg text-center">
-                        <div className="text-3xl font-bold text-amber-600">{userActivityStats.totalMessages}</div>
-                        <div className="text-sm text-gray-600">Messages échangés</div>
-                      </div>
+                      
                     </div>
                   </div>
 
                   <div>
                     <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Engagement des utilisateurs</h3>
-                    <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                    <div className="bg-gray-50 p-2 text-sm font-semibold text-gray-800 text-center rounded-lg space-y-4">📝 Messages écrits
                       <div>
                         <div className="flex justify-between items-center text-xs font-medium text-gray-600 mb-1">
                           {Object.entries(userActivityStats.userStats).map(([userId, stats]) => (
@@ -910,7 +907,7 @@ const executeDeleteTheme = async () => {
                           })}
                         </div>
                       </div>
-                      <div>
+                    <div className="bg-gray-50 p-2 text-sm font-semibold text-gray-800 text-center rounded-lg space-y-4">💬 Causeries lancées
                         <div className="flex justify-between items-center text-xs font-medium text-gray-600 mb-1">
                           {Object.entries(userActivityStats.userStats).map(([userId, stats]) => (
                             <span key={userId}>{`${userManager.getUser(userId).name} (${stats.sessionsCreated})`}</span>
@@ -929,7 +926,7 @@ const executeDeleteTheme = async () => {
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Pleins feux sur les sessions</h3>
+                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Pleins feux sur les causeries</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {userActivityStats.mostTalkativeSession ? (
                         <button onClick={() => app.openChatSession(userActivityStats.mostTalkativeSession)} className="text-left bg-gray-50 p-4 rounded-lg hover:bg-gray-100 hover:ring-2 hover:ring-amber-400 transition-all cursor-pointer">

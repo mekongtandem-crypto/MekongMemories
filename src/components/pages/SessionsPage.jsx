@@ -284,7 +284,7 @@ export default function SessionsPage() {
           {filteredGroups.pending_you && filteredGroups.pending_you.length > 0 && (
             <SessionGroup
               emoji="🟡"
-              subtitle="En attente de votre réponse"
+              subtitle="Causeries en attente de vous..."
               sessions={filteredGroups.pending_you}
               isOpen={openSections.pending_you}
               onToggle={() => toggleSection('pending_you')}
@@ -310,7 +310,7 @@ export default function SessionsPage() {
           {filteredGroups.pending_other && filteredGroups.pending_other.length > 0 && (
             <SessionGroup
               emoji="🟢"
-              subtitle="Attente d'autres utilisateurs"
+              subtitle="Messages in the bottle..."
               sessions={filteredGroups.pending_other}
               isOpen={openSections.pending_other}
               onToggle={() => toggleSection('pending_other')}
@@ -336,7 +336,7 @@ export default function SessionsPage() {
           {filteredGroups.completed && filteredGroups.completed.length > 0 && (
             <SessionGroup
               emoji="☑️"
-              subtitle="Sessions complétées"
+              subtitle="Causeries closes"
               sessions={filteredGroups.completed}
               isOpen={openSections.completed}
               onToggle={() => toggleSection('completed')}

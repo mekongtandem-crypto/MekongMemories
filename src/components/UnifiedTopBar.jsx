@@ -5,7 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, Settings, Plus, MoreVertical, Edit, Trash2, Check, X, Bell,
-  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown, Tag, Sparkles, BarChart3, Link
+  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown, Tag, Sparkles, BarChart3, Link, MessageSquarePlus
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
@@ -176,7 +176,7 @@ case 'chat': {
 }
       
       case 'sessions': 
-        return <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Nouvelle session"><Plus className="w-5 h-5" /></button>;
+        return <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Nouvelle causerie"><MessageSquarePlus className="w-5 h-5" /></button>;
       case 'settings': 
         return <button onClick={() => app.updateCurrentPage('sessions')} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Retour"><ArrowLeft className="w-5 h-5" /></button>;
       default: 
@@ -331,7 +331,7 @@ case 'memories': {
         return (
             <div className="flex items-center space-x-2">
                 <button onClick={() => window.sessionPageFilters?.setGroupFilter(null)} className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${activeFilter === null ? 'bg-amber-500 text-white shadow-md' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}><span>{totalActive}</span></button>
-                <span className={`text-sm font-semibold ${activeFilter === null ? 'text-amber-600' : 'text-gray-600'}`}>Session{totalActive > 1 ? 's' : ''}</span>
+                <span className={`text-sm font-semibold ${activeFilter === null ? 'text-amber-600' : 'text-gray-600'}`}>Causerie{totalActive > 1 ? 's':''}</span>
                 <span className="text-gray-300">·</span>
                 {notifiedCount > 0 && (<button onClick={() => window.sessionPageFilters?.setGroupFilter('notified')} className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${activeFilter === 'notified' ? 'bg-orange-500 text-white shadow-md' : 'bg-orange-100 hover:bg-orange-200 text-orange-700'}`}><span>🔔</span><span>{notifiedCount}</span></button>)}
                 {pendingYouCount > 0 && (<button onClick={() => window.sessionPageFilters?.setGroupFilter('pending_you')} className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-bold transition-all ${activeFilter === 'pending_you' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-100 hover:bg-amber-200 text-amber-700'}`}><span>🟡</span><span>{pendingYouCount}</span></button>)}
