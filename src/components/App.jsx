@@ -3,7 +3,7 @@
  * ✅ État selectionMode pour workflow liens
  * ✅ Handlers startSelection / cancelSelection / onContentSelected
  */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAppState } from '../hooks/useAppState.js';
 import UnifiedTopBar from './UnifiedTopBar.jsx';
 import { BottomNavigation } from './Navigation.jsx';
@@ -71,6 +71,19 @@ export default function App() {
   type: null,
   callback: null
 });
+
+// ⭐ NOUVEAU : Nettoyage COMPLET navigationContext lors changement session
+useEffect(() => {
+  if (app.currentChatSession?.id) {
+    console.log('🧹 Changement session détecté, reset navigationContext');
+    setNavigationContext({
+      previousPage: null,
+      pendingAttachment: null,
+      sessionMomentId: null,
+      pendingLink: null
+    });
+  }
+}, [app.currentChatSession?.id]);
 
   const memoriesPageRef = useRef(null);
 
@@ -244,7 +257,6 @@ export default function App() {
   const handleContentSelected = (contentData) => {
   console.log('✅ Contenu sélectionné:', contentData);
   
-  // ⭐ MODIFIÉ : Passer via navigationContext au lieu du callback direct
   const previousPage = navigationContext.previousPage || 'chat';
   
   setSelectionMode({
@@ -253,12 +265,12 @@ export default function App() {
     callback: null
   });
   
-  // ⭐ Transmettre le contenu via navigationContext
+  // ⭐ CORRIGÉ : Conserver previousPage pour validation ChatPage
   setNavigationContext({
-    previousPage: null,
+    previousPage: 'memories',  // ✅ FIXÉ
     pendingAttachment: null,
     sessionMomentId: null,
-    pendingLink: contentData  // ⭐ NOUVEAU
+    pendingLink: contentData
   });
   
   app.updateCurrentPage(previousPage);

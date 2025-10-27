@@ -37,10 +37,27 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
     }
   }, [app.currentChatSession?.notes]);
 
+// ⭐ NOUVEAU : Nettoyer liens/photos en changeant de session
+useEffect(() => {
+  // Chaque fois qu'on change de chat, nettoyer l'état local
+    console.log('🧹 ChatPage: Session changée, nettoyage des attachements');
+  setPendingLink(null);
+  setAttachedPhoto(null);
+  setNewMessage('');
+  setEditingMessage(null);
+}, [app.currentChatSession?.id]); // Dépendance : l'ID de la session actuelle
+
   // Détecter photo attachée ou lien depuis Memories
   useEffect(() => {
+console.log('🔍 DEBUG navigationContext:', {
+    pendingAttachment: navigationContext?.pendingAttachment,
+    pendingLink: navigationContext?.pendingLink,
+    previousPage: navigationContext?.previousPage
+  });
+
     let hasCleared = false;
     
+    // ✅ PHOTO : Toujours injecter (pas de condition previousPage)
     if (navigationContext?.pendingAttachment) {
       const { type, data } = navigationContext.pendingAttachment;
       
@@ -56,18 +73,24 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
       }
     }
     
+    // ⭐ LIEN : Vérifier previousPage pour éviter réinjection sur changement session
     if (navigationContext?.pendingLink) {
       console.log('🔗 Lien reçu depuis Memories:', navigationContext.pendingLink);
-      setPendingLink(navigationContext.pendingLink);
       
-      if (!hasCleared) {
-        console.log('🧹 Clear pendingLink');
-        onClearAttachment?.();
-        hasCleared = true;
+      // ⭐ Ne réinjecter que si on vient VRAIMENT de Memories
+      if (navigationContext?.pendingLink) {
+  console.log('🔗 Lien reçu depuis Memories:', navigationContext.pendingLink);
+  setPendingLink(navigationContext.pendingLink);
+  
+  if (!hasCleared) {
+    console.log('🧹 Clear pendingLink');
+    onClearAttachment?.();
+    hasCleared = true;
+        }
       }
     }
   }, [navigationContext?.pendingAttachment, navigationContext?.pendingLink]);
-
+  
   useEffect(() => {
     window.chatPageActions = {
       showFeedback: (message) => {
