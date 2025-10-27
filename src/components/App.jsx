@@ -3,7 +3,7 @@
  * ✅ État selectionMode pour workflow liens
  * ✅ Handlers startSelection / cancelSelection / onContentSelected
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppState } from '../hooks/useAppState.js';
 import UnifiedTopBar from './UnifiedTopBar.jsx';
 import { BottomNavigation } from './Navigation.jsx';
@@ -84,6 +84,35 @@ useEffect(() => {
     });
   }
 }, [app.currentChatSession?.id]);
+
+// ⭐  Handler navigation depuis chat (useCallback)
+const handleNavigateToContentFromChat = useCallback((linkedContent) => {
+  console.log('🧭 Navigation Chat → Memories/Photo:', linkedContent);
+  
+  if (window.saveChatScrollPosition) {
+    window.saveChatScrollPosition();
+  }
+  
+  setNavigationContext({
+    previousPage: 'chat',
+    pendingAttachment: null,
+    sessionMomentId: linkedContent.type === 'moment' ? linkedContent.id : null,
+    pendingLink: null,
+    targetContent: linkedContent
+  });
+  
+  app.updateCurrentPage('memories');
+}, [app, setNavigationContext]);
+
+
+useEffect(() => {
+  // Exposer handler pour navigation depuis ChatPage
+  window.navigateToContentFromChat = handleNavigateToContentFromChat;
+  
+  return () => {
+    delete window.navigateToContentFromChat;
+  };
+}, [handleNavigateToContentFromChat]);
 
   const memoriesPageRef = useRef(null);
 

@@ -27,7 +27,7 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   });
   
   const messagesEndRef = useRef(null);
-  // ⭐ NOUVEAU : Ref pour le textarea
+  const messagesContainerRef = useRef(null);  // ⭐ NOUVEAU
   const textareaRef = useRef(null);
 
   // Scroll vers dernier message
@@ -122,6 +122,38 @@ console.log('🔍 DEBUG navigationContext:', {
       }, 100); // Délai réduit à 100ms
     }
   }, [pendingLink, attachedPhoto]);
+  
+  // ⭐ Phase 18c : Mémoriser position scroll avant navigation
+useEffect(() => {
+  const saveScrollPosition = () => {
+    // ⭐ C'est window qui scroll, pas un conteneur
+    const scrollPosition = window.scrollY;
+    sessionStorage.setItem(`chat_scroll_${app.currentChatSession?.id}`, scrollPosition);
+    console.log('💾 Position scroll sauvegardée:', scrollPosition);
+  };
+  
+  window.saveChatScrollPosition = saveScrollPosition;
+  
+  return () => {
+    delete window.saveChatScrollPosition;
+  };
+}, [app.currentChatSession?.id]);
+
+// ⭐ Phase 18c : Restaurer position scroll au retour
+useEffect(() => {
+  const restoreScrollPosition = () => {
+    const savedPosition = sessionStorage.getItem(`chat_scroll_${app.currentChatSession?.id}`);
+    if (savedPosition) {
+      setTimeout(() => {
+        window.scrollTo(0, parseInt(savedPosition));
+        console.log('✅ Position scroll restaurée:', savedPosition);
+        sessionStorage.removeItem(`chat_scroll_${app.currentChatSession?.id}`);
+      }, 200);
+    }
+  };
+  
+  restoreScrollPosition();
+}, [app.currentChatSession?.id]);
 
   // ========================================
   // ⭐ NOUVEAU Phase 18b : HANDLERS LIENS
@@ -220,8 +252,98 @@ console.log('🔍 DEBUG navigationContext:', {
   
   const handleNavigateToContent = (linkedContent) => {
   console.log('🧭 Navigation vers contenu:', linkedContent);
-  // TODO Phase 18b Étape 3c : Implémenter navigation
-  alert(`Navigation vers ${linkedContent.type}: ${linkedContent.title}\n(À implémenter étape 3c)`);
+  // ⭐ AJOUTER : Sauvegarder position AVANT navigation
+  if (window.saveChatScrollPosition) {
+    window.saveChatScrollPosition();
+  }
+  
+  switch(linkedContent.type) {
+    case 'photo':
+  // Trouver moment parent pour galerie complète
+  const parentMoment = findParentMoment(linkedContent.id);
+  
+  console.log('🔍 DEBUG Photo:', {
+    photoId: linkedContent.id,
+    parentFound: !!parentMoment,
+    momentId: parentMoment?.id,
+    dayPhotos: parentMoment?.dayPhotos?.length || 0,
+    postPhotos: parentMoment?.postPhotos?.length || 0
+  });
+  
+  if (parentMoment) {
+    // Construire galerie complète du moment
+    const allPhotos = [
+      ...(parentMoment.dayPhotos || []),
+      ...(parentMoment.postPhotos || [])
+    ];
+    
+    console.log('📸 Galerie complète:', allPhotos.length, 'photos');
+    
+    // Trouver index de la photo cliquée
+    const photoIndex = allPhotos.findIndex(p => p.filename === linkedContent.id);
+    const targetPhoto = photoIndex >= 0 ? allPhotos[photoIndex] : linkedContent;
+    
+    console.log('🎯 Photo cible:', photoIndex + 1, '/', allPhotos.length);
+    console.log('📦 setViewerState avec:', {
+  photoFilename: targetPhoto.filename,
+  galleryLength: allPhotos.length,
+  contextMomentId: parentMoment?.id
+});
+    
+    setViewerState({
+      isOpen: true,
+      photo: targetPhoto,
+      gallery: allPhotos,
+      contextMoment: parentMoment,
+      returnToChat: true
+    });
+  } else {
+    // Photo isolée (edge case)
+    console.warn('⚠️ Moment parent introuvable, visionneuse photo seule');
+    setViewerState({
+      isOpen: true,
+      photo: linkedContent,
+      gallery: [linkedContent],
+      contextMoment: null,
+      returnToChat: true
+    });
+  }
+  break;
+    
+    case 'post':
+    case 'moment':
+      // Navigation vers Memories avec contexte
+      if (window.navigateToContentFromChat) {
+        window.navigateToContentFromChat(linkedContent);
+      }
+      break;
+    
+    default:
+      console.warn('Type de contenu inconnu:', linkedContent.type);
+  }
+};
+
+// Helper : Trouver moment parent d'une photo
+const findParentMoment = (photoFilename) => {
+  if (!app.masterIndex?.moments) return null;
+  
+  for (const moment of app.masterIndex.moments) {
+    // Chercher dans dayPhotos
+    if (moment.dayPhotos?.some(p => p.filename === photoFilename)) {
+      return moment;
+    }
+    
+    // Chercher dans les photos de posts
+    if (moment.posts) {
+      for (const post of moment.posts) {
+        if (post.photos?.some(p => p.filename === photoFilename)) {
+          return moment;
+        }
+      }
+    }
+  }
+  
+  return null;
 };
 
   // ========================================
@@ -370,7 +492,9 @@ function LinkPhotoPreview({ photo }) {
     <div className="flex flex-col h-full bg-gray-50">
 
       {/* Zone des messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div 
+      	ref={messagesContainerRef} 
+      	className="flex-1 overflow-y-auto p-4 space-y-3">
         
         {(!app.currentChatSession.notes || app.currentChatSession.notes.length === 0) && (
           <div className="text-center py-8">
@@ -593,8 +717,8 @@ function LinkPhotoPreview({ photo }) {
       {viewerState.isOpen && viewerState.photo && (
         <PhotoViewer 
           photo={viewerState.photo}
-          gallery={[viewerState.photo]}
-          contextMoment={null}
+			gallery={viewerState.gallery || [viewerState.photo]}  // ✅ Utiliser gallery depuis state          contextMoment={null}
+              contextMoment={viewerState.contextMoment}
           onClose={closePhotoViewer}
           onCreateSession={null}
         />

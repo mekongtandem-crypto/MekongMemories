@@ -573,25 +573,49 @@ const handleLongPressForSelection = useCallback((element, type) => {
   // ========================================
   
   useEffect(() => {
-    // Si on reçoit un momentId depuis le chat
-    if (navigationContext?.sessionMomentId && momentsData.length > 0) {
-      const targetMoment = momentsData.find(m => m.id === navigationContext.sessionMomentId);
-      
-      if (targetMoment) {
-      	  const mode = selectionMode?.active ? '[MODE SÉLECTION]' : '[MODE NORMAL]';
-  		console.log(`🎯 ${mode} Ouverture moment:`, targetMoment.displayTitle);
-        
-        // Ouvrir le moment
-        setSelectedMoments([targetMoment]);
-        
-        // Scroller après délai
-        setTimeout(() => {
-          const element = momentRefs.current[navigationContext.sessionMomentId];
-          if (element) executeScrollToElement(element);
-        }, 300);
-      }
+  // ⭐ Gestion navigation depuis chat
+  const targetContent = navigationContext?.targetContent;
+  const momentId = navigationContext?.sessionMomentId;
+  
+  if ((targetContent || momentId) && momentsData.length > 0) {
+    let targetMoment;
+    
+    // Cas 1 : Lien vers post → Trouver moment parent
+    if (targetContent?.type === 'post') {
+      targetMoment = momentsData.find(m => 
+        m.posts?.some(p => p.id === targetContent.id)
+      );
     }
-  }, [navigationContext?.sessionMomentId]); // ← Dépendance UNIQUEMENT sur sessionMomentId
+    // Cas 2 : Lien vers moment direct
+    else if (targetContent?.type === 'moment' || momentId) {
+      const searchId = targetContent?.id || momentId;
+      targetMoment = momentsData.find(m => m.id === searchId);
+    }
+    
+    if (targetMoment) {
+      const mode = selectionMode?.active ? '[MODE SÉLECTION]' : '[MODE NORMAL]';
+      console.log(`🎯 ${mode} Ouverture moment:`, targetMoment.displayTitle);
+      
+      // Ouvrir le moment
+      setSelectedMoments([targetMoment]);
+      
+      // Scroller vers moment (ou post si spécifié)
+      setTimeout(() => {
+        if (targetContent?.type === 'post') {
+          // Scroll vers post spécifique
+          const postElement = document.querySelector(`[data-post-id="${targetContent.id}"]`);
+          if (postElement) {
+            executeScrollToElement(postElement);
+          }
+        } else {
+          // Scroll vers moment
+          const element = momentRefs.current[targetMoment.id];
+          if (element) executeScrollToElement(element);
+        }
+      }, 300);
+    }
+  }
+}, [navigationContext?.sessionMomentId, navigationContext?.targetContent]);
 
   // Puis continuer avec les callbacks...
   const scrollToMoment = useCallback((momentId) => {
