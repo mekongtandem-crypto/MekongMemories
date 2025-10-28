@@ -4,6 +4,7 @@
  * ✅ Handlers startSelection / cancelSelection / onContentSelected
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { APP_VERSION, APP_NAME, PHASE, BUILD_DATE } from '../config/version.js';
 import { useAppState } from '../hooks/useAppState.js';
 import UnifiedTopBar from './UnifiedTopBar.jsx';
 import { BottomNavigation } from './Navigation.jsx';
@@ -124,13 +125,13 @@ useEffect(() => {
         </div>
         <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
           Mémoire du Mékong
+          <p className="text-gray-500 text-xs font-normal">
+          	Version {APP_VERSION}</p>
         </h1>
         <p className="text-gray-500 dark:text-gray-400 mt-2">
           Chargement de vos souvenirs...
         </p>
-        <div className="absolute bottom-4 text-xs text-gray-400 dark:text-gray-500">
-          Version 2.6 - Phase 18b Étape 2
-        </div>
+
       </div>
     );
   }

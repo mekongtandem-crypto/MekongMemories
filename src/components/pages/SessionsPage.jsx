@@ -519,7 +519,7 @@ function SessionRow({
                   <span>{lastAuthorInfo?.name}</span>
                 </span>
               </div>
-            </>
+            </>         
           )}
         </div>
         

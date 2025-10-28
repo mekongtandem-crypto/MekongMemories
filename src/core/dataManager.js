@@ -1,6 +1,6 @@
 /**
  * DataManager v3.5 - Messages photo dans bulle utilisateur
- * ✅ CHANGEMENT : Photo = message utilisateur, pas système
+ * âœ… CHANGEMENT : Photo = message utilisateur, pas systÃ¨me
  */
 class DataManager {
   constructor() {
@@ -22,7 +22,7 @@ class DataManager {
     this.listeners = new Set();
     this.notificationManager = null;
 
-    console.log('📦 DataManager v3.5 (Photo user message): Ready.');
+    console.log('ðŸ“¦ DataManager v3.5 (Photo user message): Ready.');
   }
 
   initializeDependencies(dependencies) {
@@ -31,7 +31,7 @@ class DataManager {
     this.stateManager = dependencies.stateManager;
     this.notificationManager = dependencies.notificationManager; 
     this.connectionManager.subscribe(this.handleConnectionChange.bind(this));
-    console.log('📦 DataManager: Dependencies injected.');
+    console.log('ðŸ“¦ DataManager: Dependencies injected.');
   }
 
   updateState = (newState) => {
@@ -53,12 +53,12 @@ class DataManager {
   }
 
   synchronizeInitialData = async () => {
-    console.log('🚀 DataManager: Synchronisation initiale...');
+    console.log('ðŸš€ DataManager: Synchronisation initiale...');
     this.updateState({ isLoading: true });
     
     try {
       const cachedUser = await this.stateManager.get('mekong_currentUser');
-      if (cachedUser) console.log(`👤 Utilisateur en cache trouvé : ${cachedUser}`);
+      if (cachedUser) console.log(`ðŸ‘¤ Utilisateur en cache trouvÃ© : ${cachedUser}`);
       
       const loadedFiles = await this.driveSync.loadAllData();
 
@@ -66,10 +66,10 @@ let masterIndex = (loadedFiles?.masterIndex) ?
   (typeof loadedFiles.masterIndex === 'string' ? JSON.parse(loadedFiles.masterIndex) : loadedFiles.masterIndex) 
   : null;
 
-// ⭐ NOUVEAU : Enrichir moments avec IDs si absents
+// â­ NOUVEAU : Enrichir moments avec IDs si absents
 if (masterIndex?.moments) {
   masterIndex.moments = masterIndex.moments.map((moment, index) => {
-    // Si pas d'ID, le générer
+    // Si pas d'ID, le gÃ©nÃ©rer
     if (!moment.id) {
       return {
         ...moment,
@@ -78,12 +78,12 @@ if (masterIndex?.moments) {
     }
     return moment;
   });
-  console.log(`✅ ${masterIndex.moments.length} moments chargés avec IDs`);
+  console.log(`âœ… ${masterIndex.moments.length} moments chargÃ©s avec IDs`);
 }
 
 const sessions = loadedFiles.sessions || [];
 
-// ⭐ Charger notifications
+// â­ Charger notifications
 await this.notificationManager.init();
 
       this.updateState({
@@ -95,10 +95,10 @@ await this.notificationManager.init();
         error: null
       });
       
-      console.log(`✅ DataManager: Synchro terminée. ${sessions.length} session(s) chargée(s).`);
+      console.log(`âœ… DataManager: Synchro terminÃ©e. ${sessions.length} session(s) chargÃ©e(s).`);
       
     } catch (error) {
-      console.error("❌ DataManager: Erreur de synchronisation.", error);
+      console.error("âŒ DataManager: Erreur de synchronisation.", error);
       this.updateState({ 
         error: `Sync Error: ${error.message}`, 
         isLoading: false, 
@@ -117,32 +117,32 @@ await this.notificationManager.init();
     });
     
     if (result.success) {
-      console.log('✅ Notification envoyée:', result.notification);
+      console.log('âœ… Notification envoyÃ©e:', result.notification);
     }
     
     return result;
   } catch (error) {
-    console.error('❌ Erreur envoi notification:', error);
+    console.error('âŒ Erreur envoi notification:', error);
     return { success: false, error: error.message };
   }
 }
 
   setCurrentUser = (userId) => {
-    console.log(`👤 Changement d'utilisateur -> ${userId}`);
+    console.log(`ðŸ‘¤ Changement d'utilisateur -> ${userId}`);
     this.stateManager.set('mekong_currentUser', userId);
     this.updateState({ currentUser: userId });
   }
 
   updateCurrentPage = (pageId) => {
     if (this.appState.currentPage !== pageId) {
-      console.log(`📄 Changement de page -> ${pageId}`);
+      console.log(`ðŸ“„ Changement de page -> ${pageId}`);
       this.updateState({ currentPage: pageId });
     }
   }
   
   reloadMasterIndex = async () => {
     try {
-      console.log('🔄 DataManager: Rechargement manuel du masterIndex...');
+      console.log('ðŸ”„ DataManager: Rechargement manuel du masterIndex...');
       const masterIndexData = await this.driveSync.loadFile('mekong_master_index_v3_moments.json');
       
       if (masterIndexData) {
@@ -151,36 +151,36 @@ await this.notificationManager.init();
         
         this.updateState({ masterIndex: masterIndexData });
         
-        console.log('✅ MasterIndex rechargé et appliqué !');
+        console.log('âœ… MasterIndex rechargÃ© et appliquÃ© !');
         return { success: true };
       } else {
-        throw new Error("Le fichier masterIndex n'a pas pu être rechargé depuis Drive.");
+        throw new Error("Le fichier masterIndex n'a pas pu Ãªtre rechargÃ© depuis Drive.");
       }
     } catch (error) {
-      console.error('❌ Echec du rechargement du master index:', error);
+      console.error('âŒ Echec du rechargement du master index:', error);
       this.updateState({ error: `Reload Error: ${error.message}` });
       return { success: false, error };
     }
   }
 
-// ✅ NOUVEAU : Régénérer complètement l'index
+// âœ… NOUVEAU : RÃ©gÃ©nÃ©rer complÃ¨tement l'index
 regenerateMasterIndex = async () => {
   try {
-    console.log('🏗️ DataManager: Régénération complète du masterIndex...');
+    console.log('ðŸ—ï¸ DataManager: RÃ©gÃ©nÃ©ration complÃ¨te du masterIndex...');
     
-    // 1. Vérifier que masterIndexGenerator existe
+    // 1. VÃ©rifier que masterIndexGenerator existe
     if (!window.masterIndexGenerator) {
       throw new Error('masterIndexGenerator n\'est pas disponible');
     }
     
-    // 2. Régénérer l'index
+    // 2. RÃ©gÃ©nÃ©rer l'index
     const result = await window.masterIndexGenerator.generateMomentsStructure();
     
     if (!result.success) {
-      throw new Error(result.error || 'Erreur de génération');
+      throw new Error(result.error || 'Erreur de gÃ©nÃ©ration');
     }
     
-    console.log('✅ Index régénéré sur Drive');
+    console.log('âœ… Index rÃ©gÃ©nÃ©rÃ© sur Drive');
     
     // 3. Recharger le nouveau fichier
     await new Promise(resolve => setTimeout(resolve, 500)); // Attendre que Drive sync
@@ -189,7 +189,7 @@ regenerateMasterIndex = async () => {
     return reloadResult;
     
   } catch (error) {
-    console.error('❌ Erreur régénération masterIndex:', error);
+    console.error('âŒ Erreur rÃ©gÃ©nÃ©ration masterIndex:', error);
     return { success: false, error: error.message };
   }
 }
@@ -198,6 +198,13 @@ regenerateMasterIndex = async () => {
 
 // src/core/dataManager.js - REMPLACEMENT de createSession (lignes 145-220)
 
+/**
+ * dataManager.js v3.8 - PHASE A : Structure sessions enrichie
+ * ✅ momentId (remplace gameId)
+ * ✅ originContent (type, id, title)
+ * ✅ themeIds (array vide par défaut)
+ */
+
 createSession = async (gameData, initialText = null, sourcePhoto = null) => {
   this.updateState({ isCreatingSession: true });
   
@@ -205,9 +212,55 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
     const now = new Date().toISOString();
     const baseTimestamp = Date.now();
     
+    // ✨ PHASE A : Déterminer originContent
+    let originContent = null;
+    let momentId = null;
+    
+    if (sourcePhoto) {
+      // Session créée depuis une photo
+      originContent = {
+        type: 'photo',
+        id: sourcePhoto.google_drive_id || sourcePhoto.id,
+        title: sourcePhoto.filename || sourcePhoto.name || 'photo.jpg',
+        // Stockage méta pour affichage ultérieur
+        filename: sourcePhoto.filename || sourcePhoto.name,
+        isMastodonPhoto: !!sourcePhoto.url && !sourcePhoto.filename
+      };
+      // Le momentId sera dans gameData.id pour les photos
+      momentId = gameData.id;
+      
+    } else if (gameData.systemMessage?.includes('article')) {
+      // Session créée depuis un post (détection via systemMessage)
+      originContent = {
+        type: 'post',
+        id: gameData.id, // L'ID du post
+        title: gameData.title
+      };
+      // Pour un post, le momentId doit être passé séparément ou déduit
+      // ⚠️ TODO: MemoriesPage devra passer contextMoment.id explicitement
+      momentId = gameData.momentId || gameData.id; // Fallback temporaire
+      
+    } else {
+      // Session créée depuis un moment
+      originContent = {
+        type: 'moment',
+        id: gameData.id,
+        title: gameData.title
+      };
+      momentId = gameData.id;
+    }
+    
     const newSession = {
       id: `sid_${baseTimestamp}`, 
-      gameId: gameData.id, 
+      
+      // ✨ PHASE A : Nouvelle structure
+      momentId: momentId,                    // Moment du voyage (obligatoire)
+      originContent: originContent,          // Contenu exact d'origine
+      themeIds: [],                          // Thèmes associés (vide par défaut)
+      
+      // ⚠️ COMPATIBILITÉ : Garder gameId temporairement
+      gameId: momentId,                      // DEPRECATED - à supprimer plus tard
+      
       gameTitle: gameData.title,
       subtitle: `Conversation sur ${gameData.title}`, 
       createdAt: now,
@@ -215,7 +268,7 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
       notes: [],
     };
     
-    // ✅ NOUVEAU : Support photos Mastodon ET photos moments
+    // ✅ Support photos Mastodon ET photos moments
     if (sourcePhoto) {
       const userPhotoMessage = {
         id: `msg_${baseTimestamp}`,
@@ -224,31 +277,25 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
         timestamp: now,
         edited: false,
         photoData: {
-          // ✅ Support filename OU name (photos Mastodon)
           filename: sourcePhoto.filename || sourcePhoto.name || 'photo.jpg',
           google_drive_id: sourcePhoto.google_drive_id,
-          
-          // ✅ Fallback URL si pas de Drive ID (cas rare)
           url: sourcePhoto.url,
-          
           width: sourcePhoto.width,
           height: sourcePhoto.height,
           mime_type: sourcePhoto.mime_type || sourcePhoto.mediaType || 'image/jpeg',
-          
-          // ✅ Flag pour distinguer origine
           isMastodonPhoto: !!sourcePhoto.url && !sourcePhoto.filename
         }
       };
       newSession.notes.push(userPhotoMessage);
       
-      console.log('📸 Message photo créé:', {
-        filename: userPhotoMessage.photoData.filename,
-        hasGoogleId: !!userPhotoMessage.photoData.google_drive_id,
-        isMastodon: userPhotoMessage.photoData.isMastodonPhoto
+      console.log('📸 Session photo créée:', {
+        momentId: newSession.momentId,
+        originType: newSession.originContent.type,
+        originId: newSession.originContent.id
       });
       
     } else {
-      // Message système pour post/moment (inchangé)
+      // Message système pour post/moment
       const systemMessage = {
         id: `${baseTimestamp}-system`,
         content: gameData.systemMessage || `💬 Session initiée.`,
@@ -269,6 +316,12 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
         };
         newSession.notes.push(userMessage);
       }
+      
+      console.log('✅ Session créée:', {
+        momentId: newSession.momentId,
+        originType: newSession.originContent.type,
+        originId: newSession.originContent.id
+      });
     }
     
     await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
@@ -289,6 +342,7 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
   }
 }
 
+
   updateSession = async (sessionToUpdate) => {
     await this.driveSync.saveFile(`session_${sessionToUpdate.id}.json`, sessionToUpdate);
     const updatedSessions = this.appState.sessions.map(s => 
@@ -307,14 +361,14 @@ createSession = async (gameData, initialText = null, sourcePhoto = null) => {
 
 addMessageToSession = async (sessionId, messageContent, photoData = null, linkedContent = null) => {
     console.log('=== dataManager.addMessageToSession ===');
-    console.log('📨 sessionId:', sessionId);
-    console.log('📨 messageContent:', messageContent);
-    console.log('📨 photoData reçu:', photoData);
-    console.log('📨 linkedContent reçu:', linkedContent);  // ⭐ NOUVEAU
+    console.log('ðŸ“¨ sessionId:', sessionId);
+    console.log('ðŸ“¨ messageContent:', messageContent);
+    console.log('ðŸ“¨ photoData reÃ§u:', photoData);
+    console.log('ðŸ“¨ linkedContent reÃ§u:', linkedContent);  // â­ NOUVEAU
     
     const session = this.appState.sessions.find(s => s.id === sessionId);
     if (!session) {
-        console.error('❌ Session introuvable:', sessionId);
+        console.error('âŒ Session introuvable:', sessionId);
         return;
     }
         
@@ -325,17 +379,17 @@ addMessageToSession = async (sessionId, messageContent, photoData = null, linked
       timestamp: new Date().toISOString(), 
       edited: false,
       ...(photoData && { photoData: photoData }),
-      ...(linkedContent && { linkedContent })  // ✅ Maintenant linkedContent existe
+      ...(linkedContent && { linkedContent })  // âœ… Maintenant linkedContent existe
     };
     
-    console.log('💾 Message créé:', newMessage);
-    console.log('💾 Message a photoData?', 'photoData' in newMessage);
-    console.log('💾 Message a linkedContent?', 'linkedContent' in newMessage);
+    console.log('ðŸ’¾ Message crÃ©Ã©:', newMessage);
+    console.log('ðŸ’¾ Message a photoData?', 'photoData' in newMessage);
+    console.log('ðŸ’¾ Message a linkedContent?', 'linkedContent' in newMessage);
         
     const updatedSession = { ...session, notes: [...session.notes, newMessage] };
     await this.updateSession(updatedSession);
     
-    console.log('✅ Session mise à jour');
+    console.log('âœ… Session mise Ã  jour');
        
     const notif = this.notificationManager.getNotificationForSession(
       sessionId, 
@@ -350,14 +404,14 @@ addMessageToSession = async (sessionId, messageContent, photoData = null, linked
 openChatSession = (session) => {
   this.updateState({ currentChatSession: session, currentPage: 'chat' });
   
-  // ✅ NOUVEAU : Marquer notification comme lue à l'ouverture
+  // âœ… NOUVEAU : Marquer notification comme lue Ã  l'ouverture
   const notif = this.notificationManager.getNotificationForSession(
     session.id, 
     this.appState.currentUser.id
   );
   if (notif) {
     this.notificationManager.markAsRead(notif.id);
-    console.log('✅ Notification marquée lue à l\'ouverture de la session');
+    console.log('âœ… Notification marquÃ©e lue Ã  l\'ouverture de la session');
   }
 }
 
@@ -366,7 +420,7 @@ openChatSession = (session) => {
   }
   
   /**
- * Marquer une session comme terminée/archivée
+ * Marquer une session comme terminÃ©e/archivÃ©e
  */
 markSessionStatus = async (sessionId, statusType, value) => {
   const session = this.appState.sessions.find(s => s.id === sessionId);
@@ -390,30 +444,30 @@ sendNotification = async (toUserId, sessionId, sessionTitle) => {
     });
     
     if (result.success) {
-      console.log('✅ Notification envoyée:', result.notification);
+      console.log('âœ… Notification envoyÃ©e:', result.notification);
     }
     
     return result;
   } catch (error) {
-    console.error('❌ Erreur envoi notification:', error);
+    console.error('âŒ Erreur envoi notification:', error);
     return { success: false, error: error.message };
   }
 }
 
   /**
- * Sauvegarde le masterIndex modifié sur Drive
+ * Sauvegarde le masterIndex modifiÃ© sur Drive
  */
 saveMasterIndex = async (updatedMasterIndex) => {
   try {
     await this.driveSync.saveFile('mekong_master_index_v3_moments.json', updatedMasterIndex);
     
-    // Mettre à jour l'état local
+    // Mettre Ã  jour l'Ã©tat local
     this.updateState({ masterIndex: updatedMasterIndex });
     
-    console.log('✅ MasterIndex sauvegardé');
+    console.log('âœ… MasterIndex sauvegardÃ©');
     return { success: true };
   } catch (error) {
-    console.error('❌ Erreur sauvegarde masterIndex:', error);
+    console.error('âŒ Erreur sauvegarde masterIndex:', error);
     return { success: false, error: error.message };
   }
 }
@@ -436,8 +490,8 @@ saveMasterIndex = async (updatedMasterIndex) => {
 
 export const dataManager = new DataManager();
 
-// ✅ AJOUTER CES LIGNES À LA FIN :
+// âœ… AJOUTER CES LIGNES Ã€ LA FIN :
 if (typeof window !== 'undefined') {
   window.dataManager = dataManager;
-  console.log('🛠️ DataManager disponible via window.dataManager');
+  console.log('ðŸ› ï¸ DataManager disponible via window.dataManager');
 }

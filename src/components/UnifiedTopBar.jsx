@@ -346,12 +346,30 @@ case 'memories': {
             <div className="flex items-center space-x-2 w-full"><input ref={titleInputRef} type="text" value={titleValue} onChange={(e) => setTitleValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTitle(); if (e.key === 'Escape') handleCancelEditTitle(); }} className="flex-1 px-3 py-1 border-2 border-amber-300 rounded-lg font-semibold text-amber-600 text-sm" /><button onClick={handleSaveTitle} className="p-2 text-green-600 hover:bg-green-100 rounded-lg"><Check className="w-5 h-5" /></button><button onClick={handleCancelEditTitle} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button></div>
           );
         } else {
+          // ✨ PHASE B : Récupérer thèmes de la session
+          const sessionKey = `session:${app.currentChatSession.id}`;
+          const sessionThemes = window.themeAssignments?.getThemesForContent(sessionKey) || [];
+          
           return (
             <div className="flex items-center justify-between w-full">
-				<div onClick={handleStartEditTitle} className="group flex items-center min-w-0 pr-2 cursor-pointer flex-1" title="Modifier le titre">
-              		<h2 className="text-sm font-semibold text-amber-600 truncate">{app.currentChatSession.gameTitle}</h2>
-              		<Edit className="w-4 h-4 ml-2 text-gray-500 opacity-0 group-hover:opacity-100 flex-shrink-0" />
-            		</div>            
+              <div onClick={handleStartEditTitle} className="group flex items-center min-w-0 pr-2 cursor-pointer flex-1" title="Modifier le titre">
+                <h2 className="text-sm font-semibold text-amber-600 truncate">{app.currentChatSession.gameTitle}</h2>
+                <Edit className="w-4 h-4 ml-2 text-gray-500 opacity-0 group-hover:opacity-100 flex-shrink-0" />
+              </div>
+              
+              {/* ✨ PHASE B : Bouton thèmes */}
+              <button
+                onClick={() => window.chatPageActions?.openThemeModal?.()}
+                className="flex-shrink-0 p-1.5 hover:bg-amber-50 rounded-lg transition-colors relative"
+                title="Gérer les thèmes"
+              >
+                <Tag className={`w-4 h-4 ${sessionThemes.length > 0 ? 'text-amber-600' : 'text-gray-400'}`} />
+                {sessionThemes.length > 0 && (
+                  <div className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {sessionThemes.length}
+                  </div>
+                )}
+              </button>
             </div>
           );
         }

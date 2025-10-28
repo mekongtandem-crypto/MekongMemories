@@ -5,12 +5,13 @@
  * ✅ Preview lien avant envoi
  * ✅ Envoi message avec linkedContent
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import LinkedContent from '../LinkedContent.jsx';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
-import { Send, Trash2, Edit, Camera, Link, FileText, MapPin, Image as ImageIcon } from 'lucide-react';
+import { Send, Trash2, Edit, Camera, Link, FileText, MapPin, Image as ImageIcon, Tag } from 'lucide-react';
 import PhotoViewer from '../PhotoViewer.jsx';
+import ThemeModal from '../ThemeModal.jsx';
 
 export default function ChatPage({ navigationContext, onClearAttachment, onStartSelectionMode }) {
   const app = useAppState();
@@ -24,6 +25,12 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   
   const [viewerState, setViewerState] = useState({ 
     isOpen: false, photo: null 
+  });
+  
+  // ✨ PHASE B : État modal thèmes
+  const [themeModal, setThemeModal] = useState({
+    isOpen: false,
+    currentThemes: []
   });
   
   const messagesEndRef = useRef(null);
@@ -91,19 +98,6 @@ console.log('🔍 DEBUG navigationContext:', {
     }
   }, [navigationContext?.pendingAttachment, navigationContext?.pendingLink]);
   
-  useEffect(() => {
-    window.chatPageActions = {
-      showFeedback: (message) => {
-        setFeedbackMessage(message);
-        setTimeout(() => {
-          setFeedbackMessage(null);
-        }, 2500);
-      }
-    };
-    return () => {
-      delete window.chatPageActions;
-    };
-  }, []);
 
   // ⭐ MODIFIÉ : Focus amélioré avec ref
   useEffect(() => {
@@ -175,6 +169,73 @@ useEffect(() => {
     console.log('🧹 Clear pending link');
     setPendingLink(null);
   };
+  
+  // ========================================
+  // ✨ PHASE B : HANDLERS THÈMES
+  // ========================================
+
+  const handleOpenThemeModal = useCallback(() => {
+    if (!app.currentChatSession) return;
+    
+    // Récupérer thèmes actuels de la session
+    const sessionKey = `session:${app.currentChatSession.id}`;
+    const currentThemes = window.themeAssignments?.getThemesForContent(sessionKey) || [];
+    
+    console.log('🏷️ Ouverture modal thèmes session:', sessionKey, currentThemes);
+    
+    setThemeModal({
+      isOpen: true,
+      currentThemes: currentThemes
+    });
+  }, [app.currentChatSession]);
+
+  const handleCloseThemeModal = useCallback(() => {
+    setThemeModal({
+      isOpen: false,
+      currentThemes: []
+    });
+  }, []);
+
+  const handleSaveThemes = useCallback(async (selectedThemes) => {
+    if (!app.currentChatSession || !app.currentUser) return;
+    
+    const sessionKey = `session:${app.currentChatSession.id}`;
+    
+    try {
+      await window.themeAssignments.assignThemes(
+        sessionKey,
+        selectedThemes,
+        app.currentUser.id
+      );
+      
+      console.log('✅ Thèmes session sauvegardés:', selectedThemes);
+      
+      handleCloseThemeModal();
+      
+      // Feedback visuel
+      if (window.chatPageActions?.showFeedback) {
+        window.chatPageActions.showFeedback('Thèmes sauvegardés');
+      }
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde thèmes:', error);
+      alert('Impossible de sauvegarder les thèmes');
+    }
+  }, [app.currentChatSession, app.currentUser, handleCloseThemeModal]);
+  
+  useEffect(() => {
+    window.chatPageActions = {
+      showFeedback: (message) => {
+        setFeedbackMessage(message);
+        setTimeout(() => {
+          setFeedbackMessage(null);
+        }, 2500);
+      },
+      openThemeModal: handleOpenThemeModal  // ❌ PROBLÈME ICI
+    };
+    return () => {
+      delete window.chatPageActions;
+    };
+  }, [handleOpenThemeModal]);
 
   // ========================================
   // HANDLERS MESSAGES
@@ -712,6 +773,19 @@ function LinkPhotoPreview({ photo }) {
   
   
 </div>
+
+{/* ✨ PHASE B : ThemeModal */}
+      {themeModal.isOpen && (
+        <ThemeModal
+          isOpen={themeModal.isOpen}
+          onClose={handleCloseThemeModal}
+          availableThemes={app.masterIndex?.themes || []}
+          currentThemes={themeModal.currentThemes}
+          onSave={handleSaveThemes}
+          title="Assigner des thèmes à cette session"
+          contentType="session"
+        />
+      )}
 
       {/* PhotoViewer */}
       {viewerState.isOpen && viewerState.photo && (
