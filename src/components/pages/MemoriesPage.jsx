@@ -449,23 +449,36 @@ const handleSelectSession = useCallback((session) => {
   app.updateCurrentPage('chat');
 }, [app]);
 
-const SessionBadge = memo(({ contentType, contentId, contentTitle }) => {
-  const sessions = getSessionsForContent(app.sessions, contentType, contentId);
-  if (sessions.length === 0) return null;
-
+const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onShowSessions, onCreateSession, moment }) => {
+  const linkedSessions = getSessionsForContent(sessions, contentType, contentId);
+  const count = linkedSessions.length;
+  
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (count === 0) {
+      // Aucune session → Créer
+      onCreateSession(moment, moment);
+    } else {
+      // Sessions existantes → Voir liste
+      onShowSessions(contentType, contentId, contentTitle);
+    }
+  };
+  
   return (
     <button
-      onClick={(e) => {
-        e.stopPropagation();
-        handleShowSessions(contentType, contentId, contentTitle);
-      }}
-      className="flex items-center gap-1 px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-full text-xs font-medium"
+      onClick={handleClick}
+      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+        count === 0 
+          ? 'bg-gray-100 hover:bg-gray-200 text-gray-600' 
+          : 'bg-purple-100 hover:bg-purple-200 text-purple-700'
+      }`}
+      title={count === 0 ? 'Créer une session' : `${count} session${count > 1 ? 's' : ''}`}
     >
-      💬 {sessions.length}
+      <span>💬</span>
+      {count > 0 && <span>{count}</span>}
     </button>
   );
 });
-
 
   // ========================================
   // EFFECTS
@@ -608,10 +621,26 @@ const SessionBadge = memo(({ contentType, contentId, contentTitle }) => {
     }
   }, [selectedMoments]);
   
-// ========================================
-  // Phase 17c : Auto-ouvrir moment du chat
-  // ========================================
+  useEffect(() => {
+  window.createSessionFromModal = () => {
+    if (sessionListModal) {
+      // Créer session pour le contenu du modal
+      // Le contexte est stocké dans sessionListModal
+      // Il faut récupérer le moment depuis masterIndex
+      const moment = app.masterIndex?.moments?.find(m => m.id === sessionListModal.contentId);
+      if (moment) {
+        handleOpenSessionModal(moment, moment);
+      }
+    }
+  };
   
+  return () => {
+    delete window.createSessionFromModal;
+  };
+}, [sessionListModal, app.masterIndex]);
+  
+
+  // Phase 17c : Auto-ouvrir moment du chat
   useEffect(() => {
   // ⭐ Gestion navigation depuis chat
   const targetContent = navigationContext?.targetContent;
@@ -1060,7 +1089,8 @@ const MomentCard = memo(React.forwardRef(({
   onBulkTagPhotos, onCancelSelection,
   isFromChat, onOpenPhotoContextMenu,
   selectionMode, onContentSelected,
-  sessions, onShowSessions
+  sessions, onShowSessions,
+  // onCreateSession est déjà présent ✅
 }, ref) => {
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
@@ -1131,6 +1161,8 @@ const MomentCard = memo(React.forwardRef(({
   contentTitle={moment.displayTitle}
   sessions={sessions}
   onShowSessions={onShowSessions}
+  onCreateSession={onCreateSession}
+  moment={moment}
 />
 
       {isSelected && (
@@ -1315,21 +1347,7 @@ const MomentHeader = memo(({
     </button>
   )}
   
-  {/* Bouton session */}
-  <button 
-    onClick={(e) => {
-      e.stopPropagation();
-      onCreateSession(moment, moment);
-    }}
-    className={`p-1.5 rounded transition-colors ${
-      hasSession 
-        ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
-        : 'hover:bg-amber-50 text-gray-600'
-    }`}
-    title={hasSession ? "Session existante" : "Créer une session"}
-  >
-    <span className="text-base">💬</span>
-  </button>
+  
 </div>
       </div>
     
