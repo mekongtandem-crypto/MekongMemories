@@ -747,30 +747,50 @@ const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onS
   }, [displayMode]);
 
   const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
-    if (!source) return;
-    
+  if (!source) return;
+  
   const sortOrder = localStorage.getItem('mekong_theme_sort_order') || 'usage';
   const rawThemes = app.masterIndex?.themes || [];
   const availableThemes = sortThemes(rawThemes, window.themeAssignments, sortOrder);
     
-    const sessionTitle = options.title || (
-      source.filename 
-        ? `Souvenirs de ${contextMoment.displayTitle}`
-        : source.content 
-          ? `Souvenirs de l'article : ${source.content.split('\n')[0].substring(0, 40)}...`
-          : `Souvenirs du moment : ${source.displayTitle}`
-    );
-    
-    let sessionData = {
-  id: contextMoment.folder_id,           // Drive folder ID
-  momentId: contextMoment.id,            // ✅ AJOUTER - ID masterIndex
-  title: sessionTitle,
-  description: source.filename 
-    ? `Basée sur la photo "${source.filename}"`
-    : source.content
-      ? `Basée sur un article`
-      : `Basée sur le moment "${source.displayTitle}"`,
-};
+  const sessionTitle = options.title || (
+    source.filename 
+      ? `Souvenirs de ${contextMoment.displayTitle}`
+      : source.content 
+        ? `Souvenirs de l'article : ${source.content.split('\n')[0].substring(0, 40)}...`
+        : `Souvenirs du moment : ${source.displayTitle}`
+  );
+  
+  // ⭐ PHASE 19D : Déterminer ID selon type de source
+  let sourceId;
+  let sourceType;
+  
+  if (source.filename) {
+    // Photo : ID sera géré via sourcePhoto
+    sourceId = contextMoment.folder_id;  // Fallback pour folder
+    sourceType = 'photo';
+  } else if (source.content) {
+    // Post : utiliser l'ID du post
+    sourceId = source.id || source.created_at;  // ID unique du post
+    sourceType = 'post';
+  } else {
+    // Moment : utiliser l'ID masterIndex
+    sourceId = contextMoment.id;  // ✅ ID masterIndex, pas folder_id
+    sourceType = 'moment';
+  }
+  
+  let sessionData = {
+    id: sourceId,                          // ✅ ID du contenu source
+    momentId: contextMoment.id,            // ID du moment (toujours présent)
+    title: sessionTitle,
+    description: source.filename 
+      ? `Basée sur la photo "${source.filename}"`
+      : source.content
+        ? `Basée sur un article`
+        : `Basée sur le moment "${source.displayTitle}"`,
+  };
+  
+  console.log('🎯 Création session - sourceType:', sourceType, 'sourceId:', sourceId, 'momentId:', contextMoment.id);
     
     if (source.filename) {
       sessionData.systemMessage = `📸 Session basée sur la photo : "${source.filename}".`;
