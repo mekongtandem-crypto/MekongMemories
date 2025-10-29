@@ -163,14 +163,12 @@ case 'chat': {
   return (
     <div className="flex items-center space-x-1">
       <button 
-        onClick={onCloseChatSession} 
+        onClick={onCloseChatSession}  // ✅ TOUJOURS vers Sessions
         className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" 
-        title="Retour Sessions"
+        title="Fermer le chat"
       >
         <ArrowLeft className="w-5 h-5" />
       </button>
-      
-      {/* ⭐ SUPPRIMÉ : Bouton "✨ Souvenirs" (redondant avec Bottom Bar) */}
     </div>
   );
 }

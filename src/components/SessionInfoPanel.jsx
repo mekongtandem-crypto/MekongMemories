@@ -68,9 +68,12 @@ export default function SessionInfoPanel({
   };
 
   const handleNavigate = (contentType, contentId) => {
+  if (contentType === 'moment' || contentType === 'post' || contentType === 'photo') {
+    // Navigation vers contenu dans Memories
     onNavigateToContent?.(contentType, contentId);
-    onClose();
-  };
+  }
+  onClose();
+};
 
   return (
     <>

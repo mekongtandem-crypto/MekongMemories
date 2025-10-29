@@ -49,7 +49,8 @@ function MemoriesPage({
   onNavigateBack,
   onAttachToChat,
   selectionMode,
-  onContentSelected
+  onContentSelected,
+  onOpenSessionFromMemories
 }, ref) {
 
   // ⭐ DEBUG : Log au démarrage
@@ -444,10 +445,18 @@ const handleShowSessions = useCallback((contentType, contentId, contentTitle) =>
 }, [app.sessions]);
 
 const handleSelectSession = useCallback((session) => {
+  console.log('🎯 Sélection session depuis modal:', session.id);
   setSessionListModal(null);
-  app.setCurrentChatSession(session.id);
-  app.updateCurrentPage('chat');
-}, [app]);
+  
+  // ⭐ Utiliser handler avec contexte de navigation
+  if (onOpenSessionFromMemories) {
+    onOpenSessionFromMemories(session);
+  } else {
+    // Fallback si handler non fourni
+    console.warn('⚠️ onOpenSessionFromMemories non fourni, fallback basique');
+    app.openChatSession(session);
+  }
+}, [app, onOpenSessionFromMemories]);
 
 const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onShowSessions, onCreateSession, moment }) => {
   const linkedSessions = getSessionsForContent(sessions, contentType, contentId);
@@ -1606,7 +1615,9 @@ const PostArticle = memo(({
                 <ImageIcon className={`w-4 h-4 transition-colors ${
                   showThisPostPhotos ? 'text-blue-600' : 'text-gray-400'
                 }`} />
-                <span className="font-medium">{post.photos.length}</span>
+                <span className={`font-medium transition-colors ${
+                  showThisPostPhotos ? 'text-blue-600' : 'text-gray-400'
+                }`}>{post.photos.length}</span>
                 </div>
               </button>
             )}

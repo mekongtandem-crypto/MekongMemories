@@ -1,9 +1,12 @@
 /**
- * Navigation.jsx v5.1 - Phase 18a : Bouton contextuel + mode exploration
- * ✅ Bottom Bar dynamique : 
- *    - Chat : [💬] [✨] [← Retour]
- *    - Exploration (depuis chat) : [💬] [✨] [← Retour]
- *    - Autres : [💬] [✨] [🎮 Jeux]
+ * Navigation.jsx v5.2 - Phase 19D : Retour intelligent Memories ↔ Chat
+ * ✅ Bottom Bar dynamique avec navigation contextuelle
+ * ✅ Bouton retour intelligent selon previousPage
+ * 
+ * Logique :
+ * - Chat venant de Memories → Retour vers Memories
+ * - Memories venant de Chat → Retour vers Chat
+ * - Chat sans contexte → Retour vers Sessions
  */
 import React from 'react';
 import { Sparkles, MessageSquare, ArrowLeft, Gamepad2 } from 'lucide-react';
@@ -21,10 +24,16 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
     }).length;
   }, [app.sessions, app.currentUser]);
 
-  // ⭐ Détecter mode exploration : dans Memories mais venant de Chat
+  // ⭐ PHASE 19D : Détection contexte de navigation
   const isInChat = currentPage === 'chat';
-  const isExplorationMode = currentPage === 'memories' && navigationContext?.previousPage === 'chat';
-  const showReturnButton = isInChat || isExplorationMode;
+  const isInMemories = currentPage === 'memories';
+  const previousPage = navigationContext?.previousPage;
+  
+  // Afficher bouton retour si :
+  // - Dans Chat (retour vers previousPage ou Sessions par défaut)
+  // - Dans Memories venant de Chat (retour vers Chat)
+  const showReturnButton = (isInChat && previousPage) || 
+                           (isInMemories && previousPage === 'chat');
 
   const navItems = [
     { 
@@ -40,15 +49,48 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
     }
   ];
 
-  // Handler retour intelligent
+  // ⭐ PHASE 19D : Handler retour intelligent
   const handleReturn = () => {
-    if (isExplorationMode) {
-      // Retour au chat depuis exploration
+    console.log('🔙 BottomBar Retour - currentPage:', currentPage, 'previousPage:', previousPage);
+    
+    // Cas 1 : Dans Memories, venant de Chat → Retour au Chat
+    if (currentPage === 'memories' && previousPage === 'chat') {
+      console.log('📍 Retour: Memories → Chat');
       onPageChange('chat');
-    } else {
-      // Retour Session=causeries depuis chat
-      onPageChange('sessions');
+      return;
     }
+    
+    // Cas 2 : Dans Chat, venant de Memories → Retour à Memories
+    if (currentPage === 'chat' && previousPage === 'memories') {
+      console.log('📍 Retour: Chat → Memories');
+      onPageChange('memories');
+      return;
+    }
+    
+    // Cas 3 : Dans Chat, venant de Sessions (ou sans contexte) → Retour Sessions
+    if (currentPage === 'chat' && (!previousPage || previousPage === 'sessions')) {
+      console.log('📍 Retour: Chat → Sessions');
+      onPageChange('sessions');
+      return;
+    }
+    
+    // Fallback : Retour Sessions par défaut
+    console.log('📍 Retour fallback: → Sessions');
+    onPageChange('sessions');
+  };
+
+  // Déterminer le label du bouton retour
+  const getReturnLabel = () => {
+    if (currentPage === 'memories' && previousPage === 'chat') {
+      return 'Chat';
+    }
+    if (currentPage === 'chat' && previousPage === 'memories') {
+      return 'Souvenirs';
+    }
+    if (currentPage === 'chat') {
+      return 'Causeries';
+    }
+    return 'Retour';
   };
 
   return (
@@ -80,14 +122,15 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
           );
         })}
 
-        {/* Bouton contextuel : Retour (si chat OU exploration) OU Jeux */}
+        {/* Bouton contextuel : Retour intelligent OU Jeux */}
         {showReturnButton ? (
           <button 
             onClick={handleReturn}
-            className="flex flex-col items-center py-2 px-3 text-gray-600"
+            className="flex flex-col items-center py-2 px-3 text-purple-600"
+            title={`Retour vers ${getReturnLabel()}`}
           >
             <ArrowLeft className="w-5 h-5 mb-1" />
-            <span className="text-xs">Retour</span>
+            <span className="text-xs">{getReturnLabel()}</span>
           </button>
         ) : (
           <button 
