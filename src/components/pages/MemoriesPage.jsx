@@ -20,7 +20,8 @@ import { getSessionsForContent } from '../../utils/sessionUtils.js';
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown, X, Tag, Link, MessageCirclePlus, MessageCircleMore,
+  AlertCircle, ChevronDown, X, Tag, Link, 
+  MessageCircle, MessageCirclePlus, MessageCircleMore,
 } from 'lucide-react';
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
@@ -35,6 +36,72 @@ import {
   getMomentChildrenKeys,
   getPostChildrenKeys
 } from '../../utils/themeUtils.js';
+
+// ========================================
+// COMPOSANTS BADGE SESSIONS (Phase 19D)
+// ========================================
+
+// Badge sessions pour Post (inline dans footer card)
+const SessionBadgePost = ({ post, momentId, sessions, onShowSessions, onCreateSession }) => {
+  const linkedSessions = getSessionsForContent(sessions, 'post', post.id);
+  const count = linkedSessions.length;
+  
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (count === 0) {
+      onCreateSession(post, momentId, 'post');
+    } else {
+      onShowSessions('post', post.id, post.title || 'Article');
+    }
+  };
+  
+  return (
+    <div
+      onClick={handleClick}
+      className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+        count === 0
+          ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+      }`}
+      title={count === 0 ? 'Créer une session' : `${count} session${count > 1 ? 's' : ''}`}
+    >
+      <MessageCircle className="w-3.5 h-3.5" />
+      {count > 0 && <span>{count}</span>}
+    </div>
+  );
+};
+
+// Pastille sessions pour Photo thumbnail (overlay circle)
+const SessionBadgePhotoThumb = ({ photo, momentId, sessions, onShowSessions }) => {
+  const linkedSessions = getSessionsForContent(
+    sessions, 
+    'photo', 
+    photo.filename || photo.google_drive_id
+  );
+  const count = linkedSessions.length;
+  
+  if (count === 0) return null;
+  
+  const handleClick = (e) => {
+    e.stopPropagation();
+    const photoTitle = photo.filename || photo.google_drive_id || 'Photo';
+    onShowSessions('photo', photo.filename || photo.google_drive_id, photoTitle);
+  };
+  
+  return (
+    <div
+      onClick={handleClick}
+      className="absolute top-1 right-1 bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg hover:bg-purple-700 transition-colors z-10 cursor-pointer"
+      title={`${count} session${count > 1 ? 's' : ''}`}
+    >
+      {count}
+    </div>
+  );
+};
+
+// ========================================
+// COMPOSANT PRINCIPAL
+// ========================================
 
 function MemoriesPage({ 
   isTimelineVisible,
@@ -91,6 +158,8 @@ function MemoriesPage({
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [activePhotoGrid, setActivePhotoGrid] = useState(null);
   const [selectedTheme, setSelectedTheme] = useState(null);
+  
+  
   
   // ✅ NOUVEAU Phase 17b : Menu contextuel photo
   const [photoContextMenu, setPhotoContextMenu] = useState({
@@ -444,6 +513,36 @@ const handleShowSessions = useCallback((contentType, contentId, contentTitle) =>
   setSessionListModal({ sessions, contentTitle });
 }, [app.sessions]);
 
+// Handler création session depuis post
+const handleCreateSessionFromPost = async (post, momentId) => {
+  try {
+    const moment = masterIndex.moments.find(m => m.id === momentId);
+    if (!moment) {
+      console.error('Moment parent introuvable');
+      return;
+    }
+    
+    await onCreateSession(post, moment, 'post');
+  } catch (error) {
+    console.error('Erreur création session post:', error);
+  }
+};
+
+// Handler création session depuis photo thumbnail
+const handleCreateSessionFromPhotoThumb = async (photo, momentId) => {
+  try {
+    const moment = masterIndex.moments.find(m => m.id === momentId);
+    if (!moment) {
+      console.error('Moment parent introuvable');
+      return;
+    }
+    
+    await onCreateSession(photo, moment, 'photo');
+  } catch (error) {
+    console.error('Erreur création session photo:', error);
+  }
+};
+
 const handleSelectSession = useCallback((session) => {
   console.log('🎯 Sélection session depuis modal:', session.id);
   setSessionListModal(null);
@@ -482,7 +581,7 @@ const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onS
       title={count === 0 ? 'Créer une session' : `${count} session${count > 1 ? 's' : ''} - Cliquer pour voir`}
     >
       {count === 0 ? (
-        <MessageSquarePlus className="w-4 h-4" />
+        <MessageCirclePlus className="w-4 h-4" />
       ) : (
         <>
           <span>💬</span>
@@ -492,6 +591,10 @@ const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onS
     </button>
   );
 });
+
+const handleOpenSessionModal = useCallback((source, contextMoment) => {
+    setSessionModal({ source, contextMoment });
+  }, []);
 
   // ========================================
   // EFFECTS
@@ -819,10 +922,21 @@ const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onS
       alert(`Impossible de créer la session : ${error.message}`);
     }
   }, [app, viewerState.isOpen, closePhotoViewer]);
-
-  const handleOpenSessionModal = useCallback((source, contextMoment) => {
-    setSessionModal({ source, contextMoment });
-  }, []);
+  
+  // Handler création session depuis post/photo
+const handleCreateSessionFromContent = useCallback(async (content, momentId, contentType) => {
+  try {
+    const moment = app.masterIndex?.moments.find(m => m.id === momentId);
+    if (!moment) {
+      console.error('Moment parent introuvable');
+      return;
+    }
+    
+    handleOpenSessionModal(content, moment);
+  } catch (error) {
+    console.error('Erreur création session:', error);
+  }
+}, [app.masterIndex, handleOpenSessionModal]);
 
   if (!app.isInitialized || !momentsData) {
     return <div className="p-12 text-center">Chargement des données...</div>;
@@ -950,6 +1064,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
             onOpenPhotoContextMenu={handleOpenPhotoContextMenu}
             selectionMode={selectionMode}
   			onContentSelected={handleLongPressForSelection}
+  			onCreateSessionFromContent={handleCreateSessionFromContent}
 			/>
         </div>
       </main>
@@ -1050,7 +1165,7 @@ const MomentsList = memo(({
   onBulkTagPhotos, onCancelSelection,
   isFromChat, onOpenPhotoContextMenu,
   selectionMode, onContentSelected,
-  onShowSessions
+  onShowSessions, onCreateSessionFromContent
 }) => {
   return (
     <div className="space-y-3">
@@ -1085,6 +1200,7 @@ const MomentsList = memo(({
 			onShowSessions={onShowSessions}
 			selectionMode={selectionMode}
   			onContentSelected={onContentSelected}
+  			onCreateSessionFromContent={onCreateSessionFromContent}
 			/>
         );
       })}
@@ -1120,11 +1236,11 @@ const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onS
     >
       {count === 0 ? (
         <>
-          <span><MessageCirclePlus className="w-4 h-4" /></span>
+          <span><MessageCirclePlus className="w-4 h-4" /></span><span>  </span>
         </>
       ) : (
         <>
-          <span><MessageCircleMore className="w-4 h-4" /></span>
+          <span><MessageCircle className="w-4 h-4" /></span>
           <span>{count}</span>
         </>
       )}
@@ -1140,7 +1256,7 @@ const MomentCard = memo(React.forwardRef(({
   onBulkTagPhotos, onCancelSelection,
   isFromChat, onOpenPhotoContextMenu,
   selectionMode, onContentSelected,
-  sessions, onShowSessions
+  sessions, onShowSessions, onCreateSessionFromContent
 }, ref) => {
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
@@ -1227,8 +1343,11 @@ const MomentCard = memo(React.forwardRef(({
           onCancelSelection={onCancelSelection}
           isFromChat={isFromChat}
           onOpenPhotoContextMenu={onOpenPhotoContextMenu}
-        	selectionMode={selectionMode}
-  			onContentSelected={onContentSelected}
+          selectionMode={selectionMode}
+          onContentSelected={onContentSelected}
+          sessions={sessions}
+onShowSessions={onShowSessions}
+          onCreateSessionFromContent={onCreateSessionFromContent}        	
 		/>
       )}
     </div>
@@ -1399,17 +1518,11 @@ const MomentHeader = memo(({
       <Link className="w-4 h-4" />
     </button>
   )}
-  
-  
 </div>
-      </div>
-    
-    
-    
+</div> 
     </>
   );
 });
-
 
 const MomentContent = memo(({ 
   moment, displayOptions, localDisplay, visibleDayPhotos, photosPerLoad, 
@@ -1417,31 +1530,35 @@ const MomentContent = memo(({
   activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
   onBulkTagPhotos, onCancelSelection,
   isFromChat, onOpenPhotoContextMenu,
-  selectionMode, onContentSelected
+  selectionMode, onContentSelected,
+  sessions, onShowSessions, onCreateSessionFromContent
 }) => (
   <div className="px-3 pb-3">
     {localDisplay.showPosts && moment.posts?.map(post => (
       <PostArticle 
-        key={post.id}
-        post={post}
-        moment={moment}
-        displayOptions={displayOptions}
-        onPhotoClick={onPhotoClick}
-        onCreateSession={onCreateSession}
-        activePhotoGrid={activePhotoGrid}
-        selectedPhotos={selectedPhotos}
-        onActivateSelection={onActivateSelection}
-        onTogglePhotoSelection={onTogglePhotoSelection}
-        onBulkTagPhotos={onBulkTagPhotos}
-        onCancelSelection={onCancelSelection}
-        isFromChat={isFromChat}
-        onOpenPhotoContextMenu={onOpenPhotoContextMenu}
-      selectionMode={selectionMode}
+  key={post.id}
+  post={post}
+  moment={moment}
+  displayOptions={displayOptions}
+  onPhotoClick={onPhotoClick}
+  onCreateSession={onCreateSession}
+  activePhotoGrid={activePhotoGrid}
+  selectedPhotos={selectedPhotos}
+  onActivateSelection={onActivateSelection}
+  onTogglePhotoSelection={onTogglePhotoSelection}
+  onBulkTagPhotos={onBulkTagPhotos}
+  onCancelSelection={onCancelSelection}
+  isFromChat={isFromChat}
+  onOpenPhotoContextMenu={onOpenPhotoContextMenu}
+  selectionMode={selectionMode}
   onContentSelected={onContentSelected}
+  sessions={sessions}
+  onShowSessions={onShowSessions}
+onCreateSessionFromContent={onCreateSessionFromContent}
 />
     ))}
     
-    {/* ✅ CORRECTION BUG 3 : Header simplifié */}
+    {/* Header simplifié */}
     {moment.dayPhotoCount > 0 && (
   <div className="mt-2 border-b border-gray-100 pb-2">
     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1539,6 +1656,8 @@ const MomentContent = memo(({
           onOpenPhotoContextMenu={onOpenPhotoContextMenu}
         selectionMode={selectionMode}
   onContentSelected={onContentSelected}
+  sessions={sessions}
+onShowSessions={onShowSessions}
 />
         
         {visibleDayPhotos < moment.dayPhotoCount && (
@@ -1566,7 +1685,8 @@ const PostArticle = memo(({
   activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
   onBulkTagPhotos, onCancelSelection,
   isFromChat, onOpenPhotoContextMenu,
-  selectionMode, onContentSelected
+  selectionMode, onContentSelected,
+  sessions, onShowSessions, onCreateSessionFromContent
 }) => {
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
@@ -1646,7 +1766,7 @@ const PostArticle = memo(({
           
           {/* Droite = Indicateurs compacts + Boutons */}
 <div className="flex items-center gap-x-2 flex-shrink-0 ml-2">
-    
+
   
   {/* 🏷️ Bouton Tag */}
   <button 
@@ -1662,6 +1782,15 @@ const PostArticle = memo(({
     {hasThemes && <span className="text-xs font-bold">{postThemes.length}</span>}
   </button>
   
+  {/* 💬 Badge Sessions */}
+  <SessionBadgePost 
+    post={post} 
+    momentId={moment.id} 
+    sessions={sessions}
+    onShowSessions={onShowSessions}
+    onCreateSession={onCreateSessionFromContent}
+    />
+  
   {/* ⭐ NOUVEAU : Bouton lier (si mode sélection) */}
   {selectionMode?.active && (
     <button
@@ -1676,14 +1805,6 @@ const PostArticle = memo(({
     </button>
   )}
   
-  {/* 💬 Bouton session */}
-  <button 
-    onClick={handleCreateSession} 
-    className="px-2 py-1 rounded hover:bg-amber-50 transition-colors" 
-    title="Créer une session"
-  >
-    <span className="text-base">💬</span>
-  </button>
 </div>
         </div>
         
@@ -1710,6 +1831,8 @@ const PostArticle = memo(({
           onOpenPhotoContextMenu={onOpenPhotoContextMenu}
           selectionMode={selectionMode}
           onContentSelected={onContentSelected}
+          sessions={sessions}
+onShowSessions={onShowSessions}
         />
       )}
     </div>
@@ -1721,7 +1844,8 @@ const PhotoGrid = memo(({
   activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
   onBulkTagPhotos, onCancelSelection,
   isFromChat, onOpenPhotoContextMenu,
-  selectionMode, onContentSelected
+  selectionMode, onContentSelected,
+  sessions, onShowSessions
 }) => {
   const isThisGridActive = activePhotoGrid === gridId;
   const hasSelection = isThisGridActive && selectedPhotos.length > 0;
@@ -1773,6 +1897,8 @@ const PhotoGrid = memo(({
               onOpenContextMenu={onOpenPhotoContextMenu}
               globalSelectionMode={selectionMode}
               onContentSelected={onContentSelected}
+              sessions={sessions}
+              onShowSessions={onShowSessions}
             />
           );
         })}
@@ -1785,7 +1911,8 @@ const PhotoThumbnail = memo(({
   photo, moment, onClick, gridId, selectionMode, isSelected, 
   onToggleSelect, onActivateSelection,
   isFromChat, onOpenContextMenu,
-  globalSelectionMode, onContentSelected
+  globalSelectionMode, onContentSelected,
+  sessions, onShowSessions
 }) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [status, setStatus] = useState('loading');
@@ -1884,6 +2011,14 @@ const PhotoThumbnail = memo(({
 </button>
 
 )}
+
+	{/* 💬 Pastille Sessions */}
+      <SessionBadgePhotoThumb 
+        photo={photo} 
+        momentId={moment.id} 
+        sessions={sessions}
+onShowSessions={onShowSessions}
+      />
 
       {status === 'loading' && (
         <div className="w-full h-full animate-pulse flex items-center justify-center">
