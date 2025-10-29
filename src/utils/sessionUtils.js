@@ -322,71 +322,87 @@ export function formatMessagePreview(message, maxLength = 60) {
 // ========================================
 
 /**
- * Récupère les infos d'origine d'une session + ses thèmes
- * @param {Object} session - Session complète
- * @param {Object} masterIndex - Index global (pour récupérer themes)
- * @returns {Object} { originContent, originThemes, momentContext }
+ * Récupère infos origine d'une session
  */
 export function getOriginInfo(session, masterIndex) {
-  if (!session) return null;
+  if (!session?.originContent) return null;
   
-  const result = {
-    originContent: session.originContent || null,
-    momentId: session.momentId || session.gameId, // Fallback compatibilité
-    originThemes: [],
-    momentContext: null
+  const { type, id } = session.originContent;
+  let originThemes = [];
+  
+  // Récupérer thèmes via themeAssignments
+  if (window.themeAssignments?.isLoaded) {
+    const themeIds = window.themeAssignments.getThemesForContent(type, id);
+    if (themeIds?.length > 0 && masterIndex?.themes) {
+      originThemes = themeIds
+        .map(tid => masterIndex.themes.find(t => t.id === tid))
+        .filter(Boolean);
+    }
+  }
+  
+  return {
+    originContent: session.originContent,
+    originThemes
   };
-  
-  // Récupérer le moment parent
-  if (result.momentId && masterIndex?.moments) {
-    result.momentContext = masterIndex.moments.find(m => m.id === result.momentId);
-  }
-  
-  // Récupérer thèmes de l'origine
-  if (result.originContent && window.themeAssignments?.isLoaded && masterIndex?.themes) {
-    const contentKey = `${result.originContent.type}:${result.originContent.id}`;
-    const themeIds = window.themeAssignments.getThemesForContent(contentKey);
-    
-    result.originThemes = themeIds
-      .map(themeId => masterIndex.themes.find(t => t.id === themeId))
-      .filter(Boolean);
-  }
-  
-  return result;
 }
 
 /**
- * Formatte le titre de l'origine selon son type
- * @param {Object} originContent - Objet originContent
- * @returns {string} Titre formaté
+ * Formatte titre origine pour affichage
  */
 export function formatOriginTitle(originContent) {
-  if (!originContent) return '';
+  if (!originContent) return 'N/A';
   
-  switch (originContent.type) {
+  switch(originContent.type) {
     case 'moment':
-      return originContent.title;
+      return originContent.title || 'Moment';
     case 'post':
-      return originContent.title;
+      const postTitle = originContent.title || 'Article';
+      return postTitle.length > 40 ? postTitle.substring(0, 40) + '...' : postTitle;
     case 'photo':
-      return originContent.title || originContent.filename || 'Photo';
+      return originContent.filename || originContent.title || 'Photo';
     default:
       return originContent.title || 'Contenu';
   }
 }
 
 /**
- * Retourne l'icône appropriée selon le type d'origine
- * @param {string} type - 'moment' | 'post' | 'photo'
- * @returns {string} Emoji
+ * Retourne icône selon type contenu
  */
-export function getOriginIcon(type) {
-  switch (type) {
+export function getOriginIcon(contentType) {
+  switch(contentType) {
     case 'moment': return '⭐';
     case 'post': return '📰';
     case 'photo': return '📷';
-    default: return '📍';
+    default: return '📌';
   }
+}
+
+// ========================================
+// PHASE 19D : COMPTEURS SESSIONS
+// ========================================
+
+/**
+ * Récupère sessions liées à un contenu
+ */
+export function getSessionsForContent(sessions, contentType, contentId) {
+  if (!sessions || !contentType || !contentId) return [];
+  
+  return sessions.filter(session => {
+    if (!session.originContent) return false;
+    
+    // Match direct
+    if (session.originContent.type === contentType && 
+        session.originContent.id === contentId) {
+      return true;
+    }
+    
+    // Moments : inclure posts/photos du moment
+    if (contentType === 'moment') {
+      return session.momentId === contentId || session.gameId === contentId;
+    }
+    
+    return false;
+  });
 }
 
 // ==================== FIN DU FICHIER ====================

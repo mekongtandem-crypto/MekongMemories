@@ -1,5 +1,5 @@
 /**
- * UnifiedTopBar.jsx v2.7 - Phase 17c : Transmettre sessionMomentId
+ * UnifiedTopBar.jsx v2.8 - Phase 19d : Transmettre sessionMomentId
  * ✅ Passage du gameId au clic sur "Souvenirs"
  */
 import React, { useState, useRef, useEffect } from 'react';
@@ -9,8 +9,6 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
-import { getOriginInfo, formatOriginTitle, getOriginIcon } from '../utils/sessionUtils.js';
-
 
 const formatDateTime = (isoString) => {
   if (!isoString) return 'N/A';
@@ -371,7 +369,7 @@ case 'memories': {
     }
   };
 
-  const renderMenu = () => {
+const renderMenu = () => {
   if (currentPage !== 'chat' || !app.currentChatSession) return null;
 
   return (

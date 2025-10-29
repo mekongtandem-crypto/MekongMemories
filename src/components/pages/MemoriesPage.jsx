@@ -10,7 +10,13 @@
  * - PARTIE 2 : Composants d'affichage (fichier suivant)
  */
 
+// ========================================
+// 1. IMPORTS (ajouter en haut)
+// ========================================
+
 import React, { useState, useEffect, useRef, forwardRef, memo, useCallback, useImperativeHandle } from 'react';
+import SessionListModal from '../SessionListModal.jsx';
+import { getSessionsForContent } from '../../utils/sessionUtils.js';
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
@@ -49,6 +55,11 @@ function MemoriesPage({
   // ⭐ DEBUG : Log au démarrage
   console.log('🔍 MemoriesPage selectionMode:', selectionMode);
 
+// ========================================
+// 2. STATE, les états 
+// ========================================
+
+
   const app = useAppState();
     
   
@@ -60,6 +71,7 @@ function MemoriesPage({
     isOpen: false, photo: null, gallery: [], contextMoment: null 
   });
   const [sessionModal, setSessionModal] = useState(null);
+  const [sessionListModal, setSessionListModal] = useState(null);
 
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -77,7 +89,6 @@ function MemoriesPage({
 
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [activePhotoGrid, setActivePhotoGrid] = useState(null);
-  
   const [selectedTheme, setSelectedTheme] = useState(null);
   
   // ✅ NOUVEAU Phase 17b : Menu contextuel photo
@@ -93,7 +104,7 @@ function MemoriesPage({
   const momentRefs = useRef({});
   
   // ========================================
-  // CALLBACKS TAGGING HIÉRARCHIQUE
+  // CALLBACKS-HANDLE TAGGING HIÉRARCHIQUE
   // ========================================
 
   const executeScrollToElement = useCallback((element) => {
@@ -426,6 +437,35 @@ const handleLongPressForSelection = useCallback((element, type) => {
   }, [onAttachToChat, handleClosePhotoContextMenu]);
 
   const filteredMoments = getFilteredMoments(momentsData, searchQuery, momentFilter, app.sessions, selectedTheme);
+
+const handleShowSessions = useCallback((contentType, contentId, contentTitle) => {
+  const sessions = getSessionsForContent(app.sessions, contentType, contentId);
+  setSessionListModal({ sessions, contentTitle });
+}, [app.sessions]);
+
+const handleSelectSession = useCallback((session) => {
+  setSessionListModal(null);
+  app.setCurrentChatSession(session.id);
+  app.updateCurrentPage('chat');
+}, [app]);
+
+const SessionBadge = memo(({ contentType, contentId, contentTitle }) => {
+  const sessions = getSessionsForContent(app.sessions, contentType, contentId);
+  if (sessions.length === 0) return null;
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        handleShowSessions(contentType, contentId, contentTitle);
+      }}
+      className="flex items-center gap-1 px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-full text-xs font-medium"
+    >
+      💬 {sessions.length}
+    </button>
+  );
+});
+
 
   // ========================================
   // EFFECTS
@@ -836,6 +876,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
             onMomentSelect={handleSelectMoment}
             onPhotoClick={openPhotoViewer}
             onCreateSession={handleOpenSessionModal}
+			onShowSessions={handleShowSessions}  
             momentRefs={momentRefs}
             activePhotoGrid={activePhotoGrid}
             selectedPhotos={selectedPhotos}
@@ -907,6 +948,17 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           )}
         />
       )}
+      
+      {/* ✨ PHASE 19D : Modal liste sessions */}
+      {sessionListModal && (
+        <SessionListModal
+          isOpen={true}
+          onClose={() => setSessionListModal(null)}
+          sessions={sessionListModal.sessions}
+          contentTitle={sessionListModal.contentTitle}
+          onSelectSession={handleSelectSession}
+        />
+      )}
 
       {viewerState.isOpen && (
   <PhotoViewer 
@@ -927,13 +979,16 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
 // COMPOSANTS
 // ====================================================================
 
+
+
 const MomentsList = memo(({ 
   moments, selectedMoments, displayOptions, momentFilter, sessions, 
   onMomentSelect, onPhotoClick, onCreateSession, momentRefs,
   activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
   onBulkTagPhotos, onCancelSelection,
   isFromChat, onOpenPhotoContextMenu,
-  selectionMode, onContentSelected
+  selectionMode, onContentSelected,
+  onShowSessions
 }) => {
   return (
     <div className="space-y-3">
@@ -964,7 +1019,9 @@ const MomentsList = memo(({
             onCancelSelection={onCancelSelection}
             isFromChat={isFromChat}
             onOpenPhotoContextMenu={onOpenPhotoContextMenu}
-          	selectionMode={selectionMode}
+            sessions={sessions}             
+			onShowSessions={onShowSessions}
+			selectionMode={selectionMode}
   			onContentSelected={onContentSelected}
 			/>
         );
@@ -973,13 +1030,37 @@ const MomentsList = memo(({
   );
 });
 
+// ✨ PHASE 19D : Badge compteur sessions
+const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onShowSessions }) => {
+  const linkedSessions = getSessionsForContent(sessions, contentType, contentId);
+  const count = linkedSessions.length;
+  
+  if (count === 0) return null;
+  
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onShowSessions(contentType, contentId, contentTitle);
+      }}
+      className="flex items-center gap-1 px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-full text-xs font-medium transition-colors"
+      title={`${count} session${count > 1 ? 's' : ''}`}
+    >
+      <span>💬</span>
+      <span>{count}</span>
+    </button>
+  );
+});
+
+
 const MomentCard = memo(React.forwardRef(({ 
   moment, isSelected, isExplored, matchesFilter, displayOptions, 
   onSelect, onPhotoClick, onCreateSession,
   activePhotoGrid, selectedPhotos, onActivateSelection, onTogglePhotoSelection,
   onBulkTagPhotos, onCancelSelection,
   isFromChat, onOpenPhotoContextMenu,
-  selectionMode, onContentSelected
+  selectionMode, onContentSelected,
+  sessions, onShowSessions
 }, ref) => {
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
@@ -1043,6 +1124,14 @@ const MomentCard = memo(React.forwardRef(({
   		onContentSelected={onContentSelected}
 		/>
       </div>
+      {/* ✨ PHASE 19D : Badge sessions */}
+<SessionBadge 
+  contentType="moment"
+  contentId={moment.id}
+  contentTitle={moment.displayTitle}
+  sessions={sessions}
+  onShowSessions={onShowSessions}
+/>
 
       {isSelected && (
         <MomentContent 
@@ -1070,6 +1159,9 @@ const MomentCard = memo(React.forwardRef(({
     </div>
   );
 }));
+
+
+
 
 // ====================================================================
 // COMPOSANT : MomentHeader (MODIFIÉ)
@@ -1240,6 +1332,9 @@ const MomentHeader = memo(({
   </button>
 </div>
       </div>
+    
+    
+    
     </>
   );
 });
@@ -1295,6 +1390,7 @@ const MomentContent = memo(({
             {moment.dayPhotoCount} Photo{moment.dayPhotoCount > 1 ? 's' : ''} de "{moment.displayTitle}"
           </h4>
         </div>
+        
         
         {/* ⭐ NOUVEAU : Boutons à droite */}
         <div className="flex items-center space-x-2 mr-2">

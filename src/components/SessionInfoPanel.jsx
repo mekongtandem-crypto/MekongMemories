@@ -1,5 +1,5 @@
 /**
- * SessionInfoPanel.jsx v1.0 - Phase 19C v3
+ * SessionInfoPanel.jsx v1.1 - Phase 19D v3
  * Panneau slide-in avec infos session complètes
  * Stats / Origine / Souvenirs liés
  */
