@@ -20,7 +20,7 @@ import { getSessionsForContent } from '../../utils/sessionUtils.js';
 import { useAppState } from '../../hooks/useAppState.js';
 import { 
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown, X, Tag, Link
+  AlertCircle, ChevronDown, X, Tag, Link, MessageCirclePlus, MessageCircleMore,
 } from 'lucide-react';
 import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
@@ -456,10 +456,8 @@ const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onS
   const handleClick = (e) => {
     e.stopPropagation();
     if (count === 0) {
-      // Aucune session → Créer
       onCreateSession(moment, moment);
     } else {
-      // Sessions existantes → Voir liste
       onShowSessions(contentType, contentId, contentTitle);
     }
   };
@@ -469,13 +467,19 @@ const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onS
       onClick={handleClick}
       className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
         count === 0 
-          ? 'bg-gray-100 hover:bg-gray-200 text-gray-600' 
+          ? 'bg-gray-100 hover:bg-gray-200 text-gray-600'
           : 'bg-purple-100 hover:bg-purple-200 text-purple-700'
       }`}
-      title={count === 0 ? 'Créer une session' : `${count} session${count > 1 ? 's' : ''}`}
+      title={count === 0 ? 'Créer une session' : `${count} session${count > 1 ? 's' : ''} - Cliquer pour voir`}
     >
-      <span>💬</span>
-      {count > 0 && <span>{count}</span>}
+      {count === 0 ? (
+        <MessageSquarePlus className="w-4 h-4" />
+      ) : (
+        <>
+          <span>💬</span>
+          <span>{count}</span>
+        </>
+      )}
     </button>
   );
 });
@@ -1060,23 +1064,41 @@ const MomentsList = memo(({
 });
 
 // ✨ PHASE 19D : Badge compteur sessions
-const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onShowSessions }) => {
+const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onShowSessions, onCreateSession, moment }) => {
   const linkedSessions = getSessionsForContent(sessions, contentType, contentId);
   const count = linkedSessions.length;
   
-  if (count === 0) return null;
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (count === 0) {
+      // Aucune session → Créer directement
+      onCreateSession(moment, moment);
+    } else {
+      // Sessions existantes → Voir liste
+      onShowSessions(contentType, contentId, contentTitle);
+    }
+  };
   
   return (
     <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onShowSessions(contentType, contentId, contentTitle);
-      }}
-      className="flex items-center gap-1 px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-full text-xs font-medium transition-colors"
-      title={`${count} session${count > 1 ? 's' : ''}`}
+      onClick={handleClick}
+      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+        count === 0 
+          ? 'bg-gray-100 hover:bg-gray-200 text-gray-600'  // Gris si 0
+          : 'bg-purple-100 hover:bg-purple-200 text-purple-700'  // Violet si sessions
+      }`}
+      title={count === 0 ? 'Créer une session' : `${count} session${count > 1 ? 's' : ''} - Cliquer pour voir`}
     >
-      <span>💬</span>
-      <span>{count}</span>
+      {count === 0 ? (
+        <>
+          <span><MessageCirclePlus className="w-4 h-4" /></span>
+        </>
+      ) : (
+        <>
+          <span><MessageCircleMore className="w-4 h-4" /></span>
+          <span>{count}</span>
+        </>
+      )}
     </button>
   );
 });
@@ -1089,8 +1111,7 @@ const MomentCard = memo(React.forwardRef(({
   onBulkTagPhotos, onCancelSelection,
   isFromChat, onOpenPhotoContextMenu,
   selectionMode, onContentSelected,
-  sessions, onShowSessions,
-  // onCreateSession est déjà présent ✅
+  sessions, onShowSessions
 }, ref) => {
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
@@ -1150,20 +1171,13 @@ const MomentCard = memo(React.forwardRef(({
           onCreateSession={onCreateSession}
           localDisplay={localDisplay}
           onToggleLocal={handleToggleLocal}
-        selectionMode={selectionMode}
-  		onContentSelected={onContentSelected}
+          selectionMode={selectionMode}
+          onContentSelected={onContentSelected}
+          sessions={sessions}
+          onShowSessions={onShowSessions}
 		/>
       </div>
-      {/* ✨ PHASE 19D : Badge sessions */}
-<SessionBadge 
-  contentType="moment"
-  contentId={moment.id}
-  contentTitle={moment.displayTitle}
-  sessions={sessions}
-  onShowSessions={onShowSessions}
-  onCreateSession={onCreateSession}
-  moment={moment}
-/>
+      
 
       {isSelected && (
         <MomentContent 
@@ -1202,7 +1216,8 @@ const MomentCard = memo(React.forwardRef(({
 const MomentHeader = memo(({ 
   moment, isSelected, isExplored, onSelect, onOpenWith, onCreateSession, 
   localDisplay, onToggleLocal,
-  selectionMode, onContentSelected
+  selectionMode, onContentSelected,
+  sessions, onShowSessions
 }) => {
   
   // Badge moment : UNIQUEMENT le moment lui-même
@@ -1262,8 +1277,6 @@ const MomentHeader = memo(({
     }
   };
 
-  const sessions = window.app?.sessions || [];
-  const hasSession = sessions.some(s => s.gameId === moment.id);
 
   return (
     <>
@@ -1332,6 +1345,17 @@ const MomentHeader = memo(({
     <Tag className="w-4 h-4" />
     {hasMomentThemes && <span className="text-xs font-bold">{momentThemes.length}</span>}
   </button>
+  
+  {/* ✨ PHASE 19D : Badge sessions */}
+  <SessionBadge 
+    contentType="moment"
+    contentId={moment.id}
+    contentTitle={moment.displayTitle}
+    sessions={sessions}
+    onShowSessions={onShowSessions}
+    onCreateSession={onCreateSession}
+    moment={moment}
+  />
   
   {/* ⭐ NOUVEAU : Bouton lier (si mode sélection) */}
   {selectionMode?.active && (
@@ -1565,37 +1589,33 @@ const PostArticle = memo(({
         className="border border-gray-200 rounded-lg overflow-hidden"
       >
         <div className="flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200">
+          
           {/* Gauche : Titre + indicateur photos inline */}
           <div className="flex items-center gap-x-3 flex-1 min-w-0">
+
+            <h4 className="font-semibold text-gray-800 text-sm truncate flex-1">
+              {title}
+            </h4>
             {hasPhotos && (
               <button 
                 onClick={() => setShowThisPostPhotos(!showThisPostPhotos)} 
                 className="p-1 flex-shrink-0"
                 title="Afficher/Masquer les photos"
               >
+                <div className="flex items-center space-x-1 text-xs text-grey-400 bg-blue-50 px-2 py-1 rounded">
                 <ImageIcon className={`w-4 h-4 transition-colors ${
                   showThisPostPhotos ? 'text-blue-600' : 'text-gray-400'
                 }`} />
+                <span className="font-medium">{post.photos.length}</span>
+                </div>
               </button>
             )}
-            
-            <h4 className="font-semibold text-gray-800 text-sm truncate flex-1">
-              {title}
-            </h4>
-            
-            
+                      
           </div>
           
           {/* Droite = Indicateurs compacts + Boutons */}
 <div className="flex items-center gap-x-2 flex-shrink-0 ml-2">
-  
-  {/* 📸 Indicateur photos */}
-  {hasPhotos && (
-    <div className="flex items-center space-x-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-      <Camera className="w-3 h-3" />
-      <span className="font-medium">{post.photos.length}</span>
-    </div>
-  )}
+    
   
   {/* 🏷️ Bouton Tag */}
   <button 

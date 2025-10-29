@@ -40,39 +40,11 @@ export default function SessionListModal({
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b">
-            <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
               <MessageCircle className="w-5 h-5 text-purple-600" />
-              <h3 className="font-semibold text-gray-900">
-                Sessions ({sessions.length})
-              </h3>
-            </div>
+              {sessions.length} session{sessions.length > 1 ? 's' : ''} liées à : <span className="text-purple-600">{contentTitle}</span>
+            </h3>
             <div className="flex items-center gap-2">
-            
-            {/* AJOUTER ce bouton */}
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onClose();
-        // Callback pour créer nouvelle session
-        if (window.createSessionFromModal) {
-          window.createSessionFromModal();
-        }
-      }}
-      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
-      title="Créer nouvelle session"
-    >
-      <span>➕</span>
-      <span>Créer</span>
-    </button>
-    <button
-      onClick={onClose}
-      className="p-1 hover:bg-gray-100 rounded transition-colors"
-    >
-      <X className="w-5 h-5 text-gray-600" />
-    </button>
-
-            
-            
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -85,7 +57,7 @@ export default function SessionListModal({
                 title="Créer nouvelle session"
               >
                 <span>➕</span>
-                <span className="hidden sm:inline">Créer</span>
+                <span className="hidden sm:inline">Nouvelle</span>
               </button>
               <button
                 onClick={onClose}
@@ -96,12 +68,6 @@ export default function SessionListModal({
             </div>
           </div>
 
-          {/* Contenu origine */}
-          <div className="px-4 py-3 bg-gray-50 border-b">
-            <p className="text-sm text-gray-600">
-              Sessions liées à : <span className="font-medium text-gray-900">{contentTitle}</span>
-            </p>
-          </div>
 
           {/* Liste sessions */}
           <div className="flex-1 overflow-y-auto p-2">

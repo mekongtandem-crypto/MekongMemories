@@ -4,10 +4,12 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, MessageCircle, Tag, Link } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, MessageCircle, Tag, Link, MessageSquarePlus } from 'lucide-react';
 import { photoDataV2 } from '../core/PhotoDataV2.js';
 import ThemeModal from './ThemeModal.jsx';
 import { generatePhotoMomentKey, generatePhotoMastodonKey } from '../utils/themeUtils.js';
+import SessionListModal from './SessionListModal.jsx';
+import { getSessionsForContent } from '../utils/sessionUtils.js';
 
 export default function PhotoViewer({ photo, gallery, contextMoment, onClose, onCreateSession, globalSelectionMode, onContentSelected }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -22,6 +24,9 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
     currentThemes: []
   });
   const [, forceUpdate] = useState({});
+  
+  // État modal liste sessions
+const [sessionListModal, setSessionListModal] = useState(null);
   
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -64,6 +69,23 @@ export default function PhotoViewer({ photo, gallery, contextMoment, onClose, on
       setCurrentPhoto(gallery[newIndex]);
     }
   };
+
+  // Handler afficher sessions
+const handleShowSessions = (contentType, contentId, contentTitle) => {
+  const appState = window.dataManager?.getState();
+  const sessions = getSessionsForContent(appState?.sessions || [], contentType, contentId);
+  setSessionListModal({ sessions, contentTitle, contentId });
+};
+
+// Handler sélectionner session
+const handleSelectSession = (session) => {
+  setSessionListModal(null);
+  // Navigation vers ChatPage
+  if (window.app) {
+    window.app.setCurrentChatSession(session.id);
+    window.app.updateCurrentPage('chat');
+  }
+};
 
   const handleCreateSession = async () => {
     if (onCreateSession && currentPhoto && contextMoment) {
@@ -162,6 +184,20 @@ const handleLinkPhoto = () => {
     }
   };
 
+// Exposer callback création depuis modal
+useEffect(() => {
+  window.createSessionFromModal = () => {
+    if (sessionListModal && currentPhoto && contextMoment) {
+      setSessionListModal(null);
+      handleCreateSession();
+    }
+  };
+  
+  return () => {
+    delete window.createSessionFromModal;
+  };
+}, [sessionListModal, currentPhoto, contextMoment]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
@@ -177,6 +213,49 @@ const handleLinkPhoto = () => {
   const appState = window.dataManager?.getState();
   const availableThemes = appState?.masterIndex?.themes || [];
 
+  // Badge sessions adapté pour PhotoViewer
+const SessionBadgePhoto = ({ photo, sessions, onShowSessions, onCreateSession }) => {
+  const linkedSessions = getSessionsForContent(sessions, 'photo', photo.filename || photo.google_drive_id);
+  const count = linkedSessions.length;
+  
+  const handleClick = () => {
+    if (count === 0) {
+      onCreateSession();
+    } else {
+      const title = photo.filename || photo.google_drive_id || 'Photo';
+      onShowSessions('photo', photo.filename || photo.google_drive_id, title);
+    }
+  };
+  
+  return (
+    <button 
+      onClick={handleClick}
+      className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold shadow-xl transition-colors ${
+        count === 0 
+          ? 'bg-white/20 text-white hover:bg-white/30'
+          : 'bg-purple-500 text-white hover:bg-purple-600'
+      }`}
+      title={count === 0 ? 'Créer une session' : `${count} session${count > 1 ? 's' : ''} - Voir`}
+    >
+      {count === 0 ? (
+        <>
+          <MessageSquarePlus className="w-5 h-5" />
+          <span className="hidden sm:inline">Session</span>
+        </>
+      ) : (
+        <>
+          <MessageCircle className="w-5 h-5" />
+          <span className="hidden sm:inline">Sessions</span>
+          <span className="bg-purple-700 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">
+            {count}
+          </span>
+        </>
+      )}
+    </button>
+  );
+};
+
+
   return (
     <>
       <div 
@@ -191,25 +270,13 @@ const handleLinkPhoto = () => {
           
           {/* Boutons d'action (Session + Tag) */}
           <div className="flex items-center space-x-2">
-  {/* ✅ Bouton Session avec état */}
-  <button 
-    onClick={handleCreateSession}
-    className={`relative flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold shadow-xl transition-colors ${
-      contextMoment && window.app?.sessions?.some(s => s.gameId === contextMoment.id)
-        ? 'bg-amber-500 text-white hover:bg-amber-600'
-        : 'bg-white/20 text-white hover:bg-white/30'
-    }`}
-    title={contextMoment && window.app?.sessions?.some(s => s.gameId === contextMoment.id) ? "Session existante" : "Créer une session"}
-  >
-    <MessageCircle className="w-5 h-5" />
-    <span className="hidden sm:inline">Session</span>
-    {contextMoment && window.app?.sessions?.some(s => s.gameId === contextMoment.id) && (
-      <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-black">
-        1
-      </span>
-    )}
-  </button>
-  
+  {/* ✨ Badge sessions intelligent */}
+<SessionBadgePhoto 
+  photo={currentPhoto}
+  sessions={window.dataManager?.getState()?.sessions || []}
+  onShowSessions={handleShowSessions}
+  onCreateSession={handleCreateSession}
+/>
   {/* ⭐ NOUVEAU : Bouton Link (si mode sélection) */}
 {globalSelectionMode?.active && (
   <button 
@@ -326,6 +393,17 @@ const handleLinkPhoto = () => {
         title="Assigner des thèmes à cette photo"
         contentType="photo"
       />
+      
+      {/* ✨ PHASE 19E : Modal liste sessions */}
+      {sessionListModal && (
+        <SessionListModal
+          isOpen={true}
+          onClose={() => setSessionListModal(null)}
+          sessions={sessionListModal.sessions}
+          contentTitle={sessionListModal.contentTitle}
+          onSelectSession={handleSelectSession}
+        />
+      )}
     </>
   );
 }

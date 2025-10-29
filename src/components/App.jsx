@@ -210,7 +210,7 @@ useEffect(() => {
     previousPage: null,
     pendingAttachment: null,
     sessionMomentId: null,
-    pendingLink: null  // ⭐ AJOUTER
+    pendingLink: null  
   });
   
   app.updateCurrentPage(previousPage);
