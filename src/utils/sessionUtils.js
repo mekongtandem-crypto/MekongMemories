@@ -316,4 +316,77 @@ export function formatMessagePreview(message, maxLength = 60) {
   if (cleaned.length <= maxLength) return cleaned;
   return cleaned.substring(0, maxLength) + '...';
 }
+
+// ========================================
+// PHASE 19C : ORIGINE ENRICHIE
+// ========================================
+
+/**
+ * Récupère les infos d'origine d'une session + ses thèmes
+ * @param {Object} session - Session complète
+ * @param {Object} masterIndex - Index global (pour récupérer themes)
+ * @returns {Object} { originContent, originThemes, momentContext }
+ */
+export function getOriginInfo(session, masterIndex) {
+  if (!session) return null;
+  
+  const result = {
+    originContent: session.originContent || null,
+    momentId: session.momentId || session.gameId, // Fallback compatibilité
+    originThemes: [],
+    momentContext: null
+  };
+  
+  // Récupérer le moment parent
+  if (result.momentId && masterIndex?.moments) {
+    result.momentContext = masterIndex.moments.find(m => m.id === result.momentId);
+  }
+  
+  // Récupérer thèmes de l'origine
+  if (result.originContent && window.themeAssignments?.isLoaded && masterIndex?.themes) {
+    const contentKey = `${result.originContent.type}:${result.originContent.id}`;
+    const themeIds = window.themeAssignments.getThemesForContent(contentKey);
+    
+    result.originThemes = themeIds
+      .map(themeId => masterIndex.themes.find(t => t.id === themeId))
+      .filter(Boolean);
+  }
+  
+  return result;
+}
+
+/**
+ * Formatte le titre de l'origine selon son type
+ * @param {Object} originContent - Objet originContent
+ * @returns {string} Titre formaté
+ */
+export function formatOriginTitle(originContent) {
+  if (!originContent) return '';
+  
+  switch (originContent.type) {
+    case 'moment':
+      return originContent.title;
+    case 'post':
+      return originContent.title;
+    case 'photo':
+      return originContent.title || originContent.filename || 'Photo';
+    default:
+      return originContent.title || 'Contenu';
+  }
+}
+
+/**
+ * Retourne l'icône appropriée selon le type d'origine
+ * @param {string} type - 'moment' | 'post' | 'photo'
+ * @returns {string} Emoji
+ */
+export function getOriginIcon(type) {
+  switch (type) {
+    case 'moment': return '⭐';
+    case 'post': return '📰';
+    case 'photo': return '📷';
+    default: return '📍';
+  }
+}
+
 // ==================== FIN DU FICHIER ====================

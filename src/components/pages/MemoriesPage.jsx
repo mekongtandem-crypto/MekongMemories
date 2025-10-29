@@ -680,14 +680,15 @@ const handleLongPressForSelection = useCallback((element, type) => {
     );
     
     let sessionData = {
-      id: source.google_drive_id || source.id || source.url,
-      title: sessionTitle,
-      description: source.filename 
-        ? `Basée sur la photo "${source.filename}"`
-        : source.content
-          ? `Basée sur un article`
-          : `Basée sur le moment "${source.displayTitle}"`,
-    };
+  id: contextMoment.folder_id,           // Drive folder ID
+  momentId: contextMoment.id,            // ✅ AJOUTER - ID masterIndex
+  title: sessionTitle,
+  description: source.filename 
+    ? `Basée sur la photo "${source.filename}"`
+    : source.content
+      ? `Basée sur un article`
+      : `Basée sur le moment "${source.displayTitle}"`,
+};
     
     if (source.filename) {
       sessionData.systemMessage = `📸 Session basée sur la photo : "${source.filename}".`;

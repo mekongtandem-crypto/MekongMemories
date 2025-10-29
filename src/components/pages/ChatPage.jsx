@@ -1,12 +1,14 @@
 /**
- * ChatPage.jsx v2.5 - Phase 18b : Liens + Photos
+ * ChatPage.jsx v2.7 - Phase 19C v3 : SessionInfoPanel
  * ✅ Bouton [🔗 Liens/Photos]
  * ✅ État pendingLink + attachedPhoto
  * ✅ Preview lien avant envoi
  * ✅ Envoi message avec linkedContent
+ * ✅ SessionInfoPanel (slide-in)
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import LinkedContent from '../LinkedContent.jsx';
+import SessionInfoPanel from '../SessionInfoPanel.jsx';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
 import { Send, Trash2, Edit, Camera, Link, FileText, MapPin, Image as ImageIcon, Tag } from 'lucide-react';
@@ -27,14 +29,17 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
     isOpen: false, photo: null 
   });
   
-  // ✨ PHASE B : État modal thèmes
+  // ✨ État modal thèmes
   const [themeModal, setThemeModal] = useState({
     isOpen: false,
     currentThemes: []
   });
+
+  // ✨ PHASE 19C : État panel infos
+  const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
   
   const messagesEndRef = useRef(null);
-  const messagesContainerRef = useRef(null);  // ⭐ NOUVEAU
+  const messagesContainerRef = useRef(null);
   const textareaRef = useRef(null);
 
   // Scroll vers dernier message
@@ -132,6 +137,18 @@ useEffect(() => {
     delete window.saveChatScrollPosition;
   };
 }, [app.currentChatSession?.id]);
+
+// ✨ PHASE 19C : Exposer handlers pour TopBar menu
+useEffect(() => {
+  window.chatPageHandlers = {
+    toggleInfoPanel: () => setIsInfoPanelOpen(prev => !prev),
+    openThemeModal: handleOpenThemeModal
+  };
+  
+  return () => {
+    delete window.chatPageHandlers;
+  };
+}, []);
 
 // ⭐ Phase 18c : Restaurer position scroll au retour
 useEffect(() => {
@@ -311,7 +328,7 @@ useEffect(() => {
     }
   };
   
-  const handleNavigateToContent = (linkedContent) => {
+const handleNavigateToContent = (linkedContent) => {
   console.log('🧭 Navigation vers contenu:', linkedContent);
   // ⭐ AJOUTER : Sauvegarder position AVANT navigation
   if (window.saveChatScrollPosition) {
@@ -384,6 +401,12 @@ useEffect(() => {
   }
 };
 
+const handleNavigateFromPanel = (contentType, contentId) => {
+  const linkedContent = { type: contentType, id: contentId };
+  handleNavigateToContent(linkedContent);
+};
+
+
 // Helper : Trouver moment parent d'une photo
 const findParentMoment = (photoFilename) => {
   if (!app.masterIndex?.moments) return null;
@@ -406,6 +429,8 @@ const findParentMoment = (photoFilename) => {
   
   return null;
 };
+
+
 
   // ========================================
   // PHOTO VIEWER
@@ -798,6 +823,15 @@ function LinkPhotoPreview({ photo }) {
         />
       )}
       
+      {/* ✨ PHASE 19C : SessionInfoPanel */}
+      <SessionInfoPanel
+        isOpen={isInfoPanelOpen}
+        onClose={() => setIsInfoPanelOpen(false)}
+        session={app.currentChatSession}
+        masterIndex={app.masterIndex}
+        onNavigateToContent={handleNavigateFromPanel}
+      />
+
       {/* Feedback temporaire */}
       {feedbackMessage && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-pulse">

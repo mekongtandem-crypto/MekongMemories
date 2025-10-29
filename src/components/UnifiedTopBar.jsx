@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
+import { getOriginInfo, formatOriginTitle, getOriginIcon } from '../utils/sessionUtils.js';
+
 
 const formatDateTime = (isoString) => {
   if (!isoString) return 'N/A';
@@ -357,19 +359,7 @@ case 'memories': {
                 <Edit className="w-4 h-4 ml-2 text-gray-500 opacity-0 group-hover:opacity-100 flex-shrink-0" />
               </div>
               
-              {/* ✨ PHASE B : Bouton thèmes */}
-              <button
-                onClick={() => window.chatPageActions?.openThemeModal?.()}
-                className="flex-shrink-0 p-1.5 hover:bg-amber-50 rounded-lg transition-colors relative"
-                title="Gérer les thèmes"
-              >
-                <Tag className={`w-4 h-4 ${sessionThemes.length > 0 ? 'text-amber-600' : 'text-gray-400'}`} />
-                {sessionThemes.length > 0 && (
-                  <div className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {sessionThemes.length}
-                  </div>
-                )}
-              </button>
+              
             </div>
           );
         }
@@ -382,25 +372,48 @@ case 'memories': {
   };
 
   const renderMenu = () => {
-    if (currentPage !== 'chat' || !app.currentChatSession) return null;
-    const { notes, user, createdAt } = app.currentChatSession;
-    const messageCount = notes?.length || 0;
-    const createdByUser = userManager.getUser(user)?.name || 'N/A';
-    const lastMessage = notes?.[messageCount - 1];
-    const lastModifiedByUser = userManager.getUser(lastMessage?.author)?.name || createdByUser;
+  if (currentPage !== 'chat' || !app.currentChatSession) return null;
 
-    return (
-      <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-64 z-50">
-        <div className="px-4 py-3 text-xs text-gray-500 space-y-1">
-          <div><strong>{messageCount}</strong> message{messageCount > 1 ? 's' : ''}</div>
-          <div>Créée par <strong>{createdByUser}</strong> le {formatDateTime(createdAt)}</div>
-          {lastMessage && (<div>Dernier message par <strong>{lastModifiedByUser}</strong> le {formatDateTime(lastMessage.timestamp)}</div>)}
-        </div>
-        <div className="border-t border-gray-200 my-1"></div>
-        <button onClick={handleDeleteCurrentSession} className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2"><Trash2 className="w-4 h-4" /><span>Supprimer la session</span></button>
-      </div>
-    );
-  };
+  return (
+    <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-48 z-50">
+      
+      {/* Infos session */}
+      <button 
+        onClick={() => {
+          setShowMenu(false);
+          window.chatPageHandlers?.toggleInfoPanel?.();
+        }}
+        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+      >
+        <Sparkles className="w-4 h-4 text-purple-600" />
+        <span>Infos session</span>
+      </button>
+
+      {/* Thèmes */}
+      <button 
+        onClick={() => {
+          setShowMenu(false);
+          window.chatPageHandlers?.openThemeModal?.();
+        }}
+        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+      >
+        <Tag className="w-4 h-4 text-amber-600" />
+        <span>Gérer les thèmes</span>
+      </button>
+
+      <div className="border-t border-gray-200 my-1"></div>
+
+      {/* Supprimer */}
+      <button 
+        onClick={handleDeleteCurrentSession} 
+        className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2"
+      >
+        <Trash2 className="w-4 h-4" />
+        <span>Supprimer la session</span>
+      </button>
+    </div>
+  );
+};
 
   const renderUserMenu = () => {
   const isOnline = app.connection?.isOnline;
