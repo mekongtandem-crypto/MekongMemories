@@ -42,7 +42,7 @@ import {
 // ========================================
 
 // Badge sessions pour Post (inline dans footer card)
-const SessionBadgePost = ({ post, momentId, sessions, onShowSessions, onCreateSession }) => {
+const SessionBadgePost = memo(({ post, momentId, sessions, onShowSessions, onCreateSession }) => {
   const linkedSessions = getSessionsForContent(sessions, 'post', post.id);
   const count = linkedSessions.length;
   
@@ -69,10 +69,10 @@ const SessionBadgePost = ({ post, momentId, sessions, onShowSessions, onCreateSe
       {count > 0 && <span>{count}</span>}
     </div>
   );
-};
+});
 
 // Pastille sessions pour Photo thumbnail (overlay circle)
-const SessionBadgePhotoThumb = ({ photo, momentId, sessions, onShowSessions }) => {
+const SessionBadgePhotoThumb = memo(({ photo, momentId, sessions, onShowSessions }) => {
   const linkedSessions = getSessionsForContent(
     sessions, 
     'photo', 
@@ -97,7 +97,7 @@ const SessionBadgePhotoThumb = ({ photo, momentId, sessions, onShowSessions }) =
       {count}
     </div>
   );
-};
+});
 
 // ========================================
 // COMPOSANT PRINCIPAL
@@ -170,6 +170,7 @@ function MemoriesPage({
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   
   const momentRefs = useRef({});
+  const navigationProcessedRef = useRef(null);
   
   // ========================================
   // CALLBACKS-HANDLE TAGGING HIÉRARCHIQUE
@@ -595,6 +596,23 @@ const handleOpenSessionModal = useCallback((source, contextMoment) => {
   }, []);
 
   // ========================================
+  // PHOTO VIEWER HANDLERS
+  // ========================================
+  
+  const openPhotoViewer = useCallback((clickedPhoto, contextMoment, photoList) => {
+    setViewerState({ 
+      isOpen: true, 
+      photo: clickedPhoto, 
+      gallery: Array.isArray(photoList) ? photoList : [], 
+      contextMoment 
+    });
+  }, []);
+
+  const closePhotoViewer = useCallback(() => {
+    setViewerState({ isOpen: false, photo: null, gallery: [], contextMoment: null });
+  }, []);
+
+  // ========================================
   // EFFECTS
   // ========================================
   
@@ -754,51 +772,160 @@ const handleOpenSessionModal = useCallback((source, contextMoment) => {
 }, [sessionListModal, app.masterIndex]);
   
 
-  // Phase 17c : Auto-ouvrir moment du chat
+  // ========================================
+  // PHASE 19E : NAVIGATION DEPUIS CHAT (Auto-ouvrir contenu cible)
+  // ========================================
   useEffect(() => {
-  // ⭐ Gestion navigation depuis chat
+  // Récupérer les paramètres de navigation
   const targetContent = navigationContext?.targetContent;
   const momentId = navigationContext?.sessionMomentId;
+  
+  // ⭐ Créer une clé unique pour cette navigation
+  const navKey = targetContent 
+    ? `${targetContent.type}-${targetContent.id}`
+    : momentId 
+      ? `moment-${momentId}`
+      : null;
+  
+  // ⭐ Si on a déjà traité cette navigation, ignorer
+  if (navKey && navKey === navigationProcessedRef.current) {
+    return;
+  }
   
   if ((targetContent || momentId) && momentsData.length > 0) {
     let targetMoment;
     
-    // Cas 1 : Lien vers post → Trouver moment parent
+    // ========================================
+    // CAS 1 : LIEN VERS POST → Trouver moment parent
+    // ========================================
     if (targetContent?.type === 'post') {
       targetMoment = momentsData.find(m => 
         m.posts?.some(p => p.id === targetContent.id)
       );
-    }
-    // Cas 2 : Lien vers moment direct
-    else if (targetContent?.type === 'moment' || momentId) {
-      const searchId = targetContent?.id || momentId;
-      targetMoment = momentsData.find(m => m.id === searchId);
-    }
-    
-    if (targetMoment) {
-      const mode = selectionMode?.active ? '[MODE SÉLECTION]' : '[MODE NORMAL]';
-      console.log(`🎯 ${mode} Ouverture moment:`, targetMoment.displayTitle);
       
-      // Ouvrir le moment
-      setSelectedMoments([targetMoment]);
-      
-      // Scroller vers moment (ou post si spécifié)
-      setTimeout(() => {
-        if (targetContent?.type === 'post') {
-          // Scroll vers post spécifique
+      if (targetMoment) {
+        const mode = selectionMode?.active ? '[MODE SÉLECTION]' : '[MODE NORMAL]';
+        console.log(`🎯 ${mode} Ouverture post dans moment:`, targetMoment.displayTitle);
+        
+        // Ouvrir le moment
+        setSelectedMoments([targetMoment]);
+        
+        // Scroll vers post spécifique
+        setTimeout(() => {
           const postElement = document.querySelector(`[data-post-id="${targetContent.id}"]`);
           if (postElement) {
             executeScrollToElement(postElement);
           }
-        } else {
-          // Scroll vers moment
+        }, 300);
+      }
+      // ⭐ Marquer comme traité
+		navigationProcessedRef.current = navKey;
+    }
+    
+    // ========================================
+    // CAS 2 : LIEN VERS MOMENT DIRECT
+    // ========================================
+    else if (targetContent?.type === 'moment' || momentId) {
+      const searchId = targetContent?.id || momentId;
+      targetMoment = momentsData.find(m => m.id === searchId);
+      
+      if (targetMoment) {
+        const mode = selectionMode?.active ? '[MODE SÉLECTION]' : '[MODE NORMAL]';
+        console.log(`🎯 ${mode} Ouverture moment:`, targetMoment.displayTitle);
+        
+        // Ouvrir le moment
+        setSelectedMoments([targetMoment]);
+        
+        // Scroll vers moment
+        setTimeout(() => {
           const element = momentRefs.current[targetMoment.id];
           if (element) executeScrollToElement(element);
+        }, 300);
+      }
+      // ⭐ AJOUTER ICI
+      navigationProcessedRef.current = navKey;
+    }
+    
+    // ========================================
+    // CAS 3 : LIEN VERS PHOTO → Trouver moment parent + ouvrir viewer
+    // ========================================
+    else if (targetContent?.type === 'photo') {
+      console.log('📷 Navigation vers photo:', targetContent.id);
+      
+      // Trouver le moment parent de la photo
+      for (const moment of momentsData) {
+        // Chercher dans dayPhotos
+        const dayPhoto = moment.dayPhotos?.find(p => 
+          p.filename === targetContent.id || 
+          p.google_drive_id === targetContent.id
+        );
+        
+        if (dayPhoto) {
+          targetMoment = moment;
+          console.log('✅ Photo trouvée dans dayPhotos du moment:', moment.displayTitle);
+          
+          // Ouvrir le moment
+          setSelectedMoments([moment]);
+          
+          // Construire galerie complète
+          const gallery = [
+            ...(moment.dayPhotos || []),
+            ...(moment.postPhotos || [])
+          ];
+          
+          // Ouvrir PhotoViewer avec la photo ciblée
+          setTimeout(() => {
+            openPhotoViewer(dayPhoto, moment, gallery);
+          }, 300);
+          
+          break;
         }
-      }, 300);
+        
+        // Chercher dans postPhotos
+        if (moment.posts) {
+          for (const post of moment.posts) {
+            const postPhoto = post.photos?.find(p => 
+              p.filename === targetContent.id || 
+              p.google_drive_id === targetContent.id
+            );
+            
+            if (postPhoto) {
+              targetMoment = moment;
+              console.log('✅ Photo trouvée dans post du moment:', moment.displayTitle);
+              
+              // Ouvrir le moment
+              setSelectedMoments([moment]);
+              
+              // Construire galerie complète
+              const gallery = [
+                ...(moment.dayPhotos || []),
+                ...(moment.postPhotos || [])
+              ];
+              
+              // Ouvrir PhotoViewer avec la photo ciblée
+              setTimeout(() => {
+                openPhotoViewer(postPhoto, moment, gallery);
+              }, 300);
+              
+              break;
+            }
+          }
+        }
+        
+        if (targetMoment) break;
+      }
+      
+      // ⭐ AJOUTER ICI
+      navigationProcessedRef.current = navKey;
+      
+      if (!targetMoment) {
+        console.warn('⚠️ Photo non trouvée dans les moments');
+      }
     }
   }
-}, [navigationContext?.sessionMomentId, navigationContext?.targetContent]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [navigationContext?.sessionMomentId, navigationContext?.targetContent, momentsData, selectionMode]);
+// Note: openPhotoViewer est stable (useCallback) et peut être omis des dépendances
 
   // Puis continuer avec les callbacks...
   const scrollToMoment = useCallback((momentId) => {
@@ -815,19 +942,6 @@ const handleOpenSessionModal = useCallback((source, contextMoment) => {
       setCurrentDay(day);
     }
   }, [momentsData, setCurrentDay]);
-
-  const openPhotoViewer = useCallback((clickedPhoto, contextMoment, photoList) => {
-    setViewerState({ 
-      isOpen: true, 
-      photo: clickedPhoto, 
-      gallery: Array.isArray(photoList) ? photoList : [], 
-      contextMoment 
-    });
-  }, []);
-
-  const closePhotoViewer = useCallback(() => {
-    setViewerState({ isOpen: false, photo: null, gallery: [], contextMoment: null });
-  }, []);
 
   const handleSelectMoment = useCallback((moment, forceOpen = false) => {
     setSelectedMoments(prev => {

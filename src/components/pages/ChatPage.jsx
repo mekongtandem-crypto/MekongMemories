@@ -1,5 +1,5 @@
 /**
- * ChatPage.jsx v2.8 - Phase 19D v1 : SessionInfoPanel
+ * ChatPage.jsx v2.9 - Phase 19E  : SessionInfoPanel
  * ✅ Bouton [🔗 Liens/Photos]
  * ✅ État pendingLink + attachedPhoto
  * ✅ Preview lien avant envoi
@@ -328,96 +328,158 @@ useEffect(() => {
     }
   };
 // ========================================
-// HANDLERS NAVIGATION
-// ========================================  
-const handleNavigateToContent = (linkedContent) => {
-  console.log('🧭 Navigation vers contenu:', linkedContent);
-  // ⭐ AJOUTER : Sauvegarder position AVANT navigation
+// HANDLERS NAVIGATION CONTENU (⭐ PHASE 19E)
+// ========================================
+
+/**
+ * 🔍 NAVIGATION LOCALE : Ouvrir PhotoViewer dans ChatPage
+ * Utilisé par : LinkedContent (bouton Zoom sur photos), PhotoMessage
+ * NE CHANGE PAS de page, reste dans Chat
+ */
+const handleOpenPhotoLocal = (linkedContent) => {
+  console.log('🔍 Ouverture photo locale:', linkedContent);
+  
+  // 1. Trouver le moment parent de la photo
+  const parentMoment = findParentMoment(linkedContent.id);
+  
+  if (parentMoment) {
+    // 2. Construire galerie complète (photos moment + photos posts)
+    const allPhotos = [
+      ...(parentMoment.dayPhotos || []),
+      ...(parentMoment.postPhotos || [])
+    ];
+    
+    // 3. Trouver photo par google_drive_id OU filename
+    const photoIndex = allPhotos.findIndex(p => 
+      p.google_drive_id === linkedContent.id || 
+      p.filename === linkedContent.id
+    );
+    
+    // 4. Déterminer la photo cible
+    const targetPhoto = photoIndex >= 0 ? allPhotos[photoIndex] : {
+      google_drive_id: linkedContent.google_drive_id || linkedContent.id,
+      url: linkedContent.url,
+      width: linkedContent.width,
+      height: linkedContent.height,
+      mime_type: linkedContent.mime_type,
+      type: linkedContent.photoType,
+      filename: linkedContent.title || 'Photo',
+    };
+    
+    console.log('🎯 Photo cible:', photoIndex >= 0 ? `${photoIndex + 1}/${allPhotos.length}` : 'Photo seule');
+    
+    // 5. Ouvrir visionneuse locale
+    setViewerState({
+      isOpen: true,
+      photo: targetPhoto,
+      gallery: allPhotos,
+      contextMoment: parentMoment,
+      returnToChat: true
+    });
+    
+  } else {
+    // Fallback : Photo sans moment parent
+    console.warn('⚠️ Moment parent introuvable, photo isolée');
+    
+    const standalonePhoto = {
+      google_drive_id: linkedContent.google_drive_id || linkedContent.id,
+      url: linkedContent.url,
+      width: linkedContent.width,
+      height: linkedContent.height,
+      mime_type: linkedContent.mime_type,
+      type: linkedContent.photoType,
+      filename: linkedContent.title || 'Photo',
+    };
+    
+    setViewerState({
+      isOpen: true,
+      photo: standalonePhoto,
+      gallery: [standalonePhoto],
+      contextMoment: null,
+      returnToChat: true
+    });
+  }
+};
+
+/**
+ * 📍 NAVIGATION GLOBALE : Aller dans Memories et localiser le contenu
+ * Utilisé par : LinkedContent (bouton Localiser), SessionInfoPanel
+ * 
+ * Comportements par type :
+ * - Moment : Ouvrir le moment dans Memories
+ * - Post : Ouvrir parent moment + scroll vers post
+ * - Photo : Trouver parent moment + ouvrir PhotoViewer là-bas
+ */
+const handleNavigateToMemories = (linkedContent) => {
+  console.log('📍 Navigation vers Memories:', linkedContent);
+  
+  // Sauvegarder position scroll pour retour
   if (window.saveChatScrollPosition) {
     window.saveChatScrollPosition();
   }
   
-  switch(linkedContent.type) {
-    case 'photo':
-      // ========================================
-      // NAVIGATION VERS PHOTO
-      // ========================================
-      
-      // 1. Trouver le moment parent de la photo
-      const parentMoment = findParentMoment(linkedContent.id);
-      
-      console.log('🔍 DEBUG Photo:', {
-        photoId: linkedContent.id,
-        parentFound: !!parentMoment,
-        momentId: parentMoment?.id,
-        dayPhotos: parentMoment?.dayPhotos?.length || 0,
-        postPhotos: parentMoment?.postPhotos?.length || 0
-      });
-      
-      if (parentMoment) {
-        // 2. Construire galerie complète (photos moment + photos posts)
-        const allPhotos = [
-          ...(parentMoment.dayPhotos || []),
-          ...(parentMoment.postPhotos || [])
-        ];
-        
-        console.log('📸 Galerie complète:', allPhotos.length, 'photos');
-        
-        // 3. ✅ CORRECTION : Trouver photo par google_drive_id OU filename
-        const photoIndex = allPhotos.findIndex(p => 
-          p.google_drive_id === linkedContent.id || 
-          p.filename === linkedContent.id
-        );
-        
-        // 4. Déterminer la photo cible
-        const targetPhoto = photoIndex >= 0 ? allPhotos[photoIndex] : {
-          google_drive_id: linkedContent.id,
-          filename: linkedContent.title || 'Photo',
-          // Fallback si photo pas trouvée dans galerie
-        };
-        
-        console.log('🎯 Photo cible:', photoIndex >= 0 ? `${photoIndex + 1}/${allPhotos.length}` : 'Photo seule');
-        
-        // 5. Ouvrir visionneuse
-        setViewerState({
-          isOpen: true,
-          photo: targetPhoto,
-          gallery: allPhotos,
-          contextMoment: parentMoment,
-          returnToChat: true
-        });
-        
+  // Utiliser le système de navigation global (App.jsx)
+  if (window.navigateToContentFromChat) {
+    window.navigateToContentFromChat(linkedContent);
   } else {
-        // ========================================
-        // FALLBACK : Photo sans moment parent
-        // ========================================
-        
-        console.warn('⚠️ Moment parent introuvable, photo isolée');
-        
-        // Créer objet photo minimal pour visionneuse
-        const standalonePhoto = {
-          google_drive_id: linkedContent.id,
-          filename: linkedContent.title || 'Photo',
-        };
-        
-        setViewerState({
-          isOpen: true,
-          photo: standalonePhoto,
-          gallery: [standalonePhoto],  // Galerie d'une seule photo
-          contextMoment: null,
-          returnToChat: true
-        });
-      }
-      break;
-    
-    default:
-      console.warn('Type de contenu inconnu:', linkedContent.type);
+    console.error('❌ window.navigateToContentFromChat non disponible');
   }
 };
 
+/**
+ * 🎯 HANDLER UNIFIÉ : Appelé par SessionInfoPanel
+ * Route vers navigation Memories pour tous les types
+ */
 const handleNavigateFromPanel = (contentType, contentId) => {
-  const linkedContent = { type: contentType, id: contentId };
-  handleNavigateToContent(linkedContent);
+  // Récupérer les métadonnées complètes du contenu
+  let linkedContent = { type: contentType, id: contentId };
+  
+  // Pour les photos, enrichir avec les métadonnées Drive si disponibles
+  if (contentType === 'photo' && app.masterIndex?.moments) {
+    for (const moment of app.masterIndex.moments) {
+      // Chercher dans dayPhotos
+      const dayPhoto = moment.dayPhotos?.find(p => 
+        p.filename === contentId || p.google_drive_id === contentId
+      );
+      if (dayPhoto) {
+        linkedContent = {
+          ...linkedContent,
+          google_drive_id: dayPhoto.google_drive_id,
+          url: dayPhoto.url,
+          width: dayPhoto.width,
+          height: dayPhoto.height,
+          mime_type: dayPhoto.mime_type,
+          photoType: dayPhoto.type,
+          title: dayPhoto.filename
+        };
+        break;
+      }
+      
+      // Chercher dans postPhotos
+      if (moment.posts) {
+        for (const post of moment.posts) {
+          const postPhoto = post.photos?.find(p => 
+            p.filename === contentId || p.google_drive_id === contentId
+          );
+          if (postPhoto) {
+            linkedContent = {
+              ...linkedContent,
+              google_drive_id: postPhoto.google_drive_id,
+              url: postPhoto.url,
+              width: postPhoto.width,
+              height: postPhoto.height,
+              mime_type: postPhoto.mime_type,
+              photoType: postPhoto.type,
+              title: postPhoto.filename
+            };
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  handleNavigateToMemories(linkedContent);
 };
 
 
@@ -645,12 +707,13 @@ function LinkPhotoPreview({ photo }) {
                   <>
                   
                     {/* ⭐ Lien enrichi */}
-                    {/* ⭐ NOUVEAU : Wrapper avec contraintes strictes */}
+                    {/* ⭐ PHASE 19E : Double handler (local + navigation) */}
     {message.linkedContent && (
       <div className="w-full max-w-full overflow-hidden mb-2">
         <LinkedContent 
           linkedContent={message.linkedContent}
-          onNavigate={handleNavigateToContent}
+          onOpenLocal={handleOpenPhotoLocal}
+          onNavigate={handleNavigateToMemories}
           masterIndex={app.masterIndex}
         />
       </div>

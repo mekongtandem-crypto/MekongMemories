@@ -1,40 +1,34 @@
 /**
- * LinkedContent.jsx v1.1 - Phase 18b Étape 3b
+ * LinkedContent.jsx v1.2 - Phase 19E
  * Affichage enrichi des liens dans messages
- * ✅ Troncature stricte pour mobile
+ * ⭐ NOUVEAU : Double action pour photos (🔍 Zoom + 📍 Localiser)
  */
 import React, { useState, useEffect } from 'react';
-import { MapPin, FileText, Image as ImageIcon, ChevronRight } from 'lucide-react';
+import { MapPin, FileText, Image as ImageIcon, ChevronRight, ZoomIn, Navigation } from 'lucide-react';
 
-export default function LinkedContent({ linkedContent, onNavigate, masterIndex }) {
+export default function LinkedContent({ linkedContent, onOpenLocal, onNavigate, masterIndex }) {
   
-  const handleClick = () => {
-    if (onNavigate) {
-      onNavigate(linkedContent);
-    }
-  };
-
   // Router selon type
   switch (linkedContent.type) {
     case 'photo':
-      return <LinkedPhoto linkedContent={linkedContent} onClick={handleClick} />;
+      return <LinkedPhoto linkedContent={linkedContent} onOpenLocal={onOpenLocal} onNavigate={onNavigate} />;
     
     case 'post':
-      return <LinkedPost linkedContent={linkedContent} onClick={handleClick} masterIndex={masterIndex} />;
+      return <LinkedPost linkedContent={linkedContent} onNavigate={onNavigate} masterIndex={masterIndex} />;
     
     case 'moment':
-      return <LinkedMoment linkedContent={linkedContent} onClick={handleClick} masterIndex={masterIndex} />;
+      return <LinkedMoment linkedContent={linkedContent} onNavigate={onNavigate} masterIndex={masterIndex} />;
     
     default:
-      return <DefaultLink linkedContent={linkedContent} onClick={handleClick} />;
+      return <DefaultLink linkedContent={linkedContent} onNavigate={onNavigate} />;
   }
 }
 
 // ========================================
-// 📷 PHOTO LIÉE (200px comme envoi)
+// 📷 PHOTO LIÉE (⭐ PHASE 19E : Double action)
 // ========================================
 
-function LinkedPhoto({ linkedContent, onClick }) {
+function LinkedPhoto({ linkedContent, onOpenLocal, onNavigate }) {
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -101,22 +95,42 @@ function LinkedPhoto({ linkedContent, onClick }) {
   }
 
   return (
-    <div 
-      className="mb-2 cursor-pointer group relative inline-block"
-      onClick={onClick}
-    >
+    <div className="mb-2 relative group inline-block">
       <img
         src={imageUrl}
         alt={linkedContent.title}
-        className="max-w-[200px] rounded-lg shadow-md group-hover:shadow-lg transition-shadow"
+        className="max-w-[200px] rounded-lg shadow-md transition-shadow"
       />
       
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all rounded-lg">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="opacity-0 group-hover:opacity-100 bg-white px-3 py-1.5 rounded-full text-sm font-medium text-gray-800 shadow-lg transition-opacity">
-            📷 Voir galerie
-          </div>
-        </div>
+      {/* ⭐ NOUVEAU : Overlay avec 2 boutons */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all rounded-lg flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+        
+        {/* 🔍 Bouton Zoom (ouvrir local) */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onOpenLocal) onOpenLocal(linkedContent);
+          }}
+          className="px-3 py-2 bg-white hover:bg-gray-100 rounded-full shadow-lg transition-colors flex items-center gap-1.5 text-sm font-medium"
+          title="Ouvrir ici"
+        >
+          <ZoomIn className="w-4 h-4" />
+          <span>Zoom</span>
+        </button>
+        
+        {/* 📍 Bouton Localiser (naviguer vers Memories) */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onNavigate) onNavigate(linkedContent);
+          }}
+          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg transition-colors flex items-center gap-1.5 text-sm font-medium"
+          title="Localiser dans Mémoires"
+        >
+          <MapPin className="w-4 h-4" />
+          <span>Localiser</span>
+        </button>
+        
       </div>
     </div>
   );
@@ -126,7 +140,7 @@ function LinkedPhoto({ linkedContent, onClick }) {
 // 📄 POST LIÉ (Card avec preview texte)
 // ========================================
 
-function LinkedPost({ linkedContent, onClick, masterIndex }) {
+function LinkedPost({ linkedContent, onNavigate, masterIndex }) {
   const [postData, setPostData] = useState(null);
 
   useEffect(() => {
@@ -141,10 +155,14 @@ function LinkedPost({ linkedContent, onClick, masterIndex }) {
     }
   }, [linkedContent.id, masterIndex]);
 
+  const handleClick = () => {
+    if (onNavigate) onNavigate(linkedContent);
+  };
+
   if (!postData) {
     return (
       <div 
-        onClick={onClick}
+        onClick={handleClick}
         className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
       >
         <div className="flex items-center space-x-2">
@@ -164,7 +182,7 @@ function LinkedPost({ linkedContent, onClick, masterIndex }) {
 
   return (
     <div 
-      onClick={onClick}
+      onClick={handleClick}
       className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors group"
     >
       <div className="flex items-start space-x-2">
@@ -199,7 +217,7 @@ function LinkedPost({ linkedContent, onClick, masterIndex }) {
 // 🗺️ MOMENT LIÉ (Card texte seul)
 // ========================================
 
-function LinkedMoment({ linkedContent, onClick, masterIndex }) {
+function LinkedMoment({ linkedContent, onNavigate, masterIndex }) {
   const [momentData, setMomentData] = useState(null);
 
   useEffect(() => {
@@ -211,10 +229,14 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
     }
   }, [linkedContent.id, masterIndex]);
 
+  const handleClick = () => {
+    if (onNavigate) onNavigate(linkedContent);
+  };
+
   if (!momentData) {
     return (
       <div 
-        onClick={onClick}
+        onClick={handleClick}
         className="mb-2 p-3 bg-purple-50 border border-purple-200 rounded-lg cursor-pointer hover:bg-purple-100 transition-colors"
       >
         <div className="flex items-center space-x-2">
@@ -243,21 +265,17 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
 
   return (
     <div 
-      onClick={onClick}
-      // ⭐ COPIE LinkedPost : PAS de w-full, juste les classes de base
+      onClick={handleClick}
       className="mb-2 p-3 bg-purple-50 border border-purple-200 rounded-lg cursor-pointer hover:bg-purple-100 transition-colors group"
     >
-      {/* ⭐ COPIE EXACTE structure LinkedPost */}
       <div className="flex items-start space-x-2">
         <MapPin className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
         
         <div className="flex-1 min-w-0">
-          {/* Titre - ⭐ line-clamp-1 comme LinkedPost */}
           <div className="font-semibold text-purple-900 text-sm mb-1 line-clamp-1">
             {linkedContent.title}
           </div>
           
-          {/* Stats */}
           <div className="flex items-center space-x-3 text-xs text-purple-700 mb-2">
             {postCount > 0 && (
               <>
@@ -270,13 +288,11 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
             )}
           </div>
           
-          {/* Liste posts - ⭐ SIMPLE comme preview dans LinkedPost */}
           {postTitles.length > 0 && (
             <div className="text-xs text-purple-600 space-y-1">
               {postTitles.slice(0, 3).map((title, i) => (
                 <div 
                   key={i}
-                  // ⭐ line-clamp-1 au lieu de truncate
                   className="line-clamp-1"
                 >
                   • {title}
@@ -290,7 +306,6 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
             </div>
           )}
           
-          {/* Cas vide */}
           {postCount === 0 && photoCount === 0 && (
             <div className="text-xs text-purple-500 italic">
               Moment sans contenu
@@ -308,10 +323,14 @@ function LinkedMoment({ linkedContent, onClick, masterIndex }) {
 // 🔗 FALLBACK (lien générique)
 // ========================================
 
-function DefaultLink({ linkedContent, onClick }) {
+function DefaultLink({ linkedContent, onNavigate }) {
+  const handleClick = () => {
+    if (onNavigate) onNavigate(linkedContent);
+  };
+
   return (
     <div 
-      onClick={onClick}
+      onClick={handleClick}
       className="mb-2 inline-flex items-center space-x-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
     >
       <span className="text-sm font-medium text-gray-700">{linkedContent.title}</span>
