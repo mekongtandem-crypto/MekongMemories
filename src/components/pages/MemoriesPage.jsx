@@ -120,9 +120,7 @@ function MemoriesPage({
   onOpenSessionFromMemories
 }, ref) {
 
-  // ⭐ DEBUG : Log au démarrage
-  console.log('🔍 MemoriesPage selectionMode:', selectionMode);
-
+  
 // ========================================
 // 2. STATE, les états 
 // ========================================
@@ -864,21 +862,26 @@ const handleOpenSessionModal = useCallback((source, contextMoment) => {
         : `Souvenirs du moment : ${source.displayTitle}`
   );
   
-  // ⭐ PHASE 19D : Déterminer ID selon type de source
+  // ========================================
+  // DÉTERMINATION TYPE & ID SOURCE
+  // ========================================
+  
   let sourceId;
   let sourceType;
   
-  if (source.filename) {
-    // Photo : ID sera géré via sourcePhoto
-    sourceId = contextMoment.folder_id;  // Fallback pour folder
+  if (source.filename || source.google_drive_id) {
+    // Photo : utiliser google_drive_id comme identifiant unique
+    sourceId = source.google_drive_id || source.filename;  // ✅ CORRECTION: ID réel de la photo
     sourceType = 'photo';
+    
   } else if (source.content) {
     // Post : utiliser l'ID du post
-    sourceId = source.id || source.created_at;  // ID unique du post
+    sourceId = source.id || source.created_at;
     sourceType = 'post';
+    
   } else {
     // Moment : utiliser l'ID masterIndex
-    sourceId = contextMoment.id;  // ✅ ID masterIndex, pas folder_id
+    sourceId = contextMoment.id;
     sourceType = 'moment';
   }
   
@@ -1236,7 +1239,7 @@ const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onS
     >
       {count === 0 ? (
         <>
-          <span><MessageCirclePlus className="w-4 h-4" /></span><span>  </span>
+          <span><MessageCircle className="w-4 h-4" /></span><span>  </span>
         </>
       ) : (
         <>

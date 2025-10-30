@@ -36,7 +36,7 @@ export function useAppState() {
     }
   }, [connect]);
 
-  // HOOK 5: useMemo (pour dériver l'état de l'utilisateur)
+  // HOOK 5: useMemo (pour dÃ©river l'Ã©tat de l'utilisateur)
   const derivedUserState = useMemo(() => {
     const userId = appState.data?.currentUser || null;
     const currentUserObject = userManager.getUser(userId);
@@ -44,7 +44,7 @@ export function useAppState() {
     return { currentUser: currentUserObject, userStyle };
   }, [appState.data?.currentUser]);
 
-  // Actions exposées à l'UI (toutes avec useCallback)
+  // Actions exposÃ©es Ã  l'UI (toutes avec useCallback)
   const disconnect = useCallback(() => connectionManager.disconnect(), []);
   const updateCurrentPage = useCallback((pageId) => dataManager.updateCurrentPage(pageId), []);
   const setCurrentUser = useCallback((userId) => dataManager.setCurrentUser(userId), []);
@@ -57,8 +57,8 @@ export function useAppState() {
   const openChatSession = useCallback((session) => dataManager.openChatSession(session), []);
   const closeChatSession = useCallback(() => dataManager.closeChatSession(), []);
   const addMessageToSession = useCallback(async (sessionId, content, photoData = null, linkedContent = null) => {
-  // console.log('🔗 useAppState.addMessageToSession - photoData:', photoData);
-  // console.log('🔗 useAppState.addMessageToSession - linkedContent:', linkedContent);
+  // console.log('ðŸ”— useAppState.addMessageToSession - photoData:', photoData);
+  // console.log('ðŸ”— useAppState.addMessageToSession - linkedContent:', linkedContent);
   await dataManager.addMessageToSession(sessionId, content, photoData, linkedContent);
 }, []);
   const regenerateMasterIndex = useCallback(() => dataManager.regenerateMasterIndex(), []);
@@ -77,7 +77,49 @@ export function useAppState() {
     return dataManager.notificationManager?.getUnreadCount(appState.data.currentUser) || 0;
   }, [appState.data?.currentUser]);
 
-  // On fusionne l'état brut, l'état dérivé et les actions
+  // ========================================
+  // CONTENTLINKS - PHASE 19D
+  // ========================================
+  
+  /**
+   * Récupérer toutes les sessions liées à un contenu
+   * 
+   * USAGE :
+   * - PhotoViewer : Afficher pastille 💬 avec compteur
+   * - MemoriesPage : Pastilles sur moments/posts/photos
+   * - SessionListModal : Liste cliquable des sessions
+   * 
+   * @param {string} contentType - 'photo' | 'post' | 'moment'
+   * @param {string} contentId - ID du contenu
+   * @returns {Array} Sessions complètes (avec originContent + liens dans messages)
+   * 
+   * EXEMPLE :
+   * const sessions = getAllSessionsForContent('photo', 'dragon.jpg')
+   * // → [{ id: 'sid_123', gameTitle: 'Souvenirs...', ... }]
+   */
+  const getAllSessionsForContent = useCallback((contentType, contentId) => {
+    if (!appState.data?.sessions || !dataManager.contentLinks) {
+      return [];
+    }
+    
+    // Récupérer les sessionIds via ContentLinks (rapide : O(1))
+    const sessionIds = dataManager.contentLinks.getSessionsForContent(contentType, contentId);
+    
+    // Enrichir avec les objets sessions complets
+    const sessions = sessionIds
+      .map(sessionId => appState.data.sessions.find(s => s.id === sessionId))
+      .filter(Boolean);  // Supprimer les undefined si session supprimée
+    
+    console.log(`🔍 getAllSessionsForContent(${contentType}, ${contentId}):`, sessions.length, 'sessions');
+    
+    return sessions;
+  }, [appState.data?.sessions]);
+
+  // ========================================
+  // EXPOSITION DE L'ÉTAT ET DES ACTIONS
+  // ========================================
+
+  // On fusionne l'Ã©tat brut, l'Ã©tat dÃ©rivÃ© et les actions
   return {
     ...appState.data,
     ...derivedUserState,
@@ -96,5 +138,13 @@ export function useAppState() {
     sendNotification,
     getUnreadNotifications,
     getUnreadNotificationCount,
+    
+    // ⭐ CORRECTION BUG 2 - Phase 18/19 : Exposition contentLinks pour pastilles 💬
+    // AVANT : contentLinks non exposé → getSessionsForContent() retournait toujours []
+    // APRÈS : app.contentLinks accessible depuis MemoriesPage/PhotoViewer
+    contentLinks: dataManager.contentLinks,
+    
+    // ⭐ NEW Phase 19D : Fonction helper pour récupérer sessions liées à un contenu
+    getAllSessionsForContent,
   };
 }

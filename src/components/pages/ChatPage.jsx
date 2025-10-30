@@ -1,5 +1,5 @@
 /**
- * ChatPage.jsx v2.7 - Phase 19C v3 : SessionInfoPanel
+ * ChatPage.jsx v2.8 - Phase 19D v1 : SessionInfoPanel
  * ✅ Bouton [🔗 Liens/Photos]
  * ✅ État pendingLink + attachedPhoto
  * ✅ Preview lien avant envoi
@@ -167,7 +167,7 @@ useEffect(() => {
 }, [app.currentChatSession?.id]);
 
   // ========================================
-  // ⭐ NOUVEAU Phase 18b : HANDLERS LIENS
+  //  HANDLERS LIENS (⭐ NOUVEAU Phase 18b)
   // ========================================
 
   const handleOpenLinkPicker = () => {
@@ -188,7 +188,7 @@ useEffect(() => {
   };
   
   // ========================================
-  // ✨ PHASE B : HANDLERS THÈMES
+  // HANDLERS THÈMES
   // ========================================
 
   const handleOpenThemeModal = useCallback(() => {
@@ -327,7 +327,9 @@ useEffect(() => {
       console.error('❌ Erreur suppression message:', error);
     }
   };
-  
+// ========================================
+// HANDLERS NAVIGATION
+// ========================================  
 const handleNavigateToContent = (linkedContent) => {
   console.log('🧭 Navigation vers contenu:', linkedContent);
   // ⭐ AJOUTER : Sauvegarder position AVANT navigation
@@ -337,62 +339,74 @@ const handleNavigateToContent = (linkedContent) => {
   
   switch(linkedContent.type) {
     case 'photo':
-  // Trouver moment parent pour galerie complète
-  const parentMoment = findParentMoment(linkedContent.id);
-  
-  console.log('🔍 DEBUG Photo:', {
-    photoId: linkedContent.id,
-    parentFound: !!parentMoment,
-    momentId: parentMoment?.id,
-    dayPhotos: parentMoment?.dayPhotos?.length || 0,
-    postPhotos: parentMoment?.postPhotos?.length || 0
-  });
-  
-  if (parentMoment) {
-    // Construire galerie complète du moment
-    const allPhotos = [
-      ...(parentMoment.dayPhotos || []),
-      ...(parentMoment.postPhotos || [])
-    ];
-    
-    console.log('📸 Galerie complète:', allPhotos.length, 'photos');
-    
-    // Trouver index de la photo cliquée
-    const photoIndex = allPhotos.findIndex(p => p.filename === linkedContent.id);
-    const targetPhoto = photoIndex >= 0 ? allPhotos[photoIndex] : linkedContent;
-    
-    console.log('🎯 Photo cible:', photoIndex + 1, '/', allPhotos.length);
-    console.log('📦 setViewerState avec:', {
-  photoFilename: targetPhoto.filename,
-  galleryLength: allPhotos.length,
-  contextMomentId: parentMoment?.id
-});
-    
-    setViewerState({
-      isOpen: true,
-      photo: targetPhoto,
-      gallery: allPhotos,
-      contextMoment: parentMoment,
-      returnToChat: true
-    });
+      // ========================================
+      // NAVIGATION VERS PHOTO
+      // ========================================
+      
+      // 1. Trouver le moment parent de la photo
+      const parentMoment = findParentMoment(linkedContent.id);
+      
+      console.log('🔍 DEBUG Photo:', {
+        photoId: linkedContent.id,
+        parentFound: !!parentMoment,
+        momentId: parentMoment?.id,
+        dayPhotos: parentMoment?.dayPhotos?.length || 0,
+        postPhotos: parentMoment?.postPhotos?.length || 0
+      });
+      
+      if (parentMoment) {
+        // 2. Construire galerie complète (photos moment + photos posts)
+        const allPhotos = [
+          ...(parentMoment.dayPhotos || []),
+          ...(parentMoment.postPhotos || [])
+        ];
+        
+        console.log('📸 Galerie complète:', allPhotos.length, 'photos');
+        
+        // 3. ✅ CORRECTION : Trouver photo par google_drive_id OU filename
+        const photoIndex = allPhotos.findIndex(p => 
+          p.google_drive_id === linkedContent.id || 
+          p.filename === linkedContent.id
+        );
+        
+        // 4. Déterminer la photo cible
+        const targetPhoto = photoIndex >= 0 ? allPhotos[photoIndex] : {
+          google_drive_id: linkedContent.id,
+          filename: linkedContent.title || 'Photo',
+          // Fallback si photo pas trouvée dans galerie
+        };
+        
+        console.log('🎯 Photo cible:', photoIndex >= 0 ? `${photoIndex + 1}/${allPhotos.length}` : 'Photo seule');
+        
+        // 5. Ouvrir visionneuse
+        setViewerState({
+          isOpen: true,
+          photo: targetPhoto,
+          gallery: allPhotos,
+          contextMoment: parentMoment,
+          returnToChat: true
+        });
+        
   } else {
-    // Photo isolée (edge case)
-    console.warn('⚠️ Moment parent introuvable, visionneuse photo seule');
-    setViewerState({
-      isOpen: true,
-      photo: linkedContent,
-      gallery: [linkedContent],
-      contextMoment: null,
-      returnToChat: true
-    });
-  }
-  break;
-    
-    case 'post':
-    case 'moment':
-      // Navigation vers Memories avec contexte
-      if (window.navigateToContentFromChat) {
-        window.navigateToContentFromChat(linkedContent);
+        // ========================================
+        // FALLBACK : Photo sans moment parent
+        // ========================================
+        
+        console.warn('⚠️ Moment parent introuvable, photo isolée');
+        
+        // Créer objet photo minimal pour visionneuse
+        const standalonePhoto = {
+          google_drive_id: linkedContent.id,
+          filename: linkedContent.title || 'Photo',
+        };
+        
+        setViewerState({
+          isOpen: true,
+          photo: standalonePhoto,
+          gallery: [standalonePhoto],  // Galerie d'une seule photo
+          contextMoment: null,
+          returnToChat: true
+        });
       }
       break;
     
@@ -521,7 +535,7 @@ useEffect(() => {
     }
   };
   
-  // ========================================
+// ========================================
 // COMPOSANT LinkPhotoPreview
 // ========================================
 
