@@ -254,23 +254,6 @@ export default function PhotoViewer({
     }
   };
 
-  // ========================================
-  // HANDLERS - Sessions
-  // ========================================
-  
-  const handleShowSessions = (contentType, contentId, contentTitle) => {
-    const sessions = getSessionsForContent(localSessions, contentType, contentId);
-    setSessionListModal({ sessions, contentTitle, contentId });
-  };
-
-  const handleSelectSession = (session) => {
-    setSessionListModal(null);
-    if (window.app) {
-      window.app.setCurrentChatSession(session.id);
-      window.app.updateCurrentPage('chat');
-    }
-  };
-
   const handleCreateSession = async () => {
   if (onCreateSession && currentPhoto && contextMoment) {
     try {
@@ -369,6 +352,41 @@ export default function PhotoViewer({
   const photoThemes = photoKey ? (window.themeAssignments?.getThemesForContent(photoKey) || []) : [];
   const hasThemes = photoThemes.length > 0;
 
+// ========================================
+// HANDLERS - Sessions
+// ========================================
+
+const handleShowSessions = (contentType, contentId, contentTitle) => {
+  console.log('💬 Ouverture liste sessions pour:', contentTitle);
+  
+  // Récupérer les sessions liées via l'app state
+  const linkedSessions = localSessions.filter(session => {
+    // Vérifier dans ContentLinks
+    const links = window.contentLinks?.getLinksForContent(contentType, contentId) || [];
+    return links.some(link => link.sessionId === session.id);
+  });
+  
+  setSessionListModal({
+    sessions: linkedSessions,
+    contentTitle: contentTitle
+  });
+};
+
+const handleSelectSession = (session) => {
+  console.log('✅ Session sélectionnée:', session.id);
+  setSessionListModal(null);
+  
+  // Ouvrir la session dans Chat
+  if (window.app?.openChatSession) {
+    window.app.openChatSession(session);
+  } else {
+    console.warn('⚠️ window.app.openChatSession non disponible');
+  }
+};
+
+
+
+
   // ========================================
   // RENDU
   // ========================================
@@ -392,6 +410,7 @@ export default function PhotoViewer({
           
           {/* Boutons d'action gauche */}
           <div className="flex items-center space-x-2">
+            
             
             {/* Badge sessions intelligent */}
             <SessionBadgePhoto 

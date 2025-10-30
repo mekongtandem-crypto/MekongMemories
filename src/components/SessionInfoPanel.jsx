@@ -146,12 +146,12 @@ export default function SessionInfoPanel({
                 className="w-full text-left p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors"
               >
                 <div className="flex items-center gap-2 text-purple-700 font-medium text-sm mb-2">
-                  <span className="text-base">
-                    {getOriginIcon(originInfo.originContent.type)}
-                  </span>
-                  <span>{formatOriginTitle(originInfo.originContent)}</span>
-                </div>
-                
+  <span className="text-base">
+    {getOriginIcon(originInfo.originContent.type)}
+  </span>
+  <span>{originInfo.originContent.title || formatOriginTitle(originInfo.originContent)}</span>
+</div>
+          
                 {/* Thèmes origine */}
                 {originInfo.originThemes?.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
@@ -195,8 +195,8 @@ export default function SessionInfoPanel({
                       className="w-full text-left p-2 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200 transition-colors text-sm"
                     >
                       <div className="flex items-center gap-2 text-amber-700">
-                        <span>⭐</span>
-                        <span className="font-medium truncate">{moment.displayTitle}</span>
+                        <span><MapPin className="w-4 h-4" /></span>
+                        <span className="font-medium truncate">{moment.title}</span>
                       </div>
                     </button>
                   );

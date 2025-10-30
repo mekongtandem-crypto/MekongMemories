@@ -111,7 +111,7 @@ function LinkedPhoto({ linkedContent, onOpenLocal, onNavigate }) {
             e.stopPropagation();
             if (onOpenLocal) onOpenLocal(linkedContent);
           }}
-          className="px-3 py-2 bg-white hover:bg-gray-100 rounded-full shadow-lg transition-colors flex items-center gap-1.5 text-sm font-medium"
+          className="px-3 py-2 bg-black hover:bg-gray-400 rounded-full shadow-lg transition-colors flex items-center gap-1.5 text-sm font-medium"
           title="Ouvrir ici"
         >
           <ZoomIn className="w-4 h-4" />
@@ -124,7 +124,7 @@ function LinkedPhoto({ linkedContent, onOpenLocal, onNavigate }) {
             e.stopPropagation();
             if (onNavigate) onNavigate(linkedContent);
           }}
-          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg transition-colors flex items-center gap-1.5 text-sm font-medium"
+          className="px-3 py-2 bg-purple-600 hover:bg-purple-400 text-white rounded-full shadow-lg transition-colors flex items-center gap-1.5 text-sm font-medium"
           title="Localiser dans Mémoires"
         >
           <MapPin className="w-4 h-4" />

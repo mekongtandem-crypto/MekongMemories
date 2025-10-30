@@ -873,12 +873,15 @@ const handleOpenSessionModal = useCallback((source, contextMoment) => {
             ...(moment.postPhotos || [])
           ];
           
-          // Ouvrir PhotoViewer avec la photo ciblée
-          setTimeout(() => {
-            openPhotoViewer(dayPhoto, moment, gallery);
-          }, 300);
-          
-          break;
+          // Scroll vers le thumbnail de la photo (pas de PhotoViewer)
+			setTimeout(() => {
+  			const photoElement = document.querySelector(`[data-photo-filename="${targetContent.id}"]`);
+  			if (photoElement) {
+    			executeScrollToElement(photoElement);
+  			}
+			}, 300);
+
+			break;
         }
         
         // Chercher dans postPhotos
@@ -904,8 +907,11 @@ const handleOpenSessionModal = useCallback((source, contextMoment) => {
               
               // Ouvrir PhotoViewer avec la photo ciblée
               setTimeout(() => {
-                openPhotoViewer(postPhoto, moment, gallery);
-              }, 300);
+  				const photoElement = document.querySelector(`[data-photo-filename="${targetContent.id}"]`);
+  				if (photoElement) {
+    				executeScrollToElement(photoElement);
+  					}
+				}, 300);
               
               break;
             }

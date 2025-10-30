@@ -720,12 +720,35 @@ function LinkPhotoPreview({ photo }) {
     )}
     
     {/* Photo si présente */}
-    {message.photoData && (
-      <PhotoMessage 
-        photo={message.photoData}
-        onPhotoClick={openPhotoViewer}
+{message.photoData && (
+  message.id.endsWith('-origin') ? (
+    // ⭐ Photo origine = LinkedContent avec double action
+    <div className="w-full max-w-full overflow-hidden mb-2">
+      <LinkedContent 
+        linkedContent={{
+          type: 'photo',
+          id: message.photoData.filename || message.photoData.google_drive_id,
+          title: message.photoData.filename,
+          google_drive_id: message.photoData.google_drive_id,
+          url: message.photoData.url,
+          width: message.photoData.width,
+          height: message.photoData.height,
+          mime_type: message.photoData.mime_type,
+          photoType: message.photoData.type
+        }}
+        onOpenLocal={handleOpenPhotoLocal}
+        onNavigate={handleNavigateToMemories}
+        masterIndex={app.masterIndex}
       />
-    )}
+    </div>
+  ) : (
+    // Photo normale dans message
+    <PhotoMessage 
+      photo={message.photoData}
+      onPhotoClick={openPhotoViewer}
+    />
+  )
+)}
     
     {/* Texte */}
     {message.content && (

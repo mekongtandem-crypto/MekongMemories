@@ -4,8 +4,8 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  ArrowLeft, Settings, Plus, MoreVertical, Edit, Trash2, Check, X, Bell,
-  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown, Tag, Sparkles, BarChart3, Link, MessageSquarePlus
+  ArrowLeft, Settings, Plus, MoreVertical, Edit, Trash2, Check, X, XCircle, Bell, 
+  Map, Search, Dices, FileText, Image as ImageIcon, Camera, Cloud, CloudOff, ArrowUpDown, Tag, Sparkles, BarChart3, Link, MessageCirclePlus
 } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
@@ -142,7 +142,7 @@ export default function UnifiedTopBar({
         className={isSearchOpen ? 'p-2 bg-blue-100 text-blue-600 rounded-lg' : 'p-2 text-gray-600 hover:bg-gray-100 rounded-lg'} 
         title={isSearchOpen ? "Fermer la recherche" : "Rechercher (/)"}
       >
-        {isSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+        {isSearchOpen ? <XCircle className="w-5 h-5" /> : <Search className="w-5 h-5" />}
       </button>
     );
   }
@@ -167,14 +167,14 @@ case 'chat': {
         className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" 
         title="Fermer le chat"
       >
-        <ArrowLeft className="w-5 h-5" />
+        <X className="w-5 h-5" />
       </button>
     </div>
   );
 }
       
       case 'sessions': 
-        return <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Nouvelle causerie"><MessageSquarePlus className="w-5 h-5" /></button>;
+        return <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Nouvelle causerie"><MessageCirclePlus className="w-5 h-5" /></button>;
       case 'settings': 
         return <button onClick={() => app.updateCurrentPage('sessions')} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Retour"><ArrowLeft className="w-5 h-5" /></button>;
       default: 
