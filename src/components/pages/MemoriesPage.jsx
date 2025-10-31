@@ -91,7 +91,7 @@ const SessionBadgePhotoThumb = memo(({ photo, momentId, sessions, onShowSessions
   return (
     <div
       onClick={handleClick}
-      className="absolute top-1 right-1 bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg hover:bg-purple-700 transition-colors z-10 cursor-pointer"
+      className="absolute top-0 right-0 bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg hover:bg-purple-700 transition-colors z-10 cursor-pointer"
       title={`${count} session${count > 1 ? 's' : ''}`}
     >
       {count}
@@ -1267,6 +1267,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
     contextMoment={viewerState.contextMoment}
     onClose={closePhotoViewer}
     onCreateSession={handleOpenSessionModal}
+    onOpenSession={onOpenSessionFromMemories}
     globalSelectionMode={selectionMode}
     onContentSelected={handleLongPressForSelection}
   />

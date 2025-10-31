@@ -149,24 +149,66 @@ class ContentLinks {
   /**
    * Supprimer un lien
    */
-  async removeLink(linkId) {
-    const link = this.links.get(linkId);
-    if (!link) return;
-    
-    this.links.delete(linkId);
-    
-    const sessionLinks = this.sessionIndex.get(link.sessionId);
-    if (sessionLinks) sessionLinks.delete(linkId);
-    
-    const contentKey = this._getContentKey(link.contentType, link.contentId);
-    const contentLinks = this.contentIndex.get(contentKey);
-    if (contentLinks) contentLinks.delete(linkId);
-    
-    this.messageIndex.delete(link.messageId);
-    
-    await this._saveToFile();
-    console.log('🗑️ Lien supprimé:', linkId);
+ /**
+ * Supprimer un lien spécifique
+ */
+async removeLink(sessionId, contentType, contentId) {
+  console.log('🗑️ removeLink appelé:', { sessionId, contentType, contentId });
+  
+  // 1. Trouver tous les linkIds correspondants
+  const contentKey = this._getContentKey(contentType, contentId);
+  const sessionLinkIds = this.sessionIndex.get(sessionId) || new Set();
+  const contentLinkIds = this.contentIndex.get(contentKey) || new Set();
+  
+  // Intersection : linkIds qui sont dans les deux index
+  const linkIdsToRemove = Array.from(sessionLinkIds).filter(id => contentLinkIds.has(id));
+  
+  console.log('🔍 Liens à supprimer:', linkIdsToRemove);
+  
+  if (linkIdsToRemove.length === 0) {
+    console.warn('⚠️ Aucun lien trouvé à supprimer');
+    return;
   }
+  
+  // 2. Supprimer chaque lien trouvé
+  for (const linkId of linkIdsToRemove) {
+    const link = this.links.get(linkId);
+    
+    if (link) {
+      // Supprimer du Map principal
+      this.links.delete(linkId);
+      
+      // Supprimer du sessionIndex
+      const sessionSet = this.sessionIndex.get(sessionId);
+      if (sessionSet) {
+        sessionSet.delete(linkId);
+        if (sessionSet.size === 0) {
+          this.sessionIndex.delete(sessionId);
+        }
+      }
+      
+      // Supprimer du contentIndex
+      const contentSet = this.contentIndex.get(contentKey);
+      if (contentSet) {
+        contentSet.delete(linkId);
+        if (contentSet.size === 0) {
+          this.contentIndex.delete(contentKey);
+        }
+      }
+      
+      // Supprimer du messageIndex
+      if (link.messageId) {
+        this.messageIndex.delete(link.messageId);
+      }
+      
+      console.log('✅ Lien supprimé:', linkId);
+    }
+  }
+  
+  // 3. Sauvegarder
+  await this._saveToFile();
+  console.log('💾 ContentLinks sauvegardé après suppression');
+}
 
   /**
    * Supprimer tous les liens d'un message

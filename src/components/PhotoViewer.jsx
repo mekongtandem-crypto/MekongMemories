@@ -64,12 +64,12 @@ const SessionBadgePhoto = ({ photo, sessions, onShowSessions, onCreateSession })
   return (
     <button 
       onClick={handleClick}
-      className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold shadow-xl transition-colors ${
+      className={`flex items-center space-x-2 px-2 py-2 rounded-lg font-semibold shadow-xl transition-colors ${
         count === 0 
           ? 'bg-white/20 text-white hover:bg-white/30'
           : 'bg-purple-500 text-white hover:bg-purple-600'
       }`}
-      title={count === 0 ? 'Créer une session' : `${count} session${count > 1 ? 's' : ''} - Voir`}
+      title={count === 0 ? 'Créer une session' : `${count} session${count > 1 ? 's':''} - Voir`}
     >
       {count === 0 ? (
         <>
@@ -80,7 +80,7 @@ const SessionBadgePhoto = ({ photo, sessions, onShowSessions, onCreateSession })
         <>
           <MessageCircle className="w-5 h-5" />
           <span className="hidden sm:inline">Sessions</span>
-          <span className="bg-purple-700 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">
+          <span className="relative -top-3 -right-3 bg-purple-700 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white">
             {count}
           </span>
         </>
@@ -98,7 +98,8 @@ export default function PhotoViewer({
   gallery, 
   contextMoment, 
   onClose, 
-  onCreateSession, 
+  onCreateSession,
+  onOpenSession, 
   globalSelectionMode, 
   onContentSelected 
 }) {
@@ -359,31 +360,65 @@ export default function PhotoViewer({
 const handleShowSessions = (contentType, contentId, contentTitle) => {
   console.log('💬 Ouverture liste sessions pour:', contentTitle);
   
-  // Récupérer les sessions liées via l'app state
-  const linkedSessions = localSessions.filter(session => {
-    // Vérifier dans ContentLinks
-    const links = window.contentLinks?.getLinksForContent(contentType, contentId) || [];
-    return links.some(link => link.sessionId === session.id);
-  });
-  
-  setSessionListModal({
-    sessions: linkedSessions,
-    contentTitle: contentTitle
-  });
+  if (contentType === 'photo') {
+    // ⭐ CORRECTION : Pour les photos, chercher avec FILENAME et GOOGLE_DRIVE_ID
+    // Car ContentLinks peut avoir indexé par l'un ou l'autre
+    
+    const sessionsByFilename = currentPhoto.filename
+      ? window.contentLinks?.getSessionsForContent('photo', currentPhoto.filename) || []
+      : [];
+    
+    const sessionsByDriveId = currentPhoto.google_drive_id
+      ? window.contentLinks?.getSessionsForContent('photo', currentPhoto.google_drive_id) || []
+      : [];
+    
+    // Union des 2 résultats (supprimer doublons)
+    const allSessionIds = new Set([...sessionsByFilename, ...sessionsByDriveId]);
+    
+    console.log('🔍 Sessions trouvées:', {
+      byFilename: sessionsByFilename.length,
+      byDriveId: sessionsByDriveId.length,
+      total: allSessionIds.size
+    });
+    
+    // Récupérer objets sessions complets
+    const linkedSessions = Array.from(allSessionIds)
+      .map(sessionId => localSessions.find(s => s.id === sessionId))
+      .filter(Boolean);
+    
+    setSessionListModal({
+      sessions: linkedSessions,
+      contentTitle: contentTitle
+    });
+    
+  } else {
+    // Pour moment/post, un seul ID suffit
+    const sessionIds = window.contentLinks?.getSessionsForContent(contentType, contentId) || [];
+    const linkedSessions = sessionIds
+      .map(sessionId => localSessions.find(s => s.id === sessionId))
+      .filter(Boolean);
+    
+    setSessionListModal({
+      sessions: linkedSessions,
+      contentTitle: contentTitle
+    });
+  }
 };
 
 const handleSelectSession = (session) => {
   console.log('✅ Session sélectionnée:', session.id);
-  setSessionListModal(null);
   
-  // Ouvrir la session dans Chat
-  if (window.app?.openChatSession) {
-    window.app.openChatSession(session);
+  // Fermer modal et viewer
+  setSessionListModal(null);
+  onClose();
+  
+  // Ouvrir session via callback parent
+  if (onOpenSession) {
+    onOpenSession(session);
   } else {
-    console.warn('⚠️ window.app.openChatSession non disponible');
+    console.warn('⚠️ onOpenSession non fourni à PhotoViewer');
   }
 };
-
 
 
 
@@ -445,7 +480,7 @@ const handleSelectSession = (session) => {
               <Tag className="w-5 h-5" />
               <span className="hidden sm:inline">Thèmes</span>
               {hasThemes && (
-                <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-black">
+                <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white">
                   {photoThemes.length}
                 </span>
               )}
@@ -555,16 +590,18 @@ const handleSelectSession = (session) => {
         contentType="photo"
       />
       
-      {/* Modal Liste Sessions */}
-      {sessionListModal && (
-        <SessionListModal
-          isOpen={true}
-          onClose={() => setSessionListModal(null)}
-          sessions={sessionListModal.sessions}
-          contentTitle={sessionListModal.contentTitle}
-          onSelectSession={handleSelectSession}
-        />
-      )}
+      {/* Modal Liste Sessions - Par-dessus PhotoViewer */}
+		{sessionListModal && (
+  		<div style={{ position: 'fixed', inset: 0, zIndex: 10100 }}>
+    		<SessionListModal
+      		isOpen={true}
+      		onClose={() => setSessionListModal(null)}
+      		sessions={sessionListModal.sessions}
+      		contentTitle={sessionListModal.contentTitle}
+      		onSelectSession={handleSelectSession}
+    		/>
+  		</div>
+		)}
     </>
   );
 }

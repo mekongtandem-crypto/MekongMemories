@@ -146,11 +146,11 @@ export default function SessionInfoPanel({
                 className="w-full text-left p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors"
               >
                 <div className="flex items-center gap-2 text-purple-700 font-medium text-sm mb-2">
-  <span className="text-base">
-    {getOriginIcon(originInfo.originContent.type)}
-  </span>
-  <span>{originInfo.originContent.title || formatOriginTitle(originInfo.originContent)}</span>
-</div>
+  				<span className="text-base">
+    				{getOriginIcon(originInfo.originContent.type)}
+  				</span>
+  				<span>{originInfo.originContent.title}</span>
+				</div>
           
                 {/* Thèmes origine */}
                 {originInfo.originThemes?.length > 0 && (
@@ -217,18 +217,71 @@ export default function SessionInfoPanel({
                 ))}
 
                 {/* Photos */}
-                {linkedContent.photos.map((photo, idx) => (
-                  <button
-                    key={`photo-${idx}`}
-                    onClick={() => handleNavigate('photo', photo.id)}
-                    className="w-full text-left p-2 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors text-sm"
-                  >
-                    <div className="flex items-center gap-2 text-green-700">
-                      <Image className="w-4 h-4 flex-shrink-0" />
-                      <span className="truncate">{photo.title}</span>
-                    </div>
-                  </button>
-                ))}
+{linkedContent.photos.map((photo, idx) => {
+  // ⭐ Enrichir contexte photo (moment parent ou post parent)
+  let photoDisplay = { icon: '📷', title: photo.title, color: 'green' };
+  
+  if (masterIndex?.moments) {
+    for (const moment of masterIndex.moments) {
+      // Chercher dans dayPhotos
+      const dayPhoto = moment.dayPhotos?.find(p => 
+        p.filename === photo.id || p.google_drive_id === photo.id
+      );
+      if (dayPhoto) {
+        photoDisplay = {
+          icon: '📷',
+          title: moment.displayTitle || moment.title,
+          subtitle: 'Photo du moment',
+          color: 'green'
+        };
+        break;
+      }
+      
+      // Chercher dans postPhotos
+      if (moment.posts) {
+        for (const post of moment.posts) {
+          const postPhoto = post.photos?.find(p => 
+            p.filename === photo.id || p.google_drive_id === photo.id
+          );
+          if (postPhoto) {
+            const postTitle = post.content?.split('\n')[0] || 'Article';
+            photoDisplay = {
+              icon: '🖼️',
+              title: postTitle,
+              subtitle: 'Photo de l\'article',
+              color: 'blue'
+            };
+            break;
+          }
+        }
+      }
+      
+      if (photoDisplay.subtitle) break;
+    }
+  }
+  
+  return (
+    <button
+      key={`photo-${idx}`}
+      onClick={() => handleNavigate('photo', photo.id)}
+      className={`w-full text-left p-2 bg-${photoDisplay.color}-50 hover:bg-${photoDisplay.color}-100 rounded border border-${photoDisplay.color}-200 transition-colors text-sm`}
+    >
+      <div className="flex items-start gap-2">
+        <span className="text-base mt-0.5">{photoDisplay.icon}</span>
+        <div className="flex-1 min-w-0">
+          <div className={`font-medium truncate text-${photoDisplay.color}-700`}>
+            {photoDisplay.title}
+          </div>
+          {photoDisplay.subtitle && (
+            <div className={`text-xs text-${photoDisplay.color}-600 mt-0.5`}>
+              {photoDisplay.subtitle}
+            </div>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+})}
               </div>
             </section>
           )}

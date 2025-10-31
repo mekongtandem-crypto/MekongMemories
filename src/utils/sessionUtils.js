@@ -322,13 +322,70 @@ export function formatMessagePreview(message, maxLength = 60) {
 // ========================================
 
 /**
- * Récupère infos origine d'une session
+ * Récupère infos origine d'une session AVEC enrichissement titre réel
  */
 export function getOriginInfo(session, masterIndex) {
   if (!session?.originContent) return null;
   
   const { type, id } = session.originContent;
+  let enrichedContent = { ...session.originContent };
   let originThemes = [];
+  
+  //  Récupérer le vrai titre depuis masterIndex
+  if (masterIndex?.moments) {
+    switch(type) {
+      case 'moment':
+        const moment = masterIndex.moments.find(m => m.id === id);
+        if (moment) {
+          enrichedContent.title = moment.displayTitle || moment.title;
+        }
+        break;
+      
+      case 'post':
+        for (const moment of masterIndex.moments) {
+          const post = moment.posts?.find(p => p.id === id);
+          if (post) {
+            const postTitle = post.content?.split('\n')[0] || 'Article';
+            enrichedContent.title = postTitle;
+            break;
+          }
+        }
+        break;
+      
+      case 'photo':
+        // Chercher la photo dans tous les moments
+        for (const moment of masterIndex.moments) {
+          // Chercher dans dayPhotos
+          const dayPhoto = moment.dayPhotos?.find(p => 
+            p.filename === id || p.google_drive_id === id
+          );
+          if (dayPhoto) {
+            enrichedContent.title = `Photo de ${moment.displayTitle || moment.title}`;
+            enrichedContent.contextMoment = moment;
+            break;
+          }
+          
+          // Chercher dans postPhotos
+          if (moment.posts) {
+            for (const post of moment.posts) {
+              const postPhoto = post.photos?.find(p => 
+                p.filename === id || p.google_drive_id === id
+              );
+              if (postPhoto) {
+                const postTitle = post.content?.split('\n')[0] || 'Article';
+                enrichedContent.title = `Photo de "${postTitle}"`;
+                enrichedContent.contextPost = post;
+                enrichedContent.contextMoment = moment;
+                break;
+              }
+            }
+          }
+          
+          if (enrichedContent.contextMoment) break;
+        }
+        break;
+    }
+  }
   
   // Récupérer thèmes via themeAssignments
   if (window.themeAssignments?.isLoaded) {
@@ -341,7 +398,7 @@ export function getOriginInfo(session, masterIndex) {
   }
   
   return {
-    originContent: session.originContent,
+    originContent: enrichedContent,
     originThemes
   };
 }

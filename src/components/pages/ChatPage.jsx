@@ -314,19 +314,48 @@ useEffect(() => {
   };
 
   const handleDeleteMessage = async (messageId) => {
-    if (!confirm('Supprimer ce message ?')) return;
+  if (!confirm('Supprimer ce message ?')) return;
 
-    try {
-      const updatedSession = {
-        ...app.currentChatSession,
-        notes: app.currentChatSession.notes.filter(note => note.id !== messageId)
-      };
+  try {
+    const updatedSession = { ...app.currentChatSession };
+    
+    // ⭐ NOUVEAU : Détecter si message a un lien avant suppression
+    const messageToDelete = updatedSession.notes.find(m => m.id === messageId);
+    const hasLink = messageToDelete?.linkedContent;
+    
+    // Supprimer le message
+    updatedSession.notes = updatedSession.notes.filter(note => note.id !== messageId);
+    
+    await app.updateSession(updatedSession);
+    
+    // ⭐ NOUVEAU : Nettoyer ContentLinks si le message avait un lien
+    if (hasLink && window.contentLinks) {
+      console.log('🗑️ Nettoyage ContentLinks pour message supprimé:', messageToDelete.linkedContent);
+      
+      await window.contentLinks.removeLink(
+        updatedSession.id,
+        messageToDelete.linkedContent.type,
+        messageToDelete.linkedContent.id
+      );
+      
+      // ⭐ DEBUG : Vérifier que le lien a bien été supprimé
+const linksAfter = window.contentLinks.getLinksForSession(updatedSession.id);
+console.log('🔍 Liens restants pour cette session:', linksAfter);
 
-      await app.updateSession(updatedSession);
-    } catch (error) {
-      console.error('❌ Erreur suppression message:', error);
+// ⭐ DEBUG : Vérifier l'index côté contenu
+const sessionsForContent = window.contentLinks.getSessionsForContent(
+  messageToDelete.linkedContent.type,
+  messageToDelete.linkedContent.id
+);
+console.log('🔍 Sessions liées à ce contenu:', sessionsForContent);
+      
+      console.log('✅ ContentLinks mis à jour et sauvegardé');
     }
-  };
+    
+  } catch (error) {
+    console.error('❌ Erreur suppression message:', error);
+  }
+};
 // ========================================
 // HANDLERS NAVIGATION CONTENU (⭐ PHASE 19E)
 // ========================================
@@ -916,10 +945,14 @@ function LinkPhotoPreview({ photo }) {
       {viewerState.isOpen && viewerState.photo && (
         <PhotoViewer 
           photo={viewerState.photo}
-			gallery={viewerState.gallery || [viewerState.photo]}  // ✅ Utiliser gallery depuis state          contextMoment={null}
-              contextMoment={viewerState.contextMoment}
+          gallery={viewerState.gallery || [viewerState.photo]}  // ✅ Utiliser gallery depuis state
+          contextMoment={null}
+          contextMoment={viewerState.contextMoment}
           onClose={closePhotoViewer}
           onCreateSession={null}
+          onOpenSession={(session) => {           // ⭐ AJOUTER
+    app.openChatSession(session);
+  }}
         />
       )}
       
