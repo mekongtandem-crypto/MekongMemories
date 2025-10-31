@@ -23,7 +23,6 @@ import {
   AlertCircle, ChevronDown, X, Tag, Link, 
   MessageCircle, MessageCirclePlus, MessageCircleMore,
 } from 'lucide-react';
-import TimelineRuleV2 from '../TimelineRule.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
 import SessionCreationModal from '../SessionCreationModal.jsx';
 import ThemeModal from '../ThemeModal.jsx';

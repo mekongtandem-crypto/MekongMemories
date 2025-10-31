@@ -19,7 +19,7 @@ import SettingsPage from './pages/SettingsPage.jsx';
 import MemoriesPage from './pages/MemoriesPage.jsx';
 import SessionsPage from './pages/SessionsPage.jsx';
 import ChatPage from './pages/ChatPage.jsx';
-import UserSelectionPage from './pages/UserSelectionPage.jsx';
+import StartupPage from './pages/StartupPage.jsx';
 import SessionCreationSpinner from './SessionCreationSpinner.jsx';
 
 // ============================================
@@ -395,32 +395,16 @@ export default function App() {
   }, [handleNavigateToContentFromChat]);
 
   // ============================================
-  // 6. CONDITIONAL RENDERS (Loading/User)
+  // 6. CONDITIONAL RENDERS (StartupPage)
   // ============================================
   
-  if (!app.isInitialized) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-50 dark:bg-black text-center p-4">
-        <div className="text-6xl mb-4 animate-bounce">
-          🐘
-        </div>
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-          Mémoire du Mékong
-          <p className="text-gray-500 text-xs font-normal">
-            Version {APP_VERSION}
-          </p>
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-2">
-          Chargement de vos souvenirs...
-        </p>
-      </div>
-    );
-  }
-
-  if (!app.currentUser) {
+  // Afficher StartupPage jusqu'à initialisation complète
+  if (!app.isInitialized || !app.currentUser) {
     return (
       <ErrorBoundary>
-        <UserSelectionPage />
+        <StartupPage onReady={() => {
+          console.log('✅ Startup terminé, app prête');
+        }} />
       </ErrorBoundary>
     );
   }

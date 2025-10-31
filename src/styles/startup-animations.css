@@ -1,0 +1,86 @@
+/**
+ * startup-animations.css v2.1 - TESTÉ
+ * Animations pour StartupPage
+ * 
+ * IMPORTANT : Vérifier que ce fichier est bien importé dans index.css :
+ * @import './startup-animations.css';
+ */
+
+/* ============================================
+   ANIMATION FLOAT (nuage/éléphant attente)
+   ============================================ */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ============================================
+   ANIMATION PULSE DOUX (éléphant en attente)
+   ============================================ */
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* ============================================
+   ANIMATION BOUNCE SUBTIL (éléphant content)
+   ============================================ */
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.02);
+  }
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 1.5s ease-in-out infinite;
+}
+
+/* ============================================
+   ANIMATION FADE IN (transitions)
+   ============================================ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* ============================================
+   DEBUG : Tester si CSS chargé
+   ============================================ */
+.test-animation-loaded {
+  /* Si cette classe existe, le CSS est chargé */
+  --animation-css-loaded: true;
+}
+
+/* Note: Les animations Tailwind par défaut (bounce, spin, etc.) 
+   sont aussi disponibles et fonctionnent normalement */

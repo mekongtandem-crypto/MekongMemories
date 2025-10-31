@@ -102,34 +102,7 @@ export default function SessionInfoPanel({
 
         {/* Content scrollable */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          
-          {/* 📊 STATS */}
-          <section>
-            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Statistiques
-            </h4>
-            <div className="space-y-2 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-gray-400" />
-                <span><strong>{messageCount}</strong> message{messageCount > 1 ? 's' : ''}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-gray-400" />
-                <span>Créée par <strong>{createdByUser}</strong></span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                <span>{formatDateTime(session.createdAt)}</span>
-              </div>
-              {lastMessage && (
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-gray-400" />
-                  <span>Dernier msg par <strong>{lastModifiedByUser}</strong></span>
-                </div>
-              )}
-            </div>
-          </section>
+
 
           {/* 📍 ORIGINE */}
           {originInfo?.originContent && (
@@ -298,6 +271,34 @@ export default function SessionInfoPanel({
               </div>
             </section>
           )}
+          
+          {/* 📊 STATS */}
+          <section>
+            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Statistiques
+            </h4>
+            <div className="space-y-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-gray-400" />
+                <span><strong>{messageCount}</strong> message{messageCount > 1 ? 's' : ''}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-gray-400" />
+                <span>Créée par <strong>{createdByUser}</strong></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                <span>{formatDateTime(session.createdAt)}</span>
+              </div>
+              {lastMessage && (
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-gray-400" />
+                  <span>Dernier msg par <strong>{lastModifiedByUser}</strong></span>
+                </div>
+              )}
+            </div>
+          </section>
 
         </div>
       </div>
