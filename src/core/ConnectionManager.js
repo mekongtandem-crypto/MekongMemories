@@ -1,5 +1,5 @@
 /**
- * ConnectionManager v0.9.0 - Token OAuth persistant
+ * ConnectionManager v0.9.2 - Token OAuth persistant
  * ✅ NOUVEAU : Token stocké en cache (évite popup à chaque refresh)
  * ✅ Durée validité : 1h (standard Google OAuth)
  */
@@ -34,20 +34,29 @@ class ConnectionManager {
         console.log('✅ Token OAuth valide trouvé en cache');
         this.accessToken = cachedToken.token;
         
-        await this.initializeGoogleIdentityServices();
+        // ⚠️ FIX CRITIQUE : Ne PAS init GIS si on a déjà un token !
+        // GIS init déclenche automatiquement requestAccessToken → popup !
+        // On initialise GIS seulement pour finalizeConnection
         
-        // Connexion silencieuse (pas de popup)
         try {
-          await this.finalizeConnection();
-          console.log('✅ Connexion automatique réussie');
+          // Initialiser gapi SANS tokenClient
+          await this.initializeGapiClient();
+          this.setState(this.states.ONLINE);
+          
+          // Récupérer userInfo
+          this.userInfo = await this.getUserInfo();
+          
+          console.log('✅ Connexion automatique réussie (sans GIS)');
           return;
         } catch (error) {
           console.warn('⚠️ Token cache invalide, connexion manuelle requise');
           await this.stateManager.remove('oauth_token');
+          this.accessToken = null;
         }
       }
       
-      // Token absent/expiré → init normale
+      // Token absent/expiré → init GIS pour permettre connexion manuelle
+      console.log('🔑 Pas de token valide, initialisation GIS pour connexion manuelle');
       await this.initializeGoogleIdentityServices();
       console.log('✅ ConnectionManager: Initialisé (connexion manuelle requise)');
       

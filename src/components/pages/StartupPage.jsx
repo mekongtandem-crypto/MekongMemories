@@ -42,6 +42,9 @@ export default function StartupPage({ onReady }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [errorMessage, setErrorMessage] = useState(null);
   const [progressPercent, setProgressPercent] = useState(0);
+  
+  // ⚠️ CRITIQUE : Flag pour éviter double connexion
+  const hasCheckedConnection = React.useRef(false);
 
   // ============================================
   // SÉQUENCE D'INITIALISATION
@@ -58,12 +61,15 @@ export default function StartupPage({ onReady }) {
         // ÉTAPE 1 : CHECKING_AUTH
         // ========================================
         setCurrentState(STATES.CHECKING_AUTH);
-        await sleep(1500); // Animation + attente init ConnectionManager
+        await sleep(2500); // ⚠️ CRITIQUE : Attendre 2.5s pour que ConnectionManager finisse son init()
         
         if (!isSubscribed) return;
         
         const connectionState = connectionManager.getState();
         console.log('📊 État connexion:', connectionState);
+        
+        // ⚠️ MARQUER : Check initial fait
+        hasCheckedConnection.current = true;
         
         if (!connectionState.isOnline) {
           console.log('🔑 Connexion requise');
@@ -96,6 +102,14 @@ export default function StartupPage({ onReady }) {
   
   useEffect(() => {
     const unsubscribe = connectionManager.subscribe((connectionState) => {
+      console.log('📡 ConnectionManager event:', connectionState.state);
+      
+      // ⚠️ CRITIQUE : Ignorer si check initial pas encore fait
+      if (!hasCheckedConnection.current) {
+        console.log('⏭️ Check initial pas fait, ignorer event');
+        return;
+      }
+      
       // Détecter connexion réussie
       if (connectionState.isOnline && currentState === STATES.CONNECTING) {
         console.log('✅ Connexion détectée, passage chargement');
