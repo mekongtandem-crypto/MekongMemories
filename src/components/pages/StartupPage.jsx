@@ -262,20 +262,20 @@ export default function StartupPage({ onReady }) {
       </div>
 
       {/* ========================================
-          ÉLÉPHANT (ANIMATION SELON ÉTAT)
+          ANIMAL (ANIMATION SELON ÉTAT)
           ======================================== */}
-      <div className="mb-8">
+      <div className="mb-4">
         {currentState === STATES.CHECKING_AUTH && (
-          <div className="text-8xl animate-float">🙉</div>
+          <div className="text-8xl animate-bounce-subtle">{LOADING_STEPS[currentStep]?.perso}</div>
         )}
         
         {currentState === STATES.CONNECTING && (
-          <div className="text-8xl animate-pulse-soft">🙈</div>
+          <div className="text-8xl animate-pulse-soft">{LOADING_STEPS[currentStep]?.perso}</div>
         )}
         
         {currentState === STATES.LOADING_DATA && (
   <div className="relative inline-block">
-    <div className="text-8xl animate-bounce-enhanced"> {LOADING_STEPS[currentStep]?.perso}</div>
+    <div className="text-8xl animate-walk"> {LOADING_STEPS[currentStep]?.perso}</div>
     {LOADING_STEPS[currentStep]?.icon && (
       <p className="absolute top-0 right-0 text-4xl font-medium">
         {LOADING_STEPS[currentStep]?.icon}
@@ -285,11 +285,11 @@ export default function StartupPage({ onReady }) {
 )}
         
         {currentState === STATES.SELECTING_USER && (
-          <div className="text-8xl">🙊</div>
+          <div className="text-8xl">{LOADING_STEPS[currentStep]?.perso}</div>
         )}
         
         {currentState === STATES.READY && (
-          <div className="text-8xl animate-bounce">🐵</div>
+          <div className="text-8xl animate-bounce">{LOADING_STEPS[currentStep]?.perso}</div>
         )}
       </div>
 
@@ -336,6 +336,14 @@ export default function StartupPage({ onReady }) {
       {/* ÉTAT 3 : LOADING_DATA */}
       {currentState === STATES.LOADING_DATA && (
         <div className="w-full max-w-md animate-fade-in">
+        
+        {/* Étape actuelle */}
+          <div className="text-center">
+            <p className="text-gray-700 dark:text-gray-200 text-lg font-medium mb-4">
+              {LOADING_STEPS[currentStep]?.label || 'Chargement...'}
+            </p>            
+          </div>
+        
           {/* Barre de progression */}
           <div className="mb-6">
             <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -349,12 +357,7 @@ export default function StartupPage({ onReady }) {
             </p>
           </div>
 
-          {/* Étape actuelle */}
-          <div className="text-center">
-            <p className="text-gray-700 dark:text-gray-200 text-lg font-medium mb-4">
-              {LOADING_STEPS[currentStep]?.label || 'Chargement...'}
-            </p>            
-          </div>
+          
         </div>
       )}
 

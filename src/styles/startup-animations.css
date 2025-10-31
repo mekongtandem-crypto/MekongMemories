@@ -1,14 +1,10 @@
 /**
- * startup-animations.css v2.1 - TESTÉ
- * Animations pour StartupPage
- * 
- * IMPORTANT : Vérifier que ce fichier est bien importé dans index.css :
- * @import './startup-animations.css';
+ * startup-animations.css v2.0
+ * Animations pour la page de démarrage
+ * À ajouter dans src/styles/ ou inclure dans index.css
  */
 
-/* ============================================
-   ANIMATION FLOAT (nuage/éléphant attente)
-   ============================================ */
+/* Animation float pour nuage/éléphant attente */
 @keyframes float {
   0%, 100% {
     transform: translateY(0px);
@@ -22,9 +18,27 @@
   animation: float 3s ease-in-out infinite;
 }
 
-/* ============================================
-   ANIMATION PULSE DOUX (éléphant en attente)
-   ============================================ */
+/* Animation marche pour éléphant en chargement */
+@keyframes walk {
+  0%, 100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  25% {
+    transform: translateX(10px) rotate(2deg);
+  }
+  50% {
+    transform: translateX(0) rotate(0deg);
+  }
+  75% {
+    transform: translateX(-10px) rotate(-2deg);
+  }
+}
+
+.animate-walk {
+  animation: walk 2s ease-in-out infinite;
+}
+
+/* Pulse doux */
 @keyframes pulse-soft {
   0%, 100% {
     opacity: 1;
@@ -32,12 +46,28 @@
   }
   50% {
     opacity: 0.7;
-    transform: scale(0.95);
+    transform: scale(0.98);
   }
 }
 
 .animate-pulse-soft {
   animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Fade in pour transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
 }
 
 /* ============================================
@@ -56,31 +86,16 @@
   animation: bounce-subtle 1.5s ease-in-out infinite;
 }
 
-/* ============================================
-   ANIMATION FADE IN (transitions)
-   ============================================ */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+/* Bounce standard (override Tailwind si besoin) */
+@keyframes bounce-enhanced {
+  0%, 100% {
+    transform: translateY(0) scale(1);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  50% {
+    transform: translateY(-25px) scale(1.05);
   }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out;
+.animate-bounce-enhanced {
+  animation: bounce-enhanced 1s ease-in-out infinite;
 }
-
-/* ============================================
-   DEBUG : Tester si CSS chargé
-   ============================================ */
-.test-animation-loaded {
-  /* Si cette classe existe, le CSS est chargé */
-  --animation-css-loaded: true;
-}
-
-/* Note: Les animations Tailwind par défaut (bounce, spin, etc.) 
-   sont aussi disponibles et fonctionnent normalement */
