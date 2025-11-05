@@ -9,7 +9,7 @@ import { mastodonData } from './MastodonData.js';
 class MasterIndexGenerator {
   constructor() {
     this.debugMode = true;
-    this.version = '5.0-themes';
+    this.version = '5.2-themes-fix-progress';
     this.progressCallback = null;
     console.log(`🗂️ MasterIndexGenerator ${this.version}: Prêt.`);
   }
@@ -40,16 +40,48 @@ class MasterIndexGenerator {
     }
   }
 
+  /**
+   * ⭐ v5.1 : Charge la liste des thèmes depuis l'ancien MasterIndex
+   * Appelé AVANT la régénération pour ne pas perdre les thèmes
+   * 
+   * @returns {Promise<Array>} Liste des thèmes ou []
+   */
+  async loadExistingThemes() {
+    try {
+      console.log('🏷️ Chargement des thèmes existants...');
+      
+      const oldIndex = await this.driveSync.loadFile('mekong_master_index_v3_moments.json');
+      
+      if (oldIndex && oldIndex.themes) {
+        console.log(`✅ ${oldIndex.themes.length} thèmes préservés depuis l'ancien index`);
+        return oldIndex.themes;
+      }
+      
+      console.log('ℹ️ Aucun thème existant trouvé (première génération ou ancien format)');
+      return [];
+      
+    } catch (error) {
+      console.warn('⚠️ Erreur chargement thèmes existants:', error.message);
+      console.warn('→ Les thèmes ne seront pas préservés (si fichier corrompu/absent)');
+      return [];
+    }
+  }
+
   async generateMomentsStructure() {
     try {
       this.reportProgress('init', 'Démarrage de la génération...', 0);
       
+      // ⭐ v5.1 : Charger thèmes existants AVANT régénération
+      this.reportProgress('themes', 'Préservation des thèmes...', 5);
+      const existingThemes = await this.loadExistingThemes();
+      
       this.reportProgress('mastodon', 'Import des posts Mastodon...', 10);
       await this.mastodonData.importFromGoogleDrive();
       
+      // ✅ FIX v5.2 : Reporter seulement début, la méthode reporte elle-même la progression
       this.reportProgress('photos', 'Analyse des photo moments...', 25);
       const photoMoments = await this.analyzePhotoMoments();
-      this.reportProgress('photos', `✅ ${photoMoments.length} photo moments trouvés`, 40);
+      // Pas de report ici, déjà fait par analyzePhotoMoments()
       
       this.reportProgress('posts', 'Analyse des posts Mastodon...', 50);
       const postsByDay = this.analyzeMastodonPostsByDay();
@@ -64,7 +96,8 @@ class MasterIndexGenerator {
       this.reportProgress('merge', `✅ ${unifiedMoments.length} moments unifiés`, 90);
       
       this.reportProgress('build', 'Construction de la structure finale...', 95);
-      const finalStructure = this.buildFinalStructure(unifiedMoments);
+      // ⭐ v5.1 : Passer les thèmes existants
+      const finalStructure = this.buildFinalStructure(unifiedMoments, existingThemes);
 
       this.reportProgress('save', 'Sauvegarde sur Google Drive...', 97);
       await this.driveSync.saveFile('mekong_master_index_v3_moments.json', JSON.stringify(finalStructure, null, 2));
@@ -84,6 +117,10 @@ class MasterIndexGenerator {
     console.log('🔍 Analyse des dossiers de photos pour créer les moments...');
     const allFolders = await this.searchAllFoldersInPhotos();
     const photoMoments = [];
+    
+    // ✅ FIX v5.2 : Reporter progression pendant le scan
+    const totalFolders = allFolders.length;
+    let processedFolders = 0;
 
     for (const folder of allFolders) {
       const moment = this.parseFolderToMoment(folder.name);
@@ -100,7 +137,17 @@ class MasterIndexGenerator {
           });
         }
       }
+      
+      // ✅ Reporter progression (25% → 40% = 15 points à distribuer)
+      processedFolders++;
+      const progressPercent = 25 + Math.floor((processedFolders / totalFolders) * 15);
+      this.reportProgress(
+        'photos', 
+        `Scan photos : ${processedFolders}/${totalFolders} dossiers`, 
+        progressPercent
+      );
     }
+    
     photoMoments.sort((a, b) => a.dayStart - b.dayStart);
     console.log(`✅ ${photoMoments.length} moments basés sur les photos ont été trouvés.`);
     return photoMoments;
@@ -323,17 +370,24 @@ class MasterIndexGenerator {
     return parts[parts.length - 1] || 'photo.jpg';
   }
 
-  buildFinalStructure(unifiedMoments) {
+  /**
+   * Construit la structure finale du MasterIndex
+   * 
+   * @param {Array} unifiedMoments - Moments unifiés
+   * @param {Array} existingThemes - Thèmes préservés (v5.1)
+   * @returns {Object} Structure complète
+   */
+  buildFinalStructure(unifiedMoments, existingThemes = []) {
     const total_posts = unifiedMoments.reduce((sum, m) => sum + (m.posts?.length || 0), 0);
     const total_photos_day = unifiedMoments.reduce((sum, m) => sum + (m.dayPhotos?.length || 0), 0);
     const total_photos_post = unifiedMoments.reduce((sum, m) => sum + (m.postPhotos?.length || 0), 0);
 
     return {
-      version: "5.0-themes", // ✅ CHANGÉ
+      version: "5.2-themes-fix-progress",
       generated_at: new Date().toISOString(),
       
-      // ✅ NOUVEAU : Structure thèmes (vide au départ)
-      themes: [],
+      // ✅ v5.1 : Préserver les thèmes existants au lieu de réinitialiser à []
+      themes: existingThemes,
       
       metadata: {
         total_moments: unifiedMoments.length,
@@ -341,6 +395,7 @@ class MasterIndexGenerator {
         total_photos_from_days: total_photos_day,
         total_photos_from_posts: total_photos_post,
         total_photos: total_photos_day + total_photos_post,
+        themes_count: existingThemes.length // ✅ v5.1 : compteur thèmes
       },
       moments: unifiedMoments
     };

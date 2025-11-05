@@ -206,7 +206,7 @@ export default function App() {
   }, [navigationContext, app]);
 
   /**
-   * ⭐ PHASE 19D : Ouverture session depuis Memories
+   * PHASE 19D : Ouverture session depuis Memories
    * Utilisé par SessionListModal et SessionInfoPanel
    */
   const handleOpenSessionFromMemories = useCallback((session) => {

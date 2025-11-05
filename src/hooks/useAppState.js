@@ -1,4 +1,4 @@
-// hooks/useAppState.js - Phase 15a avec notifications
+// hooks/useAppState.js - Phase 20 avec reloadMasterIndex()
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { dataManager } from '../core/dataManager.js';
@@ -62,6 +62,7 @@ export function useAppState() {
   await dataManager.addMessageToSession(sessionId, content, photoData, linkedContent);
 }, []);
   const regenerateMasterIndex = useCallback(() => dataManager.regenerateMasterIndex(), []);
+  const reloadMasterIndex = useCallback(() => dataManager.reloadMasterIndex(), []); // ✅ FIX v2.6.5
 
   // Actions notifications (Phase 15a)
   const sendNotification = useCallback((toUserId, sessionId, sessionTitle) => 
@@ -135,6 +136,7 @@ export function useAppState() {
     closeChatSession,
     addMessageToSession,
     regenerateMasterIndex,
+    reloadMasterIndex, // ✅ FIX v2.6.5
     sendNotification,
     getUnreadNotifications,
     getUnreadNotificationCount,

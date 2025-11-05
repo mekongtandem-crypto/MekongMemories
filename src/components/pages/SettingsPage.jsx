@@ -375,7 +375,8 @@ const executeDeleteTheme = async () => {
       });
       const result = await window.masterIndexGenerator.generateMomentsStructure();
       if (result?.success) {
-        await app.regenerateMasterIndex();
+        // ✅ FIX v2.6.5 : Recharger au lieu de RE-générer (évite double génération)
+        await app.reloadMasterIndex();
         setRegenerationProgress(prev => ({ 
           ...prev, 
           isActive: false, 

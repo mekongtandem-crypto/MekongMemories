@@ -240,7 +240,7 @@ export default function StartupPage({ onReady }) {
         </p>
         <button
           onClick={() => window.location.reload()}
-          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          className="px-6 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
         >
           Recharger l'application
         </button>
@@ -304,9 +304,9 @@ export default function StartupPage({ onReady }) {
             Connexion au Drive...
           </p>
           <div className="flex items-center justify-center gap-1">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
         </div>
       )}
@@ -326,7 +326,7 @@ export default function StartupPage({ onReady }) {
           
           <button
             onClick={handleConnect}
-            className="px-8 py-4 bg-blue-500 text-white text-lg rounded-lg hover:bg-blue-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="px-8 py-4 bg-amber-500 text-white text-lg rounded-lg hover:bg-amber-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             Se connecter au Drive
           </button>
@@ -348,7 +348,7 @@ export default function StartupPage({ onReady }) {
           <div className="mb-6">
             <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-300 ease-out"
+                className="h-full bg-gradient-to-r from-amber-400 to-amber-600 transition-all duration-300 ease-out"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -377,7 +377,7 @@ export default function StartupPage({ onReady }) {
               <button
                 key={user.id}
                 onClick={() => handleUserSelected(user.id)}
-                className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-all border-2 border-transparent hover:border-blue-400"
+                className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-all border-2 border-transparent hover:border-amber-400"
               >
                 <span className="text-4xl">{user.emoji}</span>
                 <span className="text-xl font-medium text-gray-800 dark:text-gray-200">
