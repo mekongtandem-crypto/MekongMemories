@@ -4,6 +4,7 @@
  * ✅ Menu "..." avec z-index élevé
  * ✅ Support SESSION_STATUS.NOTIFIED
  */
+import { safeStorage } from '../../utils/storage.js'; 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
@@ -34,13 +35,10 @@ export default function SessionsPage() {
   
   // États sections repliables
   const [openSections, setOpenSections] = useState(() => {
-    const saved = localStorage.getItem(`mekong_sessionGroups_${app.currentUser?.id}`);
-    return saved ? JSON.parse(saved) : {
-      notified: true,
-      pending_you: true,
-      pending_other: false,
-      completed: false
-    };
+    return safeStorage.get(
+  `mekong_sessionGroups_${app.currentUser?.id}`,
+  { notified: true, pending_you: true, pending_other: false, completed: false }
+);
   });
   
   const menuRefs = useRef({});
@@ -48,10 +46,10 @@ export default function SessionsPage() {
   // Sauvegarder états sections
   useEffect(() => {
     if (app.currentUser?.id) {
-      localStorage.setItem(
-        `mekong_sessionGroups_${app.currentUser.id}`,
-        JSON.stringify(openSections)
-      );
+      safeStorage.set(
+  `mekong_sessionGroups_${app.currentUser.id}`,
+  openSections
+);
     }
   }, [openSections, app.currentUser]);
 

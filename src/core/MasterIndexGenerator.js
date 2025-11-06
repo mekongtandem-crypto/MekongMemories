@@ -1,131 +1,179 @@
 /**
- * MasterIndexGenerator.js v5.0 - Avec Thèmes
- * Photos Mastodon dans : Medias/Mastodon/Mastodon_Photos/
+ * ==============================================================================
+ * MasterIndexGenerator.js v5.2 - Logger + Thèmes + Progression
+ * ==============================================================================
+ * 
+ * RESPONSABILITÉS :
+ * - Génération du MasterIndex (moments unifiés)
+ * - Fusion photos + posts Mastodon
+ * - Mapping photos Mastodon avec google_drive_id
+ * - Préservation thèmes entre régénérations
+ * - Reporting progression temps réel
+ * 
+ * FIXES v5.2 :
+ * ✅ Préservation thèmes (v5.1)
+ * ✅ Progression incrémentale scan photos (v5.2)
+ * ✅ Logger intégré (v5.2)
+ * 
+ * ==============================================================================
  */
 
 import { driveSync } from './DriveSync.js';
 import { mastodonData } from './MastodonData.js';
+import { logger } from '../utils/logger.js';
 
 class MasterIndexGenerator {
+  
+  // ========================================
+  // CONSTRUCTOR
+  // ========================================
+  
   constructor() {
     this.debugMode = true;
     this.version = '5.2-themes-fix-progress';
     this.progressCallback = null;
-    console.log(`🗂️ MasterIndexGenerator ${this.version}: Prêt.`);
+    
+    logger.info(`MasterIndexGenerator ${this.version}: Ready`);
   }
 
+  // ========================================
+  // INITIALISATION
+  // ========================================
 
   initialize({ driveSync, mastodonData }) {
     this.driveSync = driveSync;
     this.mastodonData = mastodonData;
-    console.log('🗂️ MasterIndexGenerator: Dépendances injectées.');
+    logger.debug('MasterIndexGenerator: Dependencies injected');
   }
 
   log(message, data = null) {
     if (this.debugMode) {
-      console.log(`MIG_DEBUG: ${message}`, data || '');
+      logger.debug(`MIG: ${message}`, data || '');
     }
   }
   
-  // ✅ Méthode pour enregistrer callback
   setProgressCallback(callback) {
     this.progressCallback = callback;
   }
 
-  // ✅ Helper pour reporter progression
   reportProgress(step, message, progress = null) {
-    console.log(`🔄 [${step}] ${message}`);
+    logger.info(`[${step}] ${message}`);
     if (this.progressCallback) {
       this.progressCallback({ step, message, progress });
     }
   }
 
+  // ========================================
+  // PRÉSERVATION THÈMES (v5.1)
+  // ========================================
+
   /**
-   * ⭐ v5.1 : Charge la liste des thèmes depuis l'ancien MasterIndex
-   * Appelé AVANT la régénération pour ne pas perdre les thèmes
+   * Charge les thèmes depuis l'ancien MasterIndex
+   * Appelé AVANT régénération pour ne pas perdre les thèmes
    * 
    * @returns {Promise<Array>} Liste des thèmes ou []
    */
   async loadExistingThemes() {
     try {
-      console.log('🏷️ Chargement des thèmes existants...');
+      logger.info('Chargement thèmes existants...');
       
       const oldIndex = await this.driveSync.loadFile('mekong_master_index_v3_moments.json');
       
       if (oldIndex && oldIndex.themes) {
-        console.log(`✅ ${oldIndex.themes.length} thèmes préservés depuis l'ancien index`);
+        logger.success(`${oldIndex.themes.length} thèmes préservés`);
         return oldIndex.themes;
       }
       
-      console.log('ℹ️ Aucun thème existant trouvé (première génération ou ancien format)');
+      logger.info('Aucun thème existant (première génération)');
       return [];
       
     } catch (error) {
-      console.warn('⚠️ Erreur chargement thèmes existants:', error.message);
-      console.warn('→ Les thèmes ne seront pas préservés (si fichier corrompu/absent)');
+      logger.warn('Erreur chargement thèmes', error.message);
       return [];
     }
   }
 
+  // ========================================
+  // GÉNÉRATION PRINCIPALE
+  // ========================================
+
   async generateMomentsStructure() {
     try {
-      this.reportProgress('init', 'Démarrage de la génération...', 0);
+      this.reportProgress('init', 'Démarrage génération...', 0);
       
-      // ⭐ v5.1 : Charger thèmes existants AVANT régénération
-      this.reportProgress('themes', 'Préservation des thèmes...', 5);
+      // 1. Charger thèmes existants (v5.1)
+      this.reportProgress('themes', 'Préservation thèmes...', 5);
       const existingThemes = await this.loadExistingThemes();
       
-      this.reportProgress('mastodon', 'Import des posts Mastodon...', 10);
+      // 2. Import posts Mastodon
+      this.reportProgress('mastodon', 'Import posts Mastodon...', 10);
       await this.mastodonData.importFromGoogleDrive();
       
-      // ✅ FIX v5.2 : Reporter seulement début, la méthode reporte elle-même la progression
-      this.reportProgress('photos', 'Analyse des photo moments...', 25);
+      // 3. Analyse photo moments (avec progression v5.2)
+      this.reportProgress('photos', 'Analyse photo moments...', 25);
       const photoMoments = await this.analyzePhotoMoments();
-      // Pas de report ici, déjà fait par analyzePhotoMoments()
       
-      this.reportProgress('posts', 'Analyse des posts Mastodon...', 50);
+      // 4. Analyse posts par jour
+      this.reportProgress('posts', 'Analyse posts Mastodon...', 50);
       const postsByDay = this.analyzeMastodonPostsByDay();
-      this.reportProgress('posts', `✅ Posts analysés par jour`, 60);
+      this.reportProgress('posts', 'Posts analysés', 60);
       
-      this.reportProgress('mapping', 'Mapping des photos Mastodon...', 70);
+      // 5. Mapping photos Mastodon
+      this.reportProgress('mapping', 'Mapping photos Mastodon...', 70);
       const mastodonPhotoMapping = await this.buildMastodonPhotoMapping();
-      this.reportProgress('mapping', `✅ ${Object.keys(mastodonPhotoMapping).length} photos mappées`, 75);
+      this.reportProgress('mapping', `${Object.keys(mastodonPhotoMapping).length} photos mappées`, 75);
       
-      this.reportProgress('merge', 'Création des moments unifiés...', 80);
+      // 6. Création moments unifiés
+      this.reportProgress('merge', 'Création moments unifiés...', 80);
       const unifiedMoments = await this.createUnifiedMoments(photoMoments, postsByDay);
-      this.reportProgress('merge', `✅ ${unifiedMoments.length} moments unifiés`, 90);
+      this.reportProgress('merge', `${unifiedMoments.length} moments unifiés`, 90);
       
-      this.reportProgress('build', 'Construction de la structure finale...', 95);
-      // ⭐ v5.1 : Passer les thèmes existants
+      // 7. Construction structure finale (avec thèmes v5.1)
+      this.reportProgress('build', 'Construction structure finale...', 95);
       const finalStructure = this.buildFinalStructure(unifiedMoments, existingThemes);
 
-      this.reportProgress('save', 'Sauvegarde sur Google Drive...', 97);
-      await this.driveSync.saveFile('mekong_master_index_v3_moments.json', JSON.stringify(finalStructure, null, 2));
+      // 8. Sauvegarde Drive
+      this.reportProgress('save', 'Sauvegarde Google Drive...', 97);
+      await this.driveSync.saveFile(
+        'mekong_master_index_v3_moments.json', 
+        JSON.stringify(finalStructure, null, 2)
+      );
       
-      this.reportProgress('complete', `✅ Index généré : ${finalStructure.metadata.total_moments} moments`, 100);
+      this.reportProgress('complete', `Index généré: ${finalStructure.metadata.total_moments} moments`, 100);
       
       return { success: true, structure: finalStructure };
       
     } catch (error) {
-      this.reportProgress('error', `❌ Erreur : ${error.message}`, -1);
-      console.error('❌ Erreur critique:', error);
+      this.reportProgress('error', `Erreur: ${error.message}`, -1);
+      logger.error('Erreur critique génération', error);
       return { success: false, error: error.message };
     }
   }
 
+  // ========================================
+  // ANALYSE PHOTO MOMENTS (v5.2)
+  // ========================================
+
+  /**
+   * Analyse les dossiers photos et crée les moments
+   * v5.2 : Progression incrémentale pendant le scan
+   */
   async analyzePhotoMoments() {
-    console.log('🔍 Analyse des dossiers de photos pour créer les moments...');
+    logger.info('Analyse dossiers photos...');
+    
     const allFolders = await this.searchAllFoldersInPhotos();
     const photoMoments = [];
     
-    // ✅ FIX v5.2 : Reporter progression pendant le scan
+    // v5.2 : Reporter progression pendant le scan
     const totalFolders = allFolders.length;
     let processedFolders = 0;
 
     for (const folder of allFolders) {
       const moment = this.parseFolderToMoment(folder.name);
+      
       if (moment) {
         const photos = await this.getPhotosInFolder(folder.id);
+        
         if (photos.length > 0) {
           photoMoments.push({
             ...moment,
@@ -138,36 +186,43 @@ class MasterIndexGenerator {
         }
       }
       
-      // ✅ Reporter progression (25% → 40% = 15 points à distribuer)
+      // Reporter progression (25% → 40% = 15 points)
       processedFolders++;
       const progressPercent = 25 + Math.floor((processedFolders / totalFolders) * 15);
       this.reportProgress(
         'photos', 
-        `Scan photos : ${processedFolders}/${totalFolders} dossiers`, 
+        `Scan photos: ${processedFolders}/${totalFolders}`, 
         progressPercent
       );
     }
     
     photoMoments.sort((a, b) => a.dayStart - b.dayStart);
-    console.log(`✅ ${photoMoments.length} moments basés sur les photos ont été trouvés.`);
+    logger.success(`${photoMoments.length} photo moments trouvés`);
+    
     return photoMoments;
   }
 
   async searchAllFoldersInPhotos() {
-    console.log('Recherche des dossiers dans le répertoire "Photos"...');
-    const photosFolderResponse = await this.driveSync.searchFileByName('Photos', 'application/vnd.google-apps.folder');
+    logger.debug('Recherche dossiers "Photos"...');
+    
+    const photosFolderResponse = await this.driveSync.searchFileByName(
+      'Photos', 
+      'application/vnd.google-apps.folder'
+    );
+    
     if (!photosFolderResponse || photosFolderResponse.length === 0) {
-      throw new Error('Le dossier racine "Photos" est introuvable sur votre Google Drive.');
+      throw new Error('Dossier racine "Photos" introuvable');
     }
+    
     const photosFolderId = photosFolderResponse[0].id;
-    console.log(`Dossier "Photos" trouvé avec l'ID: ${photosFolderId}`);
+    logger.debug(`Dossier "Photos" trouvé: ${photosFolderId}`);
 
     const subFolders = await this.driveSync.listFiles({
       q: `'${photosFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       fields: 'files(id, name)'
     });
     
-    console.log(`${subFolders.length} sous-dossiers trouvés dans "Photos".`);
+    logger.debug(`${subFolders.length} sous-dossiers trouvés`);
     return subFolders;
   }
 
@@ -189,18 +244,25 @@ class MasterIndexGenerator {
       }));
   }
 
-  // ✅ Mapping avec reporting
+  // ========================================
+  // MAPPING PHOTOS MASTODON
+  // ========================================
+
   async buildMastodonPhotoMapping() {
-    this.reportProgress('mapping', 'Recherche du dossier Mastodon_Photos...');
+    this.reportProgress('mapping', 'Recherche Mastodon_Photos...');
     
     try {
-      const folderResponse = await this.driveSync.searchFileByName('Mastodon_Photos', 'application/vnd.google-apps.folder');
+      const folderResponse = await this.driveSync.searchFileByName(
+        'Mastodon_Photos', 
+        'application/vnd.google-apps.folder'
+      );
+      
       if (!folderResponse || folderResponse.length === 0) {
-        this.reportProgress('mapping', '⚠️ Dossier Mastodon_Photos introuvable');
+        this.reportProgress('mapping', 'Dossier Mastodon_Photos introuvable');
         return {};
       }
       
-      this.reportProgress('mapping', '📂 Dossier trouvé, chargement des photos...');
+      this.reportProgress('mapping', 'Chargement photos Mastodon...');
       
       const allPhotos = await this.driveSync.listFiles({
         q: `'${folderResponse[0].id}' in parents and mimeType contains 'image/' and trashed=false`,
@@ -208,8 +270,9 @@ class MasterIndexGenerator {
         pageSize: 1000
       });
       
-      this.reportProgress('mapping', `📸 ${allPhotos.length} photos trouvées, création du mapping...`);
+      this.reportProgress('mapping', `${allPhotos.length} photos trouvées`);
       
+      // Créer mapping filename → google_drive_id
       const mapping = {};
       for (const photo of allPhotos) {
         mapping[photo.name] = {
@@ -221,12 +284,15 @@ class MasterIndexGenerator {
       return mapping;
       
     } catch (error) {
-      this.reportProgress('mapping', `❌ Erreur mapping : ${error.message}`);
+      this.reportProgress('mapping', `Erreur mapping: ${error.message}`);
       return {};
     }
   }
 
-  // ✅ CORRECTION : Cette méthode doit rester DANS la classe
+  // ========================================
+  // PARSING FOLDER NAMES
+  // ========================================
+
   parseFolderToMoment(folderName) {
     const extendedPatterns = [
       { regex: /^(\d{1,3})-(\d{1,3})\.(.+)$/, name: 'PLAGE_POINT', extract: 'range' },
@@ -238,6 +304,7 @@ class MasterIndexGenerator {
     
     for (const pattern of extendedPatterns) {
       const match = folderName.trim().match(pattern.regex);
+      
       if (match) {
         if (pattern.extract === 'range' && match.length === 4) {
           return { 
@@ -259,38 +326,55 @@ class MasterIndexGenerator {
         }
       }
     }
-    this.log(`Aucun pattern trouvé pour le dossier: "${folderName}"`);
+    
+    this.log(`Aucun pattern pour dossier: "${folderName}"`);
     return null;
   }
 
+  // ========================================
+  // ANALYSE POSTS MASTODON
+  // ========================================
+
   analyzeMastodonPostsByDay() {
-    console.log('🔍 Analyse des posts Mastodon...');
+    logger.info('Analyse posts Mastodon...');
+    
     const posts = this.mastodonData.getPosts() || [];
     const postsByDay = {};
+    
     posts.forEach(post => {
       const day = post.dayNumber > 137 ? 0 : post.dayNumber;
+      
       if (day !== null && day >= 0) {
         if (!postsByDay[day]) postsByDay[day] = [];
         postsByDay[day].push({ ...post, dayNumber: day });
       }
     });
-    console.log(`✅ ${posts.length} posts Mastodon répartis par jour.`);
+    
+    logger.success(`${posts.length} posts répartis par jour`);
     return postsByDay;
   }
 
+  // ========================================
+  // CRÉATION MOMENTS UNIFIÉS
+  // ========================================
+
   async createUnifiedMoments(photoMoments, postsByDay) {
-    console.log('🔗 Fusion des moments photos et des posts...');
+    logger.info('Fusion moments photos + posts...');
     
     const mastodonPhotoMapping = await this.buildMastodonPhotoMapping();
     
     const unifiedMoments = [...photoMoments];
-    const processedDays = new Set(photoMoments.flatMap(m => 
-      Array.from({length: m.dayEnd - m.dayStart + 1}, (_, i) => m.dayStart + i)
-    ));
+    const processedDays = new Set(
+      photoMoments.flatMap(m => 
+        Array.from({length: m.dayEnd - m.dayStart + 1}, (_, i) => m.dayStart + i)
+      )
+    );
 
+    // Enrichir moments existants avec posts
     unifiedMoments.forEach(moment => {
       moment.posts = [];
       moment.postPhotos = [];
+      
       for (let day = moment.dayStart; day <= moment.dayEnd; day++) {
         if (postsByDay[day]) {
           const enrichedPosts = postsByDay[day].map(post => 
@@ -298,15 +382,20 @@ class MasterIndexGenerator {
           );
           
           moment.posts.push(...enrichedPosts);
+          
           enrichedPosts.forEach(post => {
-            moment.postPhotos.push(...(post.photos || []).map(p => ({...p, type: 'post_photo'})));
+            moment.postPhotos.push(
+              ...(post.photos || []).map(p => ({...p, type: 'post_photo'}))
+            );
           });
         }
       }
     });
 
+    // Créer moments pour jours sans dossier photo
     Object.keys(postsByDay).forEach(dayStr => {
       const day = parseInt(dayStr);
+      
       if (!processedDays.has(day)) {
         const dayPosts = postsByDay[day];
         
@@ -334,7 +423,8 @@ class MasterIndexGenerator {
     });
 
     unifiedMoments.sort((a, b) => a.dayStart - b.dayStart);
-    console.log(`✅ ${unifiedMoments.length} moments unifiés créés.`);
+    logger.success(`${unifiedMoments.length} moments unifiés créés`);
+    
     return unifiedMoments;
   }
 
@@ -354,7 +444,7 @@ class MasterIndexGenerator {
           filename: mappingInfo.filename
         };
       } else {
-        console.warn(`⚠️ Photo Mastodon non trouvée: ${filename}`);
+        logger.warn(`Photo Mastodon non trouvée: ${filename}`);
         return photo;
       }
     });
@@ -369,6 +459,10 @@ class MasterIndexGenerator {
     const parts = url.split('/');
     return parts[parts.length - 1] || 'photo.jpg';
   }
+
+  // ========================================
+  // STRUCTURE FINALE (v5.1)
+  // ========================================
 
   /**
    * Construit la structure finale du MasterIndex
@@ -386,7 +480,7 @@ class MasterIndexGenerator {
       version: "5.2-themes-fix-progress",
       generated_at: new Date().toISOString(),
       
-      // ✅ v5.1 : Préserver les thèmes existants au lieu de réinitialiser à []
+      // v5.1 : Préserver thèmes existants
       themes: existingThemes,
       
       metadata: {
@@ -395,14 +489,20 @@ class MasterIndexGenerator {
         total_photos_from_days: total_photos_day,
         total_photos_from_posts: total_photos_post,
         total_photos: total_photos_day + total_photos_post,
-        themes_count: existingThemes.length // ✅ v5.1 : compteur thèmes
+        themes_count: existingThemes.length
       },
+      
       moments: unifiedMoments
     };
   }
 }
 
+// ========================================
+// EXPORT & GLOBAL
+// ========================================
+
 export const masterIndexGenerator = new MasterIndexGenerator();
+
 if (typeof window !== 'undefined') {
   window.masterIndexGenerator = masterIndexGenerator;
 }

@@ -1,55 +1,38 @@
 /**
  * ==============================================================================
- * DataManager v3.7 - Phase 19D : Système ContentLinks intégré
+ * DataManager v3.8 - Logger intégré + Code nettoyé
  * ==============================================================================
  * 
- * ARCHITECTURE DONNÉES :
- * ┌─────────────────────────────────────────────────────────────────┐
- * │  SESSION FILES (source de vérité absolue)                        │
- * │  Fichiers: session_sid_XXXXX.json                                │
- * │  - originContent : contenu d'origine de la session               │
- * │  - linkedContent : liens dans les messages individuels           │
- * └─────────────────────────────────────────────────────────────────┘
- *                              ↓ (indexé par)
- * ┌─────────────────────────────────────────────────────────────────┐
- * │  CONTENT-LINKS.JSON (index de recherche inversée - cache)        │
- * │  - Permet requêtes rapides : photo/post/moment → sessions        │
- * │  - Reconstruit automatiquement si vide/corrompu/manquant         │
- * │  - Performance : Map-based (O(1) vs O(n) sans index)            │
- * └─────────────────────────────────────────────────────────────────┘
+ * RESPONSABILITÉS :
+ * - Gestion centralisée de l'état application (sessions, masterIndex, user)
+ * - CRUD sessions (create, update, delete)
+ * - Synchronisation Drive via DriveSync
+ * - Pub/Sub pour React (listeners)
+ * - Indexation ContentLinks (liens bidirectionnels)
  * 
- * FLUX DE DONNÉES - Création session :
- * 1. User crée session → createSession()
- * 2. Sauver session avec originContent → session_XXX.json
- * 3. ⭐ NOUVEAU : contentLinks.addLink(origin) → content-links.json
- * 
- * FLUX DE DONNÉES - Ajout lien message :
- * 1. User ajoute lien → addMessageToSession(..., linkedContent)
- * 2. Sauver message avec linkedContent → session_XXX.json
- * 3. ⭐ NOUVEAU : contentLinks.addLink(link) → content-links.json
- * 
- * RECONSTRUCTION AUTO :
- * - Au démarrage : si content-links.json vide → rebuildContentLinks()
- * - Parcourt toutes les sessions et reconstruit l'index complet
- * 
- * CHANGELOG v3.7 :
- * ✅ contentLinks ajouté au constructor
- * ✅ Initialisation dans initializeDependencies()
- * ✅ createSession() → appelle contentLinks.addLink() pour origine
- * ✅ addMessageToSession() → appelle contentLinks.addLink() si linkedContent
- * ✅ deleteSession() → appelle contentLinks.removeLinksForSession()
- * ✅ rebuildContentLinks() avec auto-trigger au démarrage
- * ✅ Documentation complète des flux
+ * ARCHITECTURE :
+ * DataManager ↔ useAppState ↔ React Components
  * 
  * ==============================================================================
  */
 
+import { logger } from '../utils/logger.js';
+
 class DataManager {
+  
+  // ========================================
+  // CONSTRUCTOR
+  // ========================================
+  
   constructor() {
+    // Dépendances injectées
     this.connectionManager = null;
     this.driveSync = null;
     this.stateManager = null;
-    this.contentLinks = null;  // ⭐ NEW Phase 19D - Index liens bidirectionnel
+    this.contentLinks = null;
+    this.notificationManager = null;
+    
+    // État application
     this.appState = {
       isInitialized: false, 
       isLoading: true, 
@@ -62,30 +45,32 @@ class DataManager {
       connection: { hasError: false, lastError: null },
       isCreatingSession: false,
     };
+    
+    // Pub/Sub listeners
     this.listeners = new Set();
-    this.notificationManager = null;
 
-    console.log('📦 DataManager v3.7 (ContentLinks intégré): Ready.');
+    logger.info('DataManager v3.8: Ready');
   }
 
   // ========================================
   // INITIALISATION
   // ========================================
-
+  
   initializeDependencies(dependencies) {
     this.connectionManager = dependencies.connectionManager;
     this.driveSync = dependencies.driveSync;
     this.stateManager = dependencies.stateManager;
     this.notificationManager = dependencies.notificationManager;
-    this.contentLinks = dependencies.contentLinks || window.contentLinks;  // ⭐ NEW Phase 19D
+    this.contentLinks = dependencies.contentLinks || window.contentLinks;
     
     this.connectionManager.subscribe(this.handleConnectionChange.bind(this));
     
-    console.log('📦 DataManager: Dependencies injected.');
+    logger.debug('Dependencies injected');
+    
     if (this.contentLinks) {
-      console.log('✅ ContentLinks disponible');
+      logger.debug('ContentLinks disponible');
     } else {
-      console.warn('⚠️ ContentLinks non trouvé - Index liens désactivé');
+      logger.warn('ContentLinks non trouvé');
     }
   }
 
@@ -102,26 +87,38 @@ class DataManager {
         connection: { hasError: true, lastError: connectionState.lastError }
       });
     }
+    
     if (connectionState.isOnline && !this.appState.isInitialized) {
       await this.synchronizeInitialData();
     }
   }
 
+  // ========================================
+  // SYNCHRONISATION INITIALE
+  // ========================================
+  
   synchronizeInitialData = async () => {
-    console.log('🔄 DataManager: Synchronisation initiale...');
+    logger.info('Synchronisation initiale...');
     this.updateState({ isLoading: true });
     
     try {
+      // 1. Charger user en cache
       const cachedUser = await this.stateManager.get('mekong_currentUser');
-      if (cachedUser) console.log(`👤 Utilisateur en cache trouvé : ${cachedUser}`);
+      if (cachedUser) {
+        logger.debug(`User en cache: ${cachedUser}`);
+      }
       
+      // 2. Charger données Drive
       const loadedFiles = await this.driveSync.loadAllData();
 
-      let masterIndex = (loadedFiles?.masterIndex) ? 
-        (typeof loadedFiles.masterIndex === 'string' ? JSON.parse(loadedFiles.masterIndex) : loadedFiles.masterIndex) 
-        : null;
+      // 3. Parser masterIndex
+      let masterIndex = loadedFiles?.masterIndex ? 
+        (typeof loadedFiles.masterIndex === 'string' 
+          ? JSON.parse(loadedFiles.masterIndex) 
+          : loadedFiles.masterIndex
+        ) : null;
 
-      // Enrichir moments avec IDs si absents
+      // 4. Enrichir moments avec IDs si absents
       if (masterIndex?.moments) {
         masterIndex.moments = masterIndex.moments.map((moment, index) => {
           if (!moment.id) {
@@ -132,25 +129,25 @@ class DataManager {
           }
           return moment;
         });
-        console.log(`✅ ${masterIndex.moments.length} moments chargés avec IDs`);
+        logger.debug(`${masterIndex.moments.length} moments chargés`);
       }
 
       const sessions = loadedFiles.sessions || [];
 
-      // Charger notifications
+      // 5. Init notifications
       await this.notificationManager.init();
       
-      // ⭐ NEW Phase 19D : Charger ContentLinks
+      // 6. Init ContentLinks + rebuild si vide
       if (this.contentLinks) {
         await this.contentLinks.init();
         
-        // ⭐ Reconstruction auto si vide
         if (this.contentLinks.links.size === 0 && sessions.length > 0) {
-          console.log('🔧 ContentLinks vide mais sessions présentes → Reconstruction...');
+          logger.info('ContentLinks vide → Reconstruction auto');
           await this.rebuildContentLinks(sessions);
         }
       }
 
+      // 7. Mettre à jour état
       this.updateState({
         masterIndex, 
         sessions, 
@@ -160,10 +157,10 @@ class DataManager {
         error: null
       });
       
-      console.log(`✅ DataManager: Synchro terminée. ${sessions.length} session(s) chargée(s).`);
+      logger.success('Synchro terminée', { sessions: sessions.length });
       
     } catch (error) {
-      console.error("❌ DataManager: Erreur de synchronisation.", error);
+      logger.error('Erreur synchronisation', error);
       this.updateState({ 
         error: `Sync Error: ${error.message}`, 
         isLoading: false, 
@@ -177,21 +174,18 @@ class DataManager {
   // ========================================
   
   /**
-   * ⭐ NEW Phase 19D : Reconstruire l'index ContentLinks depuis toutes les sessions
-   * 
-   * QUAND : Appelé automatiquement si content-links.json est vide au démarrage
-   * COMMENT : Parcourt toutes les sessions et réindexe originContent + linkedContent
-   * DURÉE : ~100ms pour 50 sessions
+   * Reconstruit l'index ContentLinks depuis toutes les sessions
+   * Appelé automatiquement si content-links.json est vide
    */
   rebuildContentLinks = async (sessions = null) => {
     if (!this.contentLinks) {
-      console.warn('⚠️ ContentLinks non disponible, skip rebuild');
+      logger.warn('ContentLinks non disponible, skip rebuild');
       return;
     }
     
     const sessionsToIndex = sessions || this.appState.sessions;
     
-    console.log(`🔧 Reconstruction ContentLinks depuis ${sessionsToIndex.length} sessions...`);
+    logger.info(`Reconstruction ContentLinks: ${sessionsToIndex.length} sessions`);
     
     let originCount = 0;
     let linkCount = 0;
@@ -210,7 +204,7 @@ class DataManager {
         if (session.originContent) {
           await this.contentLinks.addLink({
             sessionId: session.id,
-            messageId: `${session.id}-origin`,  // ID virtuel pour origine
+            messageId: `${session.id}-origin`,
             contentType: session.originContent.type,
             contentId: session.originContent.id,
             contentTitle: session.originContent.title,
@@ -237,10 +231,14 @@ class DataManager {
         }
       }
       
-      console.log(`✅ ContentLinks reconstruit : ${originCount} origines + ${linkCount} liens = ${originCount + linkCount} total`);
+      logger.success('ContentLinks reconstruit', { 
+        origines: originCount, 
+        liens: linkCount, 
+        total: originCount + linkCount 
+      });
       
     } catch (error) {
-      console.error('❌ Erreur reconstruction ContentLinks:', error);
+      logger.error('Erreur reconstruction ContentLinks', error);
     }
   }
 
@@ -251,7 +249,10 @@ class DataManager {
   /**
    * Créer une nouvelle session
    * 
-   * ⭐ v3.7 : Appelle contentLinks.addLink() pour indexer l'origine
+   * @param {Object} gameData - Données du moment/post/photo
+   * @param {string} initialText - Texte initial (optionnel)
+   * @param {Object} sourcePhoto - Photo source si session depuis photo
+   * @returns {Promise<Object>} Session créée
    */
   createSession = async (gameData, initialText = null, sourcePhoto = null) => {
     this.updateState({ isCreatingSession: true });
@@ -261,13 +262,14 @@ class DataManager {
       const baseTimestamp = Date.now();
       
       // ========================================
-      // DÉTERMINER ORIGINCONTENT
+      // 1. DÉTERMINER ORIGINCONTENT
       // ========================================
+      
       let originContent = null;
       let momentId = null;
       
       if (sourcePhoto) {
-        // Session créée depuis une photo
+        // Session depuis photo
         originContent = {
           type: 'photo',
           id: sourcePhoto.google_drive_id || sourcePhoto.id,
@@ -278,7 +280,7 @@ class DataManager {
         momentId = gameData.id;
         
       } else if (gameData.systemMessage?.includes('article')) {
-        // Session créée depuis un post
+        // Session depuis post
         originContent = {
           type: 'post',
           id: gameData.id,
@@ -287,7 +289,7 @@ class DataManager {
         momentId = gameData.momentId || gameData.id;
         
       } else {
-        // Session créée depuis un moment
+        // Session depuis moment
         originContent = {
           type: 'moment',
           id: gameData.id,
@@ -297,17 +299,15 @@ class DataManager {
       }
       
       // ========================================
-      // CRÉER SESSION
+      // 2. CRÉER SESSION
       // ========================================
+      
       const newSession = {
         id: `sid_${baseTimestamp}`, 
         momentId: momentId,
         originContent: originContent,
         themeIds: [],
-        
-        // Compatibilité legacy
-        gameId: momentId,  // DEPRECATED
-        
+        gameId: momentId,  // Legacy
         gameTitle: gameData.title,
         subtitle: `Conversation sur ${gameData.title}`, 
         createdAt: now,
@@ -316,8 +316,9 @@ class DataManager {
       };
       
       // ========================================
-      // AJOUTER MESSAGES INITIAUX
+      // 3. AJOUTER MESSAGES INITIAUX
       // ========================================
+      
       if (sourcePhoto) {
         // Message photo utilisateur
         const userPhotoMessage = {
@@ -338,10 +339,9 @@ class DataManager {
         };
         newSession.notes.push(userPhotoMessage);
         
-        console.log('📸 Session photo créée:', {
-          momentId: newSession.momentId,
-          originType: newSession.originContent.type,
-          originId: newSession.originContent.id
+        logger.debug('Session photo créée', { 
+          momentId, 
+          originType: originContent.type 
         });
         
       } else {
@@ -367,51 +367,51 @@ class DataManager {
           newSession.notes.push(userMessage);
         }
         
-        console.log('✅ Session créée:', {
-          momentId: newSession.momentId,
-          originType: newSession.originContent.type,
-          originId: newSession.originContent.id
+        logger.debug('Session créée', { 
+          momentId, 
+          originType: originContent.type 
         });
       }
       
       // ========================================
-      // SAUVEGARDER + INDEXER
+      // 4. SAUVEGARDER + INDEXER
       // ========================================
       
-      // 1. Sauver session (source de vérité)
+      // 4.1 Sauver session (source de vérité)
       await this.driveSync.saveFile(`session_${newSession.id}.json`, newSession);
       
-      // 2. ⭐ NEW Phase 19D : Indexer dans ContentLinks
+      // 4.2 Indexer dans ContentLinks
       if (this.contentLinks && originContent) {
         try {
           await this.contentLinks.addLink({
             sessionId: newSession.id,
-            messageId: `${newSession.id}-origin`,  // ID virtuel pour origine
+            messageId: `${newSession.id}-origin`,
             contentType: originContent.type,
             contentId: originContent.id,
             contentTitle: originContent.title,
             linkedBy: this.appState.currentUser
           });
-          console.log('🔗 Origine indexée dans ContentLinks');
+          logger.debug('Origine indexée dans ContentLinks');
         } catch (error) {
-          console.error('❌ Erreur indexation origine:', error);
-          // Non-bloquant : la session est sauvegardée même si indexation échoue
+          logger.error('Erreur indexation origine', error);
+          // Non-bloquant
         }
       }
       
+      // 4.3 Délai technique
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // 3. Mettre à jour state React
+      // 4.4 Mettre à jour state React
       this.updateState({ 
         sessions: [...this.appState.sessions, newSession],
         isCreatingSession: false
       });
       
-      console.log('✅ Session créée avec', newSession.notes.length, 'message(s)');
+      logger.success('Session créée', { messages: newSession.notes.length });
       return newSession;
       
     } catch (error) {
-      console.error('❌ Erreur création session:', error);
+      logger.error('Erreur création session', error);
       this.updateState({ isCreatingSession: false });
       throw error;
     }
@@ -422,32 +422,37 @@ class DataManager {
    */
   updateSession = async (sessionToUpdate) => {
     await this.driveSync.saveFile(`session_${sessionToUpdate.id}.json`, sessionToUpdate);
+    
     const updatedSessions = this.appState.sessions.map(s => 
       s.id === sessionToUpdate.id ? sessionToUpdate : s
     );
-    const updatedCurrentChat = this.appState.currentChatSession?.id === sessionToUpdate.id ? 
-      sessionToUpdate : this.appState.currentChatSession;
-    this.updateState({ sessions: updatedSessions, currentChatSession: updatedCurrentChat });
+    
+    const updatedCurrentChat = this.appState.currentChatSession?.id === sessionToUpdate.id 
+      ? sessionToUpdate 
+      : this.appState.currentChatSession;
+    
+    this.updateState({ 
+      sessions: updatedSessions, 
+      currentChatSession: updatedCurrentChat 
+    });
   }
 
   /**
    * Supprimer une session
-   * 
-   * ⭐ v3.7 : Appelle contentLinks.removeLinksForSession() pour nettoyer l'index
    */
   deleteSession = async (sessionId) => {
-    // ⭐ NEW Phase 19D : Supprimer liens de l'index AVANT de supprimer la session
+    // 1. Supprimer liens de l'index
     if (this.contentLinks) {
       try {
         await this.contentLinks.removeLinksForSession(sessionId);
-        console.log('🗑️ Liens supprimés de ContentLinks');
+        logger.debug('Liens supprimés de ContentLinks');
       } catch (error) {
-        console.error('❌ Erreur suppression liens:', error);
+        logger.error('Erreur suppression liens', error);
         // Non-bloquant
       }
     }
     
-    // Supprimer fichier + state
+    // 2. Supprimer fichier + state
     await this.driveSync.deleteFile(`session_${sessionId}.json`);
     const filteredSessions = this.appState.sessions.filter(s => s.id !== sessionId);
     this.updateState({ sessions: filteredSessions });
@@ -455,25 +460,24 @@ class DataManager {
 
   /**
    * Ajouter un message à une session
-   * 
-   * ⭐ v3.7 : Appelle contentLinks.addLink() si linkedContent présent
    */
   addMessageToSession = async (sessionId, messageContent, photoData = null, linkedContent = null) => {
-    console.log('=== dataManager.addMessageToSession ===');
-    console.log('📨 sessionId:', sessionId);
-    console.log('📨 messageContent:', messageContent);
-    console.log('📨 photoData reçu:', photoData);
-    console.log('📨 linkedContent reçu:', linkedContent);
+    logger.debug('addMessageToSession', { 
+      sessionId, 
+      hasPhoto: !!photoData, 
+      hasLink: !!linkedContent 
+    });
     
     const session = this.appState.sessions.find(s => s.id === sessionId);
     if (!session) {
-      console.error('❌ Session introuvable:', sessionId);
+      logger.error('Session introuvable', sessionId);
       return;
     }
     
     // ========================================
-    // CRÉER MESSAGE
+    // 1. CRÉER MESSAGE
     // ========================================
+    
     const newMessage = {
       id: `msg_${Date.now()}`, 
       author: this.appState.currentUser,
@@ -484,19 +488,15 @@ class DataManager {
       ...(linkedContent && { linkedContent })
     };
     
-    console.log('💾 Message créé:', newMessage);
-    console.log('💾 Message a photoData?', 'photoData' in newMessage);
-    console.log('💾 Message a linkedContent?', 'linkedContent' in newMessage);
-    
     // ========================================
-    // SAUVEGARDER + INDEXER
+    // 2. SAUVEGARDER + INDEXER
     // ========================================
     
-    // 1. Sauver message (source de vérité)
+    // 2.1 Sauver message (source de vérité)
     const updatedSession = { ...session, notes: [...session.notes, newMessage] };
     await this.updateSession(updatedSession);
     
-    // 2. ⭐ NEW Phase 19D : Indexer dans ContentLinks si lien présent
+    // 2.2 Indexer dans ContentLinks si lien présent (FIX syntaxe: NEW → Phase)
     if (this.contentLinks && linkedContent) {
       try {
         await this.contentLinks.addLink({
@@ -507,22 +507,24 @@ class DataManager {
           contentTitle: linkedContent.title,
           linkedBy: this.appState.currentUser
         });
-        console.log('🔗 Lien indexé dans ContentLinks');
+        logger.debug('Lien indexé dans ContentLinks');
       } catch (error) {
-        console.error('❌ Erreur indexation lien:', error);
-        // Non-bloquant : le message est sauvegardé même si indexation échoue
+        logger.error('Erreur indexation lien', error);
+        // Non-bloquant
       }
     }
     
-    console.log('✅ Session mise à jour');
+    logger.debug('Session mise à jour');
     
     // ========================================
-    // NOTIFICATIONS
+    // 3. NOTIFICATIONS
     // ========================================
+    
     const notif = this.notificationManager.getNotificationForSession(
       sessionId, 
       this.appState.currentUser
     );
+    
     if (notif) {
       await this.notificationManager.markAsRead(notif.id);
     }
@@ -533,21 +535,28 @@ class DataManager {
   // ========================================
 
   openChatSession = (session) => {
-    this.updateState({ currentChatSession: session, currentPage: 'chat' });
+    this.updateState({ 
+      currentChatSession: session, 
+      currentPage: 'chat' 
+    });
     
-    // Marquer notification comme lue à l'ouverture
+    // Marquer notification comme lue
     const notif = this.notificationManager.getNotificationForSession(
       session.id, 
       this.appState.currentUser.id
     );
+    
     if (notif) {
       this.notificationManager.markAsRead(notif.id);
-      console.log('✅ Notification marquée lue à l\'ouverture de la session');
+      logger.debug('Notification marquée lue');
     }
   }
 
   closeChatSession = () => {
-    this.updateState({ currentChatSession: null, currentPage: 'sessions' });
+    this.updateState({ 
+      currentChatSession: null, 
+      currentPage: 'sessions' 
+    });
   }
 
   // ========================================
@@ -579,12 +588,12 @@ class DataManager {
       });
       
       if (result.success) {
-        console.log('✅ Notification envoyée:', result.notification);
+        logger.success('Notification envoyée', { to: toUserId });
       }
       
       return result;
     } catch (error) {
-      console.error('❌ Erreur envoi notification:', error);
+      logger.error('Erreur envoi notification', error);
       return { success: false, error: error.message };
     }
   }
@@ -593,9 +602,13 @@ class DataManager {
   // MASTER INDEX
   // ========================================
   
+  /**
+   * Recharger le MasterIndex depuis Drive
+   */
   reloadMasterIndex = async () => {
     try {
-      console.log('🔄 DataManager: Rechargement manuel du masterIndex...');
+      logger.info('Rechargement MasterIndex...');
+      
       const masterIndexData = await this.driveSync.loadFile('mekong_master_index_v3_moments.json');
       
       if (masterIndexData) {
@@ -604,24 +617,27 @@ class DataManager {
         
         this.updateState({ masterIndex: masterIndexData });
         
-        console.log('✅ MasterIndex rechargé et appliqué !');
+        logger.success('MasterIndex rechargé');
         return { success: true };
       } else {
-        throw new Error("Le fichier masterIndex n'a pas pu être rechargé depuis Drive.");
+        throw new Error("Fichier masterIndex introuvable");
       }
     } catch (error) {
-      console.error('❌ Echec du rechargement du master index:', error);
+      logger.error('Erreur rechargement MasterIndex', error);
       this.updateState({ error: `Reload Error: ${error.message}` });
       return { success: false, error };
     }
   }
 
+  /**
+   * Régénérer le MasterIndex complet
+   */
   regenerateMasterIndex = async () => {
     try {
-      console.log('🔧 DataManager: Régénération complète du masterIndex...');
+      logger.info('Régénération complète MasterIndex...');
       
       if (!window.masterIndexGenerator) {
-        throw new Error('masterIndexGenerator n\'est pas disponible');
+        throw new Error('masterIndexGenerator non disponible');
       }
       
       const result = await window.masterIndexGenerator.generateMomentsStructure();
@@ -630,7 +646,7 @@ class DataManager {
         throw new Error(result.error || 'Erreur de génération');
       }
       
-      console.log('✅ Index régénéré sur Drive');
+      logger.success('Index régénéré sur Drive');
       
       // Recharger le nouveau fichier
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -639,19 +655,22 @@ class DataManager {
       return reloadResult;
       
     } catch (error) {
-      console.error('❌ Erreur régénération masterIndex:', error);
+      logger.error('Erreur régénération MasterIndex', error);
       return { success: false, error: error.message };
     }
   }
 
+  /**
+   * Sauvegarder le MasterIndex
+   */
   saveMasterIndex = async (updatedMasterIndex) => {
     try {
       await this.driveSync.saveFile('mekong_master_index_v3_moments.json', updatedMasterIndex);
       this.updateState({ masterIndex: updatedMasterIndex });
-      console.log('✅ MasterIndex sauvegardé');
+      logger.success('MasterIndex sauvegardé');
       return { success: true };
     } catch (error) {
-      console.error('❌ Erreur sauvegarde masterIndex:', error);
+      logger.error('Erreur sauvegarde MasterIndex', error);
       return { success: false, error: error.message };
     }
   }
@@ -661,20 +680,20 @@ class DataManager {
   // ========================================
 
   setCurrentUser = (userId) => {
-    console.log(`👤 Changement d'utilisateur -> ${userId}`);
+    logger.debug(`Changement utilisateur: ${userId}`);
     this.stateManager.set('mekong_currentUser', userId);
     this.updateState({ currentUser: userId });
   }
 
   updateCurrentPage = (pageId) => {
     if (this.appState.currentPage !== pageId) {
-      console.log(`📄 Changement de page -> ${pageId}`);
+      logger.debug(`Changement page: ${pageId}`);
       this.updateState({ currentPage: pageId });
     }
   }
 
   // ========================================
-  // STATE MANAGEMENT
+  // STATE MANAGEMENT - PUB/SUB
   // ========================================
   
   getState = () => this.appState;
@@ -700,5 +719,4 @@ export const dataManager = new DataManager();
 
 if (typeof window !== 'undefined') {
   window.dataManager = dataManager;
-  console.log('🌍 DataManager disponible via window.dataManager');
 }
