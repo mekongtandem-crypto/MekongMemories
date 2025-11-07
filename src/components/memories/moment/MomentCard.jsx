@@ -1,0 +1,137 @@
+/**
+ * MomentCard.jsx v7.0
+ * Carte moment complète (wrapper)
+ * 
+ * Gère :
+ * - État local localDisplay (showPosts, showDayPhotos)
+ * - Pagination photos (visibleDayPhotos)
+ * - Reset au collapse
+ */
+
+import React, { useState, useEffect, useRef, memo, forwardRef } from 'react';
+import MomentHeader from './MomentHeader.jsx';
+import MomentContent from './MomentContent.jsx';
+
+export const MomentCard = memo(forwardRef(({ 
+  moment, 
+  isSelected, 
+  isExplored, 
+  matchesFilter, 
+  displayOptions, 
+  onSelect, 
+  onPhotoClick, 
+  onCreateSession,
+  activePhotoGrid, 
+  selectedPhotos, 
+  onActivateSelection, 
+  onTogglePhotoSelection,
+  onBulkTagPhotos, 
+  onCancelSelection,
+  isFromChat, 
+  onOpenPhotoContextMenu,
+  selectionMode, 
+  onContentSelected,
+  sessions, 
+  onShowSessions, 
+  onCreateSessionFromContent
+}, ref) => {
+  
+  const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
+  const photosPerLoad = 30;
+  
+  const [localDisplay, setLocalDisplay] = useState({
+    showPosts: displayOptions.showPostText,
+    showDayPhotos: displayOptions.showMomentPhotos
+  });
+
+  useEffect(() => {
+    setLocalDisplay(prev => ({
+      ...prev,
+      showPosts: displayOptions.showPostText,
+      showDayPhotos: displayOptions.showMomentPhotos
+    }));
+  }, [displayOptions.showPostText, displayOptions.showMomentPhotos]);
+  
+  const wasSelectedRef = useRef(isSelected);
+  
+  // Reset affichage si on ferme le moment
+  useEffect(() => {
+    if (wasSelectedRef.current && !isSelected) {
+      setLocalDisplay({
+        showPosts: false,
+        showDayPhotos: false
+      });
+    }
+    wasSelectedRef.current = isSelected;
+  }, [isSelected]);
+  
+  const handleOpenWith = (options) => {
+    if (!isSelected) {
+      onSelect(moment);
+    }
+    setLocalDisplay(options);
+  };
+  
+  const handleToggleLocal = (key) => {
+    setLocalDisplay(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  return (
+    <div 
+      ref={ref} 
+      id={moment.id}
+      data-filtered={matchesFilter ? 'true' : 'false'}
+      className={`bg-white rounded-xl shadow-sm border transition-all duration-300 ${
+        isSelected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'
+      }`}
+    >
+      <div className="px-3 pt-3 pb-0">
+        <MomentHeader 
+          moment={moment}
+          isSelected={isSelected}
+          isExplored={isExplored}
+          onSelect={onSelect}
+          onOpenWith={handleOpenWith}
+          onCreateSession={onCreateSession}
+          localDisplay={localDisplay}
+          onToggleLocal={handleToggleLocal}
+          selectionMode={selectionMode}
+          onContentSelected={onContentSelected}
+          sessions={sessions}
+          onShowSessions={onShowSessions}
+        />
+      </div>
+      
+      {isSelected && (
+        <MomentContent 
+          moment={moment}
+          displayOptions={displayOptions}
+          localDisplay={localDisplay}
+          visibleDayPhotos={visibleDayPhotos}
+          photosPerLoad={photosPerLoad}
+          onPhotoClick={onPhotoClick}
+          onCreateSession={onCreateSession}
+          onLoadMorePhotos={() => setVisibleDayPhotos(prev => prev + photosPerLoad)}
+          onToggleDayPhotos={() => handleToggleLocal('showDayPhotos')}
+          activePhotoGrid={activePhotoGrid}
+          selectedPhotos={selectedPhotos}
+          onActivateSelection={onActivateSelection}
+          onTogglePhotoSelection={onTogglePhotoSelection}
+          onBulkTagPhotos={onBulkTagPhotos}
+          onCancelSelection={onCancelSelection}
+          isFromChat={isFromChat}
+          onOpenPhotoContextMenu={onOpenPhotoContextMenu}
+          selectionMode={selectionMode}
+          onContentSelected={onContentSelected}
+          sessions={sessions}
+          onShowSessions={onShowSessions}
+          onCreateSessionFromContent={onCreateSessionFromContent}        	
+        />
+      )}
+    </div>
+  );
+}));
+
+MomentCard.displayName = 'MomentCard';
+
+export default MomentCard;
