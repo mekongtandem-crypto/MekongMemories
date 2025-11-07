@@ -97,14 +97,17 @@ export function useMemoriesScroll(navigationContext, onNavigateBack) {
       }
     }
     
-    // Auto-cleanup après 2s
-    const cleanupTimer = setTimeout(() => {
-      if (onNavigateBack) {
-        onNavigateBack();
-      }
-    }, 2000);
-    
-    return () => clearTimeout(cleanupTimer);
+// Cleanup seulement si on est toujours sur la même page après 2s
+const cleanupTimer = setTimeout(() => {
+  if (onNavigateBack && navigationContext) {
+    console.log('🧹 Nettoyage contexte navigation');
+    onNavigateBack();
+  }
+}, 2000);
+
+return () => {
+  clearTimeout(cleanupTimer);
+};
   }, [navigationContext, scrollToMoment, onNavigateBack]);
   
   // ========================================
