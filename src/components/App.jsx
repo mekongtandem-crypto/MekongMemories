@@ -140,6 +140,7 @@ export default function App() {
    */
   const handlePageChange = useCallback((newPage) => {
     console.log('📄 Changement page:', app.currentPage, '→', newPage);
+    console.log('🔍 navigationContext actuel:', navigationContext);
     
     // Désactiver mode sélection si actif
     if (selectionMode.active) {
@@ -194,6 +195,7 @@ export default function App() {
   const handleNavigateBack = useCallback(() => {
     const previousPage = navigationContext.previousPage || 'sessions';
     console.log('← Retour vers:', previousPage);
+    console.log('🔍 STACK TRACE:', new Error().stack);
     
     setNavigationContext({
       previousPage: null,
