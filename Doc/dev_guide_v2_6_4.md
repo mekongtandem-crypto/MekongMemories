@@ -1,8 +1,9 @@
 ###Medias/
 
-# Guide de développement - Mémoire du Mékong v2.6.4
+# Guide de développement - Mémoire du Mékong v2.6.5
 
-**Dernière mise à jour : Phase 20 startup page
+**Dernière mise à jour : Phase 22 Logger configurable (fourni)
+Storage sécurisé (fourni)
 **Date : 1 novembre 2025**
 
 ---
@@ -468,7 +469,9 @@ Medias/
 
 
 
-Phase 20 : Revision de la page Startup
+Phase 21 : Revision de la page Startup
+
+Phase 22 : Logger configurable + Storage sécurisé 
 
 ---
 

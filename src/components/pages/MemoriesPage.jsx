@@ -1,19 +1,13 @@
 /**
- * MemoriesPage.jsx v6.5 - PARTIE 1/2 - Tagging hiérarchique
- * ✅ Badges UNIQUEMENT niveau actuel
- * ✅ Propagation optionnelle avec checkboxes
- * ✅ Moment → Posts + Photos
- * ✅ Post → Photos
- * 
- * STRUCTURE FICHIER :
- * - PARTIE 1 : Imports, États, Handlers tagging (CE FICHIER)
- * - PARTIE 2 : Composants d'affichage (fichier suivant)
+ * MemoriesPage.jsx v7 -Phase 1
  */
 
 // ========================================
 // 1. IMPORTS (ajouter en haut)
 // ========================================
-
+import { useMemoriesState } from '../memories/hooks/useMemoriesState.js';
+import { useMemoriesFilters } from '../memories/hooks/useMemoriesFilters.js';
+import { useMemoriesScroll } from '../memories/hooks/useMemoriesScroll.js';
 import React, { useState, useEffect, useRef, forwardRef, memo, useCallback, useImperativeHandle } from 'react';
 import SessionListModal from '../SessionListModal.jsx';
 import { getSessionsForContent } from '../../utils/sessionUtils.js';
@@ -35,6 +29,7 @@ import {
   getMomentChildrenKeys,
   getPostChildrenKeys
 } from '../../utils/themeUtils.js';
+
 
 // ========================================
 // COMPOSANTS BADGE SESSIONS (Phase 19D)
@@ -119,309 +114,278 @@ function MemoriesPage({
   onOpenSessionFromMemories
 }, ref) {
 
-  
-// ========================================
-// 2. STATE, les états 
-// ========================================
-
-
   const app = useAppState();
-    
+const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   
+  // ========================================
+  // Hooks
+  // ========================================
+    const memoryState = useMemoriesState();
+    const memoryFilters = useMemoriesFilters(momentsData, app.sessions);
+    const memoryScroll = useMemoriesScroll(navigationContext, onNavigateBack);
+  
+  // États legacy à conserver temporairement (compatibilité TopBar)
   const [selectedMoments, setSelectedMoments] = useState([]);
   const [displayMode, setDisplayMode] = useState('focus');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [momentFilter, setMomentFilter] = useState('all');
-  const [viewerState, setViewerState] = useState({ 
-    isOpen: false, photo: null, gallery: [], contextMoment: null 
-  });
-  const [sessionModal, setSessionModal] = useState(null);
-  const [sessionListModal, setSessionListModal] = useState(null);
-
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const scrollContainerRef = useRef(null);
-
-  // États pour le tagging
-  const [themeModal, setThemeModal] = useState({
-    isOpen: false,
-    contentKey: null,
-    contentType: null,
-    currentThemes: [],
-    momentData: null,
-    postData: null
-  });
-
-  const [selectedPhotos, setSelectedPhotos] = useState([]);
-  const [activePhotoGrid, setActivePhotoGrid] = useState(null);
-  const [selectedTheme, setSelectedTheme] = useState(null);
-  
-  
-  
-  // ✅ NOUVEAU Phase 17b : Menu contextuel photo
-  const [photoContextMenu, setPhotoContextMenu] = useState({
-    isOpen: false,
-    photo: null,
-    position: { x: 0, y: 0 }
-  });
-  
-
-  const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
-  
-  const momentRefs = useRef({});
-  const navigationProcessedRef = useRef(null);
   
   // ========================================
-  // CALLBACKS-HANDLE TAGGING HIÉRARCHIQUE
+  // Déstructuration
   // ========================================
 
-  const executeScrollToElement = useCallback((element) => {
-    const topBarElement = document.querySelector('.fixed.top-0.z-40');
-    const scrollContainer = scrollContainerRef.current;
+  const {
+  // États
+  openMomentId,
+  openPosts,
+  themeModal,
+  sessionModal,
+  sessionListModal,
+  viewerState,
+  photoContextMenu,
+  selectedPhotos,
+  activePhotoGrid,
+  
+  // Handlers
+  toggleMoment,
+  togglePostText,
+  togglePostPhotos,
+  isPostTextOpen,
+  isPostPhotosOpen,
+  toggleMomentPhotos,
+  openThemeModal,
+  closeThemeModal,
+  openSessionModal,
+  closeSessionModal,
+  openSessionListModal,
+  closeSessionListModal,
+  openPhotoViewer,
+  closePhotoViewer,
+  openPhotoContextMenu,
+  closePhotoContextMenu,
+  togglePhotoSelection,
+  clearPhotoSelection,
+  isPhotoSelected,
+  setActivePhotoGrid,
+  hasOverride,
+  toggleOverride
+} = memoryState;
 
-    if (element && topBarElement && scrollContainer) {
-      const topBarHeight = topBarElement.offsetHeight;
-      const offsetPosition = element.offsetTop - topBarHeight - 64;
-      scrollContainer.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth',
-      });
-    }
-  }, []);
+const {
+  moments: filteredMoments,
+  showMoments,
+  showPosts,
+  showPhotos,
+  searchQuery,
+  selectedTheme,
+  momentFilter,
+  sortOrder,
+  setSearchQuery,
+  setSelectedTheme,
+  setMomentfilter,
+  shouldShowElement
+} = memoryFilters;
 
-  // ✅ MODIFIÉ : accepte momentData et postData
-  const handleOpenThemeModal = useCallback((contentKey, contentType, currentThemes = [], extraData = null) => {
-    setThemeModal({
-      isOpen: true,
-      contentKey,
-      contentType,
-      currentThemes,
-      momentData: contentType === 'moment' ? extraData : null,
-      postData: contentType === 'post' ? extraData : null
-    });
-  }, []);
+const {
+  scrollContainerRef,
+  momentRefs,
+  registerMomentRef,
+  scrollToMoment,
+  executeScrollToElement
+} = memoryScroll;
 
-  // ✅ NOUVEAU : Handler POST avec propagation
-  const handleSavePostThemes = useCallback(async (selectedThemes, propagationOptions, postData) => {
-    if (!postData || !app.currentUser) return;
-    
-    const keysToTag = [];
-    
-    // 1. Toujours tagger le post lui-même
-    const postKey = generatePostKey(postData.post);
-    keysToTag.push(postKey);
-    
-    // 2. Optionnellement tagger les photos du post
-    if (propagationOptions.applyToPhotos && postData.photoCount > 0) {
-      const photoKeys = getPostChildrenKeys(postData.post);
-      keysToTag.push(...photoKeys);
-    }
-    
-    // 3. Batch assignation
-    const result = await window.themeAssignments.assignThemesBatch(
-      keysToTag,
-      selectedThemes,
-      app.currentUser.id
-    );
-    
-    if (result.success) {
-      console.log(`✅ Post taggué (${result.count} élément${result.count > 1 ? 's' : ''})`);
-    }
-    
-    setThemeModal({ 
-      isOpen: false, 
-      contentKey: null, 
-      contentType: null, 
-      currentThemes: [], 
-      postData: null 
-    });
-    setViewerState(prev => ({ ...prev }));
-  }, [app.currentUser]);
 
-  // ✅ MODIFIÉ : Handler MOMENT avec propagation + clé moment
-  const handleSaveMomentThemes = useCallback(async (selectedThemes, propagationOptions, momentData) => {
-    if (!momentData || !app.currentUser) return;
-    
-    const keysToTag = [];
-    
-    // 1. Toujours tagger le moment lui-même
-    const momentKey = generateMomentKey(momentData.moment);
-    keysToTag.push(momentKey);
-    
-    // 2. Collecter les enfants selon options
-    const childrenKeys = getMomentChildrenKeys(momentData.moment);
-    
-    if (propagationOptions.applyToPosts) {
-      keysToTag.push(...childrenKeys.posts);
-    }
-    
-    if (propagationOptions.applyToPostPhotos) {
-      keysToTag.push(...childrenKeys.postPhotos);
-    }
-    
-    if (propagationOptions.applyToMomentPhotos) {
-      keysToTag.push(...childrenKeys.momentPhotos);
-    }
-    
-    // 3. Confirmation si propagation
-    const needsConfirmation = keysToTag.length > 1;
-    if (needsConfirmation) {
-      // ✅ NOUVEAU : Version compacte
-const parts = ['1 moment'];
-if (propagationOptions.applyToPosts) 
-  parts.push(`${childrenKeys.posts.length} post${childrenKeys.posts.length > 1 ? 's' : ''}`);
-if (propagationOptions.applyToPostPhotos) 
-  parts.push(`${childrenKeys.postPhotos.length} photo${childrenKeys.postPhotos.length > 1 ? 's' : ''} (articles)`);
-if (propagationOptions.applyToMomentPhotos) 
-  parts.push(`${childrenKeys.momentPhotos.length} photo${childrenKeys.momentPhotos.length > 1 ? 's' : ''} (moment)`);
+// ========================================
+// HANDLERS MANQUANTS
+// ========================================
 
-const confirmMessage = 
-  `Appliquer ${selectedThemes.length} thème${selectedThemes.length > 1 ? 's' : ''} à :\n` +
-  `• ${parts.join(' + ')} (${keysToTag.length} total)\n\n` +
-  `Continuer ?`;
-      
-      if (!confirm(confirmMessage)) {
-        setThemeModal({ 
-          isOpen: false, 
-          contentKey: null, 
-          contentType: null, 
-          currentThemes: [], 
-          momentData: null 
-        });
-        return;
-      }
-    }
-    
-    // 4. Batch assignation
-    const result = await window.themeAssignments.assignThemesBatch(
-      keysToTag,
-      selectedThemes,
-      app.currentUser.id
-    );
-    
-    if (result.success) {
-      alert(`✅ ${result.count} élément${result.count > 1 ? 's' : ''} taggué${result.count > 1 ? 's' : ''} !`);
-    }
-    
-    setThemeModal({ 
-      isOpen: false, 
-      contentKey: null, 
-      contentType: null, 
-      currentThemes: [], 
-      momentData: null 
-    });
-    setViewerState(prev => ({ ...prev }));
-  }, [app.currentUser]);
+// Handler pour ouvrir le modal de session
+const handleOpenSessionModal = useCallback((source, contextMoment) => {
+  openSessionModal({ source, contextMoment });
+}, [openSessionModal]);
 
-  // Handler bulk photos (inchangé)
-  const handleSaveBulkThemes = useCallback(async (selectedThemes, propagationOptions) => {
-    if (!themeModal.bulkPhotos || !app.currentUser) return;
-    
-    for (const photo of themeModal.bulkPhotos) {
-      const key = generatePhotoMomentKey(photo);
-      if (key) {
-        await window.themeAssignments.assignThemes(
-          key,
-          selectedThemes,
-          app.currentUser.id
-        );
-      }
-    }
-    
-    setThemeModal({ 
-      isOpen: false, 
-      contentKey: null, 
-      contentType: null, 
-      currentThemes: [] 
-    });
-    setSelectedPhotos([]);
-    setActivePhotoGrid(null);
-    setViewerState(prev => ({ ...prev }));
-  }, [themeModal.bulkPhotos, app.currentUser]);
+// Handler pour fermer le modal de session
+const handleCloseSessionModal = useCallback(() => {
+  closeSessionModal();
+}, [closeSessionModal]);
 
-  // ✅ MODIFIÉ : Handler principal avec routing
-  const handleSaveThemes = useCallback(async (selectedThemes, propagationOptions) => {
-    if (!themeModal.contentKey && !themeModal.momentData && !themeModal.postData && !themeModal.bulkPhotos) {
-      console.error('❌ Aucune donnée à sauvegarder');
-      return;
-    }
-    
-    // Router selon le type
-    if (themeModal.momentData) {
-      await handleSaveMomentThemes(selectedThemes, propagationOptions, themeModal.momentData);
-    } else if (themeModal.postData) {
-      await handleSavePostThemes(selectedThemes, propagationOptions, themeModal.postData);
-    } else if (themeModal.bulkPhotos) {
-      await handleSaveBulkThemes(selectedThemes, propagationOptions);
-    } else {
-      // Single content (photo individuelle)
+// Handler pour fermer le menu contextuel photo
+const handleClosePhotoContextMenu = useCallback(() => {
+  closePhotoContextMenu();
+}, [closePhotoContextMenu]);
+
+// Handler pour ouvrir le menu contextuel photo
+const handleOpenPhotoContextMenu = useCallback((photo, event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  openPhotoContextMenu(photo, {
+    x: event.clientX || event.touches?.[0]?.clientX || 0,
+    y: event.clientY || event.touches?.[0]?.clientY || 0
+  });
+}, [openPhotoContextMenu]);
+
+// Handler pour attacher une photo au chat
+const handleAttachPhotoToChat = useCallback((photo) => {
+  if (!photo || !onAttachToChat) return;
+  
+  handleClosePhotoContextMenu();
+  onAttachToChat({
+    type: 'photo',
+    data: photo
+  });
+}, [onAttachToChat, handleClosePhotoContextMenu]);
+
+// Handler pour ouvrir le modal de thème (wrapper)
+const handleOpenThemeModal = useCallback((contentKey, contentType, currentThemes = [], extraData = null) => {
+  openThemeModal(contentKey, contentType, currentThemes, extraData);
+}, [openThemeModal]);
+
+// Handler pour fermer le modal de thème
+const handleCloseThemeModal = useCallback(() => {
+  closeThemeModal();
+}, [closeThemeModal]);
+
+// Handler pour sauvegarder les thèmes d'un post
+const handleSavePostThemes = useCallback(async (selectedThemes, propagationOptions, postData) => {
+  if (!postData || !app.currentUser) return;
+  
+  const keysToTag = [];
+  
+  // 1. Toujours tagger le post lui-même
+  const postKey = generatePostKey(postData.post);
+  keysToTag.push(postKey);
+  
+  // 2. Optionnellement tagger les photos du post
+  if (propagationOptions.applyToPhotos && postData.photoCount > 0) {
+    const photoKeys = getPostChildrenKeys(postData.post);
+    keysToTag.push(...photoKeys);
+  }
+  
+  // 3. Batch assignation
+  const result = await window.themeAssignments.assignThemesBatch(
+    keysToTag,
+    selectedThemes,
+    app.currentUser.id
+  );
+  
+  if (result.success) {
+    console.log(`✅ Post taggué (${result.count} élément${result.count > 1 ? 's' : ''})`);
+  }
+  
+  closeThemeModal();
+}, [app.currentUser, closeThemeModal]);
+
+// Handler pour sauvegarder les thèmes d'un moment
+const handleSaveMomentThemes = useCallback(async (selectedThemes, propagationOptions, momentData) => {
+  if (!momentData || !app.currentUser) return;
+  
+  const keysToTag = [];
+  
+  // 1. Toujours tagger le moment lui-même
+  const momentKey = generateMomentKey(momentData.moment);
+  keysToTag.push(momentKey);
+  
+  // 2. Collecter les enfants selon options
+  const childrenKeys = getMomentChildrenKeys(momentData.moment);
+  
+  if (propagationOptions.applyToPosts) {
+    keysToTag.push(...childrenKeys.posts);
+  }
+  
+  if (propagationOptions.applyToPostPhotos) {
+    keysToTag.push(...childrenKeys.postPhotos);
+  }
+  
+  if (propagationOptions.applyToMomentPhotos) {
+    keysToTag.push(...childrenKeys.momentPhotos);
+  }
+  
+  // 3. Batch assignation
+  const result = await window.themeAssignments.assignThemesBatch(
+    keysToTag,
+    selectedThemes,
+    app.currentUser.id
+  );
+  
+  if (result.success) {
+    console.log(`✅ Moment taggué (${result.count} élément${result.count > 1 ? 's' : ''})`);
+  }
+  
+  closeThemeModal();
+}, [app.currentUser, closeThemeModal]);
+
+// Handler pour sauvegarder les thèmes en bulk (photos multiples)
+const handleSaveBulkThemes = useCallback(async (selectedThemes, propagationOptions) => {
+  if (!themeModal.bulkPhotos || !app.currentUser) return;
+  
+  for (const photo of themeModal.bulkPhotos) {
+    const key = generatePhotoMomentKey(photo);
+    if (key) {
       await window.themeAssignments.assignThemes(
-        themeModal.contentKey,
+        key,
         selectedThemes,
         app.currentUser.id
       );
-      setThemeModal({ 
-        isOpen: false, 
-        contentKey: null, 
-        contentType: null, 
-        currentThemes: [] 
-      });
-      setViewerState(prev => ({ ...prev }));
     }
-  }, [
-    themeModal, 
-    app.currentUser, 
-    handleSaveMomentThemes, 
-    handleSavePostThemes, 
-    handleSaveBulkThemes
-  ]);
-
-  const handleCloseThemeModal = useCallback(() => {
-    setThemeModal({ 
-      isOpen: false, 
-      contentKey: null, 
-      contentType: null, 
-      currentThemes: [], 
-      momentData: null, 
-      postData: null 
-    });
-  }, []);
-
-  // Autres handlers (inchangés)
-  const activatePhotoSelection = useCallback((gridId) => {
-    setActivePhotoGrid(gridId);
-    setSelectedPhotos([]);
-  }, []);
-
-  const togglePhotoSelection = useCallback((photo) => {
-    setSelectedPhotos(prev => {
-      const key = photo.google_drive_id;
-      if (prev.some(p => p.google_drive_id === key)) {
-        return prev.filter(p => p.google_drive_id !== key);
-      } else {
-        return [...prev, photo];
-      }
-    });
-  }, []);
-
-  const handleBulkTagPhotos = useCallback(() => {
-    if (selectedPhotos.length === 0) return;
-    
-    setThemeModal({
-      isOpen: true,
-      contentKey: null,
-      contentType: 'photos',
-      currentThemes: [],
-      bulkPhotos: selectedPhotos
-    });
-  }, [selectedPhotos]);
-
-  const cancelSelection = useCallback(() => {
-    setSelectedPhotos([]);
-    setActivePhotoGrid(null);
-  }, []);
+  }
   
-  // ⭐ NOUVEAU Phase 18b : Handler appui long pour sélection
+  closeThemeModal();
+  clearPhotoSelection();
+}, [themeModal.bulkPhotos, app.currentUser, closeThemeModal, clearPhotoSelection]);
+
+// Handler principal de sauvegarde des thèmes (router)
+const handleSaveThemes = useCallback(async (selectedThemes, propagationOptions) => {
+  if (!themeModal.contentKey && !themeModal.momentData && !themeModal.postData && !themeModal.bulkPhotos) {
+    console.error('❌ Aucune donnée à sauvegarder');
+    return;
+  }
+  
+  // Router selon le type
+  if (themeModal.momentData) {
+    await handleSaveMomentThemes(selectedThemes, propagationOptions, themeModal.momentData);
+  } else if (themeModal.postData) {
+    await handleSavePostThemes(selectedThemes, propagationOptions, themeModal.postData);
+  } else if (themeModal.bulkPhotos) {
+    await handleSaveBulkThemes(selectedThemes, propagationOptions);
+  } else {
+    // Single content (photo individuelle)
+    await window.themeAssignments.assignThemes(
+      themeModal.contentKey,
+      selectedThemes,
+      app.currentUser.id
+    );
+    closeThemeModal();
+  }
+}, [
+  themeModal, 
+  app.currentUser, 
+  handleSaveMomentThemes, 
+  handleSavePostThemes, 
+  handleSaveBulkThemes,
+  closeThemeModal
+]);
+
+// Handler pour activer la sélection de photos
+const activatePhotoSelection = useCallback((gridId) => {
+  setActivePhotoGrid(gridId);
+  clearPhotoSelection();
+}, [setActivePhotoGrid, clearPhotoSelection]);
+
+// Handler pour tagger en bulk
+const handleBulkTagPhotos = useCallback(() => {
+  if (selectedPhotos.length === 0) return;
+  
+  openThemeModal(null, 'photos', [], { bulkPhotos: selectedPhotos });
+}, [selectedPhotos, openThemeModal]);
+
+// Handler pour annuler la sélection
+const cancelSelection = useCallback(() => {
+  clearPhotoSelection();
+  setActivePhotoGrid(null);
+}, [clearPhotoSelection, setActivePhotoGrid]);
+
+// Handler pour la sélection de contenu (mode lien)
 const handleLongPressForSelection = useCallback((element, type) => {
   if (!selectionMode?.active) return;
   
@@ -447,19 +411,18 @@ const handleLongPressForSelection = useCallback((element, type) => {
       break;
     
     case 'photo':
-  contentData = {
-    type: 'photo',
-    id: element.filename,
-    title: element.filename,
-    // ⭐ AJOUTER toutes les métadonnées
-    google_drive_id: element.google_drive_id,
-    url: element.url,
-    width: element.width,
-    height: element.height,
-    mime_type: element.mime_type || element.mediaType,
-    photoType: element.type || 'day_photo'
-  };
-  break;
+      contentData = {
+        type: 'photo',
+        id: element.filename,
+        title: element.filename,
+        google_drive_id: element.google_drive_id,
+        url: element.url,
+        width: element.width,
+        height: element.height,
+        mime_type: element.mime_type || element.mediaType,
+        photoType: element.type || 'day_photo'
+      };
+      break;
     
     default:
       return;
@@ -468,154 +431,137 @@ const handleLongPressForSelection = useCallback((element, type) => {
   onContentSelected?.(contentData);
 }, [selectionMode, onContentSelected]);
 
-  // ✅ NOUVEAU Phase 17b : Handlers menu contextuel photo
-  const handleOpenPhotoContextMenu = useCallback((photo, event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    setPhotoContextMenu({
-      isOpen: true,
-      photo: photo,
-      position: {
-        x: event.clientX || event.touches?.[0]?.clientX || 0,
-        y: event.clientY || event.touches?.[0]?.clientY || 0
-      }
-    });
-  }, []);
-
-  const handleClosePhotoContextMenu = useCallback(() => {
-    setPhotoContextMenu({
-      isOpen: false,
-      photo: null,
-      position: { x: 0, y: 0 }
-    });
-  }, []);
-
-  const handleAttachPhotoToChat = useCallback((photo) => {
-    if (!photo || !onAttachToChat) return;
-    
-    // Fermer menu
-    handleClosePhotoContextMenu();
-    
-    // Attacher photo et retourner au chat
-    onAttachToChat({
-      type: 'photo',
-      data: photo
-    });
-  }, [onAttachToChat, handleClosePhotoContextMenu]);
-
-  const filteredMoments = getFilteredMoments(momentsData, searchQuery, momentFilter, app.sessions, selectedTheme);
-
+// Handler pour afficher les sessions
 const handleShowSessions = useCallback((contentType, contentId, contentTitle) => {
   const sessions = getSessionsForContent(app.sessions, contentType, contentId);
-  setSessionListModal({ sessions, contentTitle });
-}, [app.sessions]);
+  openSessionListModal({ sessions, contentTitle });
+}, [app.sessions, openSessionListModal]);
 
-// Handler création session depuis post
-const handleCreateSessionFromPost = async (post, momentId) => {
+// Handler pour créer une session depuis un contenu
+const handleCreateSessionFromContent = useCallback(async (content, momentId, contentType) => {
   try {
-    const moment = masterIndex.moments.find(m => m.id === momentId);
+    const moment = app.masterIndex?.moments.find(m => m.id === momentId);
     if (!moment) {
       console.error('Moment parent introuvable');
       return;
     }
     
-    await onCreateSession(post, moment, 'post');
+    handleOpenSessionModal(content, moment);
   } catch (error) {
-    console.error('Erreur création session post:', error);
+    console.error('Erreur création session:', error);
   }
-};
+}, [app.masterIndex, handleOpenSessionModal]);
 
-// Handler création session depuis photo thumbnail
-const handleCreateSessionFromPhotoThumb = async (photo, momentId) => {
-  try {
-    const moment = masterIndex.moments.find(m => m.id === momentId);
-    if (!moment) {
-      console.error('Moment parent introuvable');
-      return;
-    }
-    
-    await onCreateSession(photo, moment, 'photo');
-  } catch (error) {
-    console.error('Erreur création session photo:', error);
-  }
-};
-
+// Handler pour sélectionner une session depuis le modal
 const handleSelectSession = useCallback((session) => {
   console.log('🎯 Sélection session depuis modal:', session.id);
-  setSessionListModal(null);
+  closeSessionListModal();
   
-  // ⭐ Utiliser handler avec contexte de navigation
   if (onOpenSessionFromMemories) {
     onOpenSessionFromMemories(session);
   } else {
-    // Fallback si handler non fourni
     console.warn('⚠️ onOpenSessionFromMemories non fourni, fallback basique');
     app.openChatSession(session);
   }
-}, [app, onOpenSessionFromMemories]);
+}, [app, onOpenSessionFromMemories, closeSessionListModal]);
 
-const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onShowSessions, onCreateSession, moment }) => {
-  const linkedSessions = getSessionsForContent(sessions, contentType, contentId);
-  const count = linkedSessions.length;
-  
-  const handleClick = (e) => {
-    e.stopPropagation();
-    if (count === 0) {
-      onCreateSession(moment, moment);
+// Handler pour sélectionner un moment
+const handleSelectMoment = useCallback((moment, forceOpen = false) => {
+  setSelectedMoments(prev => {
+    const isAlreadySelected = prev.some(m => m.id === moment.id);
+    
+    if (displayMode === 'focus') {
+      if (isAlreadySelected && prev.length === 1) {
+        return [];
+      }
+      return [moment];
     } else {
-      onShowSessions(contentType, contentId, contentTitle);
+      if (isAlreadySelected) {
+        return prev.filter(m => m.id !== moment.id);
+      }
+      return [...prev, moment];
     }
+  });
+}, [displayMode]);
+
+// Handler pour créer et ouvrir une session
+const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
+  if (!source) return;
+  
+  const sortOrder = localStorage.getItem('mekong_theme_sort_order') || 'usage';
+  const rawThemes = app.masterIndex?.themes || [];
+  const availableThemes = sortThemes(rawThemes, window.themeAssignments, sortOrder);
+    
+  const sessionTitle = options.title || (
+    source.filename 
+      ? `Souvenirs de ${contextMoment.displayTitle}`
+      : source.content 
+        ? `Souvenirs de l'article : ${source.content.split('\n')[0].substring(0, 40)}...`
+        : `Souvenirs du moment : ${source.displayTitle}`
+  );
+  
+  let sourceId;
+  let sourceType;
+  
+  if (source.filename || source.google_drive_id) {
+    sourceId = source.google_drive_id || source.filename;
+    sourceType = 'photo';
+  } else if (source.content) {
+    sourceId = source.id || source.created_at;
+    sourceType = 'post';
+  } else {
+    sourceId = contextMoment.id;
+    sourceType = 'moment';
+  }
+  
+  let sessionData = {
+    id: sourceId,
+    momentId: contextMoment.id,
+    title: sessionTitle,
+    description: source.filename 
+      ? `Basée sur la photo "${source.filename}"`
+      : source.content
+        ? `Basée sur un article`
+        : `Basée sur le moment "${source.displayTitle}"`,
   };
   
-  return (
-    <button
-      onClick={handleClick}
-      className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-        count === 0 
-          ? 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-          : 'bg-purple-100 hover:bg-purple-200 text-purple-700'
-      }`}
-      title={count === 0 ? 'Créer une session' : `${count} session${count > 1 ? 's' : ''} - Cliquer pour voir`}
-    >
-      {count === 0 ? (
-        <MessageCirclePlus className="w-4 h-4" />
-      ) : (
-        <>
-          <span>💬</span>
-          <span>{count}</span>
-        </>
-      )}
-    </button>
-  );
-});
+  if (source.filename) {
+    sessionData.systemMessage = `📸 Session basée sur la photo : "${source.filename}".`;
+  } else if (source.content) {
+    const title = source.content.split('\n')[0].substring(0, 40);
+    sessionData.systemMessage = `📄 Session basée sur l'article : "${title}...".`;
+  } else {
+    sessionData.systemMessage = `💬 Session basée sur le moment : "${source.displayTitle}".`;
+  }
+    
+  try {
+    const sourcePhoto = source.filename ? source : null;
+    const newSession = await app.createSession(sessionData, options.initialText, sourcePhoto);
+    
+    if (newSession) {
+      if (viewerState.isOpen) closePhotoViewer();
+      
+      if (options.shouldOpen) {
+        await app.openChatSession(newSession);
+      } else {
+        console.log('✅ Session créée:', newSession.gameTitle);
+      }
+    }
+  } catch (error) {
+    console.error('Erreur création de session:', error);
+    alert(`Impossible de créer la session : ${error.message}`);
+  }
+}, [app, viewerState.isOpen, closePhotoViewer]);
 
-const handleOpenSessionModal = useCallback((source, contextMoment) => {
-    setSessionModal({ source, contextMoment });
-  }, []);
+// Ref pour la navigation (éviter traitement multiple)
+const navigationProcessedRef = useRef(null);
 
-  // ========================================
-  // PHOTO VIEWER HANDLERS
-  // ========================================
-  
-  const openPhotoViewer = useCallback((clickedPhoto, contextMoment, photoList) => {
-    setViewerState({ 
-      isOpen: true, 
-      photo: clickedPhoto, 
-      gallery: Array.isArray(photoList) ? photoList : [], 
-      contextMoment 
-    });
-  }, []);
-
-  const closePhotoViewer = useCallback(() => {
-    setViewerState({ isOpen: false, photo: null, gallery: [], contextMoment: null });
-  }, []);
 
   // ========================================
   // EFFECTS
   // ========================================
   
-  // ✅ NOUVEAU Phase 17b : Fermer menu contextuel au clic outside
+  // Fermer menu contextuel au clic outside
   useEffect(() => {
     if (photoContextMenu.isOpen) {
       const handleClickOutside = () => handleClosePhotoContextMenu();
@@ -932,13 +878,7 @@ const handleOpenSessionModal = useCallback((source, contextMoment) => {
 }, [navigationContext?.sessionMomentId, navigationContext?.targetContent, momentsData, selectionMode]);
 // Note: openPhotoViewer est stable (useCallback) et peut être omis des dépendances
 
-  // Puis continuer avec les callbacks...
-  const scrollToMoment = useCallback((momentId) => {
-    const element = momentRefs.current[momentId];
-    if (element) {
-      executeScrollToElement(element);
-    }
-  }, [executeScrollToElement]);
+
 
   const jumpToDay = useCallback((day) => {
     const targetMoment = momentsData.find(m => day >= m.dayStart && day <= m.dayEnd);
@@ -948,117 +888,7 @@ const handleOpenSessionModal = useCallback((source, contextMoment) => {
     }
   }, [momentsData, setCurrentDay]);
 
-  const handleSelectMoment = useCallback((moment, forceOpen = false) => {
-    setSelectedMoments(prev => {
-      const isAlreadySelected = prev.some(m => m.id === moment.id);
-      
-      if (displayMode === 'focus') {
-        if (isAlreadySelected && prev.length === 1) {
-          return [];
-        }
-        return [moment];
-      } else {
-        if (isAlreadySelected) {
-          return prev.filter(m => m.id !== moment.id);
-        }
-        return [...prev, moment];
-      }
-    });
-  }, [displayMode]);
 
-  const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
-  if (!source) return;
-  
-  const sortOrder = localStorage.getItem('mekong_theme_sort_order') || 'usage';
-  const rawThemes = app.masterIndex?.themes || [];
-  const availableThemes = sortThemes(rawThemes, window.themeAssignments, sortOrder);
-    
-  const sessionTitle = options.title || (
-    source.filename 
-      ? `Souvenirs de ${contextMoment.displayTitle}`
-      : source.content 
-        ? `Souvenirs de l'article : ${source.content.split('\n')[0].substring(0, 40)}...`
-        : `Souvenirs du moment : ${source.displayTitle}`
-  );
-  
-  // ========================================
-  // DÉTERMINATION TYPE & ID SOURCE
-  // ========================================
-  
-  let sourceId;
-  let sourceType;
-  
-  if (source.filename || source.google_drive_id) {
-    // Photo : utiliser google_drive_id comme identifiant unique
-    sourceId = source.google_drive_id || source.filename;  // ✅ CORRECTION: ID réel de la photo
-    sourceType = 'photo';
-    
-  } else if (source.content) {
-    // Post : utiliser l'ID du post
-    sourceId = source.id || source.created_at;
-    sourceType = 'post';
-    
-  } else {
-    // Moment : utiliser l'ID masterIndex
-    sourceId = contextMoment.id;
-    sourceType = 'moment';
-  }
-  
-  let sessionData = {
-    id: sourceId,                          // ✅ ID du contenu source
-    momentId: contextMoment.id,            // ID du moment (toujours présent)
-    title: sessionTitle,
-    description: source.filename 
-      ? `Basée sur la photo "${source.filename}"`
-      : source.content
-        ? `Basée sur un article`
-        : `Basée sur le moment "${source.displayTitle}"`,
-  };
-  
-  console.log('🎯 Création session - sourceType:', sourceType, 'sourceId:', sourceId, 'momentId:', contextMoment.id);
-    
-    if (source.filename) {
-      sessionData.systemMessage = `📸 Session basée sur la photo : "${source.filename}".`;
-    } else if (source.content) {
-      const title = source.content.split('\n')[0].substring(0, 40);
-      sessionData.systemMessage = `📄 Session basée sur l'article : "${title}...".`;
-    } else {
-      sessionData.systemMessage = `💬 Session basée sur le moment : "${source.displayTitle}".`;
-    }
-    
-    try {
-      const sourcePhoto = source.filename ? source : null;
-      const newSession = await app.createSession(sessionData, options.initialText, sourcePhoto);
-      
-      if (newSession) {
-        if (viewerState.isOpen) closePhotoViewer();
-        
-        if (options.shouldOpen) {
-          await app.openChatSession(newSession);
-        } else {
-          console.log('✅ Session créée:', newSession.gameTitle);
-        }
-      }
-    } catch (error) {
-      console.error('Erreur création de session:', error);
-      alert(`Impossible de créer la session : ${error.message}`);
-    }
-  }, [app, viewerState.isOpen, closePhotoViewer]);
-  
-  // Handler création session depuis post/photo
-const handleCreateSessionFromContent = useCallback(async (content, momentId, contentType) => {
-  try {
-    const moment = app.masterIndex?.moments.find(m => m.id === momentId);
-    if (!moment) {
-      console.error('Moment parent introuvable');
-      return;
-    }
-    
-    handleOpenSessionModal(content, moment);
-  } catch (error) {
-    console.error('Erreur création session:', error);
-  }
-}, [app.masterIndex, handleOpenSessionModal]);
 
   if (!app.isInitialized || !momentsData) {
     return <div className="p-12 text-center">Chargement des données...</div>;
@@ -1279,8 +1109,6 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
 // COMPOSANTS
 // ====================================================================
 
-
-
 const MomentsList = memo(({ 
   moments, selectedMoments, displayOptions, momentFilter, sessions, 
   onMomentSelect, onPhotoClick, onCreateSession, momentRefs,
@@ -1370,7 +1198,6 @@ const SessionBadge = memo(({ contentType, contentId, contentTitle, sessions, onS
     </button>
   );
 });
-
 
 const MomentCard = memo(React.forwardRef(({ 
   moment, isSelected, isExplored, matchesFilter, displayOptions, 
@@ -1476,9 +1303,6 @@ onShowSessions={onShowSessions}
     </div>
   );
 }));
-
-
-
 
 // ====================================================================
 // COMPOSANT : MomentHeader (MODIFIÉ)
@@ -2175,6 +1999,7 @@ onShowSessions={onShowSessions}
   );
 });
 
+
 // ====================================================================
 // COMPOSANT : PhotoContextMenu (Phase 17b)
 // ====================================================================
@@ -2229,7 +2054,6 @@ const PhotoContextMenu = memo(({
   );
 });
 
-
 // ====================================================================
 // HELPERS
 // ====================================================================
@@ -2280,6 +2104,7 @@ function extractFilenameFromUrl(url) {
   const parts = url.split('/');
   return parts[parts.length - 1] || 'photo.jpg';
 }
+
 
 function getFilteredMoments(momentsData, searchQuery, momentFilter, sessions, selectedTheme) {
   let filtered = momentsData;
@@ -2344,5 +2169,6 @@ function getFilteredMoments(momentsData, searchQuery, momentFilter, sessions, se
   
   return filtered;
 }
+
 
 export default React.forwardRef(MemoriesPage);
