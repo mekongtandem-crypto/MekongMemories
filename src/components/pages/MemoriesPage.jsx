@@ -663,6 +663,11 @@ const navigationProcessedRef = useRef(null);
   // PHASE 19E : NAVIGATION DEPUIS CHAT (Auto-ouvrir contenu cible)
   // ========================================
   useEffect(() => {
+  // ✅ GARDE : Ne rien faire si pas de contexte de navigation
+  if (!navigationContext) {
+    return;
+  }
+  
   // Récupérer les paramètres de navigation
   const targetContent = navigationContext?.targetContent;
   const momentId = navigationContext?.sessionMomentId;
@@ -680,7 +685,6 @@ const navigationProcessedRef = useRef(null);
   }
   
   if ((targetContent || momentId) && momentsData.length > 0) {
-    let targetMoment;
     
     // ========================================
     // CAS 1 : LIEN VERS POST → Trouver moment parent
