@@ -164,6 +164,9 @@ export const PostArticle = memo(({
             moment={moment}
             onPhotoClick={onPhotoClick}
             allPhotos={post.photos}
+            onPhotoClick={(photo) => {
+  onPhotoClick(photo, post.photos, moment);
+}}
             gridId={`post_${post.id}`}
             activePhotoGrid={activePhotoGrid}
             selectedPhotos={selectedPhotos}

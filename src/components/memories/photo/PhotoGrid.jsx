@@ -74,7 +74,10 @@ export const PhotoGrid = memo(({
             key={photo.google_drive_id || photo.filename || index}
             photo={photo}
             moment={moment}
-            onPhotoClick={onPhotoClick}
+            onPhotoClick={(photo) => {
+  const gallery = [...photos]; // ou allPhotos selon le contexte
+  onPhotoClick(photo, gallery, moment);
+}}
             selectionMode={isThisGridActive}
             globalSelectionMode={selectionMode}
             isSelected={isPhotoSelected(photo)}

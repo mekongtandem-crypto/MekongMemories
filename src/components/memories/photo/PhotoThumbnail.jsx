@@ -44,7 +44,7 @@ export const PhotoThumbnail = memo(({
         } else if (photo.google_drive_id) {
           // Photo Drive : utiliser PhotoDataV2
           if (window.photoDataV2) {
-            url = await window.photoDataV2.getPhotoUrl(photo.google_drive_id);
+            url = await window.photoDataV2.resolveImageUrl(photo, true);
           } else {
             console.warn('PhotoDataV2 non disponible');
             url = `https://drive.google.com/thumbnail?id=${photo.google_drive_id}&sz=w400`;
@@ -82,7 +82,7 @@ export const PhotoThumbnail = memo(({
       onContentSelected?.(photo, 'photo');
     } else {
       // Mode normal : ouvrir viewer
-      onPhotoClick(photo, moment, moment.dayPhotos || []);
+      onPhotoClick(photo, moment.dayPhotos || [], moment);
     }
   };
 
