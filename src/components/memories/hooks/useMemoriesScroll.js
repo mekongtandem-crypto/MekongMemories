@@ -74,41 +74,31 @@ export function useMemoriesScroll(navigationContext, onNavigateBack) {
   // ========================================
   
   useEffect(() => {
-    if (!navigationContext) return;
-    
-    // Éviter traitement multiple
-    const contextKey = JSON.stringify(navigationContext);
-    if (navigationProcessedRef.current === contextKey) return;
-    
-    navigationProcessedRef.current = contextKey;
-    
-    // Traiter selon type de navigation
-    if (navigationContext.type === 'moment') {
-      // Navigation vers un moment spécifique
+  if (!navigationContext) return;
+  
+  // Éviter traitement multiple
+  const contextKey = JSON.stringify(navigationContext);
+  if (navigationProcessedRef.current === contextKey) return;
+  
+  navigationProcessedRef.current = contextKey;
+  
+  // Traiter selon type de navigation
+  if (navigationContext.type === 'moment') {
+    // Navigation vers un moment spécifique
+    setTimeout(() => {
+      scrollToMoment(navigationContext.momentId);
+    }, 300);
+  } else if (navigationContext.type === 'photo') {
+    // Navigation vers une photo (via moment parent)
+    if (navigationContext.momentId) {
       setTimeout(() => {
         scrollToMoment(navigationContext.momentId);
       }, 300);
-    } else if (navigationContext.type === 'photo') {
-      // Navigation vers une photo (via moment parent)
-      if (navigationContext.momentId) {
-        setTimeout(() => {
-          scrollToMoment(navigationContext.momentId);
-        }, 300);
-      }
     }
-    
-// Cleanup seulement si on est toujours sur la même page après 2s
-const cleanupTimer = setTimeout(() => {
-  if (onNavigateBack && navigationContext) {
-    console.log('🧹 Nettoyage contexte navigation');
-    onNavigateBack();
   }
-}, 2000);
-
-return () => {
-  clearTimeout(cleanupTimer);
-};
-  }, [navigationContext, scrollToMoment, onNavigateBack]);
+  
+  // Pas de cleanup automatique - évite le retour arrière involontaire
+}, [navigationContext, scrollToMoment, onNavigateBack]);
   
   // ========================================
   // HEADER STICKY SHOW/HIDE
