@@ -685,12 +685,13 @@ const navigationProcessedRef = useRef(null);
   }
   
   if ((targetContent || momentId) && momentsData.length > 0) {
-    
-    // ========================================
-    // CAS 1 : LIEN VERS POST → Trouver moment parent
-    // ========================================
-    if (targetContent?.type === 'post') {
-      targetMoment = momentsData.find(m => 
+  let targetMoment; // ← AJOUTER CETTE LIGNE
+  
+  // ========================================
+  // CAS 1 : LIEN VERS POST → Trouver moment parent
+  // ========================================
+  if (targetContent?.type === 'post') {
+    targetMoment = momentsData.find(m =>
         m.posts?.some(p => p.id === targetContent.id)
       );
       
@@ -702,12 +703,13 @@ const navigationProcessedRef = useRef(null);
         setSelectedMoments([targetMoment]);
         
         // Scroll vers post spécifique
-        setTimeout(() => {
-          const postElement = document.querySelector(`[data-post-id="${targetContent.id}"]`);
-          if (postElement) {
-            executeScrollToElement(postElement);
-          }
-        }, 300);
+const postId = targetContent.id;
+setTimeout(() => {
+  const postElement = document.querySelector(`[data-post-id="${postId}"]`);
+  if (postElement) {
+    executeScrollToElement(postElement);
+  }
+}, 300);
       }
       // ⭐ Marquer comme traité
 		navigationProcessedRef.current = navKey;
@@ -728,10 +730,11 @@ const navigationProcessedRef = useRef(null);
         setSelectedMoments([targetMoment]);
         
         // Scroll vers moment
-        setTimeout(() => {
-          const element = momentRefs.current[targetMoment.id];
-          if (element) executeScrollToElement(element);
-        }, 300);
+const momentId = targetMoment.id;
+setTimeout(() => {
+  const element = momentRefs.current[momentId];
+  if (element) executeScrollToElement(element);
+}, 300);
       }
       // ⭐ AJOUTER ICI
       navigationProcessedRef.current = navKey;
@@ -1018,7 +1021,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
       {sessionListModal && (
         <SessionListModal
           isOpen={true}
-          onClose={() => setSessionListModal(null)}
+          onClose={closeSessionListModal}
           sessions={sessionListModal.sessions}
           contentTitle={sessionListModal.contentTitle}
           onSelectSession={handleSelectSession}

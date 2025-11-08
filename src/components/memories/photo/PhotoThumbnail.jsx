@@ -32,7 +32,7 @@ export const PhotoThumbnail = memo(({
 
     const loadImage = async () => {
       if (!photo) return;
-
+console.log('📸 Photo data:', photo); //log temporaire
       setStatus('loading');
 
       try {
@@ -44,7 +44,7 @@ export const PhotoThumbnail = memo(({
         } else if (photo.google_drive_id) {
           // Photo Drive : utiliser PhotoDataV2
           if (window.photoDataV2) {
-            url = await window.photoDataV2.resolveImageUrl(photo, true);
+			url = await window.photoDataV2.resolveImageUrl(photo, true);
           } else {
             console.warn('PhotoDataV2 non disponible');
             url = `https://drive.google.com/thumbnail?id=${photo.google_drive_id}&sz=w400`;

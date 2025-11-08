@@ -464,7 +464,7 @@ export function getSessionsForContent(sessions, contentType, contentId) {
         .map(sessionId => sessions.find(s => s.id === sessionId))
         .filter(Boolean);  // Supprimer undefined si session supprimée
       
-      console.log(`⚡ getSessionsForContent(${contentType}, ${contentId}) via ContentLinks:`, linkedSessions.length);
+      // console.log(`⚡ getSessionsForContent(${contentType}, ${contentId}) via ContentLinks:`, linkedSessions.length);
       return linkedSessions;
       
     } catch (error) {
