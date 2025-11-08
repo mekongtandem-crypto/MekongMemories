@@ -38,18 +38,18 @@ console.log('📸 Photo data:', photo); //log temporaire
       try {
         let url;
         
-        if (photo.url) {
-          // Photo Mastodon (déjà une URL)
-          url = photo.url;
-        } else if (photo.google_drive_id) {
-          // Photo Drive : utiliser PhotoDataV2
-          if (window.photoDataV2) {
-			url = await window.photoDataV2.resolveImageUrl(photo, true);
-          } else {
-            console.warn('PhotoDataV2 non disponible');
-            url = `https://drive.google.com/thumbnail?id=${photo.google_drive_id}&sz=w400`;
-          }
-        }
+        if (photo.google_drive_id) {
+  // Photo Drive : utiliser PhotoDataV2 (prioritaire)
+  if (window.photoDataV2) {
+    url = await window.photoDataV2.resolveImageUrl(photo, true);
+  } else {
+    console.warn('PhotoDataV2 non disponible');
+    url = `https://drive.google.com/thumbnail?id=${photo.google_drive_id}&sz=w400`;
+  }
+} else if (photo.url && photo.url.startsWith('http')) {
+  // Photo Mastodon avec URL absolue (rare)
+  url = photo.url;
+}
 
         if (mounted && url) {
           setImageUrl(url);
