@@ -10,10 +10,30 @@
  * - Préservation thèmes entre régénérations
  * - Reporting progression temps réel
  * 
+ * ⚠️ PRÉREQUIS MANUEL SUR GOOGLE DRIVE :
+ * 
+ * STRUCTURE ATTENDUE POUR LES PHOTOS MASTODON :
+ * 
+ * Medias/
+ * └── Mastodon/
+ *     └── Mastodon_Photos/          ← Dossier unique (structure APLATIE)
+ *         ├── photo1.jpg
+ *         ├── photo2.jpg
+ *         └── photo3.jpg
+ * 
+ * Les photos Mastodon doivent être TOUTES dans le dossier "Mastodon_Photos".
+ * Ne pas conserver l'arborescence complexe type "/media_attachments/files/109/..."
+ * 
+ * IMPORTANT : Cette restructuration doit être faite MANUELLEMENT sur Drive
+ * avant de générer le MasterIndex, car elle évite les chemins longs et complexes.
+ * 
+ * ==============================================================================
+ * 
  * FIXES v5.2 :
  * ✅ Préservation thèmes (v5.1)
  * ✅ Progression incrémentale scan photos (v5.2)
  * ✅ Logger intégré (v5.2)
+ * ✅ Suppression URLs relatives Mastodon (v5.3)
  * 
  * ==============================================================================
  */
@@ -429,31 +449,43 @@ class MasterIndexGenerator {
   }
 
   enrichPostWithPhotoIds(post, mastodonPhotoMapping) {
-    if (!post.photos || post.photos.length === 0) {
-      return post;
-    }
-    
-    const enrichedPhotos = post.photos.map(photo => {
-      const filename = this.extractFilenameFromUrl(photo.url);
-      const mappingInfo = mastodonPhotoMapping[filename];
-      
-      if (mappingInfo) {
-        return {
-          ...photo,
-          google_drive_id: mappingInfo.google_drive_id,
-          filename: mappingInfo.filename
-        };
-      } else {
-        logger.warn(`Photo Mastodon non trouvée: ${filename}`);
-        return photo;
-      }
-    });
-    
-    return {
-      ...post,
-      photos: enrichedPhotos
-    };
+  if (!post.photos || post.photos.length === 0) {
+    return post;
   }
+  
+  const enrichedPhotos = post.photos.map(photo => {
+    const filename = this.extractFilenameFromUrl(photo.url);
+    const mappingInfo = mastodonPhotoMapping[filename];
+    
+    if (mappingInfo) {
+      // ✅ IMPORTANT : Supprimer l'URL relative incorrecte
+      // Les photos Mastodon doivent être chargées via google_drive_id uniquement
+      // 
+      // PRÉREQUIS MANUEL SUR DRIVE :
+      // Toutes les photos Mastodon doivent être dans un dossier unique : 
+      // "Medias/Mastodon/Mastodon_Photos/" (structure aplatie)
+      // Les chemins longs type "/media_attachments/files/109/..." ne sont plus utilisés
+      
+      const { url, ...photoWithoutUrl } = photo; // Supprimer l'URL incorrecte
+      
+      return {
+        ...photoWithoutUrl,
+        google_drive_id: mappingInfo.google_drive_id,
+        filename: mappingInfo.filename,
+        // Ne pas inclure l'URL Mastodon originale (relative et incorrecte)
+        // PhotoDataV2 utilisera google_drive_id pour générer l'URL correcte
+      };
+    } else {
+      logger.warn(`Photo Mastodon non trouvée: ${filename}`);
+      return photo; // Conserver tel quel si non trouvée
+    }
+  });
+  
+  return {
+    ...post,
+    photos: enrichedPhotos
+  };
+}
 
   extractFilenameFromUrl(url) {
     const parts = url.split('/');
