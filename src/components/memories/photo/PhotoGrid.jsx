@@ -1,5 +1,5 @@
 /**
- * PhotoGrid.jsx v7.0
+ * PhotoGrid.jsx v7.1 DarkMode
  * Grille responsive de photos avec :
  * - Mode sélection bulk (tagging)
  * - Mode sélection global (liens)
@@ -42,26 +42,26 @@ export const PhotoGrid = memo(({
     <div>
       {/* Barre d'action si photos sélectionnées */}
       {hasSelection && (
-        <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+        <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-amber-900">
+            <span className="text-sm font-medium text-amber-900 dark:text-amber-200">
               {selectedPhotos.length} photo{selectedPhotos.length > 1 ? 's' : ''} sélectionnée{selectedPhotos.length > 1 ? 's' : ''}
             </span>
           </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={onBulkTagPhotos}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded text-sm font-medium transition-colors"
+              className="flex items-center space-x-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white rounded text-sm font-medium transition-colors"
             >
               <Tag className="w-4 h-4" />
               <span>Tagger</span>
             </button>
             <button
               onClick={onCancelSelection}
-              className="p-1.5 hover:bg-amber-200 rounded transition-colors"
+              className="p-1.5 hover:bg-amber-200 dark:hover:bg-amber-800 rounded transition-colors"
               title="Annuler"
             >
-              <X className="w-4 h-4 text-amber-900" />
+              <X className="w-4 h-4 text-amber-900 dark:text-amber-200" />
             </button>
           </div>
         </div>

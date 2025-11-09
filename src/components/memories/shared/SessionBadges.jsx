@@ -1,5 +1,5 @@
 /**
- * SessionBadges.jsx v7.0
+ * SessionBadges.jsx v7.1 Dark mode
  * Composants de badges pour afficher le nombre de sessions liées
  * 
  * 2 variantes :
@@ -39,8 +39,8 @@ export const SessionBadgePost = memo(({
       onClick={handleClick}
       className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
         count === 0
-          ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-          : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+          ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+          : 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800'
       }`}
       title={count === 0 ? 'Créer une session' : `${count} session${count > 1 ? 's' : ''}`}
     >
@@ -80,7 +80,7 @@ export const SessionBadgePhotoThumb = memo(({
   return (
     <div
       onClick={handleClick}
-      className="absolute top-0 right-0 bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg hover:bg-purple-700 transition-colors z-10 cursor-pointer"
+      className="absolute top-0 right-0 bg-purple-600 dark:bg-purple-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg hover:bg-purple-700 dark:hover:bg-purple-800 transition-colors z-10 cursor-pointer"
       title={`${count} session${count > 1 ? 's' : ''}`}
     >
       {count}

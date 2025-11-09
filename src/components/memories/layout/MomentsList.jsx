@@ -1,5 +1,5 @@
 /**
- * MomentsList.jsx v7.0
+ * MomentsList.jsx v7.1 Dark mode
  * Liste de moments avec logique de filtrage
  * 
  * Forward toutes les props vers MomentCard

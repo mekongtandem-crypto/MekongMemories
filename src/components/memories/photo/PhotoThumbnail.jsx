@@ -1,5 +1,5 @@
 /**
- * PhotoThumbnail.jsx v7.0
+ * PhotoThumbnail.jsx v7.1 Dark mode
  * Thumbnail photo avec :
  * - Lazy loading
  * - Badge sessions
@@ -90,7 +90,7 @@ console.log('📸 Photo data:', photo); //log temporaire
     <div 
       onClick={handleClick}
       data-photo-filename={photo.filename}
-      className={`relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer group ${
+      className={`relative aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden cursor-pointer group ${
         isSelected ? 'ring-2 ring-amber-500' : ''
       }`}
     >
@@ -142,13 +142,13 @@ console.log('📸 Photo data:', photo); //log temporaire
       {/* États de chargement */}
       {status === 'loading' && (
         <div className="w-full h-full animate-pulse flex items-center justify-center">
-          <Camera className="w-6 h-6 text-gray-400" />
+          <Camera className="w-6 h-6 text-gray-400 dark:text-gray-500" />
         </div>
       )}
       
       {status === 'error' && (
-        <div className="w-full h-full bg-red-100 flex items-center justify-center" title="Erreur de chargement">
-          <AlertCircle className="w-6 h-6 text-red-500" />
+        <div className="w-full h-full bg-red-100 dark:bg-red-900 flex items-center justify-center" title="Erreur de chargement">
+          <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400" />
         </div>
       )}
       

@@ -1,5 +1,5 @@
 /**
- * PostArticle.jsx v7.0
+ * PostArticle.jsx v7.1 Dark Mode
  * Article Mastodon complet
  * 
  * Structure :
@@ -76,14 +76,14 @@ export const PostArticle = memo(({
 
   return (
     <div className="mt-2" data-post-id={post.id}>
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
         
         {/* Header */}
-        <div className="flex justify-between items-center bg-gray-50 p-2 border-b border-gray-200">
+        <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 border-b border-gray-200 dark:border-gray-600">
           
           {/* Gauche : Titre + indicateur photos inline */}
           <div className="flex items-center gap-x-3 flex-1 min-w-0">
-            <h4 className="font-semibold text-gray-800 text-sm truncate flex-1">
+            <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm truncate flex-1">
               {title}
             </h4>
             
@@ -93,12 +93,12 @@ export const PostArticle = memo(({
                 className="p-1 flex-shrink-0"
                 title="Afficher/Masquer les photos"
               >
-                <div className="flex items-center space-x-1 text-xs text-grey-400 bg-blue-50 px-2 py-1 rounded">
+                <div className="flex items-center space-x-1 text-xs text-grey-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
                   <ImageIcon className={`w-4 h-4 transition-colors ${
-                    showThisPostPhotos ? 'text-blue-600' : 'text-gray-400'
+                    showThisPostPhotos ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
                   }`} />
                   <span className={`font-medium transition-colors ${
-                    showThisPostPhotos ? 'text-blue-600' : 'text-gray-400'
+                    showThisPostPhotos ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
                   }`}>{post.photos.length}</span>
                 </div>
               </button>
@@ -113,8 +113,8 @@ export const PostArticle = memo(({
               onClick={handleTagPost} 
               className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors ${
                 hasThemes 
-                  ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-200' 
-                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                  ? 'bg-yellow-50 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-800' 
+                  : 'bg-gray-100 dark:bg-gray-600 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-500'
               }`}
               title="Thèmes"
             >
@@ -138,7 +138,7 @@ export const PostArticle = memo(({
                   e.stopPropagation();
                   onContentSelected?.(post, 'post');
                 }}
-                className="p-1.5 bg-purple-100 text-purple-600 border border-purple-200 hover:bg-purple-400 rounded transition-colors"
+                className="p-1.5 bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-700 hover:bg-purple-400 dark:hover:bg-purple-800 rounded transition-colors"
                 title="Lier cet article"
               >
                 <Link className="w-4 h-4" />
@@ -150,7 +150,7 @@ export const PostArticle = memo(({
         {/* Texte */}
         {displayOptions.showPostText && (
           <div 
-            className="prose prose-sm max-w-none bg-white p-3" 
+            className="prose prose-sm max-w-none bg-white dark:bg-gray-800 p-3 dark:text-gray-100"
             dangerouslySetInnerHTML={{ __html: body }} 
           />
         )}

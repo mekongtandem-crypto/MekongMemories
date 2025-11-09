@@ -1,5 +1,5 @@
 /**
- * MomentHeader.jsx v7.0
+ * MomentHeader.jsx v7.1
  * En-tête du moment avec :
  * - Titre et sous-titre (jours)
  * - Chevron pour ouvrir/fermer
@@ -110,37 +110,37 @@ export const MomentHeader = memo(({
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-3">
-            <div className="px-2 py-1 rounded-lg font-bold text-xs bg-gray-100 text-gray-800">
+            <div className="px-2 py-1 rounded-lg font-bold text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
               {moment.displaySubtitle}
             </div>
-            <h3 className="text-base font-semibold text-gray-900 truncate flex-1">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate flex-1">
               {moment.displayTitle}
             </h3>
           </div>
           
           {moment.location && (
-            <span className="flex items-center text-xs text-gray-500 mt-1.5 ml-1">
-              <MapPin className="w-3 h-3 mr-1.5 text-gray-400" />
+            <span className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1.5 ml-1">
+              <MapPin className="w-3 h-3 mr-1.5 text-gray-400 dark:text-gray-500" />
               {moment.location}
             </span>
           )}
         </div>
         
-        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform flex-shrink-0 ml-2 ${
+        <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform flex-shrink-0 ml-2 ${
           isSelected ? 'rotate-180' : ''
         }`} />
       </div>
 
       {/* Compteurs + Badges */}
-      <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm mt-2 pt-0 border-t border-gray-100">
+      <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm mt-2 pt-0 border-t border-gray-100 dark:border-gray-700">
         
         {/* Compteurs cliquables */}
         {moment.postCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'posts')}
-            className="flex items-center font-medium text-blue-600 hover:text-blue-700 transition-all"
+            className="flex items-center font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all"
           >
-            <FileText className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts ? 'text-blue-600' : 'text-gray-400'}`} /> 
+            <FileText className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} /> 
             {moment.postCount} post{moment.postCount > 1 ? 's' : ''}
           </button>
         )}
@@ -148,9 +148,9 @@ export const MomentHeader = memo(({
         {moment.dayPhotoCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'photos')}
-            className="flex items-center font-medium text-green-600 hover:text-green-700 transition-all"
+            className="flex items-center font-medium text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400 transition-all"
           >
-            <Camera className={`w-4 h-4 mr-1.5 ${localDisplay.showDayPhotos ? 'text-green-600' : 'text-gray-400'}`} /> 
+            <Camera className={`w-4 h-4 mr-1.5 ${localDisplay.showDayPhotos ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-500'}`} /> 
             {moment.dayPhotoCount} photo{moment.dayPhotoCount > 1 ? 's' : ''}
           </button>
         )}
@@ -163,8 +163,8 @@ export const MomentHeader = memo(({
             onClick={handleTagMoment}
             className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors ${
               hasMomentThemes 
-                ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-200' 
-                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                ? 'bg-yellow-50 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-800' 
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
             title="Thèmes"
           >
@@ -177,8 +177,8 @@ export const MomentHeader = memo(({
             onClick={handleShowSessions}
             className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
               sessionCount === 0 
-                ? 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                : 'bg-purple-100 hover:bg-purple-200 text-purple-700'
+                ? 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-400'
+                : 'bg-purple-100 dark:bg-purple-900/50 hover:bg-purple-200 dark:hover:bg-purple-800 text-purple-700 dark:text-purple-400'
             }`}
             title={sessionCount === 0 ? 'Créer une session' : `${sessionCount} session${sessionCount > 1 ? 's' : ''} - Cliquer pour voir`}
           >
@@ -193,7 +193,7 @@ export const MomentHeader = memo(({
                 e.stopPropagation();
                 onContentSelected?.(moment, 'moment');
               }}
-              className="p-1.5 bg-purple-100 text-purple-600 border border-purple-200 hover:bg-purple-400 rounded transition-colors"
+              className="p-1.5 bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-700 hover:bg-purple-400 dark:hover:bg-purple-800 rounded transition-colors"
               title="Lier ce moment"
             >
               <Link className="w-4 h-4" />

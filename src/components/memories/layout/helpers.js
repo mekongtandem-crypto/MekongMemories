@@ -1,5 +1,5 @@
 /**
- * helpers.js v7.0
+ * helpers.js v7.1 Dark mode
  * Fonctions utilitaires pour MemoriesPage
  * 
  * Contient :

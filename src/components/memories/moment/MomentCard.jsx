@@ -1,5 +1,5 @@
 /**
- * MomentCard.jsx v7.0
+ * MomentCard.jsx v7.1 Darkmode
  * Carte moment complète (wrapper)
  * 
  * Gère :
@@ -81,8 +81,8 @@ export const MomentCard = memo(forwardRef(({
       ref={ref} 
       id={moment.id}
       data-filtered={matchesFilter ? 'true' : 'false'}
-      className={`bg-white rounded-xl shadow-sm border transition-all duration-300 ${
-        isSelected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border transition-all duration-300 ${
+        isSelected ? 'border-blue-400 dark:border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
       }`}
     >
       <div className="px-3 pt-3 pb-0">
