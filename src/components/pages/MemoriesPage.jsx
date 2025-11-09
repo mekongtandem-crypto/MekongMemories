@@ -550,22 +550,32 @@ const navigationProcessedRef = useRef(null);
   }, [isSearchOpen]);
 
   useImperativeHandle(ref, () => ({
-    jumpToRandomMoment: () => {
-      if (momentsData.length > 0) {
-        const randomIndex = Math.floor(Math.random() * momentsData.length);
-        const randomMoment = momentsData[randomIndex];
-        handleSelectMoment(randomMoment);
-        setCurrentDay(randomMoment.dayStart);
-      }
-    },
-    jumpToDay: (day) => {
-      const targetMoment = momentsData.find(m => day >= m.dayStart && day <= m.dayEnd);
-      if (targetMoment) {
-        handleSelectMoment(targetMoment);
-        setCurrentDay(day);
-      }
+  jumpToRandomMoment: () => {
+    if (momentsData.length > 0) {
+      const randomIndex = Math.floor(Math.random() * momentsData.length);
+      const randomMoment = momentsData[randomIndex];
+      handleSelectMoment(randomMoment);
+      setCurrentDay(randomMoment.dayStart);
+      
+      // Scroll vers le moment sélectionné
+      setTimeout(() => {
+        scrollToMoment(randomMoment.id);
+      }, 100);
     }
-  }), [momentsData, setCurrentDay]);
+  },
+  jumpToDay: (day) => {
+    const targetMoment = momentsData.find(m => day >= m.dayStart && day <= m.dayEnd);
+    if (targetMoment) {
+      handleSelectMoment(targetMoment);
+      setCurrentDay(day);
+      
+      // Scroll vers le moment
+      setTimeout(() => {
+        scrollToMoment(targetMoment.id);
+      }, 100);
+    }
+  }
+}), [momentsData, setCurrentDay, scrollToMoment, handleSelectMoment]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -867,25 +877,25 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
   : [];
   
   return (
-    <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden relative">
+	<div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 font-sans overflow-hidden relative transition-colors duration-200">
       
       
       {/* Barre de recherche */}
       {isSearchOpen && (
-        <div className="relative bg-white border-b border-gray-200 p-3">
+        <div className="relative bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 transition-colors duration-200">
           <input 
             type="text" 
             value={searchQuery} 
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Escape') setIsSearchOpen(false); }}
-            className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+            className="w-full pl-4 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-colors duration-200" 
             placeholder="Rechercher un texte, un titre... (Echap pour fermer)"
             autoFocus
           />
           {searchQuery && (
             <button 
               onClick={() => setSearchQuery('')} 
-              className="absolute inset-y-0 right-0 flex items-center pr-5 text-gray-400 hover:text-gray-600"
+              className="absolute inset-y-0 right-0 flex items-center pr-5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               title="Effacer la recherche"
             >
               <X className="w-5 h-5" />
@@ -896,16 +906,16 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
  
       {/* ✅ Filtres par thème (conditionnel) */}
       {isThemeBarVisible && themeStats.length > 0 && (
-        <div className="bg-white border-b border-gray-200 px-4 py-3">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 transition-colors duration-200">
           <div className="flex items-center space-x-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin', scrollbarColor: '#d1d5db transparent' }}>
-            <Tag className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
             <button
               onClick={() => setSelectedTheme(null)}
               className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                selectedTheme === null
-                  ? 'bg-amber-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+  				selectedTheme === null
+    				? 'bg-amber-500 text-white'
+    				: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+				}`}
             >
               Tous
             </button>
@@ -914,10 +924,10 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
                 key={theme.id}
                 onClick={() => setSelectedTheme(theme.id === selectedTheme ? null : theme.id)}
                 className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap flex items-center space-x-1 transition-colors ${
-                  selectedTheme === theme.id
-                    ? 'bg-amber-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+  				selectedTheme === theme.id
+    				? 'bg-amber-500 text-white'
+    				: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+				}`}
               >
                 <span>{theme.icon}</span>
                 <span>{theme.name}</span>

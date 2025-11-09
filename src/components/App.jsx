@@ -11,7 +11,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { APP_VERSION, APP_NAME, PHASE, BUILD_DATE } from '../config/version.js';
 import { useAppState } from '../hooks/useAppState.js';
 import { ThemeProvider } from './ThemeContext.jsx';
-import UnifiedTopBar from './UnifiedTopBar.jsx';
+import TopBar from './topbar/TopBar.jsx';
 import { BottomNavigation } from './Navigation.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import MemoriesPage from './pages/MemoriesPage.jsx';
@@ -73,6 +73,7 @@ export default function App() {
   const [isTimelineVisible, setIsTimelineVisible] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [currentDay, setCurrentDay] = useState(1);
+  const [selectedTheme, setSelectedTheme] = useState(null);
   const [displayOptions, setDisplayOptions] = useState({
     showPostText: true,
     showPostPhotos: true,
@@ -466,34 +467,36 @@ export default function App() {
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col transition-colors duration-200">
           
           {/* TopBar fixe */}
-          <div className="fixed top-0 left-0 right-0 z-40">
-            <UnifiedTopBar
-              currentPage={app.currentPage}
-              onCloseChatSession={app.closeChatSession}
-              isTimelineVisible={isTimelineVisible}
-              setIsTimelineVisible={setIsTimelineVisible}
-              isSearchOpen={isSearchOpen}
-              setIsSearchOpen={setIsSearchOpen}
-              displayOptions={displayOptions}
-              setDisplayOptions={setDisplayOptions}
-              jumpToRandomMoment={handleJumpToRandomMoment}
-              currentDay={currentDay}
-              setCurrentDay={setCurrentDay}
-              jumpToDay={handleJumpToDay}
-              isThemeBarVisible={isThemeBarVisible}
-              setIsThemeBarVisible={setIsThemeBarVisible}
-              navigationContext={navigationContext}
-              onNavigateWithContext={handleNavigateWithContext}
-              onNavigateBack={handleNavigateBack}
-              selectionMode={selectionMode}
-              onCancelSelectionMode={handleCancelSelectionMode}
-            />
-          </div>
+          <TopBar
+  currentPage={app.currentPage}
+  onCloseChatSession={app.closeChatSession}
+  isTimelineVisible={isTimelineVisible}
+  setIsTimelineVisible={setIsTimelineVisible}
+  isSearchOpen={isSearchOpen}
+  setIsSearchOpen={setIsSearchOpen}
+  displayOptions={displayOptions}
+  setDisplayOptions={setDisplayOptions}
+  jumpToRandomMoment={handleJumpToRandomMoment}
+  currentDay={currentDay}
+  setCurrentDay={setCurrentDay}
+  jumpToDay={handleJumpToDay}
+  isThemeBarVisible={isThemeBarVisible}
+  setIsThemeBarVisible={setIsThemeBarVisible}
+  navigationContext={navigationContext}
+  onNavigateWithContext={handleNavigateWithContext}
+  onNavigateBack={handleNavigateBack}
+  selectionMode={selectionMode}
+  onCancelSelectionMode={handleCancelSelectionMode}
+  selectedTheme={selectedTheme}
+  setSelectedTheme={setSelectedTheme} 
+/>
 
           {/* Contenu principal */}
-          <main className="flex-1 pt-12 pb-16 overflow-auto">
-            {renderPage()}
-          </main>
+<main className={`flex-1 pb-16 overflow-auto ${
+  app.currentPage === 'memories' ? 'pt-0' : 'pt-12'
+}`}>
+  {renderPage()}
+</main>
 
           {/* BottomNavigation fixe */}
           {app.isInitialized && (

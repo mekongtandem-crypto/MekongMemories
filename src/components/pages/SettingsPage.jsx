@@ -165,6 +165,19 @@ const [confirmDelete, setConfirmDelete] = useState({
   const toggleSection = (section) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
+  
+  // Exposer l'action d'ouverture de section pour OverflowMenu
+  useEffect(() => {
+    window.settingsPageActions = {
+      openSection: (sectionName) => {
+        setOpenSections(prev => ({ ...prev, [sectionName]: true }));
+      }
+    };
+    
+    return () => {
+      delete window.settingsPageActions;
+    };
+  }, []);
 
   // ========================================
   // GESTION THÈMES
@@ -619,10 +632,8 @@ const executeDeleteTheme = async () => {
         )}
       </section>
 
- {/* Section Thèmes */}
 {/* Section Thèmes */}
-<section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-  <button
+<section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">  <button
     data-section="themes"
     data-open={openSections.themes ? "true" : undefined}
     onClick={() => toggleSection('themes')}
@@ -630,9 +641,9 @@ const executeDeleteTheme = async () => {
   >
     <div className="flex items-center space-x-2">
       <Tag className="w-5 h-5 text-gray-600" />
-      <h2 className="text-lg font-semibold text-gray-900">Mes thèmes</h2>
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Mes thèmes</h2>
     </div>
-    <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${
+    <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${
       openSections.themes ? 'rotate-180' : ''
     }`} />
   </button>
