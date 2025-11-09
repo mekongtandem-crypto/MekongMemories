@@ -1,4 +1,38 @@
-    @import './styles/startup-animations.css';
-    @tailwind base;
-    @tailwind components;
-    @tailwind utilities;
+@import './styles/startup-animations.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   TRANSITIONS MODE SOMBRE
+   ======================================== */
+
+/* Transition douce sur tous les éléments supportant le dark mode */
+@layer base {
+  html {
+    transition: background-color 200ms ease-in-out;
+  }
+  
+  * {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: ease-in-out;
+    transition-duration: 200ms;
+  }
+}
+
+/* Variables CSS pour les couleurs réutilisables (optionnel, si besoin) */
+@layer base {
+  :root {
+    --color-bg-primary: #f9fafb;
+    --color-bg-secondary: #ffffff;
+    --color-text-primary: #111827;
+    --color-text-secondary: #4b5563;
+  }
+  
+  .dark {
+    --color-bg-primary: #111827;
+    --color-bg-secondary: #1f2937;
+    --color-text-primary: #f3f4f6;
+    --color-text-secondary: #9ca3af;
+  }
+}

@@ -1,16 +1,16 @@
 /**
- * SettingsPage.jsx v4.2 - Phase 16 - Améliorations
- * ✅ data-section pour ciblage automatique
- * ✅ Cascade delete avec confirmation si >10 assignations
+ * SettingsPage.jsx v4.3 - Phase 25 - DarkMode
+ * 
  */
  
 import React, { useState, useEffect, useRef } from 'react';
 import { APP_VERSION, APP_NAME, PHASE, BUILD_DATE } from '../../config/version.js';
 import { useAppState } from '../../hooks/useAppState.js';
+import { useTheme } from '../ThemeContext.jsx';
 import { userManager } from '../../core/UserManager.js';
 import { sortThemes } from '../../utils/themeUtils.js';
 import { THEME_COLORS, generateThemeId, countThemeContents } from '../../utils/themeUtils.js';
-import { RefreshCw, Database, Users, Info, ChevronDown, Cloud, CloudOff, Plus, Edit, Trash2, Tag } from 'lucide-react';
+import { RefreshCw, Database, Users, Info, ChevronDown, Cloud, CloudOff, Plus, Edit, Trash2, Tag, Sun, Moon } from 'lucide-react';
 
 // ✅ Liste réduite de suggestions (12 emojis)
 const SUGGESTED_EMOJIS = [
@@ -106,9 +106,11 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
 
 export default function SettingsPage() {
   const app = useAppState();
+  const { isDark, toggleTheme } = useTheme();
   
   const [openSections, setOpenSections] = useState({
     users: false,
+    theme: false,
     stats: false,
     themes: false,
     connection: false,
@@ -404,16 +406,16 @@ const executeDeleteTheme = async () => {
     <div className="p-4 space-y-4 max-w-4xl mx-auto">
       
       {/* Section Utilisateurs */}
-      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <button
           onClick={() => toggleSection('users')}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50"
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           <div className="flex items-center space-x-2">
-            <Users className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Utilisateurs</h2>
+            <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Utilisateurs</h2>
           </div>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.users ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${openSections.users ? 'rotate-180' : ''}`} />
         </button>
         
         {openSections.users && (
@@ -851,16 +853,16 @@ const executeDeleteTheme = async () => {
 </section>
 
       {/* Section Statistiques */}
-      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <button
           onClick={() => toggleSection('stats')}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           <div className="flex items-center space-x-2">
-            <Info className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Statistiques d'Activité</h2>
+            <Info className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Statistiques d'Activité</h2>
           </div>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.stats ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${openSections.stats ? 'rotate-180' : ''}`} />
         </button>
         
         {openSections.stats && (
@@ -952,26 +954,98 @@ const executeDeleteTheme = async () => {
         )}
       </section>
 
+      {/* Section Thème visuel */}
+      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <button
+          onClick={() => toggleSection('theme')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          <div className="flex items-center space-x-2">
+            {isDark ? (
+              <Moon className="w-5 h-5 text-blue-500" />
+            ) : (
+              <Sun className="w-5 h-5 text-amber-500" />
+            )}
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Thème visuel</h2>
+            <span className={`text-xs font-medium px-2 py-1 rounded ${
+              isDark 
+                ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' 
+                : 'bg-amber-100 text-amber-700'
+            }`}>
+              {isDark ? 'Sombre' : 'Clair'}
+            </span>
+          </div>
+          <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${openSections.theme ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {openSections.theme && (
+          <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Choisissez le thème d'affichage de l'application. Le mode sombre préserve le code couleurs pour une expérience visuelle cohérente.
+            </p>
+            
+            {/* Toggle interactif */}
+            <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+              <div className="flex items-center space-x-3">
+                {isDark ? (
+                  <Moon className="w-6 h-6 text-blue-500" />
+                ) : (
+                  <Sun className="w-6 h-6 text-amber-500" />
+                )}
+                <div>
+                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                    Mode {isDark ? 'sombre' : 'clair'}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {isDark ? 'Confort visuel pour la nuit' : 'Lumineux pour la journée'}
+                  </div>
+                </div>
+              </div>
+              
+              <button
+                onClick={toggleTheme}
+                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                  isDark ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                    isDark ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+            
+            {/* Info persistance */}
+            <div className="text-xs text-gray-500 dark:text-gray-400 italic">
+              💾 Votre préférence est sauvegardée automatiquement
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* Section Connexion */}
-      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <button
           onClick={() => toggleSection('connection')}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           <div className="flex items-center space-x-2">
             {isOnline ? (
-              <Cloud className="w-5 h-5 text-green-600" />
+              <Cloud className="w-5 h-5 text-green-600 dark:text-green-500" />
             ) : (
-              <CloudOff className="w-5 h-5 text-red-600" />
+              <CloudOff className="w-5 h-5 text-red-600 dark:text-red-500" />
             )}
-            <h2 className="text-lg font-semibold text-gray-900">Connexion</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Connexion</h2>
             <span className={`text-xs font-medium px-2 py-1 rounded ${
-              isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+              isOnline 
+                ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' 
+                : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
             }`}>
               {isOnline ? 'Connecté' : 'Déconnecté'}
             </span>
           </div>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.connection ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${openSections.connection ? 'rotate-180' : ''}`} />
         </button>
         
         {openSections.connection && (
@@ -1014,16 +1088,16 @@ const executeDeleteTheme = async () => {
       </section>
 
       {/* Section Données */}
-      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <button
           onClick={() => toggleSection('data')}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           <div className="flex items-center space-x-2">
-            <Database className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Données Brutes</h2>
+            <Database className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Données Brutes</h2>
           </div>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${openSections.data ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${openSections.data ? 'rotate-180' : ''}`} />
         </button>
         {openSections.data && (
           <div className="p-4 border-t border-gray-100 space-y-4">

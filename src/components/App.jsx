@@ -1,9 +1,6 @@
 /**
- * App.jsx v2.7 - Phase 19D : Navigation Chat ↔ Memories optimisée
- * ✅ Hooks correctement ordonnés
- * ✅ Tous handlers en useCallback
- * ✅ Commentaires structurants
- * ✅ Navigation bidirectionnelle complète
+ * App.jsx v2.8 - Phase 24 : DarkMode
+ * 
  */
 
 // ============================================
@@ -13,6 +10,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { APP_VERSION, APP_NAME, PHASE, BUILD_DATE } from '../config/version.js';
 import { useAppState } from '../hooks/useAppState.js';
+import { ThemeProvider } from './ThemeContext.jsx';
 import UnifiedTopBar from './UnifiedTopBar.jsx';
 import { BottomNavigation } from './Navigation.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
@@ -463,52 +461,54 @@ export default function App() {
   // ============================================
 
   return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        
-        {/* TopBar fixe */}
-        <div className="fixed top-0 left-0 right-0 z-40">
-          <UnifiedTopBar
-            currentPage={app.currentPage}
-            onCloseChatSession={app.closeChatSession}
-            isTimelineVisible={isTimelineVisible}
-            setIsTimelineVisible={setIsTimelineVisible}
-            isSearchOpen={isSearchOpen}
-            setIsSearchOpen={setIsSearchOpen}
-            displayOptions={displayOptions}
-            setDisplayOptions={setDisplayOptions}
-            jumpToRandomMoment={handleJumpToRandomMoment}
-            currentDay={currentDay}
-            setCurrentDay={setCurrentDay}
-            jumpToDay={handleJumpToDay}
-            isThemeBarVisible={isThemeBarVisible}
-            setIsThemeBarVisible={setIsThemeBarVisible}
-            navigationContext={navigationContext}
-            onNavigateWithContext={handleNavigateWithContext}
-            onNavigateBack={handleNavigateBack}
-            selectionMode={selectionMode}
-            onCancelSelectionMode={handleCancelSelectionMode}
-          />
+    <ThemeProvider>
+      <ErrorBoundary>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col transition-colors duration-200">
+          
+          {/* TopBar fixe */}
+          <div className="fixed top-0 left-0 right-0 z-40">
+            <UnifiedTopBar
+              currentPage={app.currentPage}
+              onCloseChatSession={app.closeChatSession}
+              isTimelineVisible={isTimelineVisible}
+              setIsTimelineVisible={setIsTimelineVisible}
+              isSearchOpen={isSearchOpen}
+              setIsSearchOpen={setIsSearchOpen}
+              displayOptions={displayOptions}
+              setDisplayOptions={setDisplayOptions}
+              jumpToRandomMoment={handleJumpToRandomMoment}
+              currentDay={currentDay}
+              setCurrentDay={setCurrentDay}
+              jumpToDay={handleJumpToDay}
+              isThemeBarVisible={isThemeBarVisible}
+              setIsThemeBarVisible={setIsThemeBarVisible}
+              navigationContext={navigationContext}
+              onNavigateWithContext={handleNavigateWithContext}
+              onNavigateBack={handleNavigateBack}
+              selectionMode={selectionMode}
+              onCancelSelectionMode={handleCancelSelectionMode}
+            />
+          </div>
+
+          {/* Contenu principal */}
+          <main className="flex-1 pt-12 pb-16 overflow-auto">
+            {renderPage()}
+          </main>
+
+          {/* BottomNavigation fixe */}
+          {app.isInitialized && (
+            <BottomNavigation 
+              currentPage={app.currentPage}
+              onPageChange={handlePageChange}
+              app={app}
+              navigationContext={navigationContext}
+            />
+          )}
+          
+          {/* Spinner création session */}
+          {app.isCreatingSession && <SessionCreationSpinner />}
         </div>
-
-        {/* Contenu principal */}
-        <main className="flex-1 pt-12 pb-16 overflow-auto">
-          {renderPage()}
-        </main>
-
-        {/* BottomNavigation fixe */}
-        {app.isInitialized && (
-          <BottomNavigation 
-            currentPage={app.currentPage}
-            onPageChange={handlePageChange}
-            app={app}
-            navigationContext={navigationContext}
-          />
-        )}
-        
-        {/* Spinner création session */}
-        {app.isCreatingSession && <SessionCreationSpinner />}
-      </div>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }
