@@ -820,7 +820,7 @@ function LinkPhotoPreview({ photo }) {
       </div>
 
       {/* Zone de saisie */}
-<div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
+<div className="bg-white dark:bg-gray-800 border-t border-gray-200 p-4 flex-shrink-0">
   
   {/* ⭐ Preview lien (si présent) */}
 {pendingLink && (
@@ -879,7 +879,7 @@ function LinkPhotoPreview({ photo }) {
     {/* Bouton Liens/Photos à GAUCHE */}
     <button
       onClick={handleOpenLinkPicker}
-      className="flex-shrink-0 p-3 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+      className="flex-shrink-0 p-3 text-purple-600 bg-purple-50 dark:bg-grey-800 hover:bg-purple-100 rounded-lg transition-colors"
       title="Ajouter lien ou photo"
     >
       <Link className="w-6 h-6" />
@@ -901,9 +901,9 @@ function LinkPhotoPreview({ photo }) {
             placeholder={
               pendingLink || attachedPhoto 
                 ? "Ajouter un message (optionnel)..." 
-                : "Tapez votre message... (Shift+Entrée pour envoyer)"
+                : "tapez votre message... (Shift+Entrée pour envoyer)"
             }
-            className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            className="flex-1 dark:text-gray-50  bg-gray-800 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             rows="2"
           />
     

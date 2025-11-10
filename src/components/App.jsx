@@ -492,9 +492,7 @@ export default function App() {
 />
 
           {/* Contenu principal */}
-<main className={`flex-1 pb-16 overflow-auto ${
-  app.currentPage === 'memories' ? 'pt-0' : 'pt-12'
-}`}>
+<main className="flex-1 pt-0 pb-16 overflow-auto">
   {renderPage()}
 </main>
 

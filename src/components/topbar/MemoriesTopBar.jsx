@@ -125,6 +125,7 @@ export default function MemoriesTopBar({
 >
   <Tag className="w-5 h-5" />
 </button>
+
       </div>
       {/* Séparateur */}
           <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
