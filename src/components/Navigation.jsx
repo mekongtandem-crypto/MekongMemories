@@ -1,6 +1,6 @@
 /**
- * Navigation.jsx v5.2 - Phase 19D : Retour intelligent Memories ↔ Chat
- * ✅ Bottom Bar dynamique avec navigation contextuelle
+ * Navigation.jsx v5.2 - Phase 26 Dark mode
+* ✅ Bottom Bar dynamique avec navigation contextuelle
  * ✅ Bouton retour intelligent selon previousPage
  * 
  * Logique :
@@ -94,7 +94,7 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 z-50 transition-colors duration-200">
       <div className="flex justify-around py-2">
         
         {/* Boutons fixes : Sessions + Souvenirs */}
@@ -106,7 +106,9 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
               key={item.id} 
               onClick={() => onPageChange(item.id)} 
               className={`relative flex flex-col items-center py-2 px-3 transition-colors ${
-                isActive ? 'text-amber-600 font-semibold' : 'text-amber-500'
+                isActive 
+                  ? 'text-amber-600 dark:text-amber-400 font-semibold' 
+                  : 'text-amber-500 dark:text-amber-500 hover:text-amber-600 dark:hover:text-amber-400'
               }`}
             >
               <div className="relative">
@@ -126,7 +128,7 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
         {showReturnButton ? (
           <button 
             onClick={handleReturn}
-            className="flex flex-col items-center py-2 px-3 text-purple-600"
+            className="flex flex-col items-center py-2 px-3 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
             title={`Retour vers ${getReturnLabel()}`}
           >
             <ArrowLeft className="w-5 h-5 mb-1" />
@@ -135,7 +137,7 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
         ) : (
           <button 
             disabled
-            className="flex flex-col items-center py-2 px-3 text-gray-400 opacity-40 cursor-not-allowed"
+            className="flex flex-col items-center py-2 px-3 text-gray-400 dark:text-gray-600 opacity-40 cursor-not-allowed"
           >
             <Gamepad2 className="w-5 h-5 mb-1" />
             <span className="text-xs">Jeux</span>

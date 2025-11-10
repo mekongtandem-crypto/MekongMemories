@@ -680,7 +680,7 @@ function LinkPhotoPreview({ photo }) {
   
   
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-800">
 
       {/* Zone des messages */}
       <div 

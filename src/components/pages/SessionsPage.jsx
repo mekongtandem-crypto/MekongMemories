@@ -1,5 +1,5 @@
 /**
- * SessionsPage.jsx v6.2 - Phase 15
+ * SessionsPage.jsx v7 DarkMode
  * ✅ En-têtes groupes compacts (bulle + sous-titre)
  * ✅ Menu "..." avec z-index élevé
  * ✅ Support SESSION_STATUS.NOTIFIED
@@ -218,8 +218,8 @@ export default function SessionsPage() {
       
       {/* Message filtre actif */}
       {groupFilter && (
-        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-sm text-green-900">
+        <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2 text-sm text-green-900 dark:text-green-300">
             <span className="font-medium">Filtre actif :</span>
             <span className="text-2xl">
               {groupFilter === 'notified' && '🔔'}
@@ -234,7 +234,7 @@ export default function SessionsPage() {
           </div>
           <button
             onClick={() => setGroupFilter(null)}
-            className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center space-x-1"
+            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 text-sm font-medium flex items-center space-x-1"
           >
             <X className="w-4 h-4" />
             <span>Voir tout</span>
@@ -244,10 +244,10 @@ export default function SessionsPage() {
       
       {/* Liste groupée */}
       {totalSessions === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="text-6xl mb-4">📚</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Aucune session</h2>
-          <p className="text-gray-600 mb-6">Créez votre première session depuis la page Mémoires.</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Aucune session</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Créez votre première session depuis la page Mémoires.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -384,10 +384,10 @@ function SessionGroup({
   onMarkCompleted, onArchive, onDelete
 }) {
   const colorClasses = {
-    orange: { bg: 'bg-orange-50', border: 'border-orange-200', hover: 'hover:bg-orange-100', badgeBg: 'bg-orange-500' },
-    amber: { bg: 'bg-amber-50', border: 'border-amber-200', hover: 'hover:bg-amber-100', badgeBg: 'bg-amber-500' },
-    green: { bg: 'bg-green-50', border: 'border-green-200', hover: 'hover:bg-green-100', badgeBg: 'bg-green-500' },
-    blue: { bg: 'bg-blue-50', border: 'border-blue-200', hover: 'hover:bg-blue-100', badgeBg: 'bg-blue-500' }
+    orange: { bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-200 dark:border-orange-700', hover: 'hover:bg-orange-100 dark:hover:bg-orange-900/30', badgeBg: 'bg-orange-500 dark:bg-orange-600' },
+    amber: { bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-700', hover: 'hover:bg-amber-100 dark:hover:bg-amber-900/30', badgeBg: 'bg-amber-500 dark:bg-amber-600' },
+    green: { bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-700', hover: 'hover:bg-green-100 dark:hover:bg-green-900/30', badgeBg: 'bg-green-500 dark:bg-green-600' },
+    blue: { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-700', hover: 'hover:bg-blue-100 dark:hover:bg-blue-900/30', badgeBg: 'bg-blue-500 dark:bg-blue-600' }
   };
   
   const colors = colorClasses[color];
@@ -408,7 +408,7 @@ function SessionGroup({
           </div>
           
           {/* Sous-titre uniquement */}
-          <span className="text-sm font-medium text-gray-700">{subtitle}</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{subtitle}</span>
         </div>
         
         <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -416,7 +416,7 @@ function SessionGroup({
       
       {/* Sessions */}
       {isOpen && (
-        <div className="p-3 border-t border-gray-200 space-y-2">
+        <div className="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
           {sessions.map(session => (
             <SessionRow
               key={session.id}
@@ -458,15 +458,15 @@ function SessionRow({
   return (
     <div 
       onClick={() => !isEditing && onOpen(session)}
-      className={`bg-white rounded-lg p-3 transition-all relative ${
+      className={`bg-white dark:bg-gray-800 rounded-lg p-3 transition-all relative ${
         isEditing 
           ? 'border-2 border-gray-300' 
-          : `border-2 ${session.statusConfig?.borderClass || 'border-gray-200'} hover:border-gray-400 hover:shadow-md cursor-pointer`
+          : `border-2 ${session.statusConfig?.borderClass || 'border-gray-200'} hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md cursor-pointer`
       }`}
     >
       {/* Badge 🔔 en haut à gauche pour NOTIFIED */}
       {session.status === SESSION_STATUS.NOTIFIED && !isEditing && (
-        <div className="absolute -top-2 -left-2 flex items-center bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
+        <div className="absolute -top-2 -left-2 flex items-center bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
           <span className="mr-1.5">🔔</span>
           {/* ✅ NOUVEAU : On affiche le nom de l'expéditeur */}
           <span>
@@ -489,21 +489,21 @@ function SessionRow({
                   if (e.key === 'Enter') onSaveEdit(e, session.id);
                   if (e.key === 'Escape') onCancelEdit(e);
                 }}
-                className="flex-1 px-2 py-1 border border-gray-300 rounded font-medium focus:ring-2 focus:ring-amber-500"
+                className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded font-medium focus:ring-2 focus:ring-amber-500"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
-              <button onClick={(e) => onSaveEdit(e, session.id)} className="p-1 text-green-600 hover:bg-green-100 rounded">
+              <button onClick={(e) => onSaveEdit(e, session.id)} className="p-1 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 rounded">
                 <Check className="w-4 h-4" />
               </button>
-              <button onClick={onCancelEdit} className="p-1 text-gray-600 hover:bg-gray-100 rounded">
+              <button onClick={onCancelEdit} className="p-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                 <X className="w-4 h-4" />
               </button>
             </div>
           ) : (
             <>
-              <div className="font-medium text-gray-900 truncate">{session.gameTitle}</div>
-              <div className="flex items-center space-x-3 text-xs text-gray-500 mt-1">
+              <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{session.gameTitle}</div>
+              <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
                 <span className="flex items-center space-x-1">
                   <span className="text-sm">💬</span>
                   <span>{session.notes?.length || 0}</span>
@@ -533,20 +533,20 @@ function SessionRow({
                 e.stopPropagation();
                 setOpenMenuId(openMenuId === session.id ? null : session.id);
               }}
-              className="p-1 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
             
             {openMenuId === session.id && (
               <div 
-                className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-48"
+                className="absolute right-0 top-full mt-1 text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 w-48"
                 style={{ zIndex: 101 }}
               >
                 
                 <button
                   onClick={(e) => onStartEdit(e, session)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
                 >
                   <Edit className="w-4 h-4" />
                   <span>Modifier</span>
@@ -554,7 +554,7 @@ function SessionRow({
                 
                 <button
                   onClick={(e) => onMarkCompleted(e, session)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
                 >
                   <Check className="w-4 h-4" />
                   <span>{session.completed ? 'Non terminée' : 'Terminée'}</span>
@@ -562,17 +562,17 @@ function SessionRow({
                 
                 <button
                   onClick={(e) => onArchive(e, session)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
                 >
                   <Archive className="w-4 h-4" />
                   <span>{session.archived ? 'Désarchiver' : 'Archiver'}</span>
                 </button>
                 
-                <div className="border-t border-gray-200 my-1"></div>
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                 
                 <button
                   onClick={(e) => onDelete(e, session.id, session.gameTitle)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center space-x-2"
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center space-x-2"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Supprimer</span>
