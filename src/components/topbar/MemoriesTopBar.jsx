@@ -1,14 +1,12 @@
 /**
- * MemoriesTopBar.jsx v1.0 - Phase 25 : Refactoring TopBar
+ * MemoriesTopBar.jsx v1.1 - Phase 25 : Refactoring TopBar
  * TopBar spécifique à la page Memories
+ * ✅ Transitions 150ms
  * 
  * Layout :
  * - Gauche : 🔍 Recherche
  * - Centre : 📄 📸 📷 | Filtres ▼ | Tri ▼
  * - Droite : ... Menu (avec actions : Thèmes, Random, Timeline)
- * 
- * Note Phase 1 : On conserve les filtres granulaires actuels (📄 📸 📷)
- * Phase 2 : Migration vers filtres hiérarchiques (🎯 📰 📸)
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -29,7 +27,9 @@ export default function MemoriesTopBar({
   isTimelineVisible,
   setIsTimelineVisible,
   jumpToRandomMoment,
-  navigationContext
+  navigationContext,
+  selectedTheme,
+  setSelectedTheme
 }) {
   
   const [showMenu, setShowMenu] = useState(false);
@@ -74,7 +74,7 @@ export default function MemoriesTopBar({
   const isFromChat = navigationContext?.previousPage === 'chat';
   
   return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-200">
+    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-150">
       
       {/* ========================================
           GAUCHE : Random | Recherche | Thèmes
@@ -83,7 +83,7 @@ export default function MemoriesTopBar({
         {/* Random moment */}
         <button
           onClick={jumpToRandomMoment}
-          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-150"
           title="Moment aléatoire"
         >
           <Dices className="w-5 h-5" />
@@ -95,7 +95,7 @@ export default function MemoriesTopBar({
         {/* Recherche */}
         <button 
           onClick={() => setIsSearchOpen(!isSearchOpen)}
-          className={`p-2 rounded-lg transition-colors ${
+          className={`p-2 rounded-lg transition-colors duration-150 ${
             isSearchOpen 
               ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -107,31 +107,31 @@ export default function MemoriesTopBar({
         
         {/* Afficher thèmes */}
         <button
-  onClick={() => {
-    const newVisibility = !isThemeBarVisible;
-    setIsThemeBarVisible(newVisibility);
-    
-    // Si on ferme la barre, reset le filtre à "Tous"
-    if (!newVisibility && selectedTheme !== null) {
-      setSelectedTheme(null);
-    }
-  }}
-  className={`p-2 rounded-lg transition-colors ${
-    isThemeBarVisible 
-      ? 'bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400' 
-      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-  }`}
-  title={isThemeBarVisible ? "Masquer thèmes" : "Afficher thèmes"}
->
-  <Tag className="w-5 h-5" />
-</button>
+          onClick={() => {
+            const newVisibility = !isThemeBarVisible;
+            setIsThemeBarVisible(newVisibility);
+            
+            // Si on ferme la barre, reset le filtre à "Tous"
+            if (!newVisibility && selectedTheme !== null) {
+              setSelectedTheme(null);
+            }
+          }}
+          className={`p-2 rounded-lg transition-colors duration-150 ${
+            isThemeBarVisible 
+              ? 'bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400' 
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+          }`}
+          title={isThemeBarVisible ? "Masquer thèmes" : "Afficher thèmes"}
+        >
+          <Tag className="w-5 h-5" />
+        </button>
 
       </div>
       {/* Séparateur */}
           <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
           
       {/* ========================================
-          CENTRE : Filtres display + Menus (filtre en commentaire)
+          CENTRE : Filtres display + Menus
       ======================================== */}
       <div className="flex-1 flex items-center justify-center px-4 min-w-0">
         <div className="flex items-center space-x-2">
@@ -139,7 +139,7 @@ export default function MemoriesTopBar({
           {/* Toggle affichage posts */}
           <button
             onClick={() => toggleDisplayOption('showPostText')}
-            className={`p-1.5 rounded transition-colors ${
+            className={`p-1.5 rounded transition-colors duration-150 ${
               displayOptions.showPostText
                 ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
                 : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -152,7 +152,7 @@ export default function MemoriesTopBar({
           {/* Toggle affichage photos posts */}
           <button
             onClick={() => toggleDisplayOption('showPostPhotos')}
-            className={`p-1.5 rounded transition-colors ${
+            className={`p-1.5 rounded transition-colors duration-150 ${
               displayOptions.showPostPhotos
                 ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
                 : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -165,7 +165,7 @@ export default function MemoriesTopBar({
           {/* Toggle affichage photos moments */}
           <button
             onClick={() => toggleDisplayOption('showMomentPhotos')}
-            className={`p-1.5 rounded transition-colors ${
+            className={`p-1.5 rounded transition-colors duration-150 ${
               displayOptions.showMomentPhotos
                 ? 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400'
                 : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -178,52 +178,11 @@ export default function MemoriesTopBar({
           {/* Séparateur */}
           <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
           
-          {/* ⚠️ MENU FILTRES MOMENT : EN COMMENTAIRE POUR LE MOMENT */}
-          {/* 
-          <div className="relative" ref={momentFilterMenuRef}>
-            <button
-              onClick={() => setShowMomentFilterMenu(!showMomentFilterMenu)}
-              className="flex items-center space-x-1 px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            >
-              <span>{
-                currentMomentFilter === 'all' ? '📋 Tous' :
-                currentMomentFilter === 'unexplored' ? '✨ Non explorés' :
-                currentMomentFilter === 'with_posts' ? '📄 Avec posts' :
-                '📸 Avec photos'
-              }</span>
-              <ArrowUpDown className="w-3 h-3" />
-            </button>
-            
-            {showMomentFilterMenu && (
-              <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 w-48 z-50">
-                {[
-                  { value: 'all', label: '📋 Tous les moments' },
-                  { value: 'unexplored', label: '✨ Non explorés' },
-                  { value: 'with_posts', label: '📄 Avec posts' },
-                  { value: 'with_photos', label: '📸 Avec photos' }
-                ].map(filter => (
-                  <button
-                    key={filter.value}
-                    onClick={() => applyMomentFilter(filter.value)}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                      currentMomentFilter === filter.value 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' 
-                        : 'text-gray-700 dark:text-gray-300'
-                    }`}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          */}
-          
           {/* Menu Tri */}
           <div className="relative" ref={sortMenuRef}>
             <button
               onClick={() => setShowSortMenu(!showSortMenu)}
-              className="flex items-center space-x-1 px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className="flex items-center space-x-1 px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors duration-150"
             >
               <span>Tri</span>
               <ArrowUpDown className="w-3 h-3" />
@@ -231,13 +190,13 @@ export default function MemoriesTopBar({
             
             {showSortMenu && (
               <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 w-48 z-50">
-                <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
+                <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors duration-150">
                   📅 Chronologique
                 </button>
-                <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
+                <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors duration-150">
                   🎲 Aléatoire
                 </button>
-                <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
+                <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors duration-150">
                   ⭐ Richesse
                 </button>
               </div>
@@ -254,9 +213,9 @@ export default function MemoriesTopBar({
         <button 
           onClick={(e) => {
             e.stopPropagation();
-            setShowMenu(!showMenu);
+            setShowMenu(prev => !prev);
           }}
-          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-150"
           title="Menu"
         >
           <MoreVertical className="w-5 h-5" />

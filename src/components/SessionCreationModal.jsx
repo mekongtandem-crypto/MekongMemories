@@ -1,11 +1,14 @@
 /**
- * SessionCreationModal.jsx v1.1 - Titre éditable + focus message
+ * SessionCreationModal.jsx v1.2 - Dark mode + Design allégé
+ * ✅ Support dark mode complet
+ * ✅ Design allégé : "Nouvelle session créée à partir de..." sur une ligne
  * ✅ Titre éditable avec valeur par défaut
  * ✅ Curseur dans textarea par défaut
  * ✅ Fix z-index au-dessus du PhotoViewer
+ * ✅ Transitions 150ms
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { X, MessageCircle, Image, FileText } from 'lucide-react';
+import { X, MessageCircle, Image, FileText, MapPin } from 'lucide-react';
 
 export default function SessionCreationModal({ 
   source,
@@ -83,22 +86,22 @@ export default function SessionCreationModal({
   const getSourcePreview = () => {
     if (source.filename) {
       return {
-        icon: <Image className="w-5 h-5 text-blue-600" />,
+        icon: <Image className="w-4 h-4 text-blue-600 dark:text-blue-400" />,
         label: source.filename,
-        subtitle: `Moment : ${contextMoment.displayTitle}`,
+        subtitle: `${contextMoment.displayTitle}`,
         type: 'photo'
       };
     } else if (source.content) {
       const title = source.content.split('\n')[0].substring(0, 50);
       return {
-        icon: <FileText className="w-5 h-5 text-green-600" />,
+        icon: <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />,
         label: title + (title.length === 50 ? '...' : ''),
         subtitle: `Article J${source.dayNumber}`,
         type: 'post'
       };
     } else {
       return {
-        icon: <MessageCircle className="w-5 h-5 text-amber-600" />,
+        icon: <MapPin className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
         label: source.displayTitle,
         subtitle: source.displaySubtitle,
         type: 'moment'
@@ -116,52 +119,62 @@ export default function SessionCreationModal({
       onKeyDown={handleKeyDown}
     >
       <div 
-        className="bg-white rounded-xl shadow-2xl w-full max-w-md"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-2">
-            <MessageCircle className="w-5 h-5 text-amber-600" />
-            <h3 className="font-semibold text-gray-900">Nouvelle session à partir de </h3>
+            <MessageCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Nouvelle session</h3>
           </div>
           <button 
             onClick={onClose} 
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors duration-150"
             title="Fermer (Echap)"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-1 space-y-1">
-          {/* Source preview */}
-          <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-            {preview.icon}
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-900 truncate">{preview.label}</p>
-              <p className="text-sm text-gray-500">{preview.subtitle}</p>
+        <div className="p-4 space-y-4">
+          
+          {/* ✅ Source preview compacte - Une seule section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Créée à partir de :
+            </label>
+            <div className="flex items-center space-x-2 p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+              {preview.icon}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  {preview.label}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {preview.subtitle}
+                </p>
+              </div>
             </div>
-         </div>
+          </div>
 
           {/* Titre éditable */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Titre de la session
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+              className="w-full p-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors duration-150"
               placeholder="Titre de la session..."
             />
           </div>
 
           {/* Textarea message */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Ton message (optionnel)
             </label>
             <textarea
@@ -175,38 +188,38 @@ export default function SessionCreationModal({
                   ? "Tu te souviens pourquoi..."
                   : "Décris-moi comment on est arrivé à..."
               }
-              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+              className="w-full p-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors duration-150"
               rows="4"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Laisse vide pour créer une session sans message initial
             </p>
           </div>
 
           {/* Checkbox "Ouvrir maintenant" */}
-          <label className="flex items-center space-x-2 cursor-pointer p-2 hover:bg-gray-50 rounded transition-colors">
+          <label className="flex items-center space-x-2 cursor-pointer p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors duration-150">
             <input
               type="checkbox"
               checked={openAfterCreate}
               onChange={(e) => handleToggleOpen(e.target.checked)}
               className="w-4 h-4 text-amber-600 rounded focus:ring-2 focus:ring-amber-500"
             />
-            <span className="text-sm text-gray-700">Ouvrir maintenant</span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">Ouvrir maintenant</span>
           </label>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end space-x-2 p-4 border-t bg-gray-50">
+        <div className="flex items-center justify-end space-x-2 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors duration-150"
           >
             Annuler
           </button>
           <button
             onClick={handleCreate}
             disabled={isCreating || !title.trim()}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center space-x-2 transition-colors"
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center space-x-2 transition-colors duration-150"
           >
             {isCreating ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

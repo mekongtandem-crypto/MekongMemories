@@ -1,6 +1,7 @@
 /**
- * ChatTopBar.jsx v1.0 - Phase 25 : Refactoring TopBar
+ * ChatTopBar.jsx v1.1 - Phase 25 : Refactoring TopBar
  * TopBar spécifique à la page Chat
+ * ✅ Transitions 150ms
  * 
  * Layout :
  * - Gauche : ✕ Fermer
@@ -176,7 +177,7 @@ export default function ChatTopBar({
   const otherUserName = otherUser?.name || '...';
   
   return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-200">
+    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-150">
       
       {/* ========================================
           GAUCHE : Fermer
@@ -184,7 +185,7 @@ export default function ChatTopBar({
       <div className="flex items-center">
         <button 
           onClick={onCloseChatSession}
-          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-150"
           title="Fermer le chat"
         >
           <X className="w-5 h-5" />
@@ -217,7 +218,7 @@ export default function ChatTopBar({
             <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
               {app.currentChatSession.gameTitle}
             </h2>
-            <Edit className="w-4 h-4 ml-2 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity" />
+            <Edit className="w-4 h-4 ml-2 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity duration-150" />
           </button>
         )}
       </div>
@@ -232,14 +233,14 @@ export default function ChatTopBar({
           <div className="flex items-center space-x-2">
             <button
               onClick={handleSaveTitle}
-              className="p-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
+              className="p-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors duration-150"
               title="Valider"
             >
               <Check className="w-4 h-4" />
             </button>
             <button
               onClick={handleCancelEditTitle}
-              className="p-1.5 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded transition-colors"
+              className="p-1.5 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded transition-colors duration-150"
               title="Annuler"
             >
               <X className="w-4 h-4" />
@@ -252,7 +253,7 @@ export default function ChatTopBar({
           <button
             onClick={handleSendNotification}
             disabled={notificationState === 'sending' || notificationState === 'locked'}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150 ${
               notificationState === 'already_notified'
                 ? 'bg-orange-500 hover:bg-orange-600'
                 : notificationState === 'locked'
@@ -280,9 +281,9 @@ export default function ChatTopBar({
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              setShowMenu(!showMenu);
+              setShowMenu(prev => !prev);
             }}
-            className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-150"
             title="Menu"
           >
             <MoreVertical className="w-5 h-5" />
@@ -300,7 +301,7 @@ export default function ChatTopBar({
                 setShowMenu(false);
                 window.chatPageHandlers?.toggleInfoPanel?.();
               }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors"
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
             >
               <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <span className="text-gray-900 dark:text-gray-100">Infos session</span>
@@ -312,7 +313,7 @@ export default function ChatTopBar({
                 setShowMenu(false);
                 window.chatPageHandlers?.openThemeModal?.();
               }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors"
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
             >
               <Tag className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               <span className="text-gray-900 dark:text-gray-100">Gérer les thèmes</span>
@@ -327,7 +328,7 @@ export default function ChatTopBar({
                 setShowMenu(false);
                 handleStartEditTitle();
               }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors"
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
             >
               <Edit className="w-4 h-4 text-gray-600 dark:text-gray-400" />
               <span className="text-gray-900 dark:text-gray-100">Renommer session</span>
@@ -336,7 +337,7 @@ export default function ChatTopBar({
             {/* Supprimer session */}
             <button
               onClick={handleDeleteCurrentSession}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center space-x-2 transition-colors"
+              className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center space-x-2 transition-colors duration-150"
             >
               <Trash2 className="w-4 h-4" />
               <span>Supprimer la session</span>

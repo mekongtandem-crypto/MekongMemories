@@ -879,7 +879,7 @@ function LinkPhotoPreview({ photo }) {
     {/* Bouton Liens/Photos à GAUCHE */}
     <button
       onClick={handleOpenLinkPicker}
-      className="flex-shrink-0 p-3 text-purple-600 bg-purple-50 dark:bg-grey-800 hover:bg-purple-100 rounded-lg transition-colors"
+      className="flex-shrink-0 p-3 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
       title="Ajouter lien ou photo"
     >
       <Link className="w-6 h-6" />

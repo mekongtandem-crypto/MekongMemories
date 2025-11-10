@@ -1,6 +1,7 @@
 /**
- * ThemeContext.jsx v1.0
+ * ThemeContext.jsx v1.1
  * Gestion du mode clair/sombre avec persistance localStorage
+ * ✅ Dark mode par défaut si aucune préférence
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -11,7 +12,8 @@ export function ThemeProvider({ children }) {
   const [isDark, setIsDark] = useState(() => {
     // Récupération depuis localStorage
     const saved = localStorage.getItem('mekong_theme_mode');
-    return saved === 'dark';
+    // ✅ Si aucune préférence sauvegardée, dark mode par défaut
+    return saved ? saved === 'dark' : true;
   });
 
   useEffect(() => {

@@ -1,11 +1,14 @@
 /**
- * OverflowMenu.jsx v1.0 - Phase 25 : Refactoring TopBar
+ * OverflowMenu.jsx v1.1 - Phase 25 : Refactoring TopBar
  * Menu "..." commun à toutes les TopBars
+ * 
+ * ✅ Transitions 150ms
+ * ✅ Avatar ouvre Settings + volet User
  * 
  * Structure :
  * - Actions page (slot children)
  * - Séparateur
- * - 👤 Nom utilisateur → Settings
+ * - 👤 Nom utilisateur → Settings + volet User
  * - ⚙️ Réglages → Settings  
  * - 🌙 Mode sombre (toggle inline)
  */
@@ -52,6 +55,19 @@ export default function OverflowMenu({
     // Ne pas ouvrir automatiquement un volet
   };
   
+  // ✅ NOUVEAU : Avatar ouvre Settings + volet User
+  const handleAvatarClick = () => {
+    onClose();
+    app.updateCurrentPage('settings');
+    
+    // Ouvrir le volet User après un court délai
+    setTimeout(() => {
+      if (window.settingsPageActions?.openSection) {
+        window.settingsPageActions.openSection('user');
+      }
+    }, 100);
+  };
+  
   const handleToggleTheme = () => {
     toggleTheme();
     // Ne pas fermer le menu pour permettre de voir le changement
@@ -73,10 +89,10 @@ export default function OverflowMenu({
         </>
       )}
       
-      {/* Section utilisateur */}
+      {/* Section utilisateur - ✅ Ouvre Settings + volet User */}
       <button
-        onClick={handleNavigateToSettings}
-        className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        onClick={handleAvatarClick}
+        className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150"
       >
         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${userStyle.bg}`}>
           {currentUser?.emoji || '👤'}
@@ -89,7 +105,7 @@ export default function OverflowMenu({
       {/* Réglages */}
       <button
         onClick={handleNavigateToSettings}
-        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors"
+        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
       >
         <Settings className="w-4 h-4 text-gray-600 dark:text-gray-400" />
         <span className="text-gray-900 dark:text-gray-100">Réglages</span>
@@ -98,7 +114,7 @@ export default function OverflowMenu({
       {/* Toggle Dark Mode */}
       <button
         onClick={handleToggleTheme}
-        className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150"
       >
         <div className="flex items-center space-x-2">
           {isDark ? (
@@ -111,12 +127,12 @@ export default function OverflowMenu({
         
         {/* Toggle switch inline */}
         <div
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 ${
             isDark ? 'bg-blue-600' : 'bg-gray-300'
           }`}
         >
           <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150 ${
               isDark ? 'translate-x-6' : 'translate-x-1'
             }`}
           />

@@ -1,8 +1,11 @@
 /**
- * SessionsPage.jsx v7 DarkMode
- * ✅ En-têtes groupes compacts (bulle + sous-titre)
- * ✅ Menu "..." avec z-index élevé
- * ✅ Support SESSION_STATUS.NOTIFIED
+ * SessionsPage.jsx v7.2 - Phase 25 : Système lecture NEW/UNREAD
+ * ✅ NEW (🆕) vs UNREAD (👀) indépendants des groupes
+ * ✅ Badge prioritaire unique (haut droite)
+ * ✅ Backgrounds progressifs (NEW > UNREAD > READ)
+ * ✅ Borders discrets
+ * ✅ Menu contextuel "Marquer comme lu/non lu"
+ * ✅ Nouveaux emojis groupes
  */
 import { safeStorage } from '../../utils/storage.js'; 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -19,7 +22,7 @@ import {
 } from '../../utils/sessionUtils.js';
 import { 
   Clock, MoreVertical, Edit, Trash2, 
-  Check, Archive, ChevronDown, X
+  Check, Archive, ChevronDown, X, Eye, EyeOff
 } from 'lucide-react';
 
 export default function SessionsPage() {
@@ -32,13 +35,20 @@ export default function SessionsPage() {
   const [sortBy, setSortBy] = useState(SORT_OPTIONS.URGENCY);
   const [groupFilter, setGroupFilter] = useState(null);
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [unreadFilter, setUnreadFilter] = useState(false);
+  
+  // ✅ Système de tracking lecture par session
+  const [sessionReadStatus, setSessionReadStatus] = useState(() => {
+    const saved = localStorage.getItem(`mekong_sessionReadStatus_${app.currentUser?.id}`);
+    return saved ? JSON.parse(saved) : {};
+  });
   
   // États sections repliables
   const [openSections, setOpenSections] = useState(() => {
     return safeStorage.get(
-  `mekong_sessionGroups_${app.currentUser?.id}`,
-  { notified: true, pending_you: true, pending_other: false, completed: false }
-);
+      `mekong_sessionGroups_${app.currentUser?.id}`,
+      { notified: true, pending_you: true, pending_other: false, completed: false }
+    );
   });
   
   const menuRefs = useRef({});
@@ -47,23 +57,42 @@ export default function SessionsPage() {
   useEffect(() => {
     if (app.currentUser?.id) {
       safeStorage.set(
-  `mekong_sessionGroups_${app.currentUser.id}`,
-  openSections
-);
+        `mekong_sessionGroups_${app.currentUser.id}`,
+        openSections
+      );
     }
   }, [openSections, app.currentUser]);
+  
+  // ✅ Sauvegarder tracking lecture
+  useEffect(() => {
+    if (app.currentUser?.id) {
+      localStorage.setItem(
+        `mekong_sessionReadStatus_${app.currentUser.id}`,
+        JSON.stringify(sessionReadStatus)
+      );
+    }
+  }, [sessionReadStatus, app.currentUser]);
 
   // Exposer callbacks pour TopBar
   useEffect(() => {
     window.sessionPageActions = {
-      openStatsModal: () => setShowStatsModal(true)
+      openStatsModal: () => setShowStatsModal(true),
+      openPendingSections: () => {
+        setOpenSections(prev => ({
+          ...prev,
+          notified: true,
+          pending_you: true
+        }));
+      }
     };
     window.sessionPageFilters = {
       setGroupFilter: setGroupFilter,
-      setSortBy: setSortBy
+      setSortBy: setSortBy,
+      setUnreadFilter: setUnreadFilter
     };
     window.sessionPageState = {
-      activeFilter: groupFilter
+      activeFilter: groupFilter,
+      unreadFilter: unreadFilter
     };
     
     return () => {
@@ -71,7 +100,7 @@ export default function SessionsPage() {
       delete window.sessionPageFilters;
       delete window.sessionPageState;
     };
-  }, [groupFilter]);
+  }, [groupFilter, unreadFilter]);
 
   // Fermer menus au clic extérieur
   useEffect(() => {
@@ -92,6 +121,43 @@ export default function SessionsPage() {
       enrichSessionWithStatus(s, app.currentUser.id)
     );
   }, [app.sessions, app.currentUser]);
+  
+  // ✅ Calculer état lecture pour chaque session
+  const getReadState = (session) => {
+    const tracking = sessionReadStatus[session.id];
+    const lastMessage = session.notes?.[session.notes.length - 1];
+    const lastMessageTime = lastMessage?.timestamp || session.createdAt;
+    const lastMessageAuthor = lastMessage?.author || session.user;
+    const sessionCreator = session.user;
+    
+    // ⚠️ IMPORTANT : Une session/message créé par le user courant ne peut pas être "non lu" pour lui
+    
+    // Si je suis le créateur et pas de message, c'est READ pour moi
+    if (sessionCreator === app.currentUser?.id && !lastMessage) {
+      return 'read';
+    }
+    
+    // Si je suis l'auteur du dernier message, c'est READ pour moi
+    if (lastMessageAuthor === app.currentUser?.id) {
+      return 'read';
+    }
+    
+    // NEW : jamais ouverte PAR MOI + créée par quelqu'un d'autre
+    if (!tracking?.hasBeenOpened && sessionCreator !== app.currentUser?.id) {
+      return 'new';
+    }
+    
+    // UNREAD : nouveau message depuis dernière ouverture + message de quelqu'un d'autre
+    if (tracking?.hasBeenOpened && 
+        tracking.lastOpenedAt && 
+        new Date(lastMessageTime) > new Date(tracking.lastOpenedAt) &&
+        lastMessageAuthor !== app.currentUser?.id) {
+      return 'unread';
+    }
+    
+    // READ : à jour
+    return 'read';
+  };
 
   // Grouper sessions par statut
   const groupedSessions = useMemo(() => {
@@ -125,20 +191,39 @@ export default function SessionsPage() {
     return groups;
   }, [enrichedSessions, sortBy]);
 
-  // Filtrer selon badge TopBar cliqué
+  // Filtrer selon badge TopBar cliqué + filtre unread
   const filteredGroups = useMemo(() => {
-    if (!groupFilter) return groupedSessions;
+    let groups = groupFilter ? { [groupFilter]: groupedSessions[groupFilter] } : groupedSessions;
     
-    return {
-      [groupFilter]: groupedSessions[groupFilter]
-    };
-  }, [groupedSessions, groupFilter]);
+    // ✅ Si filtre unread actif, ne garder que les sessions non lues
+    if (unreadFilter) {
+      const filteredGroupsCopy = {};
+      Object.keys(groups).forEach(key => {
+        filteredGroupsCopy[key] = groups[key].filter(session => {
+          const state = getReadState(session);
+          return state === 'new' || state === 'unread';
+        });
+      });
+      return filteredGroupsCopy;
+    }
+    
+    return groups;
+  }, [groupedSessions, groupFilter, unreadFilter]);
 
   // ========================================
   // HANDLERS
   // ========================================
 
   const handleOpenSession = async (session) => {
+    // ✅ Marquer comme ouverte avec timestamp
+    setSessionReadStatus(prev => ({
+      ...prev,
+      [session.id]: {
+        hasBeenOpened: true,
+        lastOpenedAt: new Date().toISOString()
+      }
+    }));
+    
     await app.openChatSession(session);
   };
 
@@ -198,6 +283,36 @@ export default function SessionsPage() {
     if (!confirm(`Supprimer la session "${sessionTitle}" ?`)) return;
     await app.deleteSession(sessionId);
   };
+  
+  // ✅ Toggle read/unread manuel
+  const handleToggleRead = (e, sessionId) => {
+    e.stopPropagation();
+    setOpenMenuId(null);
+    
+    setSessionReadStatus(prev => {
+      const current = prev[sessionId];
+      
+      if (!current?.hasBeenOpened) {
+        // Marquer comme lue
+        return {
+          ...prev,
+          [sessionId]: {
+            hasBeenOpened: true,
+            lastOpenedAt: new Date().toISOString()
+          }
+        };
+      } else {
+        // Marquer comme non lue (reset timestamp à 0)
+        return {
+          ...prev,
+          [sessionId]: {
+            hasBeenOpened: true,
+            lastOpenedAt: '1970-01-01T00:00:00.000Z'
+          }
+        };
+      }
+    });
+  };
 
   const toggleSection = (section) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -219,152 +334,172 @@ export default function SessionsPage() {
       {/* Message filtre actif */}
       {groupFilter && (
         <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-sm text-green-900 dark:text-green-300">
-            <span className="font-medium">Filtre actif :</span>
-            <span className="text-2xl">
-              {groupFilter === 'notified' && '🔔'}
-              {groupFilter === 'pending_you' && '🟡'}
-              {groupFilter === 'pending_other' && '🟢'}
-            </span>
-            <span>
-              {groupFilter === 'notified' && 'Notifiées'}
-              {groupFilter === 'pending_you' && 'À traiter'}
-              {groupFilter === 'pending_other' && 'En attente'}
-            </span>
-          </div>
+          <span className="text-sm font-medium text-green-800 dark:text-green-200">
+            Filtre actif : {
+              groupFilter === 'notified' ? '🔔 Notifications' :
+              groupFilter === 'pending_you' ? '💬 En attente' :
+              groupFilter === 'pending_other' ? '📨 Envoyées' :
+              '✅ Closes'
+            }
+          </span>
           <button
             onClick={() => setGroupFilter(null)}
-            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 text-sm font-medium flex items-center space-x-1"
+            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
           >
             <X className="w-4 h-4" />
-            <span>Voir tout</span>
           </button>
         </div>
       )}
       
-      {/* Liste groupée */}
-      {totalSessions === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="text-6xl mb-4">📚</div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Aucune session</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Créez votre première session depuis la page Mémoires.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          
-          {/* Groupe NOTIFIÉES */}
-          {filteredGroups.notified && filteredGroups.notified.length > 0 && (
-            <SessionGroup
-              emoji="🔔"
-              subtitle="Notifications non répondues"
-              sessions={filteredGroups.notified}
-              isOpen={openSections.notified}
-              onToggle={() => toggleSection('notified')}
-              color="orange"
-              currentUserId={app.currentUser}
-              editingSession={editingSession}
-              editTitle={editTitle}
-              setEditTitle={setEditTitle}
-              openMenuId={openMenuId}
-              setOpenMenuId={setOpenMenuId}
-              menuRefs={menuRefs}
-              onOpen={handleOpenSession}
-              onStartEdit={handleStartEdit}
-              onSaveEdit={handleSaveEdit}
-              onCancelEdit={handleCancelEdit}
-              onMarkCompleted={handleMarkCompleted}
-              onArchive={handleArchive}
-              onDelete={handleDeleteSession}
-            />
-          )}
-          
-          {/* Groupe À TRAITER */}
-          {filteredGroups.pending_you && filteredGroups.pending_you.length > 0 && (
-            <SessionGroup
-              emoji="👀"
-              subtitle="Causeries en attente de vous..."
-              sessions={filteredGroups.pending_you}
-              isOpen={openSections.pending_you}
-              onToggle={() => toggleSection('pending_you')}
-              color="amber"
-              currentUserId={app.currentUser}
-              editingSession={editingSession}
-              editTitle={editTitle}
-              setEditTitle={setEditTitle}
-              openMenuId={openMenuId}
-              setOpenMenuId={setOpenMenuId}
-              menuRefs={menuRefs}
-              onOpen={handleOpenSession}
-              onStartEdit={handleStartEdit}
-              onSaveEdit={handleSaveEdit}
-              onCancelEdit={handleCancelEdit}
-              onMarkCompleted={handleMarkCompleted}
-              onArchive={handleArchive}
-              onDelete={handleDeleteSession}
-            />
-          )}
-          
-          {/* Groupe EN ATTENTE */}
-          {filteredGroups.pending_other && filteredGroups.pending_other.length > 0 && (
-            <SessionGroup
-              emoji="⌛️"
-              subtitle="Messages envoyés...en attente de l'autre'"
-              sessions={filteredGroups.pending_other}
-              isOpen={openSections.pending_other}
-              onToggle={() => toggleSection('pending_other')}
-              color="green"
-              currentUserId={app.currentUser}
-              editingSession={editingSession}
-              editTitle={editTitle}
-              setEditTitle={setEditTitle}
-              openMenuId={openMenuId}
-              setOpenMenuId={setOpenMenuId}
-              menuRefs={menuRefs}
-              onOpen={handleOpenSession}
-              onStartEdit={handleStartEdit}
-              onSaveEdit={handleSaveEdit}
-              onCancelEdit={handleCancelEdit}
-              onMarkCompleted={handleMarkCompleted}
-              onArchive={handleArchive}
-              onDelete={handleDeleteSession}
-            />
-          )}
-          
-          {/* Groupe TERMINÉES */}
-          {filteredGroups.completed && filteredGroups.completed.length > 0 && (
-            <SessionGroup
-              emoji="☑️"
-              subtitle="Causeries closes"
-              sessions={filteredGroups.completed}
-              isOpen={openSections.completed}
-              onToggle={() => toggleSection('completed')}
-              color="blue"
-              currentUserId={app.currentUser}
-              editingSession={editingSession}
-              editTitle={editTitle}
-              setEditTitle={setEditTitle}
-              openMenuId={openMenuId}
-              setOpenMenuId={setOpenMenuId}
-              menuRefs={menuRefs}
-              onOpen={handleOpenSession}
-              onStartEdit={handleStartEdit}
-              onSaveEdit={handleSaveEdit}
-              onCancelEdit={handleCancelEdit}
-              onMarkCompleted={handleMarkCompleted}
-              onArchive={handleArchive}
-              onDelete={handleDeleteSession}
-            />
-          )}
-          
+      {/* ✅ Message filtre unread actif */}
+      {unreadFilter && (
+        <div className="mb-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-3 flex items-center justify-between">
+          <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
+            Affichage : 👀 Non lues uniquement
+          </span>
+          <button
+            onClick={() => setUnreadFilter(false)}
+            className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
+      
+      {/* Sections */}
+      <div className="space-y-4">
+        
+        {/* 🔔 Notifications (Orange) */}
+        {filteredGroups.notified && filteredGroups.notified.length > 0 && (
+          <SessionGroup
+            emoji="🔔"
+            subtitle="Notifications en attente !"
+            sessions={filteredGroups.notified}
+            isOpen={openSections.notified}
+            onToggle={() => toggleSection('notified')}
+            color="orange"
+            currentUserId={app.currentUser?.id}
+            editingSession={editingSession}
+            editTitle={editTitle}
+            setEditTitle={setEditTitle}
+            openMenuId={openMenuId}
+            setOpenMenuId={setOpenMenuId}
+            menuRefs={menuRefs}
+            onOpen={handleOpenSession}
+            onStartEdit={handleStartEdit}
+            onSaveEdit={handleSaveEdit}
+            onCancelEdit={handleCancelEdit}
+            onMarkCompleted={handleMarkCompleted}
+            onArchive={handleArchive}
+            onDelete={handleDeleteSession}
+            onToggleRead={handleToggleRead}
+            getReadState={getReadState}
+          />
+        )}
+        
+        {/* 💬 En attente (Amber) */}
+        {filteredGroups.pending_you && filteredGroups.pending_you.length > 0 && (
+          <SessionGroup
+            emoji="💬"
+            subtitle="Causeries en attente de vous..."
+            sessions={filteredGroups.pending_you}
+            isOpen={openSections.pending_you}
+            onToggle={() => toggleSection('pending_you')}
+            color="amber"
+            currentUserId={app.currentUser?.id}
+            editingSession={editingSession}
+            editTitle={editTitle}
+            setEditTitle={setEditTitle}
+            openMenuId={openMenuId}
+            setOpenMenuId={setOpenMenuId}
+            menuRefs={menuRefs}
+            onOpen={handleOpenSession}
+            onStartEdit={handleStartEdit}
+            onSaveEdit={handleSaveEdit}
+            onCancelEdit={handleCancelEdit}
+            onMarkCompleted={handleMarkCompleted}
+            onArchive={handleArchive}
+            onDelete={handleDeleteSession}
+            onToggleRead={handleToggleRead}
+            getReadState={getReadState}
+          />
+        )}
+        
+        {/* 📨 Envoyées (Green) */}
+        {filteredGroups.pending_other && filteredGroups.pending_other.length > 0 && (
+          <SessionGroup
+            emoji="📨"
+            subtitle="Messages envoyés..."
+            sessions={filteredGroups.pending_other}
+            isOpen={openSections.pending_other}
+            onToggle={() => toggleSection('pending_other')}
+            color="green"
+            currentUserId={app.currentUser?.id}
+            editingSession={editingSession}
+            editTitle={editTitle}
+            setEditTitle={setEditTitle}
+            openMenuId={openMenuId}
+            setOpenMenuId={setOpenMenuId}
+            menuRefs={menuRefs}
+            onOpen={handleOpenSession}
+            onStartEdit={handleStartEdit}
+            onSaveEdit={handleSaveEdit}
+            onCancelEdit={handleCancelEdit}
+            onMarkCompleted={handleMarkCompleted}
+            onArchive={handleArchive}
+            onDelete={handleDeleteSession}
+            onToggleRead={handleToggleRead}
+            getReadState={getReadState}
+          />
+        )}
+        
+        {/* ✅ Closes (Blue) */}
+        {filteredGroups.completed && filteredGroups.completed.length > 0 && (
+          <SessionGroup
+            emoji="✅"
+            subtitle="Sessions closes"
+            sessions={filteredGroups.completed}
+            isOpen={openSections.completed}
+            onToggle={() => toggleSection('completed')}
+            color="blue"
+            currentUserId={app.currentUser?.id}
+            editingSession={editingSession}
+            editTitle={editTitle}
+            setEditTitle={setEditTitle}
+            openMenuId={openMenuId}
+            setOpenMenuId={setOpenMenuId}
+            menuRefs={menuRefs}
+            onOpen={handleOpenSession}
+            onStartEdit={handleStartEdit}
+            onSaveEdit={handleSaveEdit}
+            onCancelEdit={handleCancelEdit}
+            onMarkCompleted={handleMarkCompleted}
+            onArchive={handleArchive}
+            onDelete={handleDeleteSession}
+            onToggleRead={handleToggleRead}
+            getReadState={getReadState}
+          />
+        )}
+        
+        {totalSessions === 0 && (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            Aucune session pour le moment
+          </div>
+        )}
+        
+        {totalSessions > 0 && Object.values(filteredGroups).every(g => g.length === 0) && (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            Aucune session ne correspond aux filtres actifs
+          </div>
+        )}
+        
+      </div>
       
       {/* Modal Stats */}
       <StatsModal
         isOpen={showStatsModal}
         onClose={() => setShowStatsModal(false)}
         sessions={app.sessions}
-        masterIndex={app.masterIndex}
         currentUser={app.currentUser}
       />
       
@@ -381,13 +516,37 @@ function SessionGroup({
   currentUserId, editingSession, editTitle, setEditTitle,
   openMenuId, setOpenMenuId, menuRefs,
   onOpen, onStartEdit, onSaveEdit, onCancelEdit,
-  onMarkCompleted, onArchive, onDelete
+  onMarkCompleted, onArchive, onDelete, onToggleRead, getReadState
 }) {
   const colorClasses = {
-    orange: { bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-200 dark:border-orange-700', hover: 'hover:bg-orange-100 dark:hover:bg-orange-900/30', badgeBg: 'bg-orange-500 dark:bg-orange-600' },
-    amber: { bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-700', hover: 'hover:bg-amber-100 dark:hover:bg-amber-900/30', badgeBg: 'bg-amber-500 dark:bg-amber-600' },
-    green: { bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-700', hover: 'hover:bg-green-100 dark:hover:bg-green-900/30', badgeBg: 'bg-green-500 dark:bg-green-600' },
-    blue: { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-700', hover: 'hover:bg-blue-100 dark:hover:bg-blue-900/30', badgeBg: 'bg-blue-500 dark:bg-blue-600' }
+    orange: { 
+      bg: 'bg-orange-50 dark:bg-orange-900/20', 
+      border: 'border-orange-100 dark:border-orange-800', 
+      hover: 'hover:bg-orange-100 dark:hover:bg-orange-900/30', 
+      badgeBg: 'bg-orange-500 dark:bg-orange-600',
+      cardBg: 'bg-orange-50 dark:bg-orange-900/10'
+    },
+    amber: { 
+      bg: 'bg-amber-50 dark:bg-amber-900/20', 
+      border: 'border-amber-100 dark:border-amber-800', 
+      hover: 'hover:bg-amber-100 dark:hover:bg-amber-900/30', 
+      badgeBg: 'bg-amber-500 dark:bg-amber-600',
+      cardBg: 'bg-amber-50 dark:bg-amber-900/10'
+    },
+    green: { 
+      bg: 'bg-green-50 dark:bg-green-900/20', 
+      border: 'border-green-100 dark:border-green-800', 
+      hover: 'hover:bg-green-100 dark:hover:bg-green-900/30', 
+      badgeBg: 'bg-green-500 dark:bg-green-600',
+      cardBg: 'bg-green-50 dark:bg-green-900/10'
+    },
+    blue: { 
+      bg: 'bg-blue-50 dark:bg-blue-900/20', 
+      border: 'border-blue-100 dark:border-blue-800', 
+      hover: 'hover:bg-blue-100 dark:hover:bg-blue-900/30', 
+      badgeBg: 'bg-blue-500 dark:bg-blue-600',
+      cardBg: 'bg-blue-50 dark:bg-blue-900/10'
+    }
   };
   
   const colors = colorClasses[color];
@@ -395,23 +554,20 @@ function SessionGroup({
   return (
     <div className={`${colors.bg} border ${colors.border} rounded-lg overflow-visible`}>
       
-      {/* ✅ NOUVEAU : Header compact */}
+      {/* Header compact */}
       <button
         onClick={onToggle}
-        className={`w-full flex items-center justify-between p-3 ${colors.hover} transition-colors`}
+        className={`w-full flex items-center justify-between p-3 ${colors.hover} transition-colors duration-150`}
       >
         <div className="flex items-center space-x-3">
-          {/* Bulle colorée style TopBar */}
           <div className={`flex items-center space-x-1 px-2 py-1 rounded-lg ${colors.badgeBg} text-white text-xs font-bold shadow-sm`}>
             <span>{emoji}</span>
             <span>{sessions.length}</span>
           </div>
-          
-          {/* Sous-titre uniquement */}
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{subtitle}</span>
         </div>
         
-        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       
       {/* Sessions */}
@@ -435,6 +591,9 @@ function SessionGroup({
               onMarkCompleted={onMarkCompleted}
               onArchive={onArchive}
               onDelete={onDelete}
+              onToggleRead={onToggleRead}
+              readState={getReadState(session)}
+              cardBg={colors.cardBg}
             />
           ))}
         </div>
@@ -448,30 +607,52 @@ function SessionRow({
   session, isEditing, editTitle, setEditTitle, currentUserId,
   openMenuId, setOpenMenuId, menuRefs,
   onOpen, onStartEdit, onSaveEdit, onCancelEdit,
-  onMarkCompleted, onArchive, onDelete
+  onMarkCompleted, onArchive, onDelete, onToggleRead, readState, cardBg
 }) {
   const lastAuthor = session.notes?.[session.notes.length - 1]?.author || session.user;
   const lastAuthorInfo = userManager.getUser(lastAuthor);
   const lastAuthorStyle = userManager.getUserStyle(lastAuthor);
   const lastMessage = session.notes?.[session.notes.length - 1];
   
+  // ✅ Backgrounds progressifs selon état lecture
+  const getBackgroundClass = () => {
+    if (readState === 'new') {
+      return 'bg-green-100 dark:bg-green-900/40'; // Très visible
+    } else if (readState === 'unread') {
+      return 'bg-orange-100 dark:bg-orange-900/40'; // Moyennement visible
+    } else {
+      return cardBg || 'bg-white dark:bg-gray-800'; // Normal
+    }
+  };
+  
   return (
     <div 
       onClick={() => !isEditing && onOpen(session)}
-      className={`bg-white dark:bg-gray-800 rounded-lg p-3 transition-all relative ${
+      className={`${getBackgroundClass()} rounded-lg p-3 transition-all duration-150 relative ${
         isEditing 
-          ? 'border-2 border-gray-300' 
-          : `border-2 ${session.statusConfig?.borderClass || 'border-gray-200'} hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md cursor-pointer`
+          ? 'border border-gray-300 dark:border-gray-600' 
+          : 'border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md cursor-pointer'
       }`}
     >
-      {/* Badge 🔔 en haut à gauche pour NOTIFIED */}
+      {/* Badge 🔔 Notifié (haut gauche) */}
       {session.status === SESSION_STATUS.NOTIFIED && !isEditing && (
         <div className="absolute -top-2 -left-2 flex items-center bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
           <span className="mr-1.5">🔔</span>
-          {/* ✅ NOUVEAU : On affiche le nom de l'expéditeur */}
           <span>
-            Notifié par {userManager.getUser(session.statusInfo.notifiedBy)?.name || '...'}
+            {userManager.getUser(session.statusInfo.notifiedBy)?.name || '...'}
           </span>
+        </div>
+      )}
+      
+      {/* ✅ Badge prioritaire NEW/UNREAD (haut droite) */}
+      {!isEditing && readState !== 'read' && (
+        <div className={`absolute -top-2 -right-2 flex items-center gap-1 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10 ${
+          readState === 'new' 
+            ? 'bg-green-600' 
+            : 'bg-orange-600'
+        }`}>
+          <span>{readState === 'new' ? '🆕' : '👀'}</span>
+          <span>{readState === 'new' ? 'Nouvelle' : 'Non lu'}</span>
         </div>
       )}
       
@@ -493,10 +674,10 @@ function SessionRow({
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
-              <button onClick={(e) => onSaveEdit(e, session.id)} className="p-1 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 rounded">
+              <button onClick={(e) => onSaveEdit(e, session.id)} className="p-1 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors duration-150">
                 <Check className="w-4 h-4" />
               </button>
-              <button onClick={onCancelEdit} className="p-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+              <button onClick={onCancelEdit} className="p-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors duration-150">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -533,7 +714,7 @@ function SessionRow({
                 e.stopPropagation();
                 setOpenMenuId(openMenuId === session.id ? null : session.id);
               }}
-              className="p-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-150"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
@@ -544,9 +725,29 @@ function SessionRow({
                 style={{ zIndex: 101 }}
               >
                 
+                {/* ✅ Marquer comme lu/non lu (conditionnel) */}
+                <button
+                  onClick={(e) => onToggleRead(e, session.id)}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
+                >
+                  {readState === 'read' ? (
+                    <>
+                      <EyeOff className="w-4 h-4" />
+                      <span>Marquer comme non lu</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-4 h-4" />
+                      <span>Marquer comme lu</span>
+                    </>
+                  )}
+                </button>
+                
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                
                 <button
                   onClick={(e) => onStartEdit(e, session)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
                 >
                   <Edit className="w-4 h-4" />
                   <span>Modifier</span>
@@ -554,7 +755,7 @@ function SessionRow({
                 
                 <button
                   onClick={(e) => onMarkCompleted(e, session)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
                 >
                   <Check className="w-4 h-4" />
                   <span>{session.completed ? 'Non terminée' : 'Terminée'}</span>
@@ -562,7 +763,7 @@ function SessionRow({
                 
                 <button
                   onClick={(e) => onArchive(e, session)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
                 >
                   <Archive className="w-4 h-4" />
                   <span>{session.archived ? 'Désarchiver' : 'Archiver'}</span>
@@ -572,7 +773,7 @@ function SessionRow({
                 
                 <button
                   onClick={(e) => onDelete(e, session.id, session.gameTitle)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center space-x-2"
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center space-x-2 transition-colors duration-150"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Supprimer</span>

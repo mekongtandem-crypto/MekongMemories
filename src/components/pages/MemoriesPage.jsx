@@ -1018,7 +1018,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           source={sessionModal.source}
           contextMoment={sessionModal.contextMoment}
           currentUser={app.currentUser}
-          onClose={() => setSessionModal(null)}
+          onClose={closeSessionModal}
           onConfirm={(options) => handleCreateAndOpenSession(
             sessionModal.source, 
             sessionModal.contextMoment,
