@@ -32,11 +32,16 @@ export default function OverflowMenu({
   const { isDark, toggleTheme } = useTheme();
   const menuRef = useRef(null);
   
-  // Fermer au clic outside
+  // Fermer au clic outside (mais pas sur le bouton trigger)
   useEffect(() => {
     if (!isOpen) return;
     
     const handleClickOutside = (e) => {
+      // ✅ Ignorer les clics sur le bouton trigger
+      if (e.target.closest('[data-menu-trigger]')) {
+        return;
+      }
+      
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         onClose();
       }
@@ -114,7 +119,7 @@ export default function OverflowMenu({
         </>
       )}
       
-      {/* ✅ NOUVEAU : Tri (mobile uniquement - si fourni) */}
+{/* ✅ Tri (mobile uniquement - si fourni) */}
       {pageSpecificActions?.sort && (
         <>
           <div className="px-4 py-2">
@@ -122,32 +127,61 @@ export default function OverflowMenu({
               Tri des sessions
             </div>
             <div className="space-y-1">
+              
+              {/* Option Importance */}
+              <button
+                onClick={() => {
+                  pageSpecificActions.onSortChange?.(SORT_OPTIONS.URGENCY);
+                  onClose();
+                }}
+                className={`w-full text-left px-3 py-2 text-sm rounded transition-colors duration-150 flex items-center justify-between ${
+                  pageSpecificActions.currentSort === SORT_OPTIONS.URGENCY
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                    : 'text-gray-700 dark:text-gray-300 opacity-60 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <span>Par importance</span>
+                {pageSpecificActions.currentSort === SORT_OPTIONS.URGENCY && (
+                  <span className="text-blue-600 dark:text-blue-400">✓</span>
+                )}
+              </button>
+              
+              {/* Option Modification */}
               <button
                 onClick={() => {
                   pageSpecificActions.onSortChange?.(SORT_OPTIONS.MODIFIED);
                   onClose();
                 }}
-                className={`w-full text-left px-3 py-1.5 text-sm rounded transition-colors duration-150 ${
+                className={`w-full text-left px-3 py-2 text-sm rounded transition-colors duration-150 flex items-center justify-between ${
                   pageSpecificActions.currentSort === SORT_OPTIONS.MODIFIED
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                    : 'text-gray-700 dark:text-gray-300 opacity-60 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                Par dernière modification
+                <span>Par dernière modification</span>
+                {pageSpecificActions.currentSort === SORT_OPTIONS.MODIFIED && (
+                  <span className="text-blue-600 dark:text-blue-400">✓</span>
+                )}
               </button>
+              
+              {/* Option Création */}
               <button
                 onClick={() => {
                   pageSpecificActions.onSortChange?.(SORT_OPTIONS.CREATED);
                   onClose();
                 }}
-                className={`w-full text-left px-3 py-1.5 text-sm rounded transition-colors duration-150 ${
+                className={`w-full text-left px-3 py-2 text-sm rounded transition-colors duration-150 flex items-center justify-between ${
                   pageSpecificActions.currentSort === SORT_OPTIONS.CREATED
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                    : 'text-gray-700 dark:text-gray-300 opacity-60 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                Par date de création
+                <span>Par date de création</span>
+                {pageSpecificActions.currentSort === SORT_OPTIONS.CREATED && (
+                  <span className="text-blue-600 dark:text-blue-400">✓</span>
+                )}
               </button>
+              
             </div>
           </div>
           <div className="border-t border-gray-200 dark:border-gray-700 my-1" />

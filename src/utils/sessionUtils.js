@@ -77,7 +77,9 @@ export const STATUS_CONFIG = {
 
 export const SORT_OPTIONS = {
   URGENCY: 'urgency',
-  DATE: 'date',
+  MODIFIED: 'modified',  // ✅ NOUVEAU
+  CREATED: 'created',    // ✅ NOUVEAU (renommé de DATE)
+  DATE: 'date',          // ✅ GARDE pour compatibilité
   CHRONO: 'chrono',
   ACTIVITY: 'activity'
 };
@@ -217,19 +219,70 @@ export function filterSessionsByStatus(sessions, statusFilter) {
 // TRI
 // ========================================
 
-export function sortSessions(sessions, sortBy) {
+export function sortSessions(sessions, sortBy, currentUserId) {
   const sorted = [...sessions];
+  
+  // ✅ Helper pour calculer priorité lecture (new > unread > read)
+  const getReadPriority = (session) => {
+    if (!currentUserId) return 0;
+    
+    const storageKey = `mekong_sessionReadStatus_${currentUserId}`;
+    const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    const tracking = allTracking[session.id];
+    
+    const lastMessage = session.notes?.[session.notes.length - 1];
+    const lastMessageTime = lastMessage?.timestamp || session.createdAt;
+    const lastMessageAuthor = lastMessage?.author || session.user;
+    
+    // New = jamais ouvert + créé par quelqu'un d'autre
+    if (!tracking?.hasBeenOpened && session.user !== currentUserId) {
+      return 3; // Priorité haute
+    }
+    
+    // Unread = nouveau message depuis dernière ouverture
+    if (tracking?.hasBeenOpened && 
+        tracking.lastOpenedAt && 
+        new Date(lastMessageTime) > new Date(tracking.lastOpenedAt) &&
+        lastMessageAuthor !== currentUserId) {
+      return 2; // Priorité moyenne
+    }
+    
+    // Read = à jour
+    return 1; // Priorité normale
+  };
   
   switch (sortBy) {
     case SORT_OPTIONS.URGENCY:
+      // ✅ AMÉLIORATION : Prendre en compte état lecture ET statut
       return sorted.sort((a, b) => {
-        if (a.statusConfig.priority !== b.statusConfig.priority) {
-          return a.statusConfig.priority - b.statusConfig.priority;
+        // 1. Statut session (notified > pending_you > pending_other...)
+        if (a.statusConfig?.priority !== b.statusConfig?.priority) {
+          return (a.statusConfig?.priority || 99) - (b.statusConfig?.priority || 99);
         }
-        return new Date(b.createdAt) - new Date(a.createdAt);
+        
+        // 2. État lecture (new > unread > read)
+        const readPriorityA = getReadPriority(a);
+        const readPriorityB = getReadPriority(b);
+        if (readPriorityA !== readPriorityB) {
+          return readPriorityB - readPriorityA;
+        }
+        
+        // 3. Date modification (plus récent d'abord)
+        const dateA = new Date(a.lastModified || a.createdAt).getTime();
+        const dateB = new Date(b.lastModified || b.createdAt).getTime();
+        return dateB - dateA;
       });
     
-    case SORT_OPTIONS.DATE:
+    case SORT_OPTIONS.MODIFIED:
+      // ✅ NOUVEAU : Tri par dernière modification
+      return sorted.sort((a, b) => {
+        const dateA = new Date(a.lastModified || a.createdAt).getTime();
+        const dateB = new Date(b.lastModified || b.createdAt).getTime();
+        return dateB - dateA;
+      });
+    
+    case SORT_OPTIONS.CREATED:
+    case SORT_OPTIONS.DATE: // Alias pour compatibilité
       return sorted.sort((a, b) => 
         new Date(b.createdAt) - new Date(a.createdAt)
       );

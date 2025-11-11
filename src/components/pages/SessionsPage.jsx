@@ -34,11 +34,12 @@ export default function SessionsPage() {
   const [editTitle, setEditTitle] = useState('');
   const [sortBy, setSortBy] = useState(() => {
     const saved = localStorage.getItem(`mekong_sessionSort_${app.currentUser?.id}`);
-    return saved || SORT_OPTIONS.MODIFIED; // ✅ Par défaut : dernière modification
+    return saved || SORT_OPTIONS.URGENCY; // ✅ Par défaut : importance
   });
   const [groupFilter, setGroupFilter] = useState(null);
   const [showStatsModal, setShowStatsModal] = useState(false);
-  const [unreadFilter, setUnreadFilter] = useState(false);
+  const [unreadFilter, setUnreadFilter] = useState(null); // null | 'notified' | 'new' | 'unread' | 'pending'
+  
   
   // ✅ Système de tracking lecture par session
   const [sessionReadStatus, setSessionReadStatus] = useState(() => {
@@ -193,32 +194,47 @@ export default function SessionsPage() {
     
     // Trier chaque groupe
     Object.keys(groups).forEach(key => {
-      groups[key] = sortSessions(groups[key], sortBy);
+      groups[key] = sortSessions(groups[key], sortBy, app.currentUser?.id);
     });
     
     return groups;
   }, [enrichedSessions, sortBy]);
 
   // Filtrer selon badge TopBar cliqué + filtre unread
+  // Filtrer selon badge TopBar cliqué
   const filteredGroups = useMemo(() => {
-    let groups = groupFilter ? { [groupFilter]: groupedSessions[groupFilter] } : groupedSessions;
+    let groups = groupedSessions;
     
-    // ✅ Si filtre unread actif (new ou unread)
+    // ✅ Filtres exclusifs
     if (unreadFilter) {
       const filteredGroupsCopy = {};
+      
       Object.keys(groups).forEach(key => {
         filteredGroupsCopy[key] = groups[key].filter(session => {
           const state = getReadState(session);
-          // Si filtre = 'new' → uniquement NEW
-          // Si filtre = 'unread' → uniquement UNREAD
-          return state === unreadFilter;
+          
+          switch(unreadFilter) {
+            case 'notified':
+              return session.status === SESSION_STATUS.NOTIFIED;
+            case 'new':
+              return state === 'new';
+            case 'unread':
+              return state === 'unread';
+            case 'pending':
+              const lastMessage = session.notes?.[session.notes.length - 1];
+              const lastAuthor = lastMessage?.author || session.user;
+              return lastAuthor !== app.currentUser?.id;
+            default:
+              return true;
+          }
         });
       });
+      
       return filteredGroupsCopy;
     }
     
     return groups;
-  }, [groupedSessions, groupFilter, unreadFilter]);
+  }, [groupedSessions, unreadFilter, app.currentUser]);
 
   // ========================================
   // HANDLERS
@@ -341,35 +357,22 @@ export default function SessionsPage() {
   return (
     <div className="p-4 max-w-5xl mx-auto">
       
-      {/* Message filtre actif */}
-      {groupFilter && (
-        <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
-          <span className="text-sm font-medium text-green-800 dark:text-green-200">
-            Filtre actif : {
-              groupFilter === 'pending_you' ? '💬 En attente de vous' :
-              groupFilter === 'pending_other' ? '📨 Messages envoyés' :
-              groupFilter === 'completed' ? '✅ Sessions closes' :
-              'Inconnu'
+      {/* ✅ Message filtre actif */}
+      {unreadFilter && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg flex items-center justify-between">
+          <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+            Filtre d'affichage : {
+              unreadFilter === 'notified' ? 'Notifications uniquement' :
+              unreadFilter === 'new' ? 'Nouvelles sessions uniquement' :
+              unreadFilter === 'unread' ? 'Sessions non lues uniquement' :
+              unreadFilter === 'pending' ? 'Sessions en attente uniquement' :
+              ''
             }
           </span>
           <button
-            onClick={() => setGroupFilter(null)}
-            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-      
-      {/* ✅ Message filtre unread actif */}
-      {unreadFilter && (
-        <div className="mb-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-3 flex items-center justify-between">
-          <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
-            Affichage : 👀 Non lues uniquement
-          </span>
-          <button
-            onClick={() => setUnreadFilter(false)}
-            className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
+            onClick={() => setUnreadFilter(null)}
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
+            title="Retirer le filtre"
           >
             <X className="w-4 h-4" />
           </button>
@@ -709,7 +712,7 @@ function SessionRow({
                 {/* ✅ Marquer comme lu/non lu (conditionnel) */}
                 <button
                   onClick={(e) => onToggleRead(e, session.id)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
                 >
                   {readState === 'read' ? (
                     <>
@@ -728,7 +731,7 @@ function SessionRow({
                 
                 <button
                   onClick={(e) => onStartEdit(e, session)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
                 >
                   <Edit className="w-4 h-4" />
                   <span>Modifier</span>
@@ -736,7 +739,7 @@ function SessionRow({
                 
                 <button
                   onClick={(e) => onMarkCompleted(e, session)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
                 >
                   <Check className="w-4 h-4" />
                   <span>{session.completed ? 'Non terminée' : 'Terminée'}</span>
@@ -744,7 +747,7 @@ function SessionRow({
                 
                 <button
                   onClick={(e) => onArchive(e, session)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
+                  className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
                 >
                   <Archive className="w-4 h-4" />
                   <span>{session.archived ? 'Désarchiver' : 'Archiver'}</span>
@@ -754,7 +757,7 @@ function SessionRow({
                 
                 <button
                   onClick={(e) => onDelete(e, session.id, session.gameTitle)}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center space-x-2 transition-colors duration-150"
+                  className="w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center space-x-2 transition-colors duration-150"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Supprimer</span>
