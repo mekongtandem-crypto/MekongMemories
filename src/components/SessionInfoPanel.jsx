@@ -85,7 +85,7 @@ export default function SessionInfoPanel({
       />
 
       {/* Panel - ✅ Plus étroit (w-80 au lieu de w-96) */}
-      <div className="fixed right-0 top-0 bottom-0 w-full sm:w-80 bg-white dark:bg-gray-800 shadow-2xl z-50 flex flex-col transition-colors duration-150">
+<div className="fixed right-0 top-0 bottom-0 w-full sm:w-96 max-w-md bg-white dark:bg-gray-800 shadow-2xl z-50 flex flex-col transition-colors duration-150">
         
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">

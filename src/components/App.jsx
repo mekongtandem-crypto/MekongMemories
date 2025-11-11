@@ -467,34 +467,36 @@ export default function App() {
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col transition-colors duration-200">
           
           {/* TopBar fixe */}
-          <TopBar
-  currentPage={app.currentPage}
-  onCloseChatSession={app.closeChatSession}
-  isTimelineVisible={isTimelineVisible}
-  setIsTimelineVisible={setIsTimelineVisible}
-  isSearchOpen={isSearchOpen}
-  setIsSearchOpen={setIsSearchOpen}
-  displayOptions={displayOptions}
-  setDisplayOptions={setDisplayOptions}
-  jumpToRandomMoment={handleJumpToRandomMoment}
-  currentDay={currentDay}
-  setCurrentDay={setCurrentDay}
-  jumpToDay={handleJumpToDay}
-  isThemeBarVisible={isThemeBarVisible}
-  setIsThemeBarVisible={setIsThemeBarVisible}
-  navigationContext={navigationContext}
-  onNavigateWithContext={handleNavigateWithContext}
-  onNavigateBack={handleNavigateBack}
-  selectionMode={selectionMode}
-  onCancelSelectionMode={handleCancelSelectionMode}
-  selectedTheme={selectedTheme}
-  setSelectedTheme={setSelectedTheme} 
-/>
+          <div className="fixed top-0 left-0 right-0 z-40">
+            <TopBar
+              currentPage={app.currentPage}
+              onCloseChatSession={app.closeChatSession}
+              isTimelineVisible={isTimelineVisible}
+              setIsTimelineVisible={setIsTimelineVisible}
+              isSearchOpen={isSearchOpen}
+              setIsSearchOpen={setIsSearchOpen}
+              displayOptions={displayOptions}
+              setDisplayOptions={setDisplayOptions}
+              jumpToRandomMoment={handleJumpToRandomMoment}
+              currentDay={currentDay}
+              setCurrentDay={setCurrentDay}
+              jumpToDay={handleJumpToDay}
+              isThemeBarVisible={isThemeBarVisible}
+              setIsThemeBarVisible={setIsThemeBarVisible}
+              navigationContext={navigationContext}
+              onNavigateWithContext={handleNavigateWithContext}
+              onNavigateBack={handleNavigateBack}
+              selectionMode={selectionMode}
+              onCancelSelectionMode={handleCancelSelectionMode}
+              selectedTheme={selectedTheme}
+              setSelectedTheme={setSelectedTheme} 
+            />
+          </div>
 
-          {/* Contenu principal */}
-<main className="flex-1 pt-0 pb-16 overflow-auto">
-  {renderPage()}
-</main>
+          {/* Contenu principal - ✅ Ajouter padding-top pour compenser TopBar fixe */}
+          <main className="flex-1 pt-12 pb-16 overflow-auto">
+            {renderPage()}
+          </main>
 
           {/* BottomNavigation fixe */}
           {app.isInitialized && (

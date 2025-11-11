@@ -32,7 +32,10 @@ export default function SessionsPage() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [editingSession, setEditingSession] = useState(null);
   const [editTitle, setEditTitle] = useState('');
-  const [sortBy, setSortBy] = useState(SORT_OPTIONS.URGENCY);
+  const [sortBy, setSortBy] = useState(() => {
+    const saved = localStorage.getItem(`mekong_sessionSort_${app.currentUser?.id}`);
+    return saved || SORT_OPTIONS.MODIFIED; // ✅ Par défaut : dernière modification
+  });
   const [groupFilter, setGroupFilter] = useState(null);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [unreadFilter, setUnreadFilter] = useState(false);
@@ -47,7 +50,7 @@ export default function SessionsPage() {
   const [openSections, setOpenSections] = useState(() => {
     return safeStorage.get(
       `mekong_sessionGroups_${app.currentUser?.id}`,
-      { notified: true, pending_you: true, pending_other: false, completed: false }
+      { pending_you: true, pending_other: false, completed: false }
     );
   });
   
@@ -75,12 +78,11 @@ export default function SessionsPage() {
 
   // Exposer callbacks pour TopBar
   useEffect(() => {
-    window.sessionPageActions = {
+   window.sessionPageActions = {
       openStatsModal: () => setShowStatsModal(true),
       openPendingSections: () => {
         setOpenSections(prev => ({
           ...prev,
-          notified: true,
           pending_you: true
         }));
       }
@@ -92,7 +94,8 @@ export default function SessionsPage() {
     };
     window.sessionPageState = {
       activeFilter: groupFilter,
-      unreadFilter: unreadFilter
+      unreadFilter: unreadFilter,
+      currentSort: sortBy 
     };
     
     return () => {
@@ -101,6 +104,13 @@ export default function SessionsPage() {
       delete window.sessionPageState;
     };
   }, [groupFilter, unreadFilter]);
+  
+  // Sauvegarder choix tri
+  useEffect(() => {
+    if (app.currentUser?.id) {
+      localStorage.setItem(`mekong_sessionSort_${app.currentUser.id}`, sortBy);
+    }
+  }, [sortBy, app.currentUser]);
 
   // Fermer menus au clic extérieur
   useEffect(() => {
@@ -162,8 +172,7 @@ export default function SessionsPage() {
   // Grouper sessions par statut
   const groupedSessions = useMemo(() => {
     const groups = {
-      notified: [],
-      pending_you: [],
+      pending_you: [], // ✅ Contient maintenant NOTIFIED + PENDING_YOU
       pending_other: [],
       completed: []
     };
@@ -171,9 +180,8 @@ export default function SessionsPage() {
     enrichedSessions.forEach(s => {
       if (s.completed || s.archived) {
         groups.completed.push(s);
-      } else if (s.status === SESSION_STATUS.NOTIFIED) {
-        groups.notified.push(s);
-      } else if (s.status === SESSION_STATUS.PENDING_YOU) {
+      } else if (s.status === SESSION_STATUS.NOTIFIED || s.status === SESSION_STATUS.PENDING_YOU) {
+        // ✅ Fusion : NOTIFIED + PENDING_YOU dans même section
         groups.pending_you.push(s);
       } else if (s.status === SESSION_STATUS.PENDING_OTHER || s.status === SESSION_STATUS.ACTIVE) {
         groups.pending_other.push(s);
@@ -195,13 +203,15 @@ export default function SessionsPage() {
   const filteredGroups = useMemo(() => {
     let groups = groupFilter ? { [groupFilter]: groupedSessions[groupFilter] } : groupedSessions;
     
-    // ✅ Si filtre unread actif, ne garder que les sessions non lues
+    // ✅ Si filtre unread actif (new ou unread)
     if (unreadFilter) {
       const filteredGroupsCopy = {};
       Object.keys(groups).forEach(key => {
         filteredGroupsCopy[key] = groups[key].filter(session => {
           const state = getReadState(session);
-          return state === 'new' || state === 'unread';
+          // Si filtre = 'new' → uniquement NEW
+          // Si filtre = 'unread' → uniquement UNREAD
+          return state === unreadFilter;
         });
       });
       return filteredGroupsCopy;
@@ -336,10 +346,10 @@ export default function SessionsPage() {
         <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
           <span className="text-sm font-medium text-green-800 dark:text-green-200">
             Filtre actif : {
-              groupFilter === 'notified' ? '🔔 Notifications' :
-              groupFilter === 'pending_you' ? '💬 En attente' :
-              groupFilter === 'pending_other' ? '📨 Envoyées' :
-              '✅ Closes'
+              groupFilter === 'pending_you' ? '💬 En attente de vous' :
+              groupFilter === 'pending_other' ? '📨 Messages envoyés' :
+              groupFilter === 'completed' ? '✅ Sessions closes' :
+              'Inconnu'
             }
           </span>
           <button
@@ -369,38 +379,11 @@ export default function SessionsPage() {
       {/* Sections */}
       <div className="space-y-4">
         
-        {/* 🔔 Notifications (Orange) */}
-        {filteredGroups.notified && filteredGroups.notified.length > 0 && (
-          <SessionGroup
-            emoji="🔔"
-            subtitle="Notifications en attente !"
-            sessions={filteredGroups.notified}
-            isOpen={openSections.notified}
-            onToggle={() => toggleSection('notified')}
-            color="orange"
-            currentUserId={app.currentUser?.id}
-            editingSession={editingSession}
-            editTitle={editTitle}
-            setEditTitle={setEditTitle}
-            openMenuId={openMenuId}
-            setOpenMenuId={setOpenMenuId}
-            menuRefs={menuRefs}
-            onOpen={handleOpenSession}
-            onStartEdit={handleStartEdit}
-            onSaveEdit={handleSaveEdit}
-            onCancelEdit={handleCancelEdit}
-            onMarkCompleted={handleMarkCompleted}
-            onArchive={handleArchive}
-            onDelete={handleDeleteSession}
-            onToggleRead={handleToggleRead}
-            getReadState={getReadState}
-          />
-        )}
         
-        {/* 💬 En attente (Amber) */}
+        {/* ⏳ En attente (Amber) */}
         {filteredGroups.pending_you && filteredGroups.pending_you.length > 0 && (
           <SessionGroup
-            emoji="💬"
+            emoji="⏳"
             subtitle="Causeries en attente de vous..."
             sessions={filteredGroups.pending_you}
             isOpen={openSections.pending_you}
@@ -652,7 +635,7 @@ function SessionRow({
             : 'bg-orange-600'
         }`}>
           <span>{readState === 'new' ? '🆕' : '👀'}</span>
-          <span>{readState === 'new' ? 'Nouvelle' : 'Non lu'}</span>
+          <span>{readState === 'new' ? 'Nouvelle' : 'Non lue'}</span>
         </div>
       )}
       
@@ -706,7 +689,6 @@ function SessionRow({
         {!isEditing && (
           <div 
             className="relative flex-shrink-0" 
-            style={{ zIndex: 100 }}
             ref={el => menuRefs.current[session.id] = el}
           >
             <button
@@ -714,15 +696,14 @@ function SessionRow({
                 e.stopPropagation();
                 setOpenMenuId(openMenuId === session.id ? null : session.id);
               }}
-              className="p-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-150"
+              className="p-1 text-gray-600 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-150"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
             
             {openMenuId === session.id && (
-              <div 
-                className="absolute right-0 top-full mt-1 text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 w-48"
-                style={{ zIndex: 101 }}
+                <div 
+                className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px] z-30"
               >
                 
                 {/* ✅ Marquer comme lu/non lu (conditionnel) */}

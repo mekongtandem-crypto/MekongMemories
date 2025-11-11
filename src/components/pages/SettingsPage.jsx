@@ -170,7 +170,12 @@ const [confirmDelete, setConfirmDelete] = useState({
   useEffect(() => {
     window.settingsPageActions = {
       openSection: (sectionName) => {
-        setOpenSections(prev => ({ ...prev, [sectionName]: true }));
+        console.log('🔍 Ouverture section demandée:', sectionName);
+        setOpenSections(prev => {
+          const newState = { ...prev, [sectionName]: true };
+          console.log('🔍 Nouveau state sections:', newState);
+          return newState;
+        });
       }
     };
     
