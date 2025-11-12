@@ -1,11 +1,12 @@
 /**
- * SessionsTopBar.jsx v2.2 - Phase 25 : Filtres toggle fonctionnels
+ * SessionsTopBar.jsx v2.3 - Option B : 4 badges simplifiés
+ * 💬 Toutes | 🔔 Notifiées | 🆕 Nouvelles | ⏳ En attente
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { MoreVertical, ArrowUpDown } from 'lucide-react';
 import { useAppState } from '../../hooks/useAppState.js';
-import { SORT_OPTIONS, SESSION_STATUS } from '../../utils/sessionUtils.js';
+import { SORT_OPTIONS, SESSION_STATUS, enrichSessionWithStatus } from '../../utils/sessionUtils.js';
 import OverflowMenu from './OverflowMenu.jsx';
 
 export default function SessionsTopBar() {
@@ -13,17 +14,33 @@ export default function SessionsTopBar() {
   const app = useAppState();
   const [showMenu, setShowMenu] = useState(false);
   
-  // ✅ CORRECTION : Utiliser unreadFilter comme activeFilter
-  const activeFilter = window.sessionPageState?.unreadFilter || null;
+  // ✅ État local synchronisé avec SessionsPage
+  const [activeFilter, setActiveFilter] = useState(null);
   const currentSort = window.sessionPageState?.currentSort || SORT_OPTIONS.URGENCY;
   
-  // Récupérer tracking lecture depuis localStorage
+  // ✅ Exposer le setter pour que SessionsPage puisse mettre à jour
+  useEffect(() => {
+    window.sessionTopBarActions = {
+      updateActiveFilter: (filter) => setActiveFilter(filter)
+    };
+    return () => {
+      delete window.sessionTopBarActions;
+    };
+  }, []);
+  
+  // ✅ Synchroniser à l'initialisation
+  useEffect(() => {
+    const initialFilter = window.sessionPageState?.unreadFilter || null;
+    setActiveFilter(initialFilter);
+  }, []);
+  
+  // Tracking lecture
   const sessionReadStatus = useMemo(() => {
     const saved = localStorage.getItem(`mekong_sessionReadStatus_${app.currentUser?.id}`);
     return saved ? JSON.parse(saved) : {};
-  }, [app.currentUser, app.sessions]);
+  }, [app.currentUser?.id]);
   
-  // Calculer état lecture pour chaque session
+  // Calculer état lecture
   const getReadState = (session) => {
     const tracking = sessionReadStatus[session.id];
     const lastMessage = session.notes?.[session.notes.length - 1];
@@ -41,48 +58,64 @@ export default function SessionsTopBar() {
     return 'read';
   };
 
-  // Calcul des stats
+  // ✅ Calcul stats avec enrichissement
   const sessionStats = useMemo(() => {
-    if (!app.sessions) return { total: 0, notified: 0, new: 0, unread: 0, pendingYou: 0 };
+    if (!app.sessions || !app.currentUser?.id) {
+      return { total: 0, notified: 0, new: 0, pending: 0 };
+    }
     
-    const activeSessions = app.sessions.filter(s => !s.completed && !s.archived);
+    // Enrichir sessions avec statuts
+    const enrichedSessions = app.sessions
+      .map(s => enrichSessionWithStatus(s, app.currentUser.id))
+      .filter(s => !s.completed && !s.archived);
     
-    let notified = 0, newCount = 0, unread = 0;
+    let notified = 0, newCount = 0, pending = 0;
     
-    activeSessions.forEach(s => {
+    enrichedSessions.forEach(s => {
       const state = getReadState(s);
       
-      // ✅ Compter notifications via statut enrichi
+      // Compter notifiées (via statut enrichi)
       if (s.status === SESSION_STATUS.NOTIFIED) {
         notified++;
       }
       
-      // Compter NEW et UNREAD
-      if (state === 'new') newCount++;
-      if (state === 'unread') unread++;
-    });
-    
-    // Compter sessions en attente
-    const pendingYou = activeSessions.filter(s => {
+      // Compter nouvelles (jamais ouvertes)
+      if (state === 'new') {
+        newCount++;
+      }
+      
+      // Compter en attente (dernier message pas de moi)
       const lastMessage = s.notes?.[s.notes.length - 1];
       const lastAuthor = lastMessage?.author || s.user;
-      return lastAuthor !== app.currentUser?.id;
-    }).length;
+      if (lastAuthor !== app.currentUser?.id) {
+        pending++;
+      }
+    });
     
     return { 
-      total: activeSessions.length, 
+      total: enrichedSessions.length, 
       notified,
       new: newCount,
-      unread,
-      pendingYou
+      pending
     };
-  }, [app.sessions, app.currentUser, sessionReadStatus]);
+  }, [app.sessions, app.currentUser?.id, sessionReadStatus]);
   
-  // ✅ Handler toggle filtre (exclusif + réinitialise si déjà actif)
+  // ✅ Handler toggle avec mise à jour locale ET SessionsPage
   const handleFilterToggle = (filterType) => {
-    const isActive = activeFilter === filterType;
-    const newFilter = isActive ? null : filterType;
+    let newFilter;
     
+    // Si on clique sur le filtre déjà actif → désactiver
+    if (activeFilter === filterType) {
+      newFilter = null;
+    } else {
+      // Sinon, activer le nouveau filtre
+      newFilter = filterType;
+    }
+    
+    // Mettre à jour l'état local immédiatement
+    setActiveFilter(newFilter);
+    
+    // Propager à SessionsPage
     if (window.sessionPageFilters?.setUnreadFilter) {
       window.sessionPageFilters.setUnreadFilter(newFilter);
     }
@@ -93,8 +126,8 @@ export default function SessionsTopBar() {
     }
   };
   
-  // ✅ Handler réinitialiser tous filtres
   const handleResetFilters = () => {
+    setActiveFilter(null);
     if (window.sessionPageFilters?.setUnreadFilter) {
       window.sessionPageFilters.setUnreadFilter(null);
     }
@@ -110,94 +143,77 @@ export default function SessionsTopBar() {
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-150">
       
-      {/* GAUCHE : Titre = Bouton "Toutes" */}
+      {/* GAUCHE : Badge "Toutes" */}
       <button
         onClick={handleResetFilters}
-        className={`flex items-center min-w-0 px-3 py-1.5 rounded-lg transition-all duration-150 ${
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${
           activeFilter === null
-            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-            : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+            ? 'bg-blue-600 text-white shadow-lg scale-105'
+            : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 hover:bg-blue-100'
         }`}
-        title="Afficher toutes les sessions"
+        title={activeFilter === null ? '✓ Toutes affichées' : 'Afficher toutes'}
       >
-        <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
-          💬 {sessionStats.total}
-        </h1>
+        <span>💬</span>
+        <span>{sessionStats.total}</span>
       </button>
       
-      {/* CENTRE : Badges filtres - Toggle exclusif */}
-      <div className="flex items-center space-x-2 mx-4">
+      {/* CENTRE : Badges filtres (3 badges) */}
+      <div className="flex items-center gap-1.5">
         
-        {/* Badge 🔔 Notifications */}
+        {/* Badge 🔔 Notifiées (ORANGE FONCÉ) */}
         {sessionStats.notified > 0 && (
           <button
             onClick={() => handleFilterToggle('notified')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${
               activeFilter === 'notified'
-                ? 'bg-orange-600 text-white border-2 border-orange-800 shadow-md scale-105'
-                : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-300 dark:border-orange-700 hover:bg-orange-200 dark:hover:bg-orange-900/50'
+                ? 'bg-orange-600 text-white shadow-lg scale-105'
+                : 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border border-orange-300 dark:border-orange-700 hover:bg-orange-100'
             }`}
-            title={activeFilter === 'notified' ? '✓ Filtre actif - Cliquer pour désactiver' : 'Filtrer par notifications'}
+            title={activeFilter === 'notified' ? '✓ Filtre actif' : 'Filtrer : Notifiées'}
           >
-            <span className="text-sm">🔔</span>
+            <span>🔔</span>
             <span>{sessionStats.notified}</span>
           </button>
         )}
         
-        {/* Badge 🆕 Nouvelles */}
+        {/* Badge 🆕 Nouvelles (VERT) */}
         {sessionStats.new > 0 && (
           <button
             onClick={() => handleFilterToggle('new')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${
               activeFilter === 'new'
-                ? 'bg-blue-600 text-white border-2 border-blue-800 shadow-md scale-105'
-                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                ? 'bg-green-600 text-white shadow-lg scale-105'
+                : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-300 dark:border-green-700 hover:bg-green-100'
             }`}
-            title={activeFilter === 'new' ? '✓ Filtre actif - Cliquer pour désactiver' : 'Filtrer par nouvelles'}
+            title={activeFilter === 'new' ? '✓ Filtre actif' : 'Filtrer : Nouvelles'}
           >
-            <span className="text-sm">🆕</span>
+            <span>🆕</span>
             <span>{sessionStats.new}</span>
           </button>
         )}
         
-        {/* Badge 👀 Non lues */}
-        {sessionStats.unread > 0 && (
-          <button
-            onClick={() => handleFilterToggle('unread')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
-              activeFilter === 'unread'
-                ? 'bg-amber-600 text-white border-2 border-amber-800 shadow-md scale-105'
-                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 hover:bg-amber-200 dark:hover:bg-amber-900/50'
-            }`}
-            title={activeFilter === 'unread' ? '✓ Filtre actif - Cliquer pour désactiver' : 'Filtrer par non lues'}
-          >
-            <span className="text-sm">👀</span>
-            <span>{sessionStats.unread}</span>
-          </button>
-        )}
-        
-        {/* Badge ⏳ En attente */}
-        {sessionStats.pendingYou > 0 && (
+        {/* Badge ⏳ En attente (AMBRE) */}
+        {sessionStats.pending > 0 && (
           <button
             onClick={() => handleFilterToggle('pending')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${
               activeFilter === 'pending'
-                ? 'bg-purple-600 text-white border-2 border-purple-800 shadow-md scale-105'
-                : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700 hover:bg-purple-200 dark:hover:bg-purple-900/50'
+                ? 'bg-amber-600 text-white shadow-lg scale-105'
+                : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 hover:bg-amber-100'
             }`}
-            title={activeFilter === 'pending' ? '✓ Filtre actif - Cliquer pour désactiver' : 'Filtrer par en attente'}
+            title={activeFilter === 'pending' ? '✓ Filtre actif' : 'Filtrer : En attente'}
           >
-            <span className="text-sm">⏳</span>
-            <span>{sessionStats.pendingYou}</span>
+            <span>⏳</span>
+            <span>{sessionStats.pending}</span>
           </button>
         )}
         
       </div>
       
-      {/* DROITE : Tri (desktop) + Menu */}
+      {/* DROITE : Tri + Menu */}
       <div className="flex items-center gap-2">
         
-        {/* Bouton tri */}
+        {/* Bouton tri (desktop) */}
         <div className="hidden md:block">
           <button
             onClick={() => {

@@ -40,6 +40,12 @@ export default function SessionsPage() {
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [unreadFilter, setUnreadFilter] = useState(null); // null | 'notified' | 'new' | 'unread' | 'pending'
   
+  // ✅ Synchroniser avec TopBar quand unreadFilter change
+  useEffect(() => {
+    if (window.sessionTopBarActions?.updateActiveFilter) {
+      window.sessionTopBarActions.updateActiveFilter(unreadFilter);
+    }
+  }, [unreadFilter]);
   
   // ✅ Système de tracking lecture par session
   const [sessionReadStatus, setSessionReadStatus] = useState(() => {
@@ -200,12 +206,10 @@ export default function SessionsPage() {
     return groups;
   }, [enrichedSessions, sortBy]);
 
-  // Filtrer selon badge TopBar cliqué + filtre unread
-  // Filtrer selon badge TopBar cliqué
+  // ✅ Filtrer selon badge TopBar (4 options : null, 'notified', 'new', 'pending')
   const filteredGroups = useMemo(() => {
     let groups = groupedSessions;
     
-    // ✅ Filtres exclusifs
     if (unreadFilter) {
       const filteredGroupsCopy = {};
       
@@ -216,14 +220,15 @@ export default function SessionsPage() {
           switch(unreadFilter) {
             case 'notified':
               return session.status === SESSION_STATUS.NOTIFIED;
+            
             case 'new':
               return state === 'new';
-            case 'unread':
-              return state === 'unread';
+            
             case 'pending':
               const lastMessage = session.notes?.[session.notes.length - 1];
               const lastAuthor = lastMessage?.author || session.user;
               return lastAuthor !== app.currentUser?.id;
+            
             default:
               return true;
           }
@@ -234,7 +239,7 @@ export default function SessionsPage() {
     }
     
     return groups;
-  }, [groupedSessions, unreadFilter, app.currentUser]);
+  }, [groupedSessions, unreadFilter, app.currentUser?.id]);
 
   // ========================================
   // HANDLERS
@@ -355,23 +360,32 @@ export default function SessionsPage() {
   const totalSessions = enrichedSessions.length;
 
   return (
-    <div className="p-4 max-w-5xl mx-auto">
+    <div className="p-0 max-w-5xl mx-auto">
       
-      {/* ✅ Message filtre actif */}
+      {/* ✅ Message filtre avec code couleur (Option B : 3 filtres) */}
       {unreadFilter && (
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg flex items-center justify-between">
-          <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
-            Filtre d'affichage : {
-              unreadFilter === 'notified' ? 'Notifications uniquement' :
-              unreadFilter === 'new' ? 'Nouvelles sessions uniquement' :
-              unreadFilter === 'unread' ? 'Sessions non lues uniquement' :
-              unreadFilter === 'pending' ? 'Sessions en attente uniquement' :
+        <div className={`mb-4 p-3 rounded-lg border flex items-center justify-between ${
+          unreadFilter === 'notified' ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700' :
+          unreadFilter === 'new' ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' :
+          unreadFilter === 'pending' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700' :
+          'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
+        }`}>
+          <span className={`text-sm font-semibold ${
+            unreadFilter === 'notified' ? 'text-orange-800 dark:text-orange-200' :
+            unreadFilter === 'new' ? 'text-green-800 dark:text-green-200' :
+            unreadFilter === 'pending' ? 'text-amber-800 dark:text-amber-200' :
+            'text-blue-800 dark:text-blue-200'
+          }`}>
+            Filtre actif : {
+              unreadFilter === 'notified' ? 'causeries 🔔 notifiées uniquement' :
+              unreadFilter === 'new' ? 'causeries 🆕 nouvelles uniquement' :
+              unreadFilter === 'pending' ? 'causeries ⏳ en attente uniquement' :
               ''
             }
           </span>
           <button
             onClick={() => setUnreadFilter(null)}
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
+            className="text-current hover:opacity-70 transition-opacity"
             title="Retirer le filtre"
           >
             <X className="w-4 h-4" />
@@ -380,7 +394,7 @@ export default function SessionsPage() {
       )}
       
       {/* Sections */}
-      <div className="space-y-4">
+      <div className="p-3 space-y-4">
         
         
         {/* ⏳ En attente (Amber) */}
