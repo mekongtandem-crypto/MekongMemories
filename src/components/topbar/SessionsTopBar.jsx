@@ -156,6 +156,8 @@ export default function SessionsTopBar() {
         <span>💬</span>
         <span>{sessionStats.total}</span>
       </button>
+    
+      <span className="p-2 text-amber-600 dark:text-amber-400 font-semibold">Causeries</span>
       
       {/* CENTRE : Badges filtres (3 badges) */}
       <div className="flex items-center gap-1.5">

@@ -364,7 +364,7 @@ export default function SessionsPage() {
       
       {/* ✅ Message filtre avec code couleur (Option B : 3 filtres) */}
       {unreadFilter && (
-        <div className={`mb-4 p-3 rounded-lg border flex items-center justify-between ${
+        <div className={`mb-3 p-2 rounded-lg border flex items-center justify-between ${
           unreadFilter === 'notified' ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700' :
           unreadFilter === 'new' ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' :
           unreadFilter === 'pending' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700' :

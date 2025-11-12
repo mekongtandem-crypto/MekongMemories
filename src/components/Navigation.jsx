@@ -10,18 +10,39 @@
  */
 import React from 'react';
 import { Sparkles, MessageSquare, ArrowLeft, Gamepad2 } from 'lucide-react';
+import { enrichSessionWithStatus, SESSION_STATUS } from '../utils/sessionUtils.js';
 
 export function BottomNavigation({ currentPage, onPageChange, app, navigationContext }) {
-  const pendingSessionsCount = React.useMemo(() => {
+  const urgentSessionsCount = React.useMemo(() => {
     if (!app.sessions || !app.currentUser) return 0;
     
-    return app.sessions.filter(session => {
-      if (session.user !== app.currentUser?.id) return false;
-      if (!session.notes || session.notes.length === 0) return true;
+    // Récupérer tracking lecture
+    const sessionReadStatus = JSON.parse(
+      localStorage.getItem(`mekong_sessionReadStatus_${app.currentUser.id}`) || '{}'
+    );
+    
+    const activeSessions = app.sessions.filter(s => !s.completed && !s.archived);
+    
+    let notifiedCount = 0;
+    let newCount = 0;
+    
+    activeSessions.forEach(session => {
+      // 1. Compter notifiées (via enrichissement)
+      const enriched = enrichSessionWithStatus(session, app.currentUser.id);
       
-      const lastMessage = session.notes[session.notes.length - 1];
-      return lastMessage.author !== app.currentUser?.id;
-    }).length;
+      if (enriched.status === SESSION_STATUS.NOTIFIED) {
+        notifiedCount++;
+        return; // Pas besoin de vérifier "new" si déjà notifiée
+      }
+      
+      // 2. Compter nouvelles (jamais ouvertes + créées par quelqu'un d'autre)
+      const tracking = sessionReadStatus[session.id];
+      if (!tracking?.hasBeenOpened && session.user !== app.currentUser.id) {
+        newCount++;
+      }
+    });
+    
+    return notifiedCount + newCount;
   }, [app.sessions, app.currentUser]);
 
   // ⭐ PHASE 19D : Détection contexte de navigation
@@ -40,7 +61,7 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
       id: 'sessions', 
       icon: MessageSquare, 
       label: 'Causeries', 
-      badge: pendingSessionsCount 
+      badge: urgentSessionsCount 
     },
     { 
       id: 'memories', 
