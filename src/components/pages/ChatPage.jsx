@@ -85,20 +85,16 @@ console.log('🔍 DEBUG navigationContext:', {
       }
     }
     
-    // ⭐ LIEN : Vérifier previousPage pour éviter réinjection sur changement session
+    // ⭐ LIEN : Injecter lien sélectionné depuis Memories
     if (navigationContext?.pendingLink) {
       console.log('🔗 Lien reçu depuis Memories:', navigationContext.pendingLink);
-      
-      // ⭐ Ne réinjecter que si on vient VRAIMENT de Memories
-      if (navigationContext?.pendingLink) {
-  console.log('🔗 Lien reçu depuis Memories:', navigationContext.pendingLink);
-  setPendingLink(navigationContext.pendingLink);
-  
-  if (!hasCleared) {
-    console.log('🧹 Clear pendingLink');
-    onClearAttachment?.();
-    hasCleared = true;
-        }
+      setPendingLink(navigationContext.pendingLink);
+
+      // Nettoyer navigationContext pour éviter persistance entre sessions
+      if (!hasCleared) {
+        console.log('🧹 Clear navigationContext.pendingLink');
+        onClearAttachment?.();
+        hasCleared = true;
       }
     }
   }, [navigationContext?.pendingAttachment, navigationContext?.pendingLink]);

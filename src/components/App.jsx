@@ -178,13 +178,14 @@ export default function App() {
    */
   const handleNavigateWithContext = useCallback((targetPage, context = {}) => {
     console.log('🧭 Navigation avec contexte:', targetPage, context);
-    
+
     setNavigationContext({
       previousPage: app.currentPage,
       pendingAttachment: context.attachment || null,
-      sessionMomentId: context.sessionMomentId || null
+      sessionMomentId: context.sessionMomentId || null,
+      pendingLink: null
     });
-    
+
     app.updateCurrentPage(targetPage);
   }, [app]);
 
@@ -259,21 +260,22 @@ export default function App() {
    */
   const handleCancelSelectionMode = useCallback(() => {
     console.log('✖️ Annulation mode sélection');
-    
+
     const previousPage = navigationContext.previousPage || 'chat';
-    
+
     setSelectionMode({
       active: false,
       type: null,
       callback: null
     });
-    
+
     setNavigationContext({
       previousPage: null,
       pendingAttachment: null,
-      sessionMomentId: null
+      sessionMomentId: null,
+      pendingLink: null
     });
-    
+
     app.updateCurrentPage(previousPage);
   }, [navigationContext, app]);
 
@@ -323,10 +325,11 @@ export default function App() {
    * Nettoyer attachement après utilisation
    */
   const handleClearAttachment = useCallback(() => {
-    console.log('🧹 Clear attachment');
+    console.log('🧹 Clear attachment et pendingLink');
     setNavigationContext(prev => ({
       ...prev,
-      pendingAttachment: null
+      pendingAttachment: null,
+      pendingLink: null
     }));
   }, []);
 
