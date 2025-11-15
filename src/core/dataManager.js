@@ -34,16 +34,23 @@ class DataManager {
     
     // État application
     this.appState = {
-      isInitialized: false, 
-      isLoading: true, 
-      masterIndex: null, 
+      isInitialized: false,
+      isLoading: true,
+      masterIndex: null,
       sessions: [],
-      currentChatSession: null, 
-      currentUser: null, 
+      currentChatSession: null,
+      currentUser: null,
       currentPage: 'sessions',
-      error: null, 
+      error: null,
       connection: { hasError: false, lastError: null },
       isCreatingSession: false,
+      // ✨ Spinner générique pour opérations async
+      loadingOperation: {
+        active: false,
+        message: 'Chargement...',
+        subMessage: 'Enregistrement sur Google Drive',
+        variant: 'spin' // 'spin' | 'bounce' | 'monkey'
+      }
     };
     
     // Pub/Sub listeners
@@ -255,7 +262,14 @@ class DataManager {
    * @returns {Promise<Object>} Session créée
    */
   createSession = async (gameData, initialText = null, sourcePhoto = null) => {
-    this.updateState({ isCreatingSession: true });
+    this.updateState({
+      loadingOperation: {
+        active: true,
+        message: 'Création de la session...',
+        subMessage: 'Enregistrement sur Google Drive',
+        variant: 'monkey'
+      }
+    });
     
     try {
       const now = new Date().toISOString();
@@ -402,9 +416,14 @@ class DataManager {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       // 4.4 Mettre à jour state React
-      this.updateState({ 
+      this.updateState({
         sessions: [...this.appState.sessions, newSession],
-        isCreatingSession: false
+        loadingOperation: {
+          active: false,
+          message: 'Chargement...',
+          subMessage: 'Enregistrement sur Google Drive',
+          variant: 'spin'
+        }
       });
       
       logger.success('Session créée', { messages: newSession.notes.length });
@@ -412,7 +431,14 @@ class DataManager {
       
     } catch (error) {
       logger.error('Erreur création session', error);
-      this.updateState({ isCreatingSession: false });
+      this.updateState({
+        loadingOperation: {
+          active: false,
+          message: 'Chargement...',
+          subMessage: 'Enregistrement sur Google Drive',
+          variant: 'spin'
+        }
+      });
       throw error;
     }
   }
@@ -462,71 +488,106 @@ class DataManager {
    * Ajouter un message à une session
    */
   addMessageToSession = async (sessionId, messageContent, photoData = null, linkedContent = null) => {
-    logger.debug('addMessageToSession', { 
-      sessionId, 
-      hasPhoto: !!photoData, 
-      hasLink: !!linkedContent 
+    logger.debug('addMessageToSession', {
+      sessionId,
+      hasPhoto: !!photoData,
+      hasLink: !!linkedContent
     });
-    
+
     const session = this.appState.sessions.find(s => s.id === sessionId);
     if (!session) {
       logger.error('Session introuvable', sessionId);
       return;
     }
-    
-    // ========================================
-    // 1. CRÉER MESSAGE
-    // ========================================
-    
-    const newMessage = {
-      id: `msg_${Date.now()}`, 
-      author: this.appState.currentUser,
-      content: messageContent, 
-      timestamp: new Date().toISOString(), 
-      edited: false,
-      ...(photoData && { photoData: photoData }),
-      ...(linkedContent && { linkedContent })
-    };
-    
-    // ========================================
-    // 2. SAUVEGARDER + INDEXER
-    // ========================================
-    
-    // 2.1 Sauver message (source de vérité)
-    const updatedSession = { ...session, notes: [...session.notes, newMessage] };
-    await this.updateSession(updatedSession);
-    
-    // 2.2 Indexer dans ContentLinks si lien présent (FIX syntaxe: NEW → Phase)
-    if (this.contentLinks && linkedContent) {
-      try {
-        await this.contentLinks.addLink({
-          sessionId: session.id,
-          messageId: newMessage.id,
-          contentType: linkedContent.type,
-          contentId: linkedContent.id,
-          contentTitle: linkedContent.title,
-          linkedBy: this.appState.currentUser
-        });
-        logger.debug('Lien indexé dans ContentLinks');
-      } catch (error) {
-        logger.error('Erreur indexation lien', error);
-        // Non-bloquant
+
+    // ✨ Activer le spinner
+    this.updateState({
+      loadingOperation: {
+        active: true,
+        message: 'Envoi du message...',
+        subMessage: 'Enregistrement sur Google Drive',
+        variant: 'spin'
       }
-    }
-    
-    logger.debug('Session mise à jour');
-    
-    // ========================================
-    // 3. NOTIFICATIONS
-    // ========================================
-    
-    const notif = this.notificationManager.getNotificationForSession(
-      sessionId, 
-      this.appState.currentUser
-    );
-    
-    if (notif) {
-      await this.notificationManager.markAsRead(notif.id);
+    });
+
+    try {
+      // ========================================
+      // 1. CRÉER MESSAGE
+      // ========================================
+
+      const newMessage = {
+        id: `msg_${Date.now()}`,
+        author: this.appState.currentUser,
+        content: messageContent,
+        timestamp: new Date().toISOString(),
+        edited: false,
+        ...(photoData && { photoData: photoData }),
+        ...(linkedContent && { linkedContent })
+      };
+
+      // ========================================
+      // 2. SAUVEGARDER + INDEXER
+      // ========================================
+
+      // 2.1 Sauver message (source de vérité)
+      const updatedSession = { ...session, notes: [...session.notes, newMessage] };
+      await this.updateSession(updatedSession);
+
+      // 2.2 Indexer dans ContentLinks si lien présent (FIX syntaxe: NEW → Phase)
+      if (this.contentLinks && linkedContent) {
+        try {
+          await this.contentLinks.addLink({
+            sessionId: session.id,
+            messageId: newMessage.id,
+            contentType: linkedContent.type,
+            contentId: linkedContent.id,
+            contentTitle: linkedContent.title,
+            linkedBy: this.appState.currentUser
+          });
+          logger.debug('Lien indexé dans ContentLinks');
+        } catch (error) {
+          logger.error('Erreur indexation lien', error);
+          // Non-bloquant
+        }
+      }
+
+      logger.debug('Session mise à jour');
+
+      // ========================================
+      // 3. NOTIFICATIONS
+      // ========================================
+
+      const notif = this.notificationManager.getNotificationForSession(
+        sessionId,
+        this.appState.currentUser
+      );
+
+      if (notif) {
+        await this.notificationManager.markAsRead(notif.id);
+      }
+
+      // ✨ Désactiver le spinner
+      this.updateState({
+        loadingOperation: {
+          active: false,
+          message: 'Chargement...',
+          subMessage: 'Enregistrement sur Google Drive',
+          variant: 'spin'
+        }
+      });
+
+    } catch (error) {
+      logger.error('Erreur lors de l\'ajout du message', error);
+      // ✨ Désactiver le spinner en cas d'erreur
+      this.updateState({
+        loadingOperation: {
+          active: false,
+          message: 'Chargement...',
+          subMessage: 'Enregistrement sur Google Drive',
+          variant: 'spin'
+        }
+      });
+      throw error;
     }
   }
 
