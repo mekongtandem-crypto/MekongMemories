@@ -1,7 +1,7 @@
 # CLAUDE.md - AI Assistant Guide for Mémoire du Mékong
 
-> **Version:** 2.6d "Dark Mode" | **Last Updated:** November 14, 2025
-> **Purpose:** Comprehensive guide for AI assistants working on this codebase
+> **Version:** 2.7 "Photo Viewer Optimization" | **Last Updated:** November 15, 2025
+> **Purpose:** Comprehensive guide for development teams and AI assistants working on this codebase
 
 ---
 
@@ -9,37 +9,52 @@
 
 **Mémoire du Mékong** is a Progressive Web App that transforms a travel diary into an interactive, conversation-based memory exploration platform. Users can discuss and organize travel experiences through themed "sessions" (chats), explore a timeline of "moments" (thematic units), and manage photos and Mastodon posts.
 
-**Current Phase:** Phase 26 - Dark Mode
-**Build Date:** November 10, 2025
-**Total LOC:** ~8,860 lines
-**Language:** JavaScript (no TypeScript), French comments/documentation
+**Current Version:** 2.7 - Photo Viewer Optimization
+**Release Date:** November 15, 2025
+**Previous Phase:** Dark Mode (v2.6d)
+**Total LOC:** ~8,900 lines
+**Language:** JavaScript (ES6+), no TypeScript
+**Code Language:** French comments/documentation with English variable names
+
+### Version 2.7 Highlights
+
+✅ **Photo Viewer Optimization** - Fullscreen photos maximize display
+✅ **Complete Dark Mode** - All UI components styled for light/dark
+✅ **Session Archiving** - Automatic migration from old "completed" status
+✅ **Read/Unread System** - Smart tracking of new and unread sessions
+✅ **Enhanced Chat Menu** - "Mark as unread" option for session management
+✅ **Loading Spinners** - Generic async operation feedback
+✅ **Mobile-First UX** - Optimized for touchscreen interaction
 
 ---
 
 ## 🛠 Tech Stack
 
-### Core
-- **React 18.2.0** - UI framework (no class components, all hooks-based)
-- **Vite 7.1.7** - Build tool (using defaults, no vite.config.js)
-- **JavaScript ES6+** - Modern JS, no TypeScript
+### Core Framework
+- **React 18.2.0** - UI framework (hooks-based, no class components)
+- **Vite 7.1.7** - Build tool (zero-config with defaults)
+- **JavaScript ES6+** - Modern JavaScript without TypeScript
 
-### Styling
-- **Tailwind CSS 3.4.17** - Utility-first CSS
-- **PostCSS + Autoprefixer** - CSS processing
-- **Dark Mode:** Class-based (`dark` class on `<html>`)
-- **Default theme:** Dark mode
+### Styling & Theming
+- **Tailwind CSS 3.4.17** - Utility-first CSS framework
+- **PostCSS + Autoprefixer** - CSS processing pipeline
+- **Dark Mode:** Class-based system (`dark` class on `<html>`)
+- **Default Theme:** Dark mode (user can toggle to light)
+- **Color System:** Tailwind colors + custom theme assignments
 
-### Backend/Storage
-- **Google Drive API** - Primary data persistence
-- **Google OAuth 2.0** - Authentication (tokens cached 1h)
-- **localStorage** - Client-side caching and preferences
+### Data & Storage
+- **Google Drive API** - Primary persistent storage (source of truth)
+- **Google OAuth 2.0** - User authentication (1-hour token TTL)
+- **localStorage** - Client-side caching and user preferences (~5-10MB limit)
+- **Pub/Sub State Management** - Custom observable pattern (no Redux/Zustand)
 
-### UI Libraries
-- **lucide-react 0.303.0** - Icon library (only UI dependency)
+### UI & Icons
+- **lucide-react 0.303.0** - Icon library (only external UI dependency)
 
-### Development
-- **ESLint** - Linting with React Hooks rules
-- **Cloudflare Pages** - Deployment platform
+### Development & Deployment
+- **ESLint** - Code linting with React Hooks rules
+- **Cloudflare Pages** - Production deployment platform
+- **git** - Version control
 
 ---
 
@@ -48,81 +63,84 @@
 ```
 MekongMemories/
 ├── Doc/                          # Development documentation (French)
-│   └── dev_guide_v2_*.md        # Versioned dev guides (v2.2 → v2.7)
+│   ├── dev_guide_v2_2.md        # Legacy guides
+│   ├── ...
+│   └── dev_guide_v2_7.md        # Latest version 2.7
 │
-├── public/                       # Static assets
-│   ├── manifest.json            # PWA manifest
+├── public/                       # Static PWA assets
+│   ├── manifest.json            # PWA manifest configuration
 │   └── splash.jpg               # PWA splash screen
 │
 ├── src/
 │   ├── main.jsx                 # ⭐ Entry point with dependency injection
 │   ├── index.css                # Global styles + Tailwind imports
-│   ├── constants.js             # Application constants
+│   ├── constants.js             # Application-wide constants
 │   │
 │   ├── components/              # React components
 │   │   ├── App.jsx             # ⭐ Root component with routing logic
-│   │   ├── Navigation.jsx      # Bottom navigation bar
-│   │   ├── ThemeContext.jsx    # Dark mode context provider
-│   │   ├── ThemeModal.jsx      # Theme assignment modal
-│   │   ├── PhotoViewer.jsx     # Full-screen photo viewer
-│   │   ├── UnifiedTopBar.jsx   # Top bar wrapper
+│   │   ├── Navigation.jsx      # Bottom navigation bar (5 pages)
+│   │   ├── ThemeContext.jsx    # Dark mode provider & context
+│   │   ├── ThemeModal.jsx      # Theme tag assignment modal
+│   │   ├── PhotoViewer.jsx     # ⭐ Fullscreen photo viewer (optimized v2.7)
+│   │   ├── UnifiedTopBar.jsx   # Top bar wrapper (page-agnostic)
+│   │   ├── LoadingSpinner.jsx  # Generic async operation spinner
 │   │   │
 │   │   ├── pages/              # Page components (routing targets)
-│   │   │   ├── StartupPage.jsx    # Initialization screen
-│   │   │   ├── SessionsPage.jsx   # Chat sessions list
-│   │   │   ├── ChatPage.jsx       # Individual chat/session
-│   │   │   ├── MemoriesPage.jsx   # Timeline of moments
-│   │   │   └── SettingsPage.jsx   # User settings
+│   │   │   ├── StartupPage.jsx    # App initialization + dark mode setup
+│   │   │   ├── SessionsPage.jsx   # Chat sessions list with filtering
+│   │   │   ├── ChatPage.jsx       # Individual session/chat view
+│   │   │   ├── MemoriesPage.jsx   # Timeline of moments + galleries
+│   │   │   └── SettingsPage.jsx   # User settings + theme management
 │   │   │
-│   │   ├── topbar/             # Top bar components (page-specific)
-│   │   │   ├── ChatTopBar.jsx
+│   │   ├── topbar/             # Page-specific top bar components
+│   │   │   ├── ChatTopBar.jsx  # Chat menu with "Mark as unread"
 │   │   │   ├── MemoriesTopBar.jsx
 │   │   │   ├── SessionsTopBar.jsx
 │   │   │   └── SettingsTopBar.jsx
 │   │   │
-│   │   └── memories/           # Memory timeline components
-│   │       ├── moment/         # Moment card components
-│   │       ├── post/           # Post article components
-│   │       ├── photo/          # Photo grid components
-│   │       ├── shared/         # Shared memory components
-│   │       ├── layout/         # Layout components
+│   │   └── memories/           # Memory timeline sub-components
+│   │       ├── moment/         # Moment card rendering
+│   │       ├── post/           # Mastodon post articles
+│   │       ├── photo/          # Photo grid gallery
+│   │       ├── shared/         # Shared timeline components
+│   │       ├── layout/         # Layout helpers
 │   │       └── hooks/          # Memory-specific hooks
 │   │
-│   ├── core/                   # ⭐ Core business logic (singletons)
-│   │   ├── dataManager.js         # ⭐ Central state manager (pub/sub)
-│   │   ├── StateManager.js        # localStorage abstraction
-│   │   ├── ConnectionManager.js   # Google OAuth & connection state
-│   │   ├── DriveSync.js          # Google Drive file operations
-│   │   ├── UserManager.js        # User profiles and styles
+│   ├── core/                   # ⭐ Business logic (singletons)
+│   │   ├── dataManager.js          # ⭐ Central state hub (pub/sub)
+│   │   ├── StateManager.js         # localStorage abstraction
+│   │   ├── ConnectionManager.js    # Google OAuth state
+│   │   ├── DriveSync.js           # Google Drive file operations
+│   │   ├── UserManager.js         # User profiles & color assignments
 │   │   ├── NotificationManager.js # Push notifications
-│   │   ├── ContentLinks.js       # Content↔session bidirectional links
-│   │   ├── ThemeAssignments.js   # Theme tag assignments
-│   │   ├── MastodonData.js       # Mastodon data parsing
-│   │   ├── PhotoDataV2.js        # Photo metadata management
+│   │   ├── ContentLinks.js        # Bidirectional content↔session links
+│   │   ├── ThemeAssignments.js    # Theme tag assignments
+│   │   ├── MastodonData.js        # Mastodon feed parsing
+│   │   ├── PhotoDataV2.js         # Photo metadata management
 │   │   └── MasterIndexGenerator.js # Master timeline index
 │   │
 │   ├── hooks/
 │   │   └── useAppState.js      # ⭐ Main application state hook
 │   │
 │   ├── config/
-│   │   ├── version.js          # Version constants (update here!)
+│   │   ├── version.js          # Version constants (update on release!)
 │   │   └── googleDrive.js      # Google Drive API credentials
 │   │
 │   ├── utils/
-│   │   ├── logger.js           # Custom logging system
+│   │   ├── logger.js           # Custom color-coded logger
 │   │   ├── storage.js          # localStorage utilities
-│   │   ├── sessionUtils.js     # Session formatting/sorting
-│   │   ├── themeUtils.js       # Theme utilities
+│   │   ├── sessionUtils.js     # Session formatting/sorting/status
+│   │   ├── themeUtils.js       # Theme utilities & color mapping
 │   │   └── linkUtils.js        # Link utilities
 │   │
 │   └── styles/
-│       └── startup-animations.css
+│       └── startup-animations.css # Startup screen animations
 │
 ├── index.html                   # Entry HTML with PWA meta tags
-├── package.json                 # Dependencies and scripts
-├── tailwind.config.js          # Tailwind configuration
-├── postcss.config.js           # PostCSS configuration
-├── eslint.config.js            # ESLint configuration
+├── package.json                 # Dependencies and npm scripts
+├── tailwind.config.js          # Tailwind CSS configuration
+├── postcss.config.js           # PostCSS plugins
+├── eslint.config.js            # ESLint rules
 └── wrangler.toml               # Cloudflare Pages deployment config
 ```
 
@@ -132,38 +150,41 @@ MekongMemories/
 
 ### State Management: Custom Pub/Sub (No Redux/Zustand)
 
-The app uses a **three-layer custom state management** system:
+The app uses a **three-layer custom state management** system designed for simplicity and explicit control:
 
-#### Layer 1: Core Managers (Singletons)
+#### Layer 1: Core Managers (Singleton Pattern)
 
-All managers in `/src/core/` are singleton instances exposed on `window` for debugging.
+All managers in `/src/core/` are singleton instances exposed on `window` for debugging:
 
 **StateManager** (`StateManager.js`)
 - Low-level localStorage wrapper with in-memory cache
 - Observable pattern for React subscriptions
 - Key prefix: `mekong_v2_`
+- Handles persistence layer
 
 **dataManager** (`dataManager.js`) - ⭐ **CENTRAL HUB**
 - Coordinates all application state
-- Pub/Sub pattern for React components
-- Manages: sessions, masterIndex, currentUser, etc.
-- Methods: `subscribe()`, `notify()`, `getState()`
+- Pub/Sub pattern for component subscriptions
+- Manages: sessions, masterIndex, currentUser, loadingOperation
+- Methods: `subscribe()`, `notify()`, `getState()`, `updateState()`
+- Handles automatic session archiving migration (v2.7)
 
-**Other Managers:**
-- `connectionManager` - Google OAuth state
-- `driveSync` - Google Drive file I/O
-- `userManager` - User profiles and styles
-- `notificationManager` - Push notifications
-- `contentLinks` - Bidirectional content↔session links
-- `themeAssignments` - Theme tag assignments
+**Other Core Managers:**
+- `connectionManager` - Google OAuth authentication state
+- `driveSync` - Google Drive file read/write operations
+- `userManager` - User profiles and color style assignments
+- `notificationManager` - Push notification management
+- `contentLinks` - Bidirectional content↔session link indexing
+- `themeAssignments` - Theme tag assignments to content
 
 #### Layer 2: React Hook
 
 **`useAppState()`** (`/src/hooks/useAppState.js`)
-- Single source of truth for components
-- Subscribes to `dataManager` changes
-- Returns state + action methods
+- Single source of truth for all components
+- Subscribes to `dataManager` changes automatically
+- Returns current state + action methods
 - Usage: `const app = useAppState();`
+- Cleanup on unmount prevents memory leaks
 
 #### Layer 3: Component Consumption
 
@@ -174,49 +195,57 @@ function MyComponent() {
   const app = useAppState();
 
   // Access state
-  const sessions = app.sessions;
-  const currentUser = app.currentUser;
+  const sessions = app.sessions;          // Array of sessions
+  const currentUser = app.currentUser;    // Current user object
+  const masterIndex = app.masterIndex;    // Timeline data
+  const loading = app.loadingOperation;   // Generic async spinner state
 
-  // Call actions
+  // Call action methods (update state)
   app.createSession(title, author);
+  app.addMessageToSession(sessionId, messageText);
   app.updateSession(sessionId, updates);
+  app.deleteSession(sessionId);
+  app.markSessionAsArchived(sessionId);
+  app.navigateTo(pageName, context);
+  app.setCurrentUser(userId);
 }
 ```
 
 ### Routing: Custom Page-Based (No React Router)
 
-**No routing library.** Routing via `currentPage` state in `App.jsx`:
+**No routing library** - Routing via state machine in `App.jsx`:
 
 ```javascript
 const renderPage = () => {
   switch (app.currentPage) {
-    case 'memories': return <MemoriesPage />;
     case 'sessions': return <SessionsPage />;
     case 'chat': return <ChatPage />;
+    case 'memories': return <MemoriesPage />;
     case 'settings': return <SettingsPage />;
+    default: return <StartupPage />;
   }
 }
 ```
 
-**Navigation:**
-- `app.navigateTo(page, context)` - Change page with context
-- Context object preserves state during transitions
-- Smart back button via `previousPage` state
+**Navigation Methods:**
+- `app.navigateTo(page, context)` - Change page with optional context
+- `context` object preserves state during transitions (selectionMode, pendingAttachment, etc.)
+- `app.previousPage` enables smart back button behavior
 
 **Navigation Context Fields:**
-- `previousPage` - For back button
-- `pendingAttachment` - Photos to attach
-- `sessionMomentId` - Moment context
-- `pendingLink` - Content links
+- `previousPage` - For back button functionality
+- `pendingAttachment` - Photos to attach to sessions
+- `sessionMomentId` - Moment context in chats
+- `pendingLink` - Content links being created
 - `targetContent` - Navigation targets
-- `selectionMode` - UI mode
+- `selectionMode` - UI mode (normal, link, select)
 
 ### Dependency Injection
 
-**All manager dependencies are injected in `main.jsx`:**
+**All manager dependencies are explicitly injected in `main.jsx`:**
 
 ```javascript
-// main.jsx
+// main.jsx - Avoid circular dependencies
 driveSync.initialize({ connectionManager });
 dataManager.initializeDependencies({
   connectionManager,
@@ -227,129 +256,171 @@ dataManager.initializeDependencies({
 });
 ```
 
-**Important:** Managers are singletons, but dependencies are explicitly injected to avoid circular imports.
+**Why?** Managers are singletons but need explicit initialization to avoid circular imports and ensure proper initialization order.
 
 ### Observer Pattern (Pub/Sub)
 
 ```javascript
-// Subscribe
+// In React components
+const app = useAppState();  // Automatically subscribed
+
+// In core managers (manual subscription)
 const unsubscribe = dataManager.subscribe(newState => {
-  // Handle state change
+  // React to state changes
 });
 
-// Later...
-unsubscribe();
+// Later
+unsubscribe();  // Cleanup
 
-// Notify (in managers)
-dataManager.notify();
+// Notify all subscribers
+dataManager.notify();  // Called after state updates
 ```
 
 ### Error Handling
 
 - React Error Boundary wraps entire app in `App.jsx`
 - Catches render errors and displays fallback UI
-- Errors logged via custom logger
+- Errors logged via custom logger to console and localStorage
+- Network errors handled gracefully in `DriveSync.js`
 
 ---
 
-## 🎨 Styling Conventions
+## 🎨 Styling & Theme System
 
-### Dark Mode
+### Dark Mode Implementation (v2.7 Complete)
 
-**Implementation:**
+**Architecture:**
 - Context: `ThemeContext.jsx` provides `useTheme()` hook
 - Class-based: Applies `dark` class to `<html>` element
-- Default: Dark mode
+- Default: Dark mode on first load (checked from localStorage)
 - Persistence: localStorage key `mekong_theme_mode`
 
-**CSS Variables:**
-```css
-/* index.css */
-:root {
-  --color-bg-primary: #f9fafb;
-  --color-text-primary: #111827;
-  /* ... */
-}
-
-.dark {
-  --color-bg-primary: #111827;
-  --color-text-primary: #f3f4f6;
-  /* ... */
-}
+**StartupPage Dark Mode Initialization:**
+```javascript
+// On app startup, apply saved preference
+useEffect(() => {
+  const savedTheme = localStorage.getItem('mekong_theme_mode');
+  const isDark = savedTheme ? savedTheme === 'dark' : true;
+  if (isDark) {
+    document.documentElement.classList.add('dark');
+  }
+}, []);
 ```
 
-### Tailwind Patterns
-
-**Always use dual classes for light/dark:**
+**Tailwind Dual-Class Pattern:**
 ```jsx
 <div className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
 ```
 
-**Common patterns:**
-- Background: `bg-white dark:bg-gray-800`
-- Text: `text-gray-900 dark:text-gray-100`
-- Borders: `border-gray-200 dark:border-gray-700`
-- Transitions: `transition-colors duration-200`
+**Color Palette (v2.7):**
+- **Primary:** Amber (`amber-500`, `amber-600`)
+- **Accent:** Purple (`purple-600`)
+- **Status:** Red, Green, Blue
+- **Backgrounds:** Gray scale (50-900)
+- **User Colors:** Blue, Amber, Purple, Green, Red
 
-**Color Palette:**
-- Primary: Amber (`amber-500`, `amber-600`)
-- Accent: Purple (`purple-600`)
-- Status: Red, Green, Blue
-- Backgrounds: Gray scale (50-900)
+**Section Header Colors (v2.7):**
+- Utilisateurs: Dynamic user color
+- Mes thèmes: Amber (`text-amber-500 dark:text-amber-400`)
+- Statistiques: Violet (`text-violet-500 dark:text-violet-400`)
+- Données: Indigo (`text-indigo-500 dark:text-indigo-400`)
 
-**Layout:**
+**Layout Guidelines:**
 - Mobile-first responsive design
 - Fixed top bar: `fixed top-0 w-full z-50`
 - Fixed bottom nav: `fixed bottom-0 w-full z-40`
-- Main content: `pt-12 pb-16` (compensate for fixed bars)
+- Main content padding: `pt-12 pb-16` (compensate for fixed bars)
+
+---
+
+## 📸 Photo Viewer (v2.7 - Optimized)
+
+**PhotoViewer.jsx** - Fullscreen immersive photo display
+
+### v2.7 Optimizations
+
+**Visual Enhancements:**
+- ✅ Maximum image width: Reduced padding `px-16` → `px-2`
+- ✅ Full width photos while maintaining aspect ratio
+- ✅ Object-contain ensures perfect fit without distortion
+- ✅ Inspired by iOS Photos and Google Photos apps
+
+**Navigation Subtlety:**
+- ✅ Subtle arrows: `opacity-40` default, `opacity-70` on hover
+- ✅ Smaller icons: `w-8 h-8` → `w-6 h-6`
+- ✅ No background fill on arrows (pure transparency)
+- ✅ Smooth transitions (`transition-opacity`)
+- ✅ Keyboard shortcuts preserved (← → arrows, Esc)
+
+**Mobile Experience:**
+- ✅ Swipe gestures fully functional (horizontal swipe = navigate)
+- ✅ Touch support: 50px minimum swipe distance
+- ✅ Arrows fade subtly on hover (ideal for touch devices)
+- ✅ Image centered and maximized for viewing
+
+### PhotoViewer Features
+
+**Session Integration:**
+- Smart badge showing number of linked sessions
+- Create new session directly from photo
+- List existing sessions linked to this photo
+- Both filename and google_drive_id lookups
+
+**Theme Assignment:**
+- Assign theme tags to photos
+- Display assigned themes as badge
+- Visual feedback (color changes)
+
+**Content Linking:**
+- Link photos to sessions while viewing
+- Selection mode support
+- Bidirectional link tracking
 
 ---
 
 ## 💾 Data Persistence
 
-### localStorage Keys
+### localStorage Keys (Client-Side Cache)
 
-| Key | Description |
-|-----|-------------|
-| `mekong_v2_sessions` | Sessions array |
-| `mekong_v2_currentUser` | Current user ID |
-| `mekong_v2_masterIndex` | Master moments timeline |
-| `oauth_token` | Google OAuth token (1h TTL) |
-| `oauth_token_timestamp` | Token creation timestamp |
-| `mekong_theme_mode` | Dark/light mode preference |
-| `mekong_sessionSort_{userId}` | Session sort preferences |
-| `mekong_sessionReadStatus_{userId}` | Read status tracking |
-| `debug_mode` | Enable verbose logging |
+| Key | Description | Type |
+|-----|-------------|------|
+| `mekong_v2_sessions` | Sessions array | JSON array |
+| `mekong_v2_currentUser` | Current user ID | String |
+| `mekong_v2_masterIndex` | Master moments timeline | JSON object |
+| `oauth_token` | Google OAuth token | String (1h TTL) |
+| `oauth_token_timestamp` | Token creation time | ISO timestamp |
+| `mekong_theme_mode` | Dark/light preference | 'dark' \| 'light' |
+| `mekong_sessionSort_{userId}` | Session sort preference | String |
+| `mekong_sessionReadStatus_{userId}` | Read status tracking | JSON object |
+| `mekong_theme_sort_order` | Theme sort order | String |
+| `debug_mode` | Enable verbose logging | 'true' \| undefined |
 
-### Google Drive Files
+### Google Drive Files (Source of Truth)
 
-| File | Description |
-|------|-------------|
-| `session_{sessionId}.json` | Individual session data |
-| `mekong_master_index_v3_moments.json` | Master timeline index |
-| `content-links.json` | Content↔session bidirectional links |
-| `theme-assignments.json` | Theme tag assignments |
-| `notifications.json` | User notifications |
+| File | Description | Format |
+|------|-------------|--------|
+| `session_{sessionId}.json` | Individual session data | JSON |
+| `mekong_master_index_v3_moments.json` | Master timeline index | JSON |
+| `content-links.json` | Bidirectional links | JSON |
+| `theme-assignments.json` | Theme assignments | JSON |
+| `notifications.json` | User notifications | JSON |
 
-**Important:** All Drive operations go through `driveSync.js`
+**Important:** All Drive operations go through `driveSync.js` for consistency and error handling.
 
 ---
 
 ## 📝 Code Conventions
 
 ### File Naming
-
 - **Components:** PascalCase (`.jsx`) - `SessionPage.jsx`
 - **Managers/Utils:** camelCase (`.js`) - `dataManager.js`
 - **Config files:** kebab-case - `tailwind.config.js`
 
 ### Import Organization
-
-**Standard order:**
 ```javascript
 // 1. React/external libraries
 import React, { useState, useEffect } from 'react';
-import { X, Check } from 'lucide-react';
+import { X, Check, MoreVertical } from 'lucide-react';
 
 // 2. Hooks/contexts
 import { useAppState } from '../hooks/useAppState.js';
@@ -368,8 +439,7 @@ import { APP_VERSION } from '../config/version.js';
 ```
 
 ### Comments & Documentation
-
-**Language:** French for comments and documentation
+**Language:** French for all comments and complex logic
 
 **Emoji prefixes for visual scanning:**
 - ✅ Completed features
@@ -378,101 +448,107 @@ import { APP_VERSION } from '../config/version.js';
 - 🔍 Debug code
 - ⚠️ Warnings
 - 🎯 TODO items
+- ✨ New features or improvements
 
-**File headers:**
+### File Headers
 ```javascript
 /**
- * ComponentName.jsx v2.9 - Phase 19E : Feature Name
+ * ComponentName.jsx v2.7 - Photo Viewer Optimization
  * ✅ Feature 1
  * ✅ Feature 2
  * ⭐ Important note
  */
 ```
 
-### Logging
-
-**Custom logger** (`/src/utils/logger.js`)
-
+### Logging System
 ```javascript
 import { logger } from '../utils/logger.js';
 
-logger.debug('Debugging info', data);
-logger.info('Information');
-logger.warn('Warning message');
-logger.error('Error occurred', error);
-logger.success('Operation successful');
+logger.debug('Debugging info', data);    // 🔍 Blue
+logger.info('Information');               // ℹ️ Cyan
+logger.warn('Warning message');           // ⚠️ Yellow
+logger.error('Error occurred', error);    // ❌ Red
+logger.success('Operation successful');   // ✅ Green
 ```
 
 **Features:**
-- Color-coded console output
-- Emoji indicators (🔍 ℹ️ ⚠️ ❌ ✅)
+- Color-coded console output with emoji indicators
 - Toggle via `localStorage.debug_mode = 'true'`
-- Disabled in production by default
+- Automatically disabled in production
 
 ---
 
 ## 🔑 Key Concepts
 
-### Sessions
+### Sessions (Conversations)
 
-**What:** Themed conversations/chats about travel memories
+**What:** Themed conversations/chats about travel memories between two users
 
-**Data structure:**
+**Data Structure:**
 ```javascript
 {
   id: 'session_123',
-  title: 'Session title',
-  author: 'userName',
-  messages: [
+  gameTitle: 'Session title',
+  user: 'alice',              // Creator
+  gameId: 'moment_1',         // Associated moment
+  notes: [                    // Messages (formerly called messages)
     {
       id: 'msg_1',
-      author: 'userName',
-      text: 'Message content',
+      author: 'alice',
+      content: 'Message text',
       timestamp: '2025-11-10T12:00:00Z',
-      attachments: ['moment_1', 'photo_1']
+      edited: false,
+      photoData: {...},       // Optional photo attachment
+      linkedContent: {...}    // Optional linked content
     }
   ],
-  linkedContent: ['moment_1', 'photo_1'],
-  themes: ['culture', 'food'],
-  status: 'pending_you', // See SESSION_STATUS
-  isArchived: false,
+  archived: false,            // v2.7: Replaces old 'completed' flag
   createdAt: '2025-11-10T12:00:00Z',
   updatedAt: '2025-11-10T13:00:00Z'
 }
 ```
 
-**Session Status:**
+**Session Status (from enrichSessionWithStatus):**
 ```javascript
 SESSION_STATUS = {
-  NOTIFIED: 'notified',         // 🔔 Unread notification
-  PENDING_YOU: 'pending_you',   // ⏳ Your turn to respond
+  NOTIFIED: 'notified',           // 🔔 Unread notification from other user
+  PENDING_YOU: 'pending_you',     // ⏳ Your turn to respond
   PENDING_OTHER: 'pending_other', // ⏳ Waiting for response
-  COMPLETED: 'completed'         // ✅ Marked complete
+  ACTIVE: 'active',               // 🟢 Normal conversation
+  ARCHIVED: 'archived'            // 📚 v2.7: Archived (formerly completed)
 }
 ```
 
-### Moments
+**Read/Unread States (v2.7):**
+```javascript
+// For each user independently:
+'new'      // Never opened + created by someone else
+'unread'   // New message since last opened
+'read'     // Up to date with all messages
+```
 
-**What:** Thematic units in the travel timeline (days, experiences, locations)
+### Moments (Thematic Timeline Units)
 
-**Data structure:**
+**What:** Days, experiences, or locations in the travel timeline
+
+**Data Structure:**
 ```javascript
 {
   id: 'moment_1',
   title: 'Jour 1 : Arrivée à Luang Prabang',
   date: '2024-01-15',
-  description: 'Premier jour...',
+  description: 'First day arrival...',
+  location: 'Luang Prabang',
   photos: ['photo_1', 'photo_2'],
   posts: ['post_1'],
-  location: 'Luang Prabang',
   tags: ['arrival', 'city'],
   linkedSessions: ['session_1', 'session_2']
 }
 ```
 
-### Content Links
+### Content Links (Bidirectional)
 
-**What:** Bidirectional links between content (moments/photos/posts) and sessions
+**What:** Smart linking between content (moments/photos/posts) and sessions
 
 **Managed by:** `ContentLinks.js`
 
@@ -483,27 +559,40 @@ SESSION_STATUS = {
     {
       id: 'link_1',
       sessionId: 'session_1',
-      contentType: 'moment', // 'moment' | 'photo' | 'post'
+      contentType: 'moment',  // 'moment' | 'photo' | 'post'
       contentId: 'moment_1',
+      messageId: 'msg_1',     // Optional: which message linked this
       createdAt: '2025-11-10T12:00:00Z'
     }
   ]
 }
 ```
 
-**Indexes:** Two Map structures for O(1) lookups
+**Performance:**
+- Two Map structures for O(1) lookups
 - `sessionIndex`: sessionId → Set<linkIds>
 - `contentIndex`: contentKey → Set<linkIds>
+- Content key format: `{contentType}:{contentId}`
 
-**Content key format:** `{contentType}:{contentId}`
+### Theme Assignments (User-Created Tags)
 
-### Theme Assignments
-
-**What:** User-assigned theme tags for organizing content
+**What:** Custom tags for organizing and categorizing content
 
 **Managed by:** `ThemeAssignments.js`
 
-**Themes:** `culture`, `food`, `nature`, `people`, `architecture`, etc.
+**Available Themes:** Culture, Food, Nature, People, Architecture, + user-created
+
+**Structure:**
+```javascript
+{
+  id: 'theme_1',
+  name: 'Culture',
+  icon: '🏛️',
+  color: 'purple',
+  createdBy: 'alice',
+  createdAt: '2025-11-10T12:00:00Z'
+}
+```
 
 ---
 
@@ -528,29 +617,41 @@ npm run build
 npm run preview
 ```
 
-### Version Updates
+### Version Updates (Release Process)
 
 **When releasing a new version:**
 
 1. Update `/src/config/version.js`:
    ```javascript
-   export const APP_VERSION = "2.7"; // Increment
-   export const BUILD_DATE = "14 novembre 2025"; // Update date
-   export const PHASE = "New Feature Name"; // Update phase
+   export const APP_VERSION = "2.8";
+   export const BUILD_DATE = "15 novembre 2025";
+   export const PHASE = "Feature Name";
    ```
 
-2. Document changes in `/Doc/dev_guide_v2_X.md`
+2. Update header in relevant component files (PhotoViewer.jsx, etc.)
 
-3. Commit with clear message:
+3. Document changes in `/Doc/dev_guide_v2_X.md` (create new file for new version)
+
+4. Commit with clear message:
    ```bash
    git add .
-   git commit -m "Version 2.7: New Feature Name"
+   git commit -m "Feat: Release v2.8 - Feature Name
+
+   - Change 1
+   - Change 2
+   "
    git push
    ```
 
 ### Deployment
 
-**Platform:** Cloudflare Pages
+**Platform:** Cloudflare Pages (automatic on git push)
+
+**Manual Deployment:**
+```bash
+npm run build
+npx wrangler pages deploy dist/
+```
 
 **Configuration:** `wrangler.toml`
 ```toml
@@ -558,18 +659,13 @@ name = "mekong-memoire"
 pages_build_output_dir = "dist"
 ```
 
-**Process:**
-1. `npm run build` - Creates `dist/` directory
-2. Cloudflare Pages auto-deploys from git
-3. Or manual: `npx wrangler pages deploy dist/`
-
-### Debugging
+### Debugging Tools
 
 **Enable debug mode:**
 ```javascript
 // In browser console
 localStorage.setItem('debug_mode', 'true');
-// Then refresh
+// Then refresh page
 ```
 
 **Access managers:**
@@ -578,18 +674,28 @@ localStorage.setItem('debug_mode', 'true');
 window.dataManager.getState();
 window.connectionManager.isConnected();
 window.driveSync.listFiles();
+window.userManager.getAllUsers();
+window.themeAssignments.getAllThemes();
+window.contentLinks.getAllLinks();
 ```
 
 **Useful debug commands:**
 ```javascript
 // Check current state
-window.dataManager.getState()
+const state = window.dataManager.getState();
+console.log('Sessions:', state.sessions);
+console.log('Current user:', state.currentUser);
 
-// Check localStorage
-Object.keys(localStorage).filter(k => k.startsWith('mekong_'))
+// Check localStorage usage
+Object.keys(localStorage)
+  .filter(k => k.startsWith('mekong_'))
+  .map(k => `${k}: ${Math.round(localStorage.getItem(k).length / 1024)}KB`);
 
-// Clear all data (caution!)
-window.dataManager.resetAllData()
+// Check read status for current user
+JSON.parse(localStorage.getItem(`mekong_sessionReadStatus_${state.currentUser}`));
+
+// Clear all data (⚠️ CAUTION!)
+window.dataManager.resetAllData();
 ```
 
 ---
@@ -597,72 +703,74 @@ window.dataManager.resetAllData()
 ## ⚠️ Important Gotchas & Notes
 
 ### 1. No TypeScript
-
-- Everything is JavaScript
+- Everything is JavaScript ES6+
 - No type checking at build time
-- Use JSDoc comments for better IDE support if needed
+- Use JSDoc comments for IDE support if needed
 
 ### 2. No Router Library
-
-- Don't look for react-router or similar
 - Navigation is state-based via `app.navigateTo()`
-- Use `app.currentPage` to check current route
+- No react-router or similar libraries
+- Check `app.currentPage` to determine current route
 
 ### 3. French Codebase
-
 - All comments and documentation in French
 - Variable names in English
 - Function names in English
 - Keep this convention when adding code
 
 ### 4. Singleton Managers
-
 - All managers in `/src/core/` are singletons
-- Export as `export const managerName = new Manager()`
+- Export as: `export const managerName = new Manager()`
 - Never create new instances: ❌ `new DataManager()`
 - Always import: ✅ `import { dataManager } from '../core/dataManager.js'`
 
 ### 5. State Updates
-
-- **Never** mutate state directly
+- **NEVER** mutate state directly
 - Always go through `dataManager` methods
 - State updates trigger pub/sub notifications
-- React components re-render via `useAppState()`
+- React components re-render automatically via `useAppState()`
 
 ### 6. Google OAuth Token
-
 - Tokens expire after 1 hour
 - Check `connectionManager.isConnected()` before Drive operations
 - Token refresh happens automatically
 - Handle disconnection gracefully (redirect to login)
 
-### 7. Dark Mode Default
-
+### 7. Dark Mode
 - App defaults to dark mode
-- Always test both themes
+- Always test both light and dark themes
 - Use `dark:` classes consistently
-- Never hardcode colors without dark variant
+- Never hardcode colors without dark variants
 
-### 8. Mobile-First
-
-- App is primarily mobile-focused
-- Test on mobile viewport (375px width)
+### 8. Mobile-First Design
+- App is primarily mobile-focused (375px viewport)
 - Fixed top/bottom bars reduce usable height
 - Always account for `pt-12 pb-16` padding
+- Test touch interactions and swipe gestures
 
-### 9. Performance
-
+### 9. Performance Optimization
 - Large photo collections can impact performance
 - Use `useMemo` for expensive computations
-- Avoid unnecessary re-renders
+- Avoid unnecessary re-renders with proper dependency arrays
 - ContentLinks uses Map for O(1) lookups
 
 ### 10. localStorage Limits
-
-- Browser limit: ~5-10MB
+- Browser limit: ~5-10MB per domain
 - Monitor localStorage usage
-- Critical data also synced to Google Drive
+- Critical data is synced to Google Drive
 - Clear cache if hitting limits
+
+### 11. Session Status Migration (v2.7)
+- Old sessions may have `completed: true` flag
+- `dataManager` automatically migrates to `archived: true`
+- No manual intervention needed
+- Ensure all code checks `archived` property, not `completed`
+
+### 12. Photo Viewer Mobile Experience (v2.7)
+- Swipe gestures are primary navigation method
+- Navigation arrows are subtle (opacity-40)
+- Photos maximize width on all screen sizes
+- Test on actual mobile devices, not just desktop
 
 ---
 
@@ -698,12 +806,11 @@ window.dataManager.resetAllData()
    }
    ```
 
-3. Add navigation in `/src/components/Navigation.jsx`:
-   ```javascript
-   <button onClick={() => app.navigateTo('new-page')}>
-     <Icon />
-   </button>
-   ```
+3. Add to Navigation in `/src/components/Navigation.jsx`
+
+4. Create TopBar in `/src/components/topbar/NewPageTopBar.jsx` if needed
+
+5. Add case to `UnifiedTopBar.jsx` to render correct TopBar
 
 ### Adding a New Manager
 
@@ -734,6 +841,9 @@ window.dataManager.resetAllData()
    ```javascript
    import { newManager } from './core/NewManager.js';
    newManager.initialize();
+   dataManager.initializeDependencies({
+     // ... add if it has dependencies
+   });
    ```
 
 3. Add to `dataManager` dependencies if needed
@@ -759,29 +869,7 @@ window.dataManager.resetAllData()
    }
    ```
 
-3. Always provide both light and dark variants
-
-### Adding a New Content Link
-
-```javascript
-import { contentLinks } from '../core/ContentLinks.js';
-
-// Create link
-contentLinks.addLink({
-  sessionId: 'session_1',
-  contentType: 'moment', // 'moment' | 'photo' | 'post'
-  contentId: 'moment_1'
-});
-
-// Get links for session
-const links = contentLinks.getLinksForSession('session_1');
-
-// Get links for content
-const links = contentLinks.getLinksForContent('moment', 'moment_1');
-
-// Remove link
-contentLinks.removeLink('link_id');
-```
+3. Always provide both light and dark variants for ALL colors
 
 ### Working with Sessions
 
@@ -792,17 +880,22 @@ const app = useAppState();
 const sessionId = app.createSession('Session Title', 'authorName');
 
 // Add message to session
-app.addMessage(sessionId, {
-  author: 'userName',
-  text: 'Message content',
-  attachments: ['moment_1']
-});
+app.addMessageToSession(sessionId, 'Message content', photoData, linkedContent);
 
 // Update session
 app.updateSession(sessionId, {
-  status: 'completed',
+  archived: true,           // Archive session (v2.7)
   themes: ['culture', 'food']
 });
+
+// Mark as unread (v2.7)
+const storageKey = `mekong_sessionReadStatus_${userId}`;
+const tracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+tracking[sessionId] = {
+  hasBeenOpened: true,
+  lastOpenedAt: '1970-01-01T00:00:00.000Z'  // Force UNREAD status
+};
+localStorage.setItem(storageKey, JSON.stringify(tracking));
 
 // Delete session
 app.deleteSession(sessionId);
@@ -816,7 +909,7 @@ import { connectionManager } from '../core/ConnectionManager.js';
 
 // Check connection
 if (!connectionManager.isConnected()) {
-  // Handle disconnection
+  // Handle disconnection (redirect to login)
   return;
 }
 
@@ -833,31 +926,51 @@ const files = await driveSync.listFiles();
 await driveSync.deleteFile('session_123.json');
 ```
 
+### Generic Loading Spinner (v2.7)
+
+```javascript
+import { dataManager } from '../core/dataManager.js';
+
+// Show spinner
+dataManager.setLoadingOperation(true, 'Loading...', 'Connecting to Google Drive', 'spin');
+
+try {
+  // Do async operation
+  await someAsyncOperation();
+} finally {
+  // Hide spinner
+  dataManager.setLoadingOperation(false);
+}
+
+// In component
+const app = useAppState();
+const { active, message, subMessage, variant } = app.loadingOperation;
+```
+
 ---
 
-## 📚 Additional Resources
+## 📚 Documentation & Resources
 
-### Documentation
-
-- **Development Guides:** `/Doc/dev_guide_v2_*.md` (v2.2 → v2.7)
-- **Phase Specs:** `/Doc/phase17_specs.md`
+### Project Documentation
+- **Latest Dev Guide:** `/Doc/dev_guide_v2_7.md`
+- **Previous Guides:** `/Doc/dev_guide_v2_*.md` (v2.2 → v2.6d)
+- **Phase Specifications:** `/Doc/phase17_specs.md` and others
 - **README:** `/README.md` (generic Vite template)
 
 ### Key Files to Review
-
-**Before making changes, review:**
+Before making changes:
 1. `/src/hooks/useAppState.js` - Main state hook
 2. `/src/core/dataManager.js` - Central state manager
 3. `/src/components/App.jsx` - Root component and routing
 4. `/src/config/version.js` - Current version
-5. Recent dev guide in `/Doc/`
+5. `/Doc/dev_guide_v2_7.md` - Current phase documentation
 
-### Useful Links
-
-- **React Docs:** https://react.dev
-- **Tailwind Docs:** https://tailwindcss.com/docs
-- **Vite Docs:** https://vitejs.dev
+### External References
+- **React:** https://react.dev
+- **Tailwind CSS:** https://tailwindcss.com/docs
+- **Vite:** https://vitejs.dev
 - **Lucide Icons:** https://lucide.dev
+- **Google Drive API:** https://developers.google.com/drive/api
 
 ---
 
@@ -866,26 +979,38 @@ await driveSync.deleteFile('session_123.json');
 ### When Adding Features
 
 1. **Check current version** in `/src/config/version.js`
-2. **Review latest dev guide** in `/Doc/`
-3. **Follow existing patterns** (pub/sub, singleton managers)
+2. **Review latest dev guide** in `/Doc/dev_guide_v2_7.md`
+3. **Follow existing patterns:**
+   - Use pub/sub for state management
+   - Singleton managers for shared logic
+   - Custom page-based routing
+   - Tailwind + dark mode classes
 4. **Test both themes** (light and dark)
-5. **Test on mobile** viewport
+5. **Test on mobile** viewport (375px width)
 6. **Add French comments** for complex logic
-7. **Update version** if releasing
-8. **Document in** `/Doc/dev_guide_v2_X.md`
+7. **Update version** number if releasing
+8. **Document changes** in appropriate dev guide
 
-### Code Quality
+### Code Quality Standards
 
-- ✅ Use `useAppState()` for all state access
-- ✅ Follow import organization pattern
-- ✅ Provide dark mode variants for all UI
-- ✅ Use custom logger instead of `console.log`
-- ✅ Handle errors gracefully
-- ✅ Check OAuth connection before Drive operations
-- ❌ No direct state mutations
-- ❌ No new manager instances (use singletons)
-- ❌ No inline styles (use Tailwind)
-- ❌ No hardcoded colors without dark variants
+✅ **DO:**
+- Use `useAppState()` for all state access
+- Follow import organization pattern
+- Provide dark mode variants for ALL UI
+- Use custom logger instead of `console.log`
+- Handle errors gracefully
+- Check OAuth connection before Drive operations
+- Add meaningful comments in French
+- Test on mobile devices
+
+❌ **DON'T:**
+- Mutate state directly
+- Create new manager instances
+- Use inline styles (use Tailwind)
+- Hardcode colors without dark variants
+- Use TypeScript or flow
+- Add external UI libraries (Tailwind + lucide only)
+- Use React Router or equivalent
 
 ### Testing Checklist
 
@@ -898,41 +1023,76 @@ Before committing:
 - [ ] Google Drive sync works
 - [ ] localStorage persists correctly
 - [ ] Navigation flows work
-- [ ] No console errors
+- [ ] No console errors or warnings
+- [ ] Keyboard shortcuts work (if applicable)
+- [ ] Touch/swipe gestures work (mobile)
 
 ---
 
 ## 🎓 Learning Path
 
-**For new AI assistants working on this codebase:**
+**For new developers working on this codebase:**
 
 1. **Start with:** `/src/components/App.jsx` - Understand routing and structure
 2. **Then read:** `/src/hooks/useAppState.js` - Learn state management
-3. **Review:** `/src/core/dataManager.js` - Central state coordination
+3. **Study:** `/src/core/dataManager.js` - Central state coordination
 4. **Explore:** `/src/components/pages/` - See how pages work
-5. **Check:** Recent `/Doc/dev_guide_v2_*.md` - Current phase goals
-6. **Experiment:** Enable debug mode and explore via console
+5. **Review:** `/Doc/dev_guide_v2_7.md` - Current phase goals
+6. **Practice:** Enable debug mode and explore via console
 
-**Key mental models:**
-- State flows: Component → `useAppState()` → `dataManager` → Managers → Storage
-- Navigation: User action → `app.navigateTo()` → State change → Page re-render
-- Data sync: User action → Manager → `driveSync` → Google Drive → Success callback
-
----
-
-## 📞 Support
-
-For questions about:
-- **Architecture:** Review `/Doc/dev_guide_v2_*.md`
-- **State management:** Check `/src/core/dataManager.js`
-- **Routing:** See `/src/components/App.jsx`
-- **Styling:** Review Tailwind patterns above
-- **Data structures:** Check manager files in `/src/core/`
-
-**Debug first:** Enable debug mode and check browser console and `window.dataManager.getState()`
+**Key Mental Models:**
+- **State Flow:** Component → `useAppState()` → `dataManager` → Managers → localStorage/Drive
+- **Navigation:** User action → `app.navigateTo()` → State change → Page re-render
+- **Data Sync:** User action → Manager → `driveSync` → Google Drive → Success callback
+- **Pub/Sub:** Managers notify dataManager → dataManager notifies components → Components re-render
 
 ---
 
-**Last Updated:** November 14, 2025
-**Version:** 2.6d "Dark Mode"
-**Maintained by:** AI Assistants working on Mémoire du Mékong
+## 📞 Support & Help
+
+For questions about specific aspects:
+
+**Architecture & State Management:**
+- Read: `/src/core/dataManager.js`
+- Review: `/Doc/dev_guide_v2_7.md`
+
+**Routing & Navigation:**
+- Read: `/src/components/App.jsx`
+- Check: `app.navigateTo()` in useAppState
+
+**Styling & Theming:**
+- Review Tailwind patterns above
+- Check: `ThemeContext.jsx`
+- Test both light and dark modes
+
+**Data Structures:**
+- Check manager files in `/src/core/`
+- See "Key Concepts" section above
+
+**Debugging:**
+1. Enable debug mode: `localStorage.setItem('debug_mode', 'true')`
+2. Check browser console for logger output
+3. Inspect state: `window.dataManager.getState()`
+4. Check localStorage: Filter by `mekong_` prefix
+
+---
+
+## 📊 Project Statistics
+
+| Metric | Value |
+|--------|-------|
+| **Total Lines of Code** | ~8,900 |
+| **React Components** | 20+ |
+| **Core Managers** | 10 |
+| **Pages** | 5 |
+| **Current Version** | 2.7 |
+| **Build Size (JS)** | ~434 KB |
+| **Build Size (CSS)** | ~58.5 KB |
+| **Dependencies** | 3 external (React, Vite, Tailwind, Lucide) |
+
+---
+
+**Last Updated:** November 15, 2025
+**Version:** 2.7 "Photo Viewer Optimization"
+**Maintained by:** Development Team & AI Assistants
+**Next Phase:** TBD
