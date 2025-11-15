@@ -445,22 +445,19 @@ const executeDeleteTheme = async () => {
             <Users className={`w-5 h-5 ${currentUserStyle?.text.replace('bg-', 'text-') || 'text-gray-600 dark:text-gray-400'}`} />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Utilisateurs</h2>
           </div>
-          <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${openSections.users ? 'rotate-180' : ''}`} />
+          <div className="flex items-center space-x-3">
+            <div className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg ${currentUserStyle?.bg} ${currentUserStyle?.border} border text-sm`}>
+              <span className="text-base">{userManager.getUser(app.currentUser?.id)?.emoji}</span>
+              <span className={`font-medium ${currentUserStyle?.text.replace('bg-', 'text-')}`}>
+                {userManager.getUser(app.currentUser?.id)?.name}
+              </span>
+            </div>
+            <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${openSections.users ? 'rotate-180' : ''}`} />
+          </div>
         </button>
         
         {openSections.users && (
           <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-            {/* Affichage de l'utilisateur courant */}
-            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-600">
-              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Utilisateur courant</p>
-              <div className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg ${currentUserStyle?.bg} ${currentUserStyle?.border} border`}>
-                <span className="text-lg">{userManager.getUser(app.currentUser?.id)?.emoji}</span>
-                <span className={`font-medium ${currentUserStyle?.text.replace('bg-', 'text-')}`}>
-                  {userManager.getUser(app.currentUser?.id)?.name}
-                </span>
-              </div>
-            </div>
-
             <div className="grid grid-cols-3 gap-3">
               {users.map(user => {
                 const isActive = app.currentUser?.id === user.id;
@@ -665,7 +662,7 @@ const executeDeleteTheme = async () => {
     data-section="themes"
     data-open={openSections.themes ? "true" : undefined}
     onClick={() => toggleSection('themes')}
-    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
   >
     <div className="flex items-center space-x-2">
       <Tag className="w-5 h-5 text-amber-500 dark:text-amber-400" />

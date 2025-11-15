@@ -12,7 +12,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   X, Edit, Bell, MoreVertical,
-  Sparkles, Tag, Trash2, Archive
+  Sparkles, Tag, Trash2, Archive, EyeOff
 } from 'lucide-react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { dataManager } from '../../core/dataManager.js';
@@ -138,15 +138,34 @@ export default function ChatTopBar({
 
   const handleDeleteCurrentSession = async () => {
     if (!app.currentChatSession) return;
-    
+
     setShowMenu(false);
-    
+
     if (confirm(`Supprimer la session "${app.currentChatSession.gameTitle}" ?`)) {
       await app.deleteSession(app.currentChatSession.id);
       onCloseChatSession();
     }
   };
-  
+
+  const handleMarkAsUnread = () => {
+    if (!app.currentChatSession || !app.currentUser?.id) return;
+
+    setShowMenu(false);
+
+    // Récupérer le tracking de lecture depuis localStorage
+    const storageKey = `mekong_sessionReadStatus_${app.currentUser.id}`;
+    const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+    // Réinitialiser le tracking pour cette session (marquer comme non lue)
+    allTracking[app.currentChatSession.id] = {
+      hasBeenOpened: true,
+      lastOpenedAt: '1970-01-01T00:00:00.000Z' // Date très ancienne pour forcer UNREAD
+    };
+
+    localStorage.setItem(storageKey, JSON.stringify(allTracking));
+    window.chatPageActions?.showFeedback('Session marquée comme non lue');
+  };
+
   const handleSendNotification = async () => {
     if (!app.currentChatSession || !app.currentUser) return;
     
@@ -370,6 +389,15 @@ export default function ChatTopBar({
             >
               <Edit className="w-4 h-4 text-gray-600 dark:text-gray-400" />
               <span className="text-gray-900 dark:text-gray-100">Renommer session</span>
+            </button>
+
+            {/* Marquer comme non lue */}
+            <button
+              onClick={handleMarkAsUnread}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
+            >
+              <EyeOff className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              <span className="text-gray-900 dark:text-gray-100">Marquer comme non lue</span>
             </button>
 
             {/* Archiver session */}
