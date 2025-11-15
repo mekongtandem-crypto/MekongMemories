@@ -18,7 +18,7 @@ import MemoriesPage from './pages/MemoriesPage.jsx';
 import SessionsPage from './pages/SessionsPage.jsx';
 import ChatPage from './pages/ChatPage.jsx';
 import StartupPage from './pages/StartupPage.jsx';
-import SessionCreationSpinner from './SessionCreationSpinner.jsx';
+import LoadingSpinner from './LoadingSpinner.jsx';
 
 // ============================================
 // ERROR BOUNDARY
@@ -511,8 +511,14 @@ export default function App() {
             />
           )}
           
-          {/* Spinner création session */}
-          {app.isCreatingSession && <SessionCreationSpinner />}
+          {/* ✨ Spinner générique pour opérations async */}
+          {app.loadingOperation?.active && (
+            <LoadingSpinner
+              message={app.loadingOperation.message}
+              subMessage={app.loadingOperation.subMessage}
+              variant={app.loadingOperation.variant}
+            />
+          )}
         </div>
       </ErrorBoundary>
     </ThemeProvider>
