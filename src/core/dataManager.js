@@ -139,7 +139,16 @@ class DataManager {
         logger.debug(`${masterIndex.moments.length} moments chargés`);
       }
 
-      const sessions = loadedFiles.sessions || [];
+      let sessions = loadedFiles.sessions || [];
+
+      // 🔄 Migration : Convertir les anciennes sessions avec 'completed' en 'archived'
+      sessions = sessions.map(session => {
+        if (session.completed && !session.archived) {
+          logger.info(`Migration session ${session.id}: completed → archived`);
+          return { ...session, archived: true, completed: undefined };
+        }
+        return session;
+      });
 
       // 5. Init notifications
       await this.notificationManager.init();

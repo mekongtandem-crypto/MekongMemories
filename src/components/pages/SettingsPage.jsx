@@ -449,7 +449,18 @@ const executeDeleteTheme = async () => {
         </button>
         
         {openSections.users && (
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+            {/* Affichage de l'utilisateur courant */}
+            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-600">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Utilisateur courant</p>
+              <div className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg ${currentUserStyle?.bg} ${currentUserStyle?.border} border`}>
+                <span className="text-lg">{userManager.getUser(app.currentUser?.id)?.emoji}</span>
+                <span className={`font-medium ${currentUserStyle?.text.replace('bg-', 'text-')}`}>
+                  {userManager.getUser(app.currentUser?.id)?.name}
+                </span>
+              </div>
+            </div>
+
             <div className="grid grid-cols-3 gap-3">
               {users.map(user => {
                 const isActive = app.currentUser?.id === user.id;
@@ -466,7 +477,7 @@ const executeDeleteTheme = async () => {
                     }`}
                   >
                     <div className="text-3xl mb-2">{currentUserData.emoji}</div>
-                    <div className={`font-medium ${isActive ? style.text.replace('bg-', 'text-') : 'text-gray-700'}`}>
+                    <div className={`font-medium ${isActive ? style.text.replace('bg-', 'text-') : 'text-gray-700 dark:text-gray-300'}`}>
                       {user.name}
                     </div>
                   </button>
@@ -483,7 +494,7 @@ const executeDeleteTheme = async () => {
                       ? { id: null, type: null } 
                       : { id: user.id, type: 'avatar' }
                   )} 
-                  className="w-full p-3 bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium text-sm rounded-lg transition-colors flex items-center justify-center space-x-2"
+                  className="w-full p-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 font-medium text-sm rounded-lg transition-colors flex items-center justify-center space-x-2"
                 >
                   <span className="text-2xl">{userManager.getUser(user.id).emoji}</span>
                   <span>Avatar</span>
@@ -602,10 +613,10 @@ const executeDeleteTheme = async () => {
             {/* Éditeur couleur */}
             {editingUser.id && editingUser.type === 'color' && (
               <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-600 mb-2">
+                <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
                   Changer la couleur de {userManager.getUser(editingUser.id).name}
                 </label>
-                <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 p-4 bg-white rounded border border-gray-200">
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 p-4 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
                   {['blue', 'amber', 'purple', 'green', 'red', 'pink', 'indigo', 'orange'].map(color => {
                     const colorClasses = {
                       blue: 'bg-blue-100 hover:bg-blue-200 border-blue-300',
@@ -639,7 +650,7 @@ const executeDeleteTheme = async () => {
                 {/* ✅ Bouton Fermer */}
                 <button
                   onClick={() => setEditingUser({id: null, type: null})}
-                  className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors mt-4"
+                  className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors mt-4"
                 >
                   Fermer
                 </button>
@@ -666,14 +677,14 @@ const executeDeleteTheme = async () => {
   </button>
 
   {openSections.themes && (
-    <div className="p-4 border-t border-gray-100 space-y-4">
+    <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-4">
       
       {/* Sélecteur ordre d'affichage */}
-      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-        <label className="block text-sm font-medium text-blue-900 mb-2">
+      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+        <label className="block text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
           Ordre d'affichage des thèmes
         </label>
-        <select 
+        <select
           value={themeSortOrder}
           onChange={(e) => {
             const newOrder = e.target.value;
@@ -681,7 +692,7 @@ const executeDeleteTheme = async () => {
             localStorage.setItem('mekong_theme_sort_order', newOrder);
             console.log(`📊 Ordre thèmes changé : ${newOrder}`);
           }}
-          className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+          className="w-full px-3 py-2 border border-blue-300 dark:border-blue-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
         >
           <option value="usage">📊 Par utilisation (plus tagués en premier)</option>
           <option value="created">📅 Par date de création (récents en premier)</option>
@@ -689,7 +700,7 @@ const executeDeleteTheme = async () => {
           <option value="color">🎨 Par couleur</option>
           <option value="manual">✋ Manuel (ordre personnalisé)</option>
         </select>
-        <p className="text-xs text-blue-700 mt-2">
+        <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
           {themeSortOrder === 'usage' && 'Les thèmes les plus utilisés apparaîtront en premier'}
           {themeSortOrder === 'created' && 'Les thèmes créés récemment apparaîtront en premier'}
           {themeSortOrder === 'alpha' && 'Les thèmes seront triés par ordre alphabétique'}
@@ -715,7 +726,7 @@ const executeDeleteTheme = async () => {
                   <span className="text-2xl">{theme.icon}</span>
                   <div>
                     <div className={`font-medium ${colorClasses.text}`}>{theme.name}</div>
-                    <div className="text-xs text-gray-600">
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
                       {stats.totalCount === 0 ? (
                         'Aucun contenu'
                       ) : (
@@ -757,13 +768,13 @@ const executeDeleteTheme = async () => {
 
       {/* Formulaire création/édition */}
       {(showThemeForm || editingTheme) && (
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
-          <h3 className="font-medium text-gray-900">
+        <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600 space-y-3">
+          <h3 className="font-medium text-gray-900 dark:text-gray-100">
             {editingTheme ? 'Modifier le thème' : 'Créer un thème'}
           </h3>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Nom du thème *
             </label>
             <input
@@ -771,25 +782,25 @@ const executeDeleteTheme = async () => {
               value={themeName}
               onChange={(e) => setThemeName(e.target.value)}
               placeholder="Ex: Temples, Gastronomie..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Icône (emoji) *
             </label>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
               Tapez ou collez n'importe quel emoji de votre clavier
             </p>
-            
+
             <div className="relative">
               <input
                 type="text"
                 value={themeIcon}
                 onChange={(e) => setThemeIcon(e.target.value)}
                 placeholder="Tapez un emoji... 🛕"
-                className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-lg"
+                className="w-full px-3 py-2 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 text-lg bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                 maxLength={4}
               />
               {themeIcon && (
@@ -798,18 +809,18 @@ const executeDeleteTheme = async () => {
                 </div>
               )}
             </div>
-            
+
             <details className="mt-2">
-              <summary className="text-xs text-gray-500 cursor-pointer hover:text-amber-600 select-none">
+              <summary className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:text-amber-600 dark:hover:text-amber-400 select-none">
                 Ou choisir parmi des suggestions
               </summary>
-              <div className="grid grid-cols-12 gap-1 mt-2 p-2 bg-white rounded-lg border border-gray-200">
+              <div className="grid grid-cols-12 gap-1 mt-2 p-2 bg-white dark:bg-gray-600 rounded-lg border border-gray-200 dark:border-gray-600">
                 {['🛕', '🍜', '🚂', '🌴', '🎭', '👥', '🏙️', '📸', '🎒', '🗺️', '🧳', '⛺'].map((emoji, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setThemeIcon(emoji)}
-                    className="text-xl p-1 hover:bg-gray-100 rounded transition-colors"
+                    className="text-xl p-1 hover:bg-gray-100 dark:hover:bg-gray-500 rounded transition-colors"
                     title={`Utiliser ${emoji}`}
                   >
                     {emoji}
@@ -820,7 +831,7 @@ const executeDeleteTheme = async () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Couleur
             </label>
             <div className="flex space-x-2">
@@ -832,7 +843,7 @@ const executeDeleteTheme = async () => {
                   className={`w-10 h-10 rounded-full border-2 transition-all ${
                     THEME_COLORS[colorKey].badge
                   } ${
-                    themeColor === colorKey ? 'ring-2 ring-offset-2 ring-amber-500' : 'opacity-60'
+                    themeColor === colorKey ? 'ring-2 ring-offset-2 dark:ring-offset-gray-700 ring-amber-500' : 'opacity-60'
                   }`}
                 />
               ))}
@@ -851,7 +862,7 @@ const executeDeleteTheme = async () => {
                   setThemeIcon('');
                 }
               }}
-              className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium"
+              className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-900 dark:text-gray-100 rounded-lg font-medium transition-colors"
             >
               Annuler
             </button>
@@ -894,11 +905,11 @@ const executeDeleteTheme = async () => {
         </button>
         
         {openSections.stats && (
-          <div className="p-4 border-t border-gray-100 space-y-6">
+          <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-6">
             {(() => {
               const userActivityStats = generateUserActivityStats(app.sessions, app.masterIndex, users);
               if (!userActivityStats) {
-                return <p className="text-sm text-gray-500">Statistiques indisponibles.</p>;
+                return <p className="text-sm text-gray-500 dark:text-gray-400">Statistiques indisponibles.</p>;
               }
               const totalSessionsCreated = Object.values(userActivityStats.userStats).reduce((sum, s) => sum + s.sessionsCreated, 0);
 
@@ -957,20 +968,20 @@ const executeDeleteTheme = async () => {
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Pleins feux sur les causeries</h3>
+                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Pleins feux sur les causeries</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {userActivityStats.mostTalkativeSession ? (
-                        <button onClick={() => app.openChatSession(userActivityStats.mostTalkativeSession)} className="text-left bg-gray-50 p-4 rounded-lg hover:bg-gray-100 hover:ring-2 hover:ring-amber-400 transition-all cursor-pointer">
-                          <div className="font-semibold text-gray-800">💬 La plus bavarde</div>
-                          <p className="text-sm text-amber-700 truncate">{userActivityStats.mostTalkativeSession.gameTitle}</p>
-                          <p className="text-xs text-gray-500">{userActivityStats.mostTalkativeSession.notes.length} messages</p>
+                        <button onClick={() => app.openChatSession(userActivityStats.mostTalkativeSession)} className="text-left bg-gray-50 dark:bg-gray-700 p-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 hover:ring-2 hover:ring-amber-400 transition-all cursor-pointer">
+                          <div className="font-semibold text-gray-800 dark:text-gray-200">💬 La plus bavarde</div>
+                          <p className="text-sm text-amber-700 dark:text-amber-400 truncate">{userActivityStats.mostTalkativeSession.gameTitle}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{userActivityStats.mostTalkativeSession.notes.length} messages</p>
                         </button>
                       ) : <div />}
                       {userActivityStats.oldestActiveSession ? (
-                        <button onClick={() => app.openChatSession(userActivityStats.oldestActiveSession)} className="text-left bg-gray-50 p-4 rounded-lg hover:bg-gray-100 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer">
-                           <div className="font-semibold text-gray-800">⏳ Le souvenir oublié</div>
-                           <p className="text-sm text-blue-700 truncate">{userActivityStats.oldestActiveSession.gameTitle}</p>
-                           <p className="text-xs text-gray-500">En attente depuis le {new Date(userActivityStats.oldestActiveSession.notes[0].timestamp).toLocaleDateString('fr-FR')}</p>
+                        <button onClick={() => app.openChatSession(userActivityStats.oldestActiveSession)} className="text-left bg-gray-50 dark:bg-gray-700 p-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer">
+                           <div className="font-semibold text-gray-800 dark:text-gray-200">⏳ Le souvenir oublié</div>
+                           <p className="text-sm text-blue-700 dark:text-blue-400 truncate">{userActivityStats.oldestActiveSession.gameTitle}</p>
+                           <p className="text-xs text-gray-500 dark:text-gray-400">En attente depuis le {new Date(userActivityStats.oldestActiveSession.notes[0].timestamp).toLocaleDateString('fr-FR')}</p>
                         </button>
                       ) : <div />}
                     </div>
@@ -1077,10 +1088,10 @@ const executeDeleteTheme = async () => {
         </button>
         
         {openSections.connection && (
-          <div className="p-4 border-t border-gray-100 space-y-3">
+          <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
             {isOnline ? (
               <>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                   <Cloud className="w-4 h-4 text-green-500" />
                   <span>Connecté en tant que <span className="font-medium">{connectionEmail}</span></span>
                 </div>
@@ -1098,7 +1109,7 @@ const executeDeleteTheme = async () => {
               </>
             ) : (
               <>
-                <div className="flex items-center space-x-2 text-sm text-red-600">
+                <div className="flex items-center space-x-2 text-sm text-red-600 dark:text-red-400">
                   <CloudOff className="w-4 h-4" />
                   <span>Non connecté à Google Drive</span>
                 </div>
@@ -1128,7 +1139,7 @@ const executeDeleteTheme = async () => {
           <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${openSections.data ? 'rotate-180' : ''}`} />
         </button>
         {openSections.data && (
-          <div className="p-4 border-t border-gray-100 space-y-4">
+          <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{app.masterIndex?.metadata?.total_moments || 0}</div>
@@ -1171,11 +1182,11 @@ const executeDeleteTheme = async () => {
       </section>
       
       {/* Version en bas */}
-      <section className="mt-8 pt-4 border-t border-gray-200 text-center text-sm text-gray-500 space-y-1">
-        <p className="font-semibold text-gray-700">{APP_NAME}</p>
+      <section className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 text-center text-sm text-gray-500 dark:text-gray-400 space-y-1">
+        <p className="font-semibold text-gray-700 dark:text-gray-300">{APP_NAME}</p>
         <p>Version {APP_VERSION}</p>
-        <p className="text-gray-400">{PHASE}</p>
-        <p className="text-gray-400 text-xs">{BUILD_DATE}</p>
+        <p className="text-gray-400 dark:text-gray-500">{PHASE}</p>
+        <p className="text-gray-400 dark:text-gray-500 text-xs">{BUILD_DATE}</p>
       </section>
       
 {/* Modal de confirmation de suppression */}
