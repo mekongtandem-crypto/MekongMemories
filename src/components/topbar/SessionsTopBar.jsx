@@ -65,9 +65,10 @@ export default function SessionsTopBar() {
     }
     
     // Enrichir sessions avec statuts
+    // ✨ Filter seulement archived (completed supprimé)
     const enrichedSessions = app.sessions
       .map(s => enrichSessionWithStatus(s, app.currentUser.id))
-      .filter(s => !s.completed && !s.archived);
+      .filter(s => !s.archived);
     
     let notified = 0, newCount = 0, pending = 0;
     

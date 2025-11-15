@@ -21,7 +21,8 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
       localStorage.getItem(`mekong_sessionReadStatus_${app.currentUser.id}`) || '{}'
     );
     
-    const activeSessions = app.sessions.filter(s => !s.completed && !s.archived);
+    // ✨ Filter seulement archived (completed supprimé)
+    const activeSessions = app.sessions.filter(s => !s.archived);
     
     let notifiedCount = 0;
     let newCount = 0;
