@@ -1,7 +1,9 @@
 /**
- * PhotoViewer.jsx v2.8 - Phase 19D
+ * PhotoViewer.jsx v2.7 - Photo Viewer Optimization
+ * ✅ Images maximisées sur toute la largeur
+ * ✅ Flèches discrètes style Photos iOS
+ * ✅ Swipe tactile privilégié
  * ✅ Badge sessions avec mise à jour automatique
- * ✅ Pastilles photos intelligentes
  */
 
 // ========================================
@@ -505,9 +507,9 @@ const handleSelectSession = (session) => {
         {/* ======================================== */}
         {/* ZONE CENTRALE - Image */}
         {/* ======================================== */}
-        
-        <div 
-          className="absolute inset-0 flex items-center justify-center px-16"
+
+        <div
+          className="absolute inset-0 flex items-center justify-center px-2"
           style={{ pointerEvents: 'none', zIndex: 10000 }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -542,28 +544,28 @@ const handleSelectSession = (session) => {
         </div>
 
         {/* ======================================== */}
-        {/* NAVIGATION - Flèches */}
+        {/* NAVIGATION - Flèches (discrètes, style Photos iOS) */}
         {/* ======================================== */}
-        
+
         {gallery.length > 1 && currentIndex > 0 && (
-          <button 
+          <button
             onClick={() => navigate(-1)}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/70 rounded-full p-3 hover:bg-black/90 shadow-xl transition-colors"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-white opacity-40 hover:opacity-70 rounded-full p-2 transition-opacity"
             style={{ zIndex: 10001 }}
-            title="Photo précédente (← ou swipe droite)"
+            title="Photo précédente (swipe droite)"
           >
-            <ChevronLeft className="w-8 h-8" />
+            <ChevronLeft className="w-6 h-6" />
           </button>
         )}
-        
+
         {gallery.length > 1 && currentIndex < gallery.length - 1 && (
-          <button 
+          <button
             onClick={() => navigate(1)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/70 rounded-full p-3 hover:bg-black/90 shadow-xl transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white opacity-40 hover:opacity-70 rounded-full p-2 transition-opacity"
             style={{ zIndex: 10001 }}
-            title="Photo suivante (→ ou swipe gauche)"
+            title="Photo suivante (swipe gauche)"
           >
-            <ChevronRight className="w-8 h-8" />
+            <ChevronRight className="w-6 h-6" />
           </button>
         )}
 
