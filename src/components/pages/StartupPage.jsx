@@ -30,8 +30,20 @@ export default function StartupPage({ onReady }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [errorMessage, setErrorMessage] = useState(null);
   const [progressPercent, setProgressPercent] = useState(0);
-  
+
   const hasCheckedConnection = React.useRef(false);
+
+  // ✨ Initialiser le dark mode depuis localStorage au démarrage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('mekong_theme_mode');
+    const isDark = savedTheme ? savedTheme === 'dark' : true; // Par défaut: dark
+
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
 
   useEffect(() => {
     let isSubscribed = true;
