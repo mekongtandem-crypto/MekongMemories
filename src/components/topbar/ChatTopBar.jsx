@@ -12,7 +12,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   X, Edit, Bell, MoreVertical,
-  Sparkles, Tag, Trash2, Check
+  Sparkles, Tag, Trash2, Archive
 } from 'lucide-react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { dataManager } from '../../core/dataManager.js';
@@ -110,7 +110,32 @@ export default function ChatTopBar({
     setEditingTitle(false);
     setTitleValue('');
   };
-  
+
+  const handleArchiveCurrentSession = async () => {
+    if (!app.currentChatSession) return;
+
+    setShowMenu(false);
+
+    // ✨ Activer le spinner
+    dataManager.setLoadingOperation(true, 'Archivage de la session...', 'Enregistrement sur Google Drive', 'monkey');
+
+    try {
+      const updatedSession = {
+        ...app.currentChatSession,
+        archived: !app.currentChatSession.archived
+      };
+
+      await app.updateSession(updatedSession);
+
+      // ✨ Désactiver le spinner
+      dataManager.setLoadingOperation(false);
+    } catch (error) {
+      console.error('❌ Erreur archivage session:', error);
+      // ✨ Désactiver le spinner en cas d'erreur
+      dataManager.setLoadingOperation(false);
+    }
+  };
+
   const handleDeleteCurrentSession = async () => {
     if (!app.currentChatSession) return;
     
@@ -346,7 +371,18 @@ export default function ChatTopBar({
               <Edit className="w-4 h-4 text-gray-600 dark:text-gray-400" />
               <span className="text-gray-900 dark:text-gray-100">Renommer session</span>
             </button>
-            
+
+            {/* Archiver session */}
+            <button
+              onClick={handleArchiveCurrentSession}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
+            >
+              <Archive className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              <span className="text-gray-900 dark:text-gray-100">
+                {app.currentChatSession?.archived ? 'Désarchiver la session' : 'Archiver la session'}
+              </span>
+            </button>
+
             {/* Supprimer session */}
             <button
               onClick={handleDeleteCurrentSession}

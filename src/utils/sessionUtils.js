@@ -14,7 +14,6 @@ export const SESSION_STATUS = {
   PENDING_YOU: 'pending_you',  // Priorité 2
   PENDING_OTHER: 'pending_other', // Priorité 3
   ACTIVE: 'active',
-  COMPLETED: 'completed',
   ARCHIVED: 'archived'
 };
 
@@ -55,23 +54,14 @@ export const STATUS_CONFIG = {
     borderClass: 'border-green-300',
     priority: 4
   },
-  [SESSION_STATUS.COMPLETED]: {
-    label: 'Terminée',
-    icon: '✅',
-    color: 'gray',
-    bgClass: 'bg-gray-100',
-    textClass: 'text-gray-600',
-    borderClass: 'border-gray-300',
-    priority: 5
-  },
   [SESSION_STATUS.ARCHIVED]: {
     label: 'Archivée',
-    icon: '📦',
+    icon: '📚',
     color: 'gray',
     bgClass: 'bg-gray-50',
     textClass: 'text-gray-500',
     borderClass: 'border-gray-200',
-    priority: 6
+    priority: 5
   }
 };
 
@@ -96,8 +86,8 @@ export const SUGGESTION_MODES = {
 
 export function calculateSessionStatus(session, currentUserId) {
   // États méta (priorité absolue)
+  // ✨ Supprimé : vérification de completed
   if (session.archived) return { status: SESSION_STATUS.ARCHIVED };
-  if (session.completed) return { status: SESSION_STATUS.COMPLETED };
 
   // PRIORITÉ 1 : Notification non répondue
   // On utilise getNotificationForSession pour récupérer l'objet complet
@@ -173,7 +163,6 @@ export function calculateSessionStats(sessions, currentUserId, masterIndex) {
     pendingYou: byStatus[SESSION_STATUS.PENDING_YOU] || 0,
     pendingOther: byStatus[SESSION_STATUS.PENDING_OTHER] || 0,
     active: byStatus[SESSION_STATUS.ACTIVE] || 0,
-    completed: byStatus[SESSION_STATUS.COMPLETED] || 0,
     archived: byStatus[SESSION_STATUS.ARCHIVED] || 0,
     totalMessages,
     totalSessions: sessions.length

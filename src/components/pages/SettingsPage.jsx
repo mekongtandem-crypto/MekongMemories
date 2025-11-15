@@ -53,7 +53,8 @@ function generateUserActivityStats(sessions, masterIndex, users) {
         );
   }
   
-  const activeSessions = sessions.filter(s => !s.completed && !s.archived && s.notes?.length > 0);
+  // ✨ Filter seulement archived (completed supprimé)
+  const activeSessions = sessions.filter(s => !s.archived && s.notes?.length > 0);
   let oldestActiveSession = null;
   if (activeSessions.length > 0) {
     oldestActiveSession = activeSessions.reduce((min, current) => 

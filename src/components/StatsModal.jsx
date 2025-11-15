@@ -131,13 +131,6 @@ export default function StatsModal({ isOpen, onClose, sessions, masterIndex, cur
               />
               
               <StatusRow
-                emoji="✅"
-                label="Terminées"
-                count={stats.completed}
-                color="green"
-              />
-              
-              <StatusRow
                 emoji="📦"
                 label="Archivées"
                 count={stats.archived}

@@ -21,9 +21,9 @@ import {
   SORT_OPTIONS,
   SESSION_STATUS
 } from '../../utils/sessionUtils.js';
-import { 
-  Clock, MoreVertical, Edit, Trash2, 
-  Check, Archive, ChevronDown, X, Eye, EyeOff
+import {
+  Clock, MoreVertical, Edit, Trash2,
+  Archive, ChevronDown, X, Eye, EyeOff
 } from 'lucide-react';
 
 export default function SessionsPage() {
@@ -182,12 +182,13 @@ export default function SessionsPage() {
     const groups = {
       pending_you: [], // ✅ Contient maintenant NOTIFIED + PENDING_YOU
       pending_other: [],
-      completed: []
+      archived: [] // ✨ Renommé de "completed" à "archived"
     };
-    
+
     enrichedSessions.forEach(s => {
-      if (s.completed || s.archived) {
-        groups.completed.push(s);
+      // ✨ Vérifier seulement archived (pas completed)
+      if (s.archived) {
+        groups.archived.push(s);
       } else if (s.status === SESSION_STATUS.NOTIFIED || s.status === SESSION_STATUS.PENDING_YOU) {
         // ✅ Fusion : NOTIFIED + PENDING_YOU dans même section
         groups.pending_you.push(s);
@@ -198,12 +199,12 @@ export default function SessionsPage() {
         groups.pending_other.push(s);
       }
     });
-    
+
     // Trier chaque groupe
     Object.keys(groups).forEach(key => {
       groups[key] = sortSessions(groups[key], sortBy, app.currentUser?.id);
     });
-    
+
     return groups;
   }, [enrichedSessions, sortBy]);
 
@@ -430,14 +431,13 @@ export default function SessionsPage() {
             onStartEdit={handleStartEdit}
             onSaveEdit={handleSaveEdit}
             onCancelEdit={handleCancelEdit}
-            onMarkCompleted={handleMarkCompleted}
             onArchive={handleArchive}
             onDelete={handleDeleteSession}
             onToggleRead={handleToggleRead}
             getReadState={getReadState}
           />
         )}
-        
+
         {/* 📨 Envoyées (Green) */}
         {filteredGroups.pending_other && filteredGroups.pending_other.length > 0 && (
           <SessionGroup
@@ -458,22 +458,21 @@ export default function SessionsPage() {
             onStartEdit={handleStartEdit}
             onSaveEdit={handleSaveEdit}
             onCancelEdit={handleCancelEdit}
-            onMarkCompleted={handleMarkCompleted}
             onArchive={handleArchive}
             onDelete={handleDeleteSession}
             onToggleRead={handleToggleRead}
             getReadState={getReadState}
           />
         )}
-        
-        {/* ✅ Closes (Blue) */}
-        {filteredGroups.completed && filteredGroups.completed.length > 0 && (
+
+        {/* 📚 Causeries archivées (Blue) */}
+        {filteredGroups.archived && filteredGroups.archived.length > 0 && (
           <SessionGroup
-            emoji="✅"
-            subtitle="Sessions closes"
-            sessions={filteredGroups.completed}
-            isOpen={openSections.completed}
-            onToggle={() => toggleSection('completed')}
+            emoji="📚"
+            subtitle="Causeries archivées"
+            sessions={filteredGroups.archived}
+            isOpen={openSections.archived}
+            onToggle={() => toggleSection('archived')}
             color="blue"
             currentUserId={app.currentUser?.id}
             editingSession={editingSession}
@@ -486,7 +485,6 @@ export default function SessionsPage() {
             onStartEdit={handleStartEdit}
             onSaveEdit={handleSaveEdit}
             onCancelEdit={handleCancelEdit}
-            onMarkCompleted={handleMarkCompleted}
             onArchive={handleArchive}
             onDelete={handleDeleteSession}
             onToggleRead={handleToggleRead}
@@ -763,15 +761,7 @@ function SessionRow({
                   <Edit className="w-4 h-4" />
                   <span>Modifier</span>
                 </button>
-                
-                <button
-                  onClick={(e) => onMarkCompleted(e, session)}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>{session.completed ? 'Non terminée' : 'Terminée'}</span>
-                </button>
-                
+
                 <button
                   onClick={(e) => onArchive(e, session)}
                   className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
@@ -779,7 +769,7 @@ function SessionRow({
                   <Archive className="w-4 h-4" />
                   <span>{session.archived ? 'Désarchiver' : 'Archiver'}</span>
                 </button>
-                
+
                 <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                 
                 <button
