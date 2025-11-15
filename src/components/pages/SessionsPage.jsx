@@ -7,9 +7,10 @@
  * ✅ Menu contextuel "Marquer comme lu/non lu"
  * ✅ Nouveaux emojis groupes
  */
-import { safeStorage } from '../../utils/storage.js'; 
+import { safeStorage } from '../../utils/storage.js';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
+import { dataManager } from '../../core/dataManager.js';
 import { userManager } from '../../core/UserManager.js';
 import StatsModal from '../StatsModal.jsx';
 import { 
@@ -272,12 +273,24 @@ export default function SessionsPage() {
       return;
     }
 
-    const session = app.sessions.find(s => s.id === sessionId);
-    if (session) {
-      const updatedSession = { ...session, gameTitle: editTitle.trim() };
-      await app.updateSession(updatedSession);
+    // ✨ Activer le spinner
+    dataManager.setLoadingOperation(true, 'Modification du titre...', 'Enregistrement sur Google Drive', 'spin');
+
+    try {
+      const session = app.sessions.find(s => s.id === sessionId);
+      if (session) {
+        const updatedSession = { ...session, gameTitle: editTitle.trim() };
+        await app.updateSession(updatedSession);
+      }
+      setEditingSession(null);
+
+      // ✨ Désactiver le spinner
+      dataManager.setLoadingOperation(false);
+    } catch (error) {
+      console.error('❌ Erreur modification titre session:', error);
+      // ✨ Désactiver le spinner en cas d'erreur
+      dataManager.setLoadingOperation(false);
     }
-    setEditingSession(null);
   };
 
   const handleCancelEdit = (e) => {
