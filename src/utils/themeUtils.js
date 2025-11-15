@@ -9,40 +9,40 @@
 // ========================================
 
 export const THEME_COLORS = {
-  purple: { 
-    bg: 'bg-purple-50', 
-    text: 'text-purple-700', 
-    border: 'border-purple-300', 
-    badge: 'bg-purple-500',
-    hover: 'hover:bg-purple-100'
+  purple: {
+    bg: 'bg-purple-50 dark:bg-purple-900/30',
+    text: 'text-purple-700 dark:text-purple-300',
+    border: 'border-purple-300 dark:border-purple-600',
+    badge: 'bg-purple-500 dark:bg-purple-600',
+    hover: 'hover:bg-purple-100 dark:hover:bg-purple-800/50'
   },
-  orange: { 
-    bg: 'bg-orange-50', 
-    text: 'text-orange-700', 
-    border: 'border-orange-300', 
-    badge: 'bg-orange-500',
-    hover: 'hover:bg-orange-100'
+  orange: {
+    bg: 'bg-orange-50 dark:bg-orange-900/30',
+    text: 'text-orange-700 dark:text-orange-300',
+    border: 'border-orange-300 dark:border-orange-600',
+    badge: 'bg-orange-500 dark:bg-orange-600',
+    hover: 'hover:bg-orange-100 dark:hover:bg-orange-800/50'
   },
-  blue: { 
-    bg: 'bg-blue-50', 
-    text: 'text-blue-700', 
-    border: 'border-blue-300', 
-    badge: 'bg-blue-500',
-    hover: 'hover:bg-blue-100'
+  blue: {
+    bg: 'bg-blue-50 dark:bg-blue-900/30',
+    text: 'text-blue-700 dark:text-blue-300',
+    border: 'border-blue-300 dark:border-blue-600',
+    badge: 'bg-blue-500 dark:bg-blue-600',
+    hover: 'hover:bg-blue-100 dark:hover:bg-blue-800/50'
   },
-  green: { 
-    bg: 'bg-green-50', 
-    text: 'text-green-700', 
-    border: 'border-green-300', 
-    badge: 'bg-green-500',
-    hover: 'hover:bg-green-100'
+  green: {
+    bg: 'bg-green-50 dark:bg-green-900/30',
+    text: 'text-green-700 dark:text-green-300',
+    border: 'border-green-300 dark:border-green-600',
+    badge: 'bg-green-500 dark:bg-green-600',
+    hover: 'hover:bg-green-100 dark:hover:bg-green-800/50'
   },
-  red: { 
-    bg: 'bg-red-50', 
-    text: 'text-red-700', 
-    border: 'border-red-300', 
-    badge: 'bg-red-500',
-    hover: 'hover:bg-red-100'
+  red: {
+    bg: 'bg-red-50 dark:bg-red-900/30',
+    text: 'text-red-700 dark:text-red-300',
+    border: 'border-red-300 dark:border-red-600',
+    badge: 'bg-red-500 dark:bg-red-600',
+    hover: 'hover:bg-red-100 dark:hover:bg-red-800/50'
   }
 };
 

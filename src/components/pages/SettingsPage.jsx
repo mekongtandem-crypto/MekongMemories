@@ -76,27 +76,27 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
       onClick={onCancel}
     >
-      <div 
-        className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+      <div
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">{title}</h3>
-        <p className="text-sm text-gray-600 whitespace-pre-line mb-6">{message}</p>
-        
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">{title}</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line mb-6">{message}</p>
+
         <div className="flex space-x-3">
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium"
+            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg font-medium transition-colors"
           >
             Annuler
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium"
+            className="flex-1 px-4 py-2 bg-red-500 dark:bg-red-600 hover:bg-red-600 dark:hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
           >
             Supprimer
           </button>
@@ -430,10 +430,11 @@ const executeDeleteTheme = async () => {
   const users = userManager.getAllUsers();
   const isOnline = app.connection?.isOnline;
   const connectionEmail = 'mekongtandem@gmail.com';
+  const currentUserStyle = userManager.getUserStyle(app.currentUser?.id);
 
   return (
     <div className="p-4 space-y-4 max-w-4xl mx-auto">
-      
+
       {/* Section Utilisateurs */}
       <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <button
@@ -441,7 +442,7 @@ const executeDeleteTheme = async () => {
           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           <div className="flex items-center space-x-2">
-            <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <Users className={`w-5 h-5 ${currentUserStyle?.text.replace('bg-', 'text-') || 'text-gray-600 dark:text-gray-400'}`} />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Utilisateurs</h2>
           </div>
           <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${openSections.users ? 'rotate-180' : ''}`} />
@@ -656,7 +657,7 @@ const executeDeleteTheme = async () => {
     className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
   >
     <div className="flex items-center space-x-2">
-      <Tag className="w-5 h-5 text-gray-600" />
+      <Tag className="w-5 h-5 text-amber-500 dark:text-amber-400" />
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Mes thèmes</h2>
     </div>
     <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${
@@ -886,7 +887,7 @@ const executeDeleteTheme = async () => {
           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           <div className="flex items-center space-x-2">
-            <Info className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <Info className="w-5 h-5 text-violet-500 dark:text-violet-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Statistiques d'Activité</h2>
           </div>
           <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${openSections.stats ? 'rotate-180' : ''}`} />
@@ -904,31 +905,31 @@ const executeDeleteTheme = async () => {
               return (
                 <>
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Vue d'ensemble</h3>
+                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Vue d'ensemble</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="font-semibold text-gray-800">🗺️ Exploration du voyage</span>
-                          <span className="font-bold text-blue-600">{Math.round(userActivityStats.explorationRate)}%</span>
+                          <span className="font-semibold text-gray-800 dark:text-gray-200">🗺️ Exploration du voyage</span>
+                          <span className="font-bold text-blue-600 dark:text-blue-400">{Math.round(userActivityStats.explorationRate)}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${userActivityStats.explorationRate}%` }}></div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
+                          <div className="bg-blue-500 dark:bg-blue-600 h-2.5 rounded-full" style={{ width: `${userActivityStats.explorationRate}%` }}></div>
                         </div>
                       </div>
-                      
+
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wider">Engagement des utilisateurs</h3>
-                    <div className="bg-gray-50 p-2 text-sm font-semibold text-gray-800 text-center rounded-lg space-y-4">📝 Messages écrits
+                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Engagement des utilisateurs</h3>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-2 text-sm font-semibold text-gray-800 dark:text-gray-200 text-center rounded-lg space-y-4">📝 Messages écrits
                       <div>
-                        <div className="flex justify-between items-center text-xs font-medium text-gray-600 mb-1">
+                        <div className="flex justify-between items-center text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                           {Object.entries(userActivityStats.userStats).map(([userId, stats]) => (
                             <span key={userId}>{`${userManager.getUser(userId).name} (${stats.messages})`}</span>
                           ))}
                         </div>
-                        <div className="w-full flex rounded-full h-4 overflow-hidden bg-gray-200">
+                        <div className="w-full flex rounded-full h-4 overflow-hidden bg-gray-200 dark:bg-gray-600">
                           {Object.entries(userActivityStats.userStats).map(([userId, stats]) => {
                             const user = userManager.getUser(userId);
                             const style = userManager.getUserStyle(userId);
@@ -937,13 +938,13 @@ const executeDeleteTheme = async () => {
                           })}
                         </div>
                       </div>
-                    <div className="bg-gray-50 p-2 text-sm font-semibold text-gray-800 text-center rounded-lg space-y-4">💬 Causeries lancées
-                        <div className="flex justify-between items-center text-xs font-medium text-gray-600 mb-1">
+                    <div className="bg-gray-50 dark:bg-gray-700 p-2 text-sm font-semibold text-gray-800 dark:text-gray-200 text-center rounded-lg space-y-4">💬 Causeries lancées
+                        <div className="flex justify-between items-center text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                           {Object.entries(userActivityStats.userStats).map(([userId, stats]) => (
                             <span key={userId}>{`${userManager.getUser(userId).name} (${stats.sessionsCreated})`}</span>
                           ))}
                         </div>
-                         <div className="w-full flex rounded-full h-4 overflow-hidden bg-gray-200">
+                         <div className="w-full flex rounded-full h-4 overflow-hidden bg-gray-200 dark:bg-gray-600">
                            {Object.entries(userActivityStats.userStats).map(([userId, stats]) => {
                             const user = userManager.getUser(userId);
                             const style = userManager.getUserStyle(userId);
@@ -1121,7 +1122,7 @@ const executeDeleteTheme = async () => {
           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           <div className="flex items-center space-x-2">
-            <Database className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <Database className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Données Brutes</h2>
           </div>
           <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${openSections.data ? 'rotate-180' : ''}`} />
@@ -1129,31 +1130,31 @@ const executeDeleteTheme = async () => {
         {openSections.data && (
           <div className="p-4 border-t border-gray-100 space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{app.masterIndex?.metadata?.total_moments || 0}</div>
-                <div className="text-sm text-gray-600">Moments</div>
+              <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{app.masterIndex?.metadata?.total_moments || 0}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Moments</div>
               </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{app.masterIndex?.metadata?.total_posts || 0}</div>
-                <div className="text-sm text-gray-600">Articles</div>
+              <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{app.masterIndex?.metadata?.total_posts || 0}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Articles</div>
               </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">{app.masterIndex?.metadata?.total_photos || 0}</div>
-                <div className="text-sm text-gray-600">Photos</div>
+              <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{app.masterIndex?.metadata?.total_photos || 0}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Photos</div>
               </div>
-              <div className="text-center p-4 bg-amber-50 rounded-lg">
-                <div className="text-2xl font-bold text-amber-600">{app.sessions?.length || 0}</div>
-                <div className="text-sm text-gray-600">Sessions</div>
+              <div className="text-center p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{app.sessions?.length || 0}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Sessions</div>
               </div>
             </div>
             {regenerationProgress.isActive && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-blue-900">{regenerationProgress.message}</span>
-                  <span className="text-blue-600 font-mono">{regenerationProgress.progress}%</span>
+                  <span className="font-medium text-blue-900 dark:text-blue-300">{regenerationProgress.message}</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-mono">{regenerationProgress.progress}%</span>
                 </div>
-                <div className="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden">
-                  <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${regenerationProgress.progress}%` }}/>
+                <div className="w-full bg-blue-200 dark:bg-blue-900/50 rounded-full h-2.5 overflow-hidden">
+                  <div className="bg-blue-600 dark:bg-blue-500 h-2.5 rounded-full transition-all duration-300" style={{ width: `${regenerationProgress.progress}%` }}/>
                 </div>
               </div>
             )}
