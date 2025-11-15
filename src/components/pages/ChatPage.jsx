@@ -11,6 +11,7 @@ import LinkedContent from '../LinkedContent.jsx';
 import SessionInfoPanel from '../SessionInfoPanel.jsx';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
+import { dataManager } from '../../core/dataManager.js';
 import { Send, Trash2, Edit, Camera, Link, FileText, MapPin, Image as ImageIcon, Tag } from 'lucide-react';
 import PhotoViewer from '../PhotoViewer.jsx';
 import ThemeModal from '../ThemeModal.jsx';
@@ -211,27 +212,35 @@ useEffect(() => {
 
   const handleSaveThemes = useCallback(async (selectedThemes) => {
     if (!app.currentChatSession || !app.currentUser) return;
-    
+
+    // ✨ Activer le spinner
+    dataManager.setLoadingOperation(true, 'Assignation des thèmes...', 'Enregistrement sur Google Drive', 'monkey');
+
     const sessionKey = `session:${app.currentChatSession.id}`;
-    
+
     try {
       await window.themeAssignments.assignThemes(
         sessionKey,
         selectedThemes,
         app.currentUser.id
       );
-      
+
       console.log('✅ Thèmes session sauvegardés:', selectedThemes);
-      
+
       handleCloseThemeModal();
-      
+
       // Feedback visuel
       if (window.chatPageActions?.showFeedback) {
         window.chatPageActions.showFeedback('Thèmes sauvegardés');
       }
+
+      // ✨ Désactiver le spinner
+      dataManager.setLoadingOperation(false);
     } catch (error) {
       console.error('❌ Erreur sauvegarde thèmes:', error);
       alert('Impossible de sauvegarder les thèmes');
+      // ✨ Désactiver le spinner en cas d'erreur
+      dataManager.setLoadingOperation(false);
     }
   }, [app.currentChatSession, app.currentUser, handleCloseThemeModal]);
   
@@ -291,6 +300,9 @@ useEffect(() => {
   const handleSaveEdit = async () => {
     if (!editContent.trim()) return;
 
+    // ✨ Activer le spinner
+    dataManager.setLoadingOperation(true, 'Modification du message...', 'Enregistrement sur Google Drive', 'spin');
+
     try {
       const updatedSession = {
         ...app.currentChatSession,
@@ -304,24 +316,32 @@ useEffect(() => {
       await app.updateSession(updatedSession);
       setEditingMessage(null);
       setEditContent('');
+
+      // ✨ Désactiver le spinner
+      dataManager.setLoadingOperation(false);
     } catch (error) {
       console.error('❌ Erreur modification message:', error);
+      // ✨ Désactiver le spinner en cas d'erreur
+      dataManager.setLoadingOperation(false);
     }
   };
 
   const handleDeleteMessage = async (messageId) => {
   if (!confirm('Supprimer ce message ?')) return;
 
+  // ✨ Activer le spinner
+  dataManager.setLoadingOperation(true, 'Suppression du message...', 'Enregistrement sur Google Drive', 'monkey');
+
   try {
     const updatedSession = { ...app.currentChatSession };
-    
+
     // ⭐ NOUVEAU : Détecter si message a un lien avant suppression
     const messageToDelete = updatedSession.notes.find(m => m.id === messageId);
     const hasLink = messageToDelete?.linkedContent;
-    
+
     // Supprimer le message
     updatedSession.notes = updatedSession.notes.filter(note => note.id !== messageId);
-    
+
     await app.updateSession(updatedSession);
     
     // ⭐ NOUVEAU : Nettoyer ContentLinks si le message avait un lien
@@ -347,9 +367,14 @@ console.log('🔍 Sessions liées à ce contenu:', sessionsForContent);
       
       console.log('✅ ContentLinks mis à jour et sauvegardé');
     }
-    
+
+    // ✨ Désactiver le spinner
+    dataManager.setLoadingOperation(false);
+
   } catch (error) {
     console.error('❌ Erreur suppression message:', error);
+    // ✨ Désactiver le spinner en cas d'erreur
+    dataManager.setLoadingOperation(false);
   }
 };
 // ========================================
@@ -889,15 +914,16 @@ function LinkPhotoPreview({ photo }) {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.shiftKey) {
+              // ✨ Entrée = Envoyer, Shift+Entrée = Retour à la ligne
+              if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSendMessage();
               }
             }}
             placeholder={
-              pendingLink || attachedPhoto 
-                ? "Ajouter un message (optionnel)..." 
-                : "tapez votre message... (Shift+Entrée pour envoyer)"
+              pendingLink || attachedPhoto
+                ? "Ajouter un message (optionnel)..."
+                : "tapez votre message... (Entrée pour envoyer, Shift+Entrée pour retour à la ligne)"
             }
             className="flex-1 dark:text-gray-50  bg-gray-800 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             rows="2"
@@ -908,7 +934,7 @@ function LinkPhotoPreview({ photo }) {
   onClick={handleSendMessage}
   disabled={!newMessage.trim() && !attachedPhoto && !pendingLink}
   className="relative flex-shrink-0 p-3 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-  title="Envoyer (Shift+Entrée)"
+  title="Envoyer (Entrée)"
 >
   <Send className="w-6 h-6" />
   

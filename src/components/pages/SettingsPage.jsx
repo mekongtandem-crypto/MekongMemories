@@ -8,6 +8,7 @@ import { APP_VERSION, APP_NAME, PHASE, BUILD_DATE } from '../../config/version.j
 import { useAppState } from '../../hooks/useAppState.js';
 import { useTheme } from '../ThemeContext.jsx';
 import { userManager } from '../../core/UserManager.js';
+import { dataManager } from '../../core/dataManager.js';
 import { sortThemes } from '../../utils/themeUtils.js';
 import { THEME_COLORS, generateThemeId, countThemeContents } from '../../utils/themeUtils.js';
 import { RefreshCw, Database, Users, Info, ChevronDown, Cloud, CloudOff, Plus, Edit, Trash2, Tag, Sun, Moon } from 'lucide-react';
@@ -194,36 +195,45 @@ const [confirmDelete, setConfirmDelete] = useState({
       return;
     }
 
-    const newTheme = {
-      id: generateThemeId(themeName),
-      name: themeName.trim(),
-      icon: themeIcon.trim(),
-      color: themeColor,
-      createdAt: new Date().toISOString(),
-      createdBy: app.currentUser?.id || 'unknown'
-    };
+    // ✨ Activer le spinner
+    dataManager.setLoadingOperation(true, 'Création du thème...', 'Enregistrement sur Google Drive', 'monkey');
 
-    if (themes.some(t => t.id === newTheme.id)) {
-      alert('Un thème avec ce nom existe déjà');
-      return;
-    }
+    try {
+      const newTheme = {
+        id: generateThemeId(themeName),
+        name: themeName.trim(),
+        icon: themeIcon.trim(),
+        color: themeColor,
+        createdAt: new Date().toISOString(),
+        createdBy: app.currentUser?.id || 'unknown'
+      };
 
-    const updatedMasterIndex = {
-      ...app.masterIndex,
-      themes: [...themes, newTheme]
-    };
+      if (themes.some(t => t.id === newTheme.id)) {
+        alert('Un thème avec ce nom existe déjà');
+        dataManager.setLoadingOperation(false);
+        return;
+      }
 
-    const result = await window.dataManager.saveMasterIndex(updatedMasterIndex);
+      const updatedMasterIndex = {
+        ...app.masterIndex,
+        themes: [...themes, newTheme]
+      };
 
-    if (result.success) {
-      setThemes([...themes, newTheme]);
-      setThemeName('');
-      setThemeIcon('');
-      setThemeColor('purple');
-      setShowThemeForm(false);
-      console.log('✅ Thème créé:', newTheme);
-    } else {
-      alert('Erreur lors de la création du thème');
+      const result = await window.dataManager.saveMasterIndex(updatedMasterIndex);
+
+      if (result.success) {
+        setThemes([...themes, newTheme]);
+        setThemeName('');
+        setThemeIcon('');
+        setThemeColor('purple');
+        setShowThemeForm(false);
+        console.log('✅ Thème créé:', newTheme);
+      } else {
+        alert('Erreur lors de la création du thème');
+      }
+    } finally {
+      // ✨ Désactiver le spinner
+      dataManager.setLoadingOperation(false);
     }
   };
 

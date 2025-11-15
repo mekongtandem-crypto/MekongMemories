@@ -10,11 +10,12 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  X, Edit, Bell, MoreVertical, 
+import {
+  X, Edit, Bell, MoreVertical,
   Sparkles, Tag, Trash2, Check
 } from 'lucide-react';
 import { useAppState } from '../../hooks/useAppState.js';
+import { dataManager } from '../../core/dataManager.js';
 import { userManager } from '../../core/UserManager.js';
 import OverflowMenu from './OverflowMenu.jsx';
 
@@ -83,14 +84,26 @@ export default function ChatTopBar({
       setEditingTitle(false);
       return;
     }
-    
-    const updatedSession = {
-      ...app.currentChatSession,
-      gameTitle: titleValue.trim()
-    };
-    
-    await app.updateSession(updatedSession);
-    setEditingTitle(false);
+
+    // ✨ Activer le spinner
+    dataManager.setLoadingOperation(true, 'Modification du titre...', 'Enregistrement sur Google Drive', 'spin');
+
+    try {
+      const updatedSession = {
+        ...app.currentChatSession,
+        gameTitle: titleValue.trim()
+      };
+
+      await app.updateSession(updatedSession);
+      setEditingTitle(false);
+
+      // ✨ Désactiver le spinner
+      dataManager.setLoadingOperation(false);
+    } catch (error) {
+      console.error('❌ Erreur modification titre:', error);
+      // ✨ Désactiver le spinner en cas d'erreur
+      dataManager.setLoadingOperation(false);
+    }
   };
   
   const handleCancelEditTitle = () => {

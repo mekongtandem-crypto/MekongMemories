@@ -467,21 +467,34 @@ class DataManager {
    * Supprimer une session
    */
   deleteSession = async (sessionId) => {
-    // 1. Supprimer liens de l'index
-    if (this.contentLinks) {
-      try {
-        await this.contentLinks.removeLinksForSession(sessionId);
-        logger.debug('Liens supprimés de ContentLinks');
-      } catch (error) {
-        logger.error('Erreur suppression liens', error);
-        // Non-bloquant
+    // ✨ Activer le spinner
+    this.setLoadingOperation(true, 'Suppression de la session...', 'Enregistrement sur Google Drive', 'monkey');
+
+    try {
+      // 1. Supprimer liens de l'index
+      if (this.contentLinks) {
+        try {
+          await this.contentLinks.removeLinksForSession(sessionId);
+          logger.debug('Liens supprimés de ContentLinks');
+        } catch (error) {
+          logger.error('Erreur suppression liens', error);
+          // Non-bloquant
+        }
       }
+
+      // 2. Supprimer fichier + state
+      await this.driveSync.deleteFile(`session_${sessionId}.json`);
+      const filteredSessions = this.appState.sessions.filter(s => s.id !== sessionId);
+      this.updateState({ sessions: filteredSessions });
+
+      // ✨ Désactiver le spinner
+      this.setLoadingOperation(false);
+    } catch (error) {
+      logger.error('Erreur suppression session', error);
+      // ✨ Désactiver le spinner en cas d'erreur
+      this.setLoadingOperation(false);
+      throw error;
     }
-    
-    // 2. Supprimer fichier + state
-    await this.driveSync.deleteFile(`session_${sessionId}.json`);
-    const filteredSessions = this.appState.sessions.filter(s => s.id !== sessionId);
-    this.updateState({ sessions: filteredSessions });
   }
 
   /**
@@ -754,9 +767,31 @@ class DataManager {
   }
 
   // ========================================
+  // LOADING OPERATIONS
+  // ========================================
+
+  /**
+   * Set loading state for async operations with spinner display
+   * @param {boolean} active - Show spinner
+   * @param {string} message - Main message
+   * @param {string} subMessage - Optional sub-message
+   * @param {string} variant - Animation variant: 'spin' | 'bounce' | 'monkey'
+   */
+  setLoadingOperation = (active, message = 'Chargement...', subMessage = 'Enregistrement sur Google Drive', variant = 'spin') => {
+    this.updateState({
+      loadingOperation: {
+        active,
+        message,
+        subMessage,
+        variant
+      }
+    });
+  }
+
+  // ========================================
   // STATE MANAGEMENT - PUB/SUB
   // ========================================
-  
+
   getState = () => this.appState;
   
   subscribe = (callback) => {
