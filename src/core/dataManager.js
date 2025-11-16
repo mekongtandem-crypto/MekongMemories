@@ -1131,11 +1131,17 @@ class DataManager {
    * Supprimer une photo (seulement source='imported')
    * @param {string} momentId - ID du moment parent
    * @param {string} photoId - ID de la photo (google_drive_id)
+   * @param {boolean} deleteFromDrive - ⭐ v2.9 : Supprimer aussi du Drive
    */
-  deletePhoto = async (momentId, photoId) => {
-    logger.info('Suppression photo:', photoId);
+  deletePhoto = async (momentId, photoId, deleteFromDrive = false) => {
+    logger.info('Suppression photo:', photoId, deleteFromDrive ? '(+ Drive)' : '(uniquement index)');
 
-    this.setLoadingOperation(true, 'Suppression de la photo...', 'Enregistrement sur Google Drive', 'monkey');
+    this.setLoadingOperation(
+      true,
+      deleteFromDrive ? 'Suppression de la photo et du fichier...' : 'Suppression de la photo...',
+      'Enregistrement sur Google Drive',
+      'monkey'
+    );
 
     try {
       const masterIndex = this.appState.masterIndex;
@@ -1167,12 +1173,23 @@ class DataManager {
           }
         }
 
+        // ⭐ v2.9 : Supprimer fichier Drive si demandé
+        if (deleteFromDrive && dayPhoto.google_drive_id) {
+          try {
+            await this.driveSync.deleteFile(dayPhoto.google_drive_id);
+            logger.success('Fichier photo supprimé du Drive');
+          } catch (error) {
+            logger.warn('Impossible de supprimer le fichier du Drive:', error);
+            // Non-bloquant, on continue
+          }
+        }
+
         // Retirer de dayPhotos
         moment.dayPhotos = moment.dayPhotos.filter(p =>
           p.google_drive_id !== photoId && p.filename !== photoId
         );
 
-        // Sauvegarder sur Drive
+        // Sauvegarder masterIndex sur Drive
         await this.driveSync.saveFile('mekong_master_index_v3_moments.json', masterIndex);
 
         // Mettre à jour l'état
@@ -1207,12 +1224,23 @@ class DataManager {
             }
           }
 
+          // ⭐ v2.9 : Supprimer fichier Drive si demandé
+          if (deleteFromDrive && postPhoto.google_drive_id) {
+            try {
+              await this.driveSync.deleteFile(postPhoto.google_drive_id);
+              logger.success('Fichier photo supprimé du Drive');
+            } catch (error) {
+              logger.warn('Impossible de supprimer le fichier du Drive:', error);
+              // Non-bloquant, on continue
+            }
+          }
+
           // Retirer de post.photos
           post.photos = post.photos.filter(p =>
             p.google_drive_id !== photoId && p.filename !== photoId
           );
 
-          // Sauvegarder sur Drive
+          // Sauvegarder masterIndex sur Drive
           await this.driveSync.saveFile('mekong_master_index_v3_moments.json', masterIndex);
 
           // Mettre à jour l'état

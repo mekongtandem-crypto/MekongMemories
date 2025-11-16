@@ -306,6 +306,13 @@ export default function App() {
     setEditionMode({ active: false });
   }, []);
 
+  // ⭐ v2.9 : Exposer editionMode globalement
+  useEffect(() => {
+    window.appState = {
+      editionMode: editionMode
+    };
+  }, [editionMode]);
+
   /**
    * Validation sélection contenu
    */

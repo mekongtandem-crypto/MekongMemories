@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect, memo } from 'react';
-import { Camera, AlertCircle, ZoomIn, Link } from 'lucide-react';
+import { Camera, AlertCircle, ZoomIn, Link, Trash2 } from 'lucide-react';
 import { SessionBadgePhotoThumb } from '../shared/SessionBadges.jsx';
 
 export const PhotoThumbnail = memo(({ 
@@ -128,6 +128,20 @@ console.log('📸 Photo data:', photo); //log temporaire
           title="Lier cette photo"
         >
           <Link className="w-4 h-4 text-purple-800" />
+        </button>
+      )}
+
+      {/* ⭐ v2.9 : Bouton suppression (seulement si mode édition + source='imported') */}
+      {window.appState?.editionMode?.active && photo.source === 'imported' && !selectionMode && !globalSelectionMode?.active && (
+        <button
+          className="absolute top-1 right-1 z-10 w-7 h-7 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg transition-all group/delete"
+          onClick={(e) => {
+            e.stopPropagation();
+            window.memoriesPageActions?.deletePhoto(moment.id, photo.google_drive_id || photo.filename, photo.filename);
+          }}
+          title="Supprimer cette photo"
+        >
+          <Trash2 className="w-4 h-4" />
         </button>
       )}
 
