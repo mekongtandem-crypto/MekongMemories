@@ -12,7 +12,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   X, Edit, Bell, MoreVertical,
-  Sparkles, Tag, Trash2, Archive, EyeOff
+  Sparkles, Tag, Trash2, Archive, EyeOff, Check
 } from 'lucide-react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { dataManager } from '../../core/dataManager.js';

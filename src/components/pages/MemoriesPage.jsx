@@ -23,10 +23,10 @@ import { dataManager } from '../../core/dataManager.js';  // ⭐ v2.8f
 import { logger } from '../../utils/logger.js';  // ⭐ v2.8f
 import { enrichMomentsWithData } from '../memories/layout/helpers.js';
 //import TimelineRuleV2 from '../TimelineRule.jsx';
-import { 
+import {
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
-  AlertCircle, ChevronDown, X, Tag, Link, 
-  MessageCircle, MessageCirclePlus, MessageCircleMore,
+  AlertCircle, ChevronDown, X, Tag, Link,
+  MessageCircle, MessageCirclePlus, MessageCircleMore, Edit2
 } from 'lucide-react';
 import { 
   sortThemes, 
@@ -43,7 +43,7 @@ import {
 // COMPOSANT PRINCIPAL
 // ========================================
 
-function MemoriesPage({ 
+function MemoriesPage({
   isTimelineVisible,
   setIsTimelineVisible,
   isSearchOpen,
@@ -57,7 +57,9 @@ function MemoriesPage({
   onAttachToChat,
   selectionMode,
   onContentSelected,
-  onOpenSessionFromMemories
+  onOpenSessionFromMemories,
+  editionMode,
+  onCancelEditionMode
 }, ref) {
 
 const app = useAppState();
@@ -955,18 +957,18 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
       {/* Barre de recherche */}
       {isSearchOpen && (
         <div className="relative bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 transition-colors duration-200">
-          <input 
-            type="text" 
-            value={searchQuery} 
+          <input
+            type="text"
+            value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Escape') setIsSearchOpen(false); }}
-            className="w-full pl-4 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-colors duration-200" 
+            className="w-full pl-4 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
             placeholder="Rechercher un texte, un titre... (Echap pour fermer)"
             autoFocus
           />
           {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery('')} 
+            <button
+              onClick={() => setSearchQuery('')}
               className="absolute inset-y-0 right-0 flex items-center pr-5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               title="Effacer la recherche"
             >
@@ -975,7 +977,30 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           )}
         </div>
       )}
- 
+
+      {/* ⭐ v2.9 : Barre Mode Édition */}
+      {editionMode?.active && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 px-4 py-3 transition-colors duration-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Edit2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              <span className="text-red-700 dark:text-red-300 font-medium">Mode Édition</span>
+              <span className="text-red-600 dark:text-red-400 text-sm">
+                — Cliquez sur les icônes 📝 et 🗑️ pour éditer ou supprimer
+              </span>
+            </div>
+            <button
+              onClick={onCancelEditionMode}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-300 dark:border-red-700 rounded-lg transition-colors"
+              title="Quitter le mode édition"
+            >
+              <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+              <span className="text-red-700 dark:text-red-300 text-sm font-medium">Quitter</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ✅ Filtres par thème (conditionnel) */}
       {isThemeBarVisible && themeStats.length > 0 && (
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 transition-colors duration-200">

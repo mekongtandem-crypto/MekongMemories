@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mémoire du Mékong
 
-> **Version:** 2.7 "Photo Viewer Optimization" | **Last Updated:** November 15, 2025
+> **Version:** 2.9 "Mode Édition" (WIP - 1/3 Complete) | **Last Updated:** November 16, 2025
 > **Purpose:** Comprehensive guide for development teams and AI assistants working on this codebase
 
 ---
@@ -9,22 +9,45 @@
 
 **Mémoire du Mékong** is a Progressive Web App that transforms a travel diary into an interactive, conversation-based memory exploration platform. Users can discuss and organize travel experiences through themed "sessions" (chats), explore a timeline of "moments" (thematic units), and manage photos and Mastodon posts.
 
-**Current Version:** 2.7 - Photo Viewer Optimization
-**Release Date:** November 15, 2025
-**Previous Phase:** Dark Mode (v2.6d)
-**Total LOC:** ~8,900 lines
+**Current Version:** 2.9 - Mode Édition (⚠️ **WORK IN PROGRESS - 1/3 Complete**)
+**Release Date:** TBD (in development)
+**Previous Stable:** v2.8f - Photo Souvenir depuis MemoriesPage
+**Total LOC:** ~9,200 lines
 **Language:** JavaScript (ES6+), no TypeScript
 **Code Language:** French comments/documentation with English variable names
 
-### Version 2.7 Highlights
+### ⚠️ Version 2.9 - État Actuel (1/3 Complete)
 
-✅ **Photo Viewer Optimization** - Fullscreen photos maximize display
-✅ **Complete Dark Mode** - All UI components styled for light/dark
-✅ **Session Archiving** - Automatic migration from old "completed" status
-✅ **Read/Unread System** - Smart tracking of new and unread sessions
-✅ **Enhanced Chat Menu** - "Mark as unread" option for session management
-✅ **Loading Spinners** - Generic async operation feedback
-✅ **Mobile-First UX** - Optimized for touchscreen interaction
+**🚧 INFRASTRUCTURE FONCTIONNELLE (✅ Partie 1/3)**
+- ✅ État global `editionMode` dans App.jsx
+- ✅ Bouton "Mode édition" dans MemoriesTopBar menu (icône rouge 📝)
+- ✅ Barre rouge "Mode Édition" affichée sous TopBar quand actif
+- ✅ Handlers : `handleToggleEditionMode()`, `handleCancelEditionMode()`
+- ✅ Désactivation automatique lors changement de page
+- ✅ Bouton "Quitter" dans la barre rouge
+
+**🔨 EN ATTENTE (Parties 2 & 3)**
+- ⏳ Modals d'édition : EditMomentModal, EditPostModal, ConfirmDeleteModal
+- ⏳ Boutons conditionnels dans MomentHeader (📝 Éditer / 🗑️ Supprimer)
+- ⏳ Boutons conditionnels dans PostArticle (📝 Éditer / 🗑️ Supprimer)
+- ⏳ Bouton suppression dans PhotoThumbnail (🗑️ Supprimer)
+- ⏳ Méthodes CRUD dans dataManager : `updateMoment()`, `deleteMoment()`, `updatePost()`, `deletePost()`, `deletePhoto()`
+
+**📋 RÈGLES D'ÉDITION (Design Final)**
+- **Moments Mastodon** (source: 'mastodon') → NON ÉDITABLES (seulement thèmes)
+- **Moments Importés** (source: 'imported') → ÉDITABLES (titre, date, jnnn) + SUPPRIMABLES
+- **Posts Mastodon** (category: 'mastodon') → NON ÉDITABLES
+- **Photo Notes** (category: 'user_added') → ÉDITABLES (titre, contenu) + SUPPRIMABLES
+- **Photos Importées** (source: 'imported') → SUPPRIMABLES uniquement
+
+### Version 2.8f Highlights (Stable)
+
+✅ **Photo Souvenir depuis MemoriesPage** - Bouton dans TopBar menu
+✅ **Spinner pendant upload** - Feedback "Traitement de l'image..."
+✅ **Scroll automatique** - Vers textarea après conversion
+✅ **Inputs compacts** - Date/Jnnn optimisés dans modal
+✅ **Fix Jundefined** - Affichage correct du jnnn pour moments importés
+✅ **Pastilles violettes** - Sur photos liées (double linking post+photo)
 
 ---
 
