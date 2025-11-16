@@ -966,8 +966,8 @@ class DataManager {
    * Supprimer un moment (seulement source='imported')
    * @param {string} momentId - ID du moment à supprimer
    */
-  deleteMoment = async (momentId) => {
-    logger.info('Suppression moment:', momentId);
+  deleteMoment = async (momentId, cascadeOptions = null) => {
+    logger.info('Suppression moment:', momentId, 'cascade:', cascadeOptions);
 
     this.setLoadingOperation(true, 'Suppression du moment...', 'Enregistrement sur Google Drive', 'monkey');
 
@@ -981,6 +981,28 @@ class DataManager {
 
       if (moment.source !== 'imported') {
         throw new Error('Seuls les moments importés peuvent être supprimés');
+      }
+
+      // ⭐ v2.9j : Suppression en cascade des enfants
+      if (cascadeOptions) {
+        // 1. Supprimer les Photo Notes (category='user_added')
+        if (cascadeOptions.deleteNotes && moment.posts) {
+          const notesToDelete = moment.posts.filter(post => post.category === 'user_added');
+          logger.info(`🗑️ Suppression de ${notesToDelete.length} note(s)...`);
+          for (const note of notesToDelete) {
+            await this.deletePost(momentId, note.id, false);  // false = pas de reload
+          }
+        }
+
+        // 2. Supprimer les Photos importées (source='imported')
+        if (cascadeOptions.deletePhotos && moment.dayPhotos) {
+          const photosToDelete = moment.dayPhotos.filter(photo => photo.source === 'imported');
+          logger.info(`🗑️ Suppression de ${photosToDelete.length} photo(s)...`);
+          for (const photo of photosToDelete) {
+            // Passer deleteFromDrive=cascadeOptions.deleteFiles
+            await this.deletePhoto(momentId, photo.google_drive_id || photo.filename, photo.filename, cascadeOptions.deleteFiles, false);  // false = pas de reload
+          }
+        }
       }
 
       // Supprimer tous les liens ContentLinks associés
@@ -1007,7 +1029,7 @@ class DataManager {
       this.updateState({ masterIndex });
 
       this.setLoadingOperation(false);
-      logger.success('Moment supprimé');
+      logger.success('Moment supprimé' + (cascadeOptions ? ' (avec enfants)' : ''));
 
       return { success: true };
     } catch (error) {
@@ -1070,10 +1092,12 @@ class DataManager {
    * @param {string} momentId - ID du moment parent
    * @param {string} postId - ID du post à supprimer
    */
-  deletePost = async (momentId, postId) => {
+  deletePost = async (momentId, postId, showSpinner = true) => {
     logger.info('Suppression post:', postId);
 
-    this.setLoadingOperation(true, 'Suppression de la Photo Note...', 'Enregistrement sur Google Drive', 'monkey');
+    if (showSpinner) {
+      this.setLoadingOperation(true, 'Suppression de la Photo Note...', 'Enregistrement sur Google Drive', 'monkey');
+    }
 
     try {
       const masterIndex = this.appState.masterIndex;
@@ -1116,13 +1140,17 @@ class DataManager {
       // Mettre à jour l'état
       this.updateState({ masterIndex });
 
-      this.setLoadingOperation(false);
+      if (showSpinner) {
+        this.setLoadingOperation(false);
+      }
       logger.success('Post supprimé');
 
       return { success: true };
     } catch (error) {
       logger.error('Erreur suppression post:', error);
-      this.setLoadingOperation(false);
+      if (showSpinner) {
+        this.setLoadingOperation(false);
+      }
       throw error;
     }
   }
@@ -1130,18 +1158,22 @@ class DataManager {
   /**
    * Supprimer une photo (seulement source='imported')
    * @param {string} momentId - ID du moment parent
-   * @param {string} photoId - ID de la photo (google_drive_id)
+   * @param {string} photoId - ID de la photo (google_drive_id ou filename)
+   * @param {string} filename - Nom du fichier (optionnel)
    * @param {boolean} deleteFromDrive - ⭐ v2.9 : Supprimer aussi du Drive
+   * @param {boolean} showSpinner - ⭐ v2.9j : Afficher spinner (false en cascade)
    */
-  deletePhoto = async (momentId, photoId, deleteFromDrive = false) => {
+  deletePhoto = async (momentId, photoId, filename = null, deleteFromDrive = false, showSpinner = true) => {
     logger.info('Suppression photo:', photoId, deleteFromDrive ? '(+ Drive)' : '(uniquement index)');
 
-    this.setLoadingOperation(
-      true,
-      deleteFromDrive ? 'Suppression de la photo et du fichier...' : 'Suppression de la photo...',
-      'Enregistrement sur Google Drive',
-      'monkey'
-    );
+    if (showSpinner) {
+      this.setLoadingOperation(
+        true,
+        deleteFromDrive ? 'Suppression de la photo et du fichier...' : 'Suppression de la photo...',
+        'Enregistrement sur Google Drive',
+        'monkey'
+      );
+    }
 
     try {
       const masterIndex = this.appState.masterIndex;
@@ -1176,6 +1208,8 @@ class DataManager {
         // ⭐ v2.9 : Supprimer fichier Drive si demandé
         if (deleteFromDrive && dayPhoto.google_drive_id) {
           try {
+            logger.info(`🗑️ Suppression fichier Drive demandée - ID: ${dayPhoto.google_drive_id}, filename: ${dayPhoto.filename}`);
+            console.log('📸 Photo dayPhoto complète:', dayPhoto);
             await this.driveSync.deleteFileById(dayPhoto.google_drive_id);
             logger.success('📸 Fichier image supprimé du cloud');
           } catch (error) {
@@ -1195,7 +1229,9 @@ class DataManager {
         // Mettre à jour l'état
         this.updateState({ masterIndex });
 
-        this.setLoadingOperation(false);
+        if (showSpinner) {
+          this.setLoadingOperation(false);
+        }
         logger.success('Photo supprimée');
 
         return { success: true };
@@ -1227,6 +1263,8 @@ class DataManager {
           // ⭐ v2.9 : Supprimer fichier Drive si demandé
           if (deleteFromDrive && postPhoto.google_drive_id) {
             try {
+              logger.info(`🗑️ Suppression fichier Drive demandée - ID: ${postPhoto.google_drive_id}, filename: ${postPhoto.filename}`);
+              console.log('📸 Photo postPhoto complète:', postPhoto);
               await this.driveSync.deleteFileById(postPhoto.google_drive_id);
               logger.success('📸 Fichier image supprimé du cloud');
             } catch (error) {
@@ -1256,7 +1294,9 @@ class DataManager {
       throw new Error('Photo introuvable');
     } catch (error) {
       logger.error('Erreur suppression photo:', error);
-      this.setLoadingOperation(false);
+      if (showSpinner) {
+        this.setLoadingOperation(false);
+      }
       throw error;
     }
   }

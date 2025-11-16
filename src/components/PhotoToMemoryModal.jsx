@@ -1,16 +1,18 @@
 /**
- * PhotoToMemoryModal.jsx v3.0e - Conversion photo → souvenir (2 sections)
+ * PhotoToMemoryModal.jsx v2.9j - Conversion photo → souvenir (2 sections)
  * ✅ Section 1 : Association moment (titre, date, jnnn)
  * ✅ Section 2 : Texte optionnel (titre + descriptif) → Photo Note
  * ✅ Support création nouveau moment
  * ✅ Support dark mode
+ * ⭐ v2.9j : Support fichier brut (file) OU photoData (compatibilité)
  */
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Plus, FileText } from 'lucide-react';
+import { X, MapPin, Plus, FileText, Image as ImageIcon } from 'lucide-react';
 
 export default function PhotoToMemoryModal({
   isOpen,
   photoData,
+  file,  // ⭐ v2.9j : Fichier brut avant traitement
   onClose,
   moments = [],
   onConvert
@@ -29,12 +31,17 @@ export default function PhotoToMemoryModal({
   // Réinitialiser l'état à l'ouverture
   useEffect(() => {
     if (isOpen) {
-      // ⭐ v2.8e : Utiliser la date de création de la photo si disponible
+      // ⭐ v2.9j : Utiliser la date de création de la photo (photoData) ou du fichier (file)
       let defaultDate = '';
+
       if (photoData?.uploadedAt) {
-        // Convertir ISO timestamp en format YYYY-MM-DD
+        // PhotoData : convertir ISO timestamp en format YYYY-MM-DD
         const uploadDate = new Date(photoData.uploadedAt);
         defaultDate = uploadDate.toISOString().split('T')[0];
+      } else if (file) {
+        // File : utiliser lastModified ou date actuelle
+        const fileDate = file.lastModified ? new Date(file.lastModified) : new Date();
+        defaultDate = fileDate.toISOString().split('T')[0];
       }
 
       setSelectedMomentId('');
@@ -45,7 +52,7 @@ export default function PhotoToMemoryModal({
       setNoteTitle('');
       setNoteContent('');
     }
-  }, [isOpen, photoData]);
+  }, [isOpen, photoData, file]);
 
   if (!isOpen) return null;
 
@@ -93,14 +100,17 @@ export default function PhotoToMemoryModal({
     setIsCreatingNewMoment(prev => !prev);
     setSelectedMomentId('');
 
-    // ⭐ v2.8e : Réinitialiser avec valeurs par défaut intelligentes
+    // ⭐ v2.9j : Réinitialiser avec valeurs par défaut intelligentes
     setNewMomentTitle('');
 
-    // Date par défaut = date photo si disponible
+    // Date par défaut = date photo (photoData) ou fichier (file) si disponible
     let defaultDate = '';
     if (photoData?.uploadedAt) {
       const uploadDate = new Date(photoData.uploadedAt);
       defaultDate = uploadDate.toISOString().split('T')[0];
+    } else if (file) {
+      const fileDate = file.lastModified ? new Date(file.lastModified) : new Date();
+      defaultDate = fileDate.toISOString().split('T')[0];
     }
     setNewMomentDate(defaultDate);
 
@@ -139,6 +149,21 @@ export default function PhotoToMemoryModal({
 
         {/* Body */}
         <div className="p-6 space-y-6">
+
+          {/* ⭐ v2.9j : Afficher info fichier si mode File */}
+          {file && (
+            <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <ImageIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-200 truncate">
+                  {file.name}
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                  {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* ========== SECTION 1 : ASSOCIER UN MOMENT ========== */}
           <div className="border border-purple-200 dark:border-purple-700 rounded-lg p-4 bg-purple-50/30 dark:bg-purple-900/10">

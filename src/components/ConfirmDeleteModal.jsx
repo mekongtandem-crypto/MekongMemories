@@ -21,14 +21,21 @@ export default function ConfirmDeleteModal({
   // ⭐ v2.9 : Options pour suppression photos
   showDriveOption = false,
   deleteFromDrive = false,
-  onToggleDriveOption = null
+  onToggleDriveOption = null,
+  // ⭐ v2.9j : Options pour suppression en cascade
+  childrenCounts = null,  // { notes: 2, photos: 5 }
+  cascadeOptions = null,  // { deleteNotes: false, deletePhotos: false, deleteFiles: false }
+  onToggleCascadeOption = null
 }) {
   if (!isOpen) return null;
 
   const handleConfirm = () => {
-    // ⭐ v2.9 : Passer l'option deleteFromDrive pour les photos
+    // ⭐ v2.9j : Passer les options de suppression (Drive + cascade)
     if (showDriveOption && onConfirm) {
       onConfirm(deleteFromDrive);
+    } else if (cascadeOptions && onConfirm) {
+      // Suppression en cascade (moment avec enfants)
+      onConfirm(cascadeOptions);
     } else {
       onConfirm();
     }
@@ -99,6 +106,75 @@ export default function ConfirmDeleteModal({
                   </p>
                 </div>
               </label>
+            </div>
+          )}
+
+          {/* ⭐ v2.9j : Options suppression en cascade (moments avec enfants) */}
+          {childrenCounts && cascadeOptions && (
+            <div className="mt-4 space-y-2">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Ce moment contient des éléments liés :
+              </p>
+
+              {/* Option: Supprimer les notes */}
+              {childrenCounts.notes > 0 && (
+                <label className="flex items-start space-x-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={cascadeOptions.deleteNotes}
+                    onChange={(e) => onToggleCascadeOption?.('deleteNotes', e.target.checked)}
+                    className="mt-0.5 w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Effacer les notes ({childrenCounts.notes} note{childrenCounts.notes > 1 ? 's' : ''})
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                      Supprimer toutes les Photo Notes associées à ce moment
+                    </p>
+                  </div>
+                </label>
+              )}
+
+              {/* Option: Supprimer les photos */}
+              {childrenCounts.photos > 0 && (
+                <label className="flex items-start space-x-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={cascadeOptions.deletePhotos}
+                    onChange={(e) => onToggleCascadeOption?.('deletePhotos', e.target.checked)}
+                    className="mt-0.5 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Effacer les photos ({childrenCounts.photos} photo{childrenCounts.photos > 1 ? 's' : ''})
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                      Supprimer toutes les photos importées associées à ce moment
+                    </p>
+                  </div>
+                </label>
+              )}
+
+              {/* Option: Supprimer les fichiers Drive */}
+              {(childrenCounts.photos > 0 && cascadeOptions.deletePhotos) && (
+                <label className="flex items-start space-x-3 p-2 ml-6 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={cascadeOptions.deleteFiles}
+                    onChange={(e) => onToggleCascadeOption?.('deleteFiles', e.target.checked)}
+                    className="mt-0.5 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                      Supprimer les fichiers images du cloud
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                      Effacer aussi les fichiers physiques de Google Drive (recommandé pour économiser l'espace)
+                    </p>
+                  </div>
+                </label>
+              )}
             </div>
           )}
 

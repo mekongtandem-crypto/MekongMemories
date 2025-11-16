@@ -82,9 +82,11 @@ const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const [lastScrollY, setLastScrollY] = useState(0);
 
   // ⭐ v2.8f : Modal PhotoToMemoryModal
+  // ⭐ v2.9j : Stocke soit photoData (old flow) soit file (new flow)
   const [photoToMemoryModal, setPhotoToMemoryModal] = useState({
     isOpen: false,
-    photoData: null
+    photoData: null,
+    file: null  // ⭐ v2.9j : Fichier brut avant traitement
   });
 
   // ⭐ v2.9 : Modals édition
@@ -97,7 +99,10 @@ const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
     momentId: null,  // Pour photos et posts
     itemId: null,    // photoId ou postId
     deleteFromDrive: false,  // ⭐ Option suppression Drive pour photos
-    onConfirm: null
+    onConfirm: null,
+    // ⭐ v2.9j : Suppression en cascade (moments)
+    childrenCounts: null,  // { notes: X, photos: Y }
+    cascadeOptions: null   // { deleteNotes: false, deletePhotos: false, deleteFiles: false }
   });
 
   // ========================================
@@ -216,66 +221,108 @@ const handleCloseThemeModal = useCallback(() => {
   closeThemeModal();
 }, [closeThemeModal]);
 
-// ⭐ v2.8f : Handler pour ajouter photo souvenir
+// ⭐ v2.9j : Handler pour ajouter photo souvenir (REFACTO: confirmation AVANT upload)
 const handleAddPhotoSouvenir = useCallback(async () => {
   try {
     logger.info('📷 Ouverture file picker pour photo souvenir');
     const files = await openFilePicker(false);
 
-    // ⭐ v2.8f : Afficher spinner pendant traitement
-    dataManager.setLoadingOperation(
-      true,
-      'Traitement de l\'image...',
-      'Compression et upload vers Google Drive',
-      'camera'
-    );
-
-    const photoMetadata = await processAndUploadImage(files[0], app.currentUser);
-
-    // Désactiver le spinner
-    dataManager.setLoadingOperation(false);
-
+    // ⭐ v2.9j : Ouvrir modal DIRECTEMENT avec le fichier (pas encore traité)
     setPhotoToMemoryModal({
       isOpen: true,
-      photoData: photoMetadata
+      photoData: null,
+      file: files[0]  // Fichier brut
     });
   } catch (error) {
-    logger.error('❌ Erreur upload photo souvenir:', error);
-    dataManager.setLoadingOperation(false);
+    logger.error('❌ Erreur sélection photo:', error);
     if (error.message !== 'Sélection annulée') {
-      alert(`Erreur lors de l'upload de la photo:\n${error.message}`);
+      alert(`Erreur lors de la sélection de la photo:\n${error.message}`);
     }
   }
-}, [app.currentUser]);
+}, []);
 
-// ⭐ v2.8f : Handler pour conversion photo → souvenir
+// ⭐ v2.9j : Handler pour conversion photo → souvenir (REFACTO: traitement après confirmation)
 const handleConvertPhotoToMemory = useCallback(async (conversionData) => {
-  const { photoData } = photoToMemoryModal;
-  if (!photoData) return;
+  const { photoData, file } = photoToMemoryModal;
 
   try {
-    dataManager.setLoadingOperation(true, 'Conversion en souvenir...', 'Mise à jour du master index', 'monkey');
+    let finalPhotoData = photoData;
 
-    const result = await dataManager.addImportedPhotoToMasterIndex(photoData, conversionData);
+    // ⭐ v2.9j : Si on a un fichier brut, le traiter maintenant (UN SEUL spinner)
+    if (file) {
+      // Étape 1: Conversion de l'image
+      dataManager.setLoadingOperation(true, 'Traitement du souvenir...', 'Conversion de l\'image', 'monkey');
 
-    dataManager.setLoadingOperation(false);
+      // Importer les fonctions de traitement
+      const { compressImage, generateThumbnail, uploadImageToDrive, generateUploadFilename, validateImageFile } = await import('../../utils/imageCompression.js');
 
-    if (!result.success) {
-      throw new Error(result.error || 'Échec de la conversion');
+      // Validation
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        throw new Error(validation.error);
+      }
+
+      // Compression
+      const compressedBlob = await compressImage(file);
+
+      // Étape 2: Génération thumbnail
+      dataManager.setLoadingOperation(true, 'Traitement du souvenir...', 'Génération du thumbnail', 'monkey');
+      const thumbBlob = await generateThumbnail(compressedBlob);
+
+      // Génération nom de fichier
+      const filename = generateUploadFilename(app.currentUser, file.name);
+
+      // Étape 3: Écriture sur le cloud
+      dataManager.setLoadingOperation(true, 'Traitement du souvenir...', 'Écriture sur le cloud', 'monkey');
+      const uploadResult = await uploadImageToDrive(compressedBlob, thumbBlob, filename, app.currentUser);
+
+      // Créer photoData
+      finalPhotoData = {
+        google_drive_id: uploadResult.fileId,
+        filename: uploadResult.filename,
+        url: uploadResult.url,
+        thumb_url: uploadResult.thumbUrl,
+        source: 'imported',
+        momentId: null,
+        uploadedBy: app.currentUser,
+        uploadedAt: new Date().toISOString(),
+        originalName: file.name,
+        size: compressedBlob.size,
+        type: compressedBlob.type
+      };
     }
 
-    setPhotoToMemoryModal({ isOpen: false, photoData: null });
+    if (!finalPhotoData) {
+      throw new Error('Aucune donnée photo disponible');
+    }
+
+    // Étape 4: Insertion de l'image
+    dataManager.setLoadingOperation(true, 'Traitement du souvenir...', 'Insertion de l\'image', 'monkey');
+    const result = await dataManager.addImportedPhotoToMasterIndex(finalPhotoData, conversionData);
+
+    if (!result.success) {
+      throw new Error(result.error || 'Échec de l\'insertion');
+    }
+
+    // Étape 5: Création du souvenir (si nouveau moment)
+    if (conversionData.newMoment) {
+      dataManager.setLoadingOperation(true, 'Traitement du souvenir...', 'Création d\'un nouveau souvenir', 'monkey');
+    }
+
+    setPhotoToMemoryModal({ isOpen: false, photoData: null, file: null });
     logger.success('🎉 Photo souvenir ajoutée depuis Memories');
 
     // Recharger le master index pour afficher la nouvelle photo
     await dataManager.reloadMasterIndex();
 
-  } catch (error) {
-    logger.error('❌ Erreur conversion photo:', error);
     dataManager.setLoadingOperation(false);
-    alert(`Erreur lors de la conversion:\n${error.message}`);
+
+  } catch (error) {
+    logger.error('❌ Erreur traitement photo:', error);
+    dataManager.setLoadingOperation(false);
+    alert(`Erreur lors du traitement:\n${error.message}`);
   }
-}, [photoToMemoryModal]);
+}, [photoToMemoryModal, app.currentUser]);
 
 // ========================================
 // ⭐ v2.9 : HANDLERS ÉDITION
@@ -295,6 +342,17 @@ const handleSaveMoment = useCallback(async (updatedMoment) => {
 }, [app]);
 
 const handleDeleteMoment = useCallback((moment) => {
+  // ⭐ v2.9j : Compter les enfants (notes et photos importées)
+  const noteCount = (moment.posts || []).filter(post => post.category === 'user_added').length;
+  const photoCount = (moment.dayPhotos || []).filter(photo => photo.source === 'imported').length;
+
+  // ⭐ v2.9j : Initialiser les options de cascade
+  const initialCascadeOptions = {
+    deleteNotes: false,
+    deletePhotos: false,
+    deleteFiles: false  // Option Drive conditionnelle (seulement si deletePhotos = true)
+  };
+
   setConfirmDeleteModal({
     isOpen: true,
     type: 'moment',
@@ -302,10 +360,14 @@ const handleDeleteMoment = useCallback((moment) => {
     momentId: moment.id,
     itemId: null,
     deleteFromDrive: false,
-    onConfirm: async () => {
+    // ⭐ v2.9j : Cascade deletion
+    childrenCounts: (noteCount > 0 || photoCount > 0) ? { notes: noteCount, photos: photoCount } : null,
+    cascadeOptions: (noteCount > 0 || photoCount > 0) ? initialCascadeOptions : null,
+    onConfirm: async (cascadeOpts) => {
       try {
-        await app.deleteMoment(moment.id);
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null });
+        // ⭐ v2.9j : Passer les options de cascade au deleteMoment
+        await app.deleteMoment(moment.id, cascadeOpts);
+        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null, childrenCounts: null, cascadeOptions: null });
       } catch (error) {
         alert('Erreur lors de la suppression : ' + error.message);
       }
@@ -355,8 +417,8 @@ const handleDeletePhoto = useCallback((momentId, photoId, photoFilename) => {
     deleteFromDrive: false,  // Valeur par défaut : ne pas supprimer du Drive
     onConfirm: async (deleteFromDrive) => {
       try {
-        await app.deletePhoto(momentId, photoId, deleteFromDrive);
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null });
+        await app.deletePhoto(momentId, photoId, photoFilename, deleteFromDrive);
+        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null, childrenCounts: null, cascadeOptions: null });
       } catch (error) {
         alert('Erreur lors de la suppression : ' + error.message);
       }
@@ -1272,7 +1334,8 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         <PhotoToMemoryModal
           isOpen={photoToMemoryModal.isOpen}
           photoData={photoToMemoryModal.photoData}
-          onClose={() => setPhotoToMemoryModal({ isOpen: false, photoData: null })}
+          file={photoToMemoryModal.file}  {/* ⭐ v2.9j : Passer le fichier brut */}
+          onClose={() => setPhotoToMemoryModal({ isOpen: false, photoData: null, file: null })}
           moments={app.masterIndex?.moments || []}
           onConvert={handleConvertPhotoToMemory}
         />
@@ -1295,7 +1358,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
 
       <ConfirmDeleteModal
         isOpen={confirmDeleteModal.isOpen}
-        onClose={() => setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null })}
+        onClose={() => setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null, childrenCounts: null, cascadeOptions: null })}
         onConfirm={confirmDeleteModal.onConfirm}
         itemName={confirmDeleteModal.itemName}
         itemType={
@@ -1307,6 +1370,20 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         showDriveOption={confirmDeleteModal.type === 'photo'}
         deleteFromDrive={confirmDeleteModal.deleteFromDrive}
         onToggleDriveOption={(value) => setConfirmDeleteModal(prev => ({ ...prev, deleteFromDrive: value }))}
+        // ⭐ v2.9j : Options suppression en cascade (moments)
+        childrenCounts={confirmDeleteModal.childrenCounts}
+        cascadeOptions={confirmDeleteModal.cascadeOptions}
+        onToggleCascadeOption={(optionName, value) => {
+          setConfirmDeleteModal(prev => ({
+            ...prev,
+            cascadeOptions: {
+              ...prev.cascadeOptions,
+              [optionName]: value,
+              // ⭐ Si deletePhotos = false, forcer deleteFiles = false
+              ...(optionName === 'deletePhotos' && !value ? { deleteFiles: false } : {})
+            }
+          }));
+        }}
       />
     </div>
   );

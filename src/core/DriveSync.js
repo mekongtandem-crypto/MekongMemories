@@ -121,14 +121,34 @@ class DriveSync {
    */
   async deleteFileById(fileId) {
     if (!this.connectionManager.getState().isOnline) throw new Error('Non connecté.');
+
+    console.log(`🗑️ deleteFileById: Tentative suppression fichier ID = ${fileId}`);
+
     try {
+      // Vérifier que le fichier existe avant de le supprimer
+      const fileCheck = await window.gapi.client.drive.files.get({
+        fileId: fileId,
+        fields: 'id, name, parents, mimeType'
+      });
+
+      console.log(`📄 Fichier trouvé:`, fileCheck.result);
+
+      // Supprimer le fichier
       await window.gapi.client.drive.files.delete({
         fileId: fileId
       });
-      console.log(`✅ Fichier photo supprimé du Drive (ID: ${fileId})`);
+
+      console.log(`✅ Fichier photo supprimé du Drive (ID: ${fileId}, nom: ${fileCheck.result.name})`);
     } catch (error) {
       console.error(`❌ Erreur lors de la suppression du fichier Drive (ID: ${fileId}):`, error);
-      throw new Error(`Erreur API Drive (suppression photo): ${error.details || error.message}`);
+
+      // Détails de l'erreur
+      if (error.status === 404) {
+        console.warn(`⚠️ Fichier déjà supprimé ou introuvable (404)`);
+        return; // Ne pas bloquer si fichier déjà supprimé
+      }
+
+      throw new Error(`Erreur API Drive (suppression photo): ${error.result?.error?.message || error.message}`);
     }
   }
 

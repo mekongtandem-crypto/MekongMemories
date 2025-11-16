@@ -86,12 +86,19 @@ console.log('📸 Photo data:', photo); //log temporaire
     }
   };
 
+  // ⭐ v2.9 : Bordure distinctive pour photos importées
+  const isImported = photo.source === 'imported';
+
   return (
-    <div 
+    <div
       onClick={handleClick}
       data-photo-filename={photo.filename}
       className={`relative aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden cursor-pointer group ${
-        isSelected ? 'ring-2 ring-amber-500' : ''
+        isSelected
+          ? 'ring-2 ring-amber-500'
+          : isImported
+            ? 'ring-2 ring-amber-400 dark:ring-amber-500'
+            : ''
       }`}
     >
       {/* Checkbox visible uniquement en mode sélection bulk */}
