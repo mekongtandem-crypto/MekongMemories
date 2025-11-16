@@ -463,19 +463,25 @@ class DataManager {
    * Mettre à jour une session existante
    */
   updateSession = async (sessionToUpdate) => {
-    await this.driveSync.saveFile(`session_${sessionToUpdate.id}.json`, sessionToUpdate);
-    
-    const updatedSessions = this.appState.sessions.map(s => 
-      s.id === sessionToUpdate.id ? sessionToUpdate : s
+    // ⭐ v2.9g : Ajouter updatedAt automatiquement
+    const sessionWithTimestamp = {
+      ...sessionToUpdate,
+      updatedAt: new Date().toISOString()
+    };
+
+    await this.driveSync.saveFile(`session_${sessionWithTimestamp.id}.json`, sessionWithTimestamp);
+
+    const updatedSessions = this.appState.sessions.map(s =>
+      s.id === sessionWithTimestamp.id ? sessionWithTimestamp : s
     );
-    
-    const updatedCurrentChat = this.appState.currentChatSession?.id === sessionToUpdate.id 
-      ? sessionToUpdate 
+
+    const updatedCurrentChat = this.appState.currentChatSession?.id === sessionWithTimestamp.id
+      ? sessionWithTimestamp
       : this.appState.currentChatSession;
-    
-    this.updateState({ 
-      sessions: updatedSessions, 
-      currentChatSession: updatedCurrentChat 
+
+    this.updateState({
+      sessions: updatedSessions,
+      currentChatSession: updatedCurrentChat
     });
   }
 
@@ -501,7 +507,16 @@ class DataManager {
       // 2. Supprimer fichier + state
       await this.driveSync.deleteFile(`session_${sessionId}.json`);
       const filteredSessions = this.appState.sessions.filter(s => s.id !== sessionId);
-      this.updateState({ sessions: filteredSessions });
+
+      // ⭐ v2.9g : Mettre à jour currentChatSession si c'est la session supprimée
+      const updatedCurrentChat = this.appState.currentChatSession?.id === sessionId
+        ? null
+        : this.appState.currentChatSession;
+
+      this.updateState({
+        sessions: filteredSessions,
+        currentChatSession: updatedCurrentChat
+      });
 
       // ✨ Désactiver le spinner
       this.setLoadingOperation(false);
@@ -898,6 +913,323 @@ class DataManager {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  // ========================================
+  // CRUD MOMENTS, POSTS, PHOTOS (v2.9)
+  // ========================================
+
+  /**
+   * Mettre à jour un moment (seulement source='imported')
+   * @param {Object} updatedMoment - Moment avec modifications
+   */
+  updateMoment = async (updatedMoment) => {
+    logger.info('Mise à jour moment:', updatedMoment.id);
+
+    this.setLoadingOperation(true, 'Modification du moment...', 'Enregistrement sur Google Drive', 'spin');
+
+    try {
+      // Vérifier que c'est un moment importé
+      if (updatedMoment.source !== 'imported') {
+        throw new Error('Seuls les moments importés peuvent être modifiés');
+      }
+
+      // Mettre à jour dans le masterIndex
+      const masterIndex = this.appState.masterIndex;
+      const momentIndex = masterIndex.moments.findIndex(m => m.id === updatedMoment.id);
+
+      if (momentIndex === -1) {
+        throw new Error('Moment introuvable');
+      }
+
+      masterIndex.moments[momentIndex] = updatedMoment;
+
+      // Sauvegarder sur Drive
+      await this.driveSync.saveFile('mekong_master_index_v3_moments.json', masterIndex);
+
+      // Mettre à jour l'état
+      this.updateState({ masterIndex });
+
+      this.setLoadingOperation(false);
+      logger.success('Moment mis à jour');
+
+      return { success: true };
+    } catch (error) {
+      logger.error('Erreur mise à jour moment:', error);
+      this.setLoadingOperation(false);
+      throw error;
+    }
+  }
+
+  /**
+   * Supprimer un moment (seulement source='imported')
+   * @param {string} momentId - ID du moment à supprimer
+   */
+  deleteMoment = async (momentId) => {
+    logger.info('Suppression moment:', momentId);
+
+    this.setLoadingOperation(true, 'Suppression du moment...', 'Enregistrement sur Google Drive', 'monkey');
+
+    try {
+      const masterIndex = this.appState.masterIndex;
+      const moment = masterIndex.moments.find(m => m.id === momentId);
+
+      if (!moment) {
+        throw new Error('Moment introuvable');
+      }
+
+      if (moment.source !== 'imported') {
+        throw new Error('Seuls les moments importés peuvent être supprimés');
+      }
+
+      // Supprimer tous les liens ContentLinks associés
+      if (this.contentLinks) {
+        try {
+          const links = this.contentLinks.getLinksForContent('moment', momentId);
+          for (const link of links) {
+            await this.contentLinks.removeLink(link.sessionId, 'moment', momentId);
+          }
+          logger.debug('Liens ContentLinks supprimés');
+        } catch (error) {
+          logger.error('Erreur suppression liens:', error);
+          // Non-bloquant
+        }
+      }
+
+      // Retirer du masterIndex
+      masterIndex.moments = masterIndex.moments.filter(m => m.id !== momentId);
+
+      // Sauvegarder sur Drive
+      await this.driveSync.saveFile('mekong_master_index_v3_moments.json', masterIndex);
+
+      // Mettre à jour l'état
+      this.updateState({ masterIndex });
+
+      this.setLoadingOperation(false);
+      logger.success('Moment supprimé');
+
+      return { success: true };
+    } catch (error) {
+      logger.error('Erreur suppression moment:', error);
+      this.setLoadingOperation(false);
+      throw error;
+    }
+  }
+
+  /**
+   * Mettre à jour un post (seulement category='user_added')
+   * @param {string} momentId - ID du moment parent
+   * @param {Object} updatedPost - Post avec modifications
+   */
+  updatePost = async (momentId, updatedPost) => {
+    logger.info('Mise à jour post:', updatedPost.id);
+
+    this.setLoadingOperation(true, 'Modification de la Photo Note...', 'Enregistrement sur Google Drive', 'spin');
+
+    try {
+      // Vérifier que c'est un post user_added
+      if (updatedPost.category !== 'user_added') {
+        throw new Error('Seuls les posts user_added peuvent être modifiés');
+      }
+
+      const masterIndex = this.appState.masterIndex;
+      const moment = masterIndex.moments.find(m => m.id === momentId);
+
+      if (!moment) {
+        throw new Error('Moment parent introuvable');
+      }
+
+      const postIndex = moment.posts.findIndex(p => p.id === updatedPost.id);
+
+      if (postIndex === -1) {
+        throw new Error('Post introuvable');
+      }
+
+      moment.posts[postIndex] = updatedPost;
+
+      // Sauvegarder sur Drive
+      await this.driveSync.saveFile('mekong_master_index_v3_moments.json', masterIndex);
+
+      // Mettre à jour l'état
+      this.updateState({ masterIndex });
+
+      this.setLoadingOperation(false);
+      logger.success('Post mis à jour');
+
+      return { success: true };
+    } catch (error) {
+      logger.error('Erreur mise à jour post:', error);
+      this.setLoadingOperation(false);
+      throw error;
+    }
+  }
+
+  /**
+   * Supprimer un post (seulement category='user_added')
+   * @param {string} momentId - ID du moment parent
+   * @param {string} postId - ID du post à supprimer
+   */
+  deletePost = async (momentId, postId) => {
+    logger.info('Suppression post:', postId);
+
+    this.setLoadingOperation(true, 'Suppression de la Photo Note...', 'Enregistrement sur Google Drive', 'monkey');
+
+    try {
+      const masterIndex = this.appState.masterIndex;
+      const moment = masterIndex.moments.find(m => m.id === momentId);
+
+      if (!moment) {
+        throw new Error('Moment parent introuvable');
+      }
+
+      const post = moment.posts.find(p => p.id === postId);
+
+      if (!post) {
+        throw new Error('Post introuvable');
+      }
+
+      if (post.category !== 'user_added') {
+        throw new Error('Seuls les posts user_added peuvent être supprimés');
+      }
+
+      // Supprimer tous les liens ContentLinks associés
+      if (this.contentLinks) {
+        try {
+          const links = this.contentLinks.getLinksForContent('post', postId);
+          for (const link of links) {
+            await this.contentLinks.removeLink(link.sessionId, 'post', postId);
+          }
+          logger.debug('Liens ContentLinks supprimés');
+        } catch (error) {
+          logger.error('Erreur suppression liens:', error);
+          // Non-bloquant
+        }
+      }
+
+      // Retirer du moment
+      moment.posts = moment.posts.filter(p => p.id !== postId);
+
+      // Sauvegarder sur Drive
+      await this.driveSync.saveFile('mekong_master_index_v3_moments.json', masterIndex);
+
+      // Mettre à jour l'état
+      this.updateState({ masterIndex });
+
+      this.setLoadingOperation(false);
+      logger.success('Post supprimé');
+
+      return { success: true };
+    } catch (error) {
+      logger.error('Erreur suppression post:', error);
+      this.setLoadingOperation(false);
+      throw error;
+    }
+  }
+
+  /**
+   * Supprimer une photo (seulement source='imported')
+   * @param {string} momentId - ID du moment parent
+   * @param {string} photoId - ID de la photo (google_drive_id)
+   */
+  deletePhoto = async (momentId, photoId) => {
+    logger.info('Suppression photo:', photoId);
+
+    this.setLoadingOperation(true, 'Suppression de la photo...', 'Enregistrement sur Google Drive', 'monkey');
+
+    try {
+      const masterIndex = this.appState.masterIndex;
+      const moment = masterIndex.moments.find(m => m.id === momentId);
+
+      if (!moment) {
+        throw new Error('Moment parent introuvable');
+      }
+
+      // Chercher dans dayPhotos
+      const dayPhoto = moment.dayPhotos?.find(p => p.google_drive_id === photoId || p.filename === photoId);
+
+      if (dayPhoto) {
+        if (dayPhoto.source !== 'imported') {
+          throw new Error('Seules les photos importées peuvent être supprimées');
+        }
+
+        // Supprimer tous les liens ContentLinks associés
+        if (this.contentLinks) {
+          try {
+            const links = this.contentLinks.getLinksForContent('photo', photoId);
+            for (const link of links) {
+              await this.contentLinks.removeLink(link.sessionId, 'photo', photoId);
+            }
+            logger.debug('Liens ContentLinks supprimés');
+          } catch (error) {
+            logger.error('Erreur suppression liens:', error);
+            // Non-bloquant
+          }
+        }
+
+        // Retirer de dayPhotos
+        moment.dayPhotos = moment.dayPhotos.filter(p =>
+          p.google_drive_id !== photoId && p.filename !== photoId
+        );
+
+        // Sauvegarder sur Drive
+        await this.driveSync.saveFile('mekong_master_index_v3_moments.json', masterIndex);
+
+        // Mettre à jour l'état
+        this.updateState({ masterIndex });
+
+        this.setLoadingOperation(false);
+        logger.success('Photo supprimée');
+
+        return { success: true };
+      }
+
+      // Chercher dans postPhotos
+      for (const post of moment.posts || []) {
+        const postPhoto = post.photos?.find(p => p.google_drive_id === photoId || p.filename === photoId);
+
+        if (postPhoto) {
+          if (postPhoto.source !== 'imported') {
+            throw new Error('Seules les photos importées peuvent être supprimées');
+          }
+
+          // Supprimer tous les liens ContentLinks associés
+          if (this.contentLinks) {
+            try {
+              const links = this.contentLinks.getLinksForContent('photo', photoId);
+              for (const link of links) {
+                await this.contentLinks.removeLink(link.sessionId, 'photo', photoId);
+              }
+              logger.debug('Liens ContentLinks supprimés');
+            } catch (error) {
+              logger.error('Erreur suppression liens:', error);
+              // Non-bloquant
+            }
+          }
+
+          // Retirer de post.photos
+          post.photos = post.photos.filter(p =>
+            p.google_drive_id !== photoId && p.filename !== photoId
+          );
+
+          // Sauvegarder sur Drive
+          await this.driveSync.saveFile('mekong_master_index_v3_moments.json', masterIndex);
+
+          // Mettre à jour l'état
+          this.updateState({ masterIndex });
+
+          this.setLoadingOperation(false);
+          logger.success('Photo supprimée');
+
+          return { success: true };
+        }
+      }
+
+      throw new Error('Photo introuvable');
+    } catch (error) {
+      logger.error('Erreur suppression photo:', error);
+      this.setLoadingOperation(false);
+      throw error;
     }
   }
 
