@@ -348,9 +348,10 @@ useEffect(() => {
         throw new Error(result.error || 'Échec de la conversion');
       }
 
-      // ⭐ v2.8e : Créer lien ContentLinks automatique (photo/note → session)
+      // ⭐ v2.8f : Créer lien(s) ContentLinks automatique (photo/note → session)
       if (app.currentChatSession && result.contentId && result.contentType && window.contentLinks) {
         try {
+          // Lien principal (post ou photo)
           await window.contentLinks.addLink({
             sessionId: app.currentChatSession.id,
             messageId: `import_${Date.now()}`,
@@ -362,6 +363,19 @@ useEffect(() => {
             linkedBy: app.currentUser
           });
           logger.success(`🔗 Lien ContentLinks créé: ${result.contentType} → session ${app.currentChatSession.id}`);
+
+          // ⭐ v2.8f : Si c'est un post (Photo Note), créer AUSSI un lien pour la photo
+          if (result.contentType === 'post' && photoData.google_drive_id) {
+            await window.contentLinks.addLink({
+              sessionId: app.currentChatSession.id,
+              messageId: `import_photo_${Date.now()}`,
+              contentType: 'photo',
+              contentId: photoData.google_drive_id,
+              contentTitle: photoData.filename,
+              linkedBy: app.currentUser
+            });
+            logger.success(`🔗 Lien photo supplémentaire créé: ${photoData.google_drive_id}`);
+          }
         } catch (linkError) {
           logger.error('❌ Erreur création lien ContentLinks:', linkError);
           // Non-bloquant
@@ -949,17 +963,22 @@ function LinkPhotoPreview({ photo }) {
         )}
 
         {app.currentChatSession.notes?.map((message) => {
-          // ⭐ v2.8e : Détecter si le message a une photo linkée pour séparer les zones hover
-          const hasLinkedPhoto = message.photoData && (
-            message.id.endsWith('-origin') || isPhotoLinkedToContent(message.photoData)
+          // ⭐ v2.8f : Détecter si photo nécessite icônes Zoom/Localiser
+          const hasInteractivePhoto = message.photoData && (
+            message.id.endsWith('-origin') ||
+            isPhotoLinkedToContent(message.photoData) ||
+            message.photoData.source === 'imported'  // ⭐ Photos importées aussi
           );
+
+          // ⭐ v2.8f : Séparer zones hover pour TOUS messages avec photo+texte
+          const shouldSeparateHoverZones = message.photoData && message.content;
 
           return (
           <div
             key={message.id}
             className={`flex ${getCurrentUserStyle(message.author)} max-w-xs sm:max-w-md lg:max-w-lg`}
           >
-            <div className={hasLinkedPhoto ? "relative" : "group relative"}>
+            <div className={shouldSeparateHoverZones ? "relative" : "group relative"}>
 
               <div className={`px-4 py-3 ${getUserBubbleStyle(message.author)} transition-all duration-200`}>
                 
@@ -1008,8 +1027,8 @@ function LinkPhotoPreview({ photo }) {
     
     {/* Photo si présente */}
 {message.photoData && (
-  message.id.endsWith('-origin') || isPhotoLinkedToContent(message.photoData) ? (
-    // ⭐ Photo origine OU photo linkée = LinkedContent avec Zoom/Localiser
+  hasInteractivePhoto ? (
+    // ⭐ v2.8f : Photo interactive (origin/linkée/importée) = LinkedContent avec Zoom/Localiser
     <div className="w-full max-w-full overflow-hidden mb-2">
       <LinkedContent
         linkedContent={{
@@ -1029,7 +1048,7 @@ function LinkPhotoPreview({ photo }) {
       />
     </div>
   ) : (
-    // Photo normale sans lien
+    // Photo normale sans interaction
     <PhotoMessage
       photo={message.photoData}
       onPhotoClick={openPhotoViewer}
@@ -1037,9 +1056,9 @@ function LinkPhotoPreview({ photo }) {
   )
 )}
     
-    {/* Texte - ⭐ v2.8e : Groupe séparé si photo linkée */}
+    {/* Texte - ⭐ v2.8f : Groupe séparé si photo+texte */}
     {message.content && (
-      <div className={hasLinkedPhoto ? "group relative" : ""}>
+      <div className={shouldSeparateHoverZones ? "group relative" : ""}>
         <div className="text-sm whitespace-pre-wrap leading-relaxed">
           {message.content}
         </div>
@@ -1049,8 +1068,8 @@ function LinkPhotoPreview({ photo }) {
           <div className="text-xs opacity-70 italic mt-1">modifié</div>
         )}
 
-        {/* ⭐ v2.8e : Boutons édition/suppression DANS le groupe texte si photo linkée */}
-        {hasLinkedPhoto && app.currentUser && message.author === app.currentUser.id && (
+        {/* ⭐ v2.8f : Boutons édition/suppression DANS le groupe texte si zones séparées */}
+        {shouldSeparateHoverZones && app.currentUser && message.author === app.currentUser.id && (
           <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-700 rounded shadow-lg p-1 -mr-2 -mt-2">
             <button
               onClick={() => handleEditMessage(message)}
@@ -1071,8 +1090,8 @@ function LinkPhotoPreview({ photo }) {
       </div>
     )}
 
-    {/* ⭐ v2.8e : Boutons HORS du groupe texte si pas de photo linkée */}
-    {!hasLinkedPhoto && app.currentUser && message.author === app.currentUser.id && (
+    {/* ⭐ v2.8f : Boutons HORS du groupe texte si pas de séparation */}
+    {!shouldSeparateHoverZones && app.currentUser && message.author === app.currentUser.id && (
       <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-700 rounded shadow-lg p-1 -mr-2 -mt-2">
         <button
           onClick={() => handleEditMessage(message)}
