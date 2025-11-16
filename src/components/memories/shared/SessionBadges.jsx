@@ -56,25 +56,27 @@ SessionBadgePost.displayName = 'SessionBadgePost';
 // Pastille sessions pour Photo thumbnail (overlay circle)
 // ====================================================================
 
-export const SessionBadgePhotoThumb = memo(({ 
-  photo, 
-  momentId, 
-  sessions, 
-  onShowSessions 
+export const SessionBadgePhotoThumb = memo(({
+  photo,
+  momentId,
+  sessions,
+  onShowSessions
 }) => {
+  // ⭐ v2.8f : Utiliser google_drive_id en priorité (cohérent avec ContentLinks)
+  const photoId = photo.google_drive_id || photo.filename;
   const linkedSessions = getSessionsForContent(
-    sessions, 
-    'photo', 
-    photo.filename || photo.google_drive_id
+    sessions,
+    'photo',
+    photoId
   );
   const count = linkedSessions.length;
-  
+
   if (count === 0) return null;
-  
+
   const handleClick = (e) => {
     e.stopPropagation();
     const photoTitle = photo.filename || photo.google_drive_id || 'Photo';
-    onShowSessions('photo', photo.filename || photo.google_drive_id, photoTitle);
+    onShowSessions('photo', photoId, photoTitle);
   };
   
   return (

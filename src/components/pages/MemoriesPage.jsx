@@ -203,7 +203,19 @@ const handleAddPhotoSouvenir = useCallback(async () => {
   try {
     logger.info('📷 Ouverture file picker pour photo souvenir');
     const files = await openFilePicker(false);
+
+    // ⭐ v2.8f : Afficher spinner pendant traitement
+    dataManager.setLoadingOperation(
+      true,
+      'Traitement de l\'image...',
+      'Compression et upload vers Google Drive',
+      'camera'
+    );
+
     const photoMetadata = await processAndUploadImage(files[0], app.currentUser);
+
+    // Désactiver le spinner
+    dataManager.setLoadingOperation(false);
 
     setPhotoToMemoryModal({
       isOpen: true,
@@ -211,6 +223,7 @@ const handleAddPhotoSouvenir = useCallback(async () => {
     });
   } catch (error) {
     logger.error('❌ Erreur upload photo souvenir:', error);
+    dataManager.setLoadingOperation(false);
     if (error.message !== 'Sélection annulée') {
       alert(`Erreur lors de l'upload de la photo:\n${error.message}`);
     }
