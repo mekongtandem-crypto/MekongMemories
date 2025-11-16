@@ -1,7 +1,8 @@
 /**
- * PhotoToMemoryModal.jsx v3.0c - Conversion photo importée → souvenir
- * ✅ Sélection moment existant OU création nouveau moment
- * ✅ Légende optionnelle
+ * PhotoToMemoryModal.jsx v3.0e - Conversion photo → souvenir (2 sections)
+ * ✅ Section 1 : Association moment (titre, date, jnnn)
+ * ✅ Section 2 : Texte optionnel (titre + descriptif) → Photo Note
+ * ✅ Support création nouveau moment
  * ✅ Support dark mode
  */
 import React, { useState, useEffect } from 'react';
@@ -13,11 +14,16 @@ export default function PhotoToMemoryModal({
   moments = [],
   onConvert
 }) {
+  // Section 1 : Moment
   const [selectedMomentId, setSelectedMomentId] = useState('');
   const [newMomentTitle, setNewMomentTitle] = useState('');
   const [newMomentDate, setNewMomentDate] = useState('');
-  const [caption, setCaption] = useState('');
+  const [newMomentJnnn, setNewMomentJnnn] = useState('undefined');
   const [isCreatingNewMoment, setIsCreatingNewMoment] = useState(false);
+
+  // Section 2 : Texte (optionnel pour Photo Note)
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteContent, setNoteContent] = useState('');
 
   // Réinitialiser l'état à l'ouverture
   useEffect(() => {
@@ -25,8 +31,10 @@ export default function PhotoToMemoryModal({
       setSelectedMomentId('');
       setNewMomentTitle('');
       setNewMomentDate('');
-      setCaption('');
+      setNewMomentJnnn('undefined');
       setIsCreatingNewMoment(false);
+      setNoteTitle('');
+      setNoteContent('');
     }
   }, [isOpen]);
 
@@ -37,30 +45,36 @@ export default function PhotoToMemoryModal({
   };
 
   const handleConfirm = () => {
-    // Validation
+    // Validation Section 1
     if (!isCreatingNewMoment && !selectedMomentId) {
       alert('Veuillez sélectionner un moment ou créer un nouveau moment');
       return;
     }
 
-    if (isCreatingNewMoment && !newMomentTitle.trim()) {
-      alert('Veuillez saisir un titre pour le nouveau moment');
-      return;
-    }
-
-    if (isCreatingNewMoment && !newMomentDate) {
-      alert('Veuillez saisir une date pour le nouveau moment');
-      return;
+    if (isCreatingNewMoment) {
+      if (!newMomentTitle.trim()) {
+        alert('Veuillez saisir un titre pour le nouveau moment');
+        return;
+      }
+      if (!newMomentDate) {
+        alert('Veuillez saisir une date pour le nouveau moment');
+        return;
+      }
     }
 
     // Retourner les données au parent
     onConvert({
+      // Section 1 : Moment
       momentId: isCreatingNewMoment ? null : selectedMomentId,
       newMoment: isCreatingNewMoment ? {
         title: newMomentTitle.trim(),
-        date: newMomentDate
+        date: newMomentDate,
+        jnnn: newMomentJnnn.trim() || 'undefined'
       } : null,
-      caption: caption.trim() || null
+
+      // Section 2 : Texte (Photo Note)
+      noteTitle: noteTitle.trim() || null,
+      noteContent: noteContent.trim() || null
     });
 
     onClose();
@@ -71,7 +85,11 @@ export default function PhotoToMemoryModal({
     setSelectedMomentId('');
     setNewMomentTitle('');
     setNewMomentDate('');
+    setNewMomentJnnn('undefined');
   };
+
+  // Déterminer si c'est une Photo Note (texte présent)
+  const isPhotoNote = noteTitle.trim() || noteContent.trim();
 
   return (
     <div
@@ -80,15 +98,15 @@ export default function PhotoToMemoryModal({
       onClick={handleCancel}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
           <div className="flex items-center space-x-2">
             <MapPin className="w-5 h-5 text-green-600 dark:text-green-400" />
             <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-              Convertir en souvenir
+              📷 Créer un souvenir photo
             </h3>
           </div>
           <button
@@ -100,12 +118,16 @@ export default function PhotoToMemoryModal({
         </div>
 
         {/* Body */}
-        <div className="p-4 space-y-4">
-          {/* Sélection moment */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Associer à un moment *
-            </label>
+        <div className="p-6 space-y-6">
+
+          {/* ========== SECTION 1 : ASSOCIER UN MOMENT ========== */}
+          <div className="border border-purple-200 dark:border-purple-700 rounded-lg p-4 bg-purple-50/30 dark:bg-purple-900/10">
+            <div className="flex items-center space-x-2 mb-4">
+              <MapPin className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <h4 className="font-medium text-purple-900 dark:text-purple-100">
+                1. Associer à un moment *
+              </h4>
+            </div>
 
             {/* Toggle Create/Select */}
             <button
@@ -122,33 +144,50 @@ export default function PhotoToMemoryModal({
               // Création nouveau moment
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Titre du moment *
                   </label>
                   <input
                     type="text"
                     value={newMomentTitle}
                     onChange={(e) => setNewMomentTitle(e.target.value)}
-                    placeholder="Ex: Jour 3 - Visite des temples"
+                    placeholder="Ex: Temple Wat Xieng Thong"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                       bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                      focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                     autoFocus
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
-                    Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={newMomentDate}
-                    onChange={(e) => setNewMomentDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                      bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                      focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={newMomentDate}
+                      onChange={(e) => setNewMomentDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                        bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                        focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Jour (Jnnn)
+                    </label>
+                    <input
+                      type="text"
+                      value={newMomentJnnn}
+                      onChange={(e) => setNewMomentJnnn(e.target.value)}
+                      placeholder="J7, undefined..."
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                        bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                        focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    />
+                  </div>
                 </div>
               </div>
             ) : (
@@ -158,7 +197,7 @@ export default function PhotoToMemoryModal({
                 onChange={(e) => setSelectedMomentId(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                   bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                  focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
               >
                 <option value="">-- Sélectionnez un moment --</option>
                 {moments.map(moment => (
@@ -170,28 +209,75 @@ export default function PhotoToMemoryModal({
             )}
           </div>
 
-          {/* Légende optionnelle */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Légende (optionnel)
-            </label>
-            <textarea
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              placeholder="Ajoutez une description ou un commentaire pour cette photo..."
-              rows="3"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
-            />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Si vous ajoutez une légende, cette photo deviendra un "post avec photo" (✍️) dans la timeline.
-            </p>
+          {/* ========== SECTION 2 : AJOUTER DU TEXTE (OPTIONNEL) ========== */}
+          <div className="border border-amber-200 dark:border-amber-700 rounded-lg p-4 bg-amber-50/30 dark:bg-amber-900/10">
+            <div className="flex items-center space-x-2 mb-4">
+              <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <h4 className="font-medium text-amber-900 dark:text-amber-100">
+                2. Ajouter du texte (optionnel)
+              </h4>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Titre
+                </label>
+                <input
+                  type="text"
+                  value={noteTitle}
+                  onChange={(e) => setNoteTitle(e.target.value)}
+                  placeholder="Ex: Magnifique architecture"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                    bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                    focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Descriptif (max 500 caractères)
+                </label>
+                <textarea
+                  value={noteContent}
+                  onChange={(e) => setNoteContent(e.target.value)}
+                  placeholder="Ajoutez une description détaillée de cette photo..."
+                  rows="4"
+                  maxLength={500}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                    bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                    focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {noteContent.length}/500 caractères
+                </p>
+              </div>
+            </div>
+
+            {/* Indicateur type de souvenir */}
+            <div className="mt-3 p-2 bg-white dark:bg-gray-700 rounded text-xs">
+              {isPhotoNote ? (
+                <div className="flex items-center space-x-2 text-amber-700 dark:text-amber-300">
+                  <span className="text-base">📷✍️</span>
+                  <span className="font-medium">
+                    Ce sera une <strong>Photo Note</strong> (photo avec texte)
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 text-purple-700 dark:text-purple-300">
+                  <span className="text-base">📷</span>
+                  <span className="font-medium">
+                    Ce sera une <strong>Photo simple</strong>
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
+
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800">
           <button
             onClick={handleCancel}
             className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -200,7 +286,7 @@ export default function PhotoToMemoryModal({
           </button>
           <button
             onClick={handleConfirm}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
+            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium shadow-md"
           >
             Confirmer
           </button>

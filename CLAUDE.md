@@ -1077,6 +1077,66 @@ For questions about specific aspects:
 
 ---
 
+## 🔮 Planned Migrations & Future Work
+
+### **v3.1 - MasterIndex Structure Uniformization** (Planned)
+
+**Context:** Currently, the masterIndex has heterogeneous structures for different content types:
+- `dayPhotos[]`: Simple photo objects
+- `posts[]`: Post objects with optional photos array
+- Photos imported (v3.0): Mixed into both structures
+
+**Goal:** Uniformize all content into a consistent structure for easier querying and rendering.
+
+**Proposed Unified Structure:**
+```javascript
+{
+  moments: [
+    {
+      id: "moment_1",
+      title: "...",
+      jnnn: "J7" | "undefined",
+      date: "2024-01-15",
+      content: [  // ⭐ Unified content array
+        {
+          type: "photo",
+          source: "moment" | "imported",
+          google_drive_id: "...",
+          // ...
+        },
+        {
+          type: "post",
+          category: "mastodon" | "user_added",
+          source: "mastodon" | "imported",
+          title: "...",  // optional
+          content: "...",
+          photos: [...]
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Benefits:**
+- Single array to iterate for rendering
+- Consistent filtering/sorting logic
+- Easier to add new content types
+- Simplified ContentLinks integration
+
+**Migration Strategy:**
+1. Create migration script in `/src/utils/migrateM
+
+asterIndexV3_1.js`
+2. Detect old structure and convert to new
+3. Preserve all existing data
+4. Update all rendering components
+5. Test thoroughly before deployment
+
+**ETA:** Post v3.0 feature completion
+
+---
+
 ## 📊 Project Statistics
 
 | Metric | Value |

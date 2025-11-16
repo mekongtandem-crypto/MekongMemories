@@ -766,9 +766,9 @@ class DataManager {
   }
 
   /**
-   * Ajouter une photo importée au MasterIndex (v3.0)
+   * Ajouter une photo importée au MasterIndex (v3.0e)
    * @param {Object} photoData - Métadonnées photo (google_drive_id, filename, etc.)
-   * @param {Object} conversionData - { momentId, newMoment, caption }
+   * @param {Object} conversionData - { momentId, newMoment: { title, date, jnnn }, noteTitle, noteContent }
    * @returns {Promise<Object>} { success, momentId, photoAdded }
    */
   addImportedPhotoToMasterIndex = async (photoData, conversionData) => {
@@ -786,7 +786,7 @@ class DataManager {
 
       // 2a. Créer un nouveau moment si demandé
       if (conversionData.newMoment) {
-        const { title, date } = conversionData.newMoment;
+        const { title, date, jnnn } = conversionData.newMoment;
 
         // Générer ID unique pour le moment
         momentId = `moment_imported_${Date.now()}`;
@@ -795,6 +795,7 @@ class DataManager {
           id: momentId,
           title: title,
           date: date,
+          jnnn: jnnn || 'undefined',
           description: '',
           location: '',
           dayPhotos: [],
@@ -804,7 +805,7 @@ class DataManager {
 
         // Ajouter le moment à la liste
         masterIndex.moments.push(targetMoment);
-        logger.info(`✅ Nouveau moment créé: ${momentId}`);
+        logger.info(`✅ Nouveau moment créé: ${momentId} (jnnn: ${jnnn || 'undefined'})`);
       }
       // 2b. Trouver le moment existant
       else {
@@ -831,11 +832,17 @@ class DataManager {
         mime_type: photoData.type || 'image/jpeg'
       };
 
-      // 4a. Si caption → créer un post avec photo
-      if (conversionData.caption) {
+      // 4. Déterminer si c'est une Photo Note (texte présent)
+      const isPhotoNote = conversionData.noteTitle || conversionData.noteContent;
+
+      // 4a. Si texte → créer un post avec photo (Photo Note)
+      if (isPhotoNote) {
         const newPost = {
           id: `post_imported_${Date.now()}`,
-          content: conversionData.caption,
+          type: 'post',
+          category: 'user_added',
+          title: conversionData.noteTitle || '',
+          content: conversionData.noteContent || '',
           date: new Date().toISOString(),
           url: null,
           source: 'imported',
@@ -848,7 +855,7 @@ class DataManager {
         }
         targetMoment.posts.push(newPost);
 
-        logger.info(`✅ Post avec photo créé: ${newPost.id}`);
+        logger.info(`✅ Photo Note créée: ${newPost.id} (titre: "${conversionData.noteTitle || 'sans titre'}")`);
       }
       // 4b. Sinon → ajouter photo standalone dans dayPhotos
       else {
@@ -857,7 +864,7 @@ class DataManager {
         }
         targetMoment.dayPhotos.push(photoForMasterIndex);
 
-        logger.info(`✅ Photo ajoutée à dayPhotos`);
+        logger.info(`✅ Photo simple ajoutée à dayPhotos`);
       }
 
       // 5. Sauvegarder le masterIndex modifié

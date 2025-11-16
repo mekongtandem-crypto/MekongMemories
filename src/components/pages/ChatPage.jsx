@@ -1,13 +1,15 @@
 /**
- * ChatPage.jsx v3.0d - Conversion photo → souvenir FONCTIONNELLE
+ * ChatPage.jsx v3.0e - Modal 2 sections + insertion chat après conversion
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
- * ✅ Upload avec conversion : modal de sélection moment + légende
- * ✅ PhotoToMemoryModal : création/sélection moment + caption optionnel
- * ✅ Ajout réel au masterIndex (nouveau moment ou existant)
- * ✅ Support post avec photo (si caption) ou photo standalone
- * ✅ Sauvegarde masterIndex sur Drive + reload automatique
+ * ✅ Upload avec conversion : modal 2 sections (moment + texte optionnel)
+ * ✅ PhotoToMemoryModal : Section 1 (moment) + Section 2 (Photo Note)
+ * ✅ Support champ jnnn pour nouveaux moments (valeur par défaut: "undefined")
+ * ✅ Photo Note : titre + descriptif (max 500 chars) → posts avec category: 'user_added'
+ * ✅ Photo simple (sans texte) → dayPhotos[]
+ * ✅ Ajout réel au masterIndex avec nouvelle structure
+ * ✅ Insertion automatique de la photo dans le chat après conversion
  * ✅ Preview photo importée avant envoi
  * ✅ Envoi message avec photoData (source: 'imported')
  * ✅ SessionInfoPanel (slide-in)
@@ -345,6 +347,10 @@ useEffect(() => {
       if (!result.success) {
         throw new Error(result.error || 'Échec de la conversion');
       }
+
+      // ⭐ v3.0e : Insérer la photo dans le chat après conversion réussie
+      setAttachedPhoto(photoData);
+      logger.info('📸 Photo attachée au chat après conversion');
 
       // Feedback
       if (window.chatPageActions?.showFeedback) {
