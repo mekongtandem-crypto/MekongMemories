@@ -9,7 +9,7 @@
 
 import React, { memo, useCallback } from 'react';
 import {
-  ChevronDown, FileText, Camera, MapPin, Tag, Link, MessageCircle, FileEdit
+  ChevronDown, FileText, Camera, MapPin, Tag, Link, MessageCircle, FileEdit, Edit, Trash2
 } from 'lucide-react';
 import { generateMomentKey, getMomentChildrenKeys } from '../../../utils/themeUtils.js';
 import { getSessionsForContent } from '../../../utils/sessionUtils.js';
@@ -212,6 +212,33 @@ export const MomentHeader = memo(({
             >
               <Link className="w-4 h-4" />
             </button>
+          )}
+
+          {/* ⭐ v2.9 : Boutons édition (seulement si mode édition + source='imported') */}
+          {window.appState?.editionMode?.active && moment.source === 'imported' && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.memoriesPageActions?.editMoment(moment);
+                }}
+                className="p-1.5 bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-700 hover:bg-purple-200 dark:hover:bg-purple-800 rounded transition-colors"
+                title="Modifier ce moment"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.memoriesPageActions?.deleteMoment(moment);
+                }}
+                className="p-1.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-800 rounded transition-colors"
+                title="Supprimer ce moment"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
           )}
         </div>
       </div> 

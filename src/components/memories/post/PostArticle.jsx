@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect, memo, useCallback } from 'react';
-import { Tag, Link, Image as ImageIcon } from 'lucide-react';
+import { Tag, Link, Image as ImageIcon, Edit, Trash2 } from 'lucide-react';
 import { SessionBadgePost } from '../shared/SessionBadges.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import { generatePostKey } from '../../../utils/themeUtils.js';
@@ -162,6 +162,33 @@ export const PostArticle = memo(({
               >
                 <Link className="w-4 h-4" />
               </button>
+            )}
+
+            {/* ⭐ v2.9 : Boutons édition (seulement si mode édition + category='user_added') */}
+            {window.appState?.editionMode?.active && post.category === 'user_added' && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.memoriesPageActions?.editPost(post, moment.id);
+                  }}
+                  className="p-1.5 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800 rounded transition-colors"
+                  title="Modifier cette Photo Note"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.memoriesPageActions?.deletePost(moment.id, post.id, post.title || 'Photo Note');
+                  }}
+                  className="p-1.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800 rounded transition-colors"
+                  title="Supprimer cette Photo Note"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
             )}
           </div>
         </div>
