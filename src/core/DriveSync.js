@@ -115,6 +115,23 @@ class DriveSync {
     }
   }
 
+  /**
+   * ⭐ v2.9 : Supprimer un fichier par son ID Drive (pour photos)
+   * @param {string} fileId - ID Google Drive du fichier
+   */
+  async deleteFileById(fileId) {
+    if (!this.connectionManager.getState().isOnline) throw new Error('Non connecté.');
+    try {
+      await window.gapi.client.drive.files.delete({
+        fileId: fileId
+      });
+      console.log(`✅ Fichier photo supprimé du Drive (ID: ${fileId})`);
+    } catch (error) {
+      console.error(`❌ Erreur lors de la suppression du fichier Drive (ID: ${fileId}):`, error);
+      throw new Error(`Erreur API Drive (suppression photo): ${error.details || error.message}`);
+    }
+  }
+
   async saveFile(filename, data, contentType = 'application/json') {
     if (!this.connectionManager.getState().isOnline) throw new Error('Non connecté.');
     

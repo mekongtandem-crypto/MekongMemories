@@ -1176,10 +1176,10 @@ class DataManager {
         // ⭐ v2.9 : Supprimer fichier Drive si demandé
         if (deleteFromDrive && dayPhoto.google_drive_id) {
           try {
-            await this.driveSync.deleteFile(dayPhoto.google_drive_id);
-            logger.success('Fichier photo supprimé du Drive');
+            await this.driveSync.deleteFileById(dayPhoto.google_drive_id);
+            logger.success('📸 Fichier image supprimé du cloud');
           } catch (error) {
-            logger.warn('Impossible de supprimer le fichier du Drive:', error);
+            logger.warn('⚠️ Impossible de supprimer le fichier du cloud:', error);
             // Non-bloquant, on continue
           }
         }
@@ -1227,10 +1227,10 @@ class DataManager {
           // ⭐ v2.9 : Supprimer fichier Drive si demandé
           if (deleteFromDrive && postPhoto.google_drive_id) {
             try {
-              await this.driveSync.deleteFile(postPhoto.google_drive_id);
-              logger.success('Fichier photo supprimé du Drive');
+              await this.driveSync.deleteFileById(postPhoto.google_drive_id);
+              logger.success('📸 Fichier image supprimé du cloud');
             } catch (error) {
-              logger.warn('Impossible de supprimer le fichier du Drive:', error);
+              logger.warn('⚠️ Impossible de supprimer le fichier du cloud:', error);
               // Non-bloquant, on continue
             }
           }

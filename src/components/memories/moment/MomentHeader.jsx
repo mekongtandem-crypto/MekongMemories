@@ -222,7 +222,7 @@ export const MomentHeader = memo(({
                   e.stopPropagation();
                   window.memoriesPageActions?.editMoment(moment);
                 }}
-                className="p-1.5 bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-700 hover:bg-purple-200 dark:hover:bg-purple-800 rounded transition-colors"
+                className="p-1.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-800 rounded transition-colors"
                 title="Modifier ce moment"
               >
                 <Edit className="w-4 h-4" />
@@ -234,7 +234,7 @@ export const MomentHeader = memo(({
                   window.memoriesPageActions?.deleteMoment(moment);
                 }}
                 className="p-1.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-800 rounded transition-colors"
-                title="Supprimer ce moment"
+                title="Effacer ce souvenir de la mémoire"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

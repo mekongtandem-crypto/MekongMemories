@@ -172,8 +172,8 @@ export const PostArticle = memo(({
                     e.stopPropagation();
                     window.memoriesPageActions?.editPost(post, moment.id);
                   }}
-                  className="p-1.5 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800 rounded transition-colors"
-                  title="Modifier cette Photo Note"
+                  className="p-1.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-800 rounded transition-colors"
+                  title="Modifier cette note"
                 >
                   <Edit className="w-4 h-4" />
                 </button>
@@ -183,8 +183,8 @@ export const PostArticle = memo(({
                     e.stopPropagation();
                     window.memoriesPageActions?.deletePost(moment.id, post.id, post.title || 'Photo Note');
                   }}
-                  className="p-1.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800 rounded transition-colors"
-                  title="Supprimer cette Photo Note"
+                  className="p-1.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-800 rounded transition-colors"
+                  title="Effacer cette note de la mémoire"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

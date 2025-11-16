@@ -29,7 +29,7 @@ import { enrichMomentsWithData } from '../memories/layout/helpers.js';
 import {
   Camera, FileText, MapPin, ZoomIn, Image as ImageIcon,
   AlertCircle, ChevronDown, X, Tag, Link,
-  MessageCircle, MessageCirclePlus, MessageCircleMore, Edit2
+  MessageCircle, MessageCirclePlus, MessageCircleMore, Edit2, Edit, Trash2
 } from 'lucide-react';
 import { 
   sortThemes, 
@@ -1090,22 +1090,32 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
       {/* ⭐ v2.9 : Barre Mode Édition */}
       {editionMode?.active && (
         <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 px-4 py-3 transition-colors duration-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Edit2 className="w-5 h-5 text-red-600 dark:text-red-400" />
-              <span className="text-red-700 dark:text-red-300 font-medium">Mode Édition</span>
-              <span className="text-red-600 dark:text-red-400 text-sm">
-                — Cliquez sur les icônes 📝 et 🗑️ pour éditer ou supprimer
-              </span>
+          {/* Ligne 1 : Titre + Bouton X */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex-1"></div>
+            <h3 className="text-lg font-bold text-red-700 dark:text-red-300 text-center flex-1">
+              Mode Édition
+            </h3>
+            <div className="flex-1 flex justify-end">
+              <button
+                onClick={onCancelEditionMode}
+                className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-full transition-colors"
+                title="Quitter le mode édition"
+              >
+                <X className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </button>
             </div>
-            <button
-              onClick={onCancelEditionMode}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-300 dark:border-red-700 rounded-lg transition-colors"
-              title="Quitter le mode édition"
-            >
-              <X className="w-4 h-4 text-red-600 dark:text-red-400" />
-              <span className="text-red-700 dark:text-red-300 text-sm font-medium">Quitter</span>
-            </button>
+          </div>
+
+          {/* Ligne 2 : Instructions avec icônes */}
+          <div className="flex items-center justify-center space-x-4 text-sm text-red-600 dark:text-red-400">
+            <span className="flex items-center space-x-1.5">
+              <span>Cliquez sur</span>
+              <Edit className="w-4 h-4 inline text-green-600 dark:text-green-400" />
+              <span>pour modifier ou</span>
+              <Trash2 className="w-4 h-4 inline text-red-600 dark:text-red-400" />
+              <span>pour supprimer</span>
+            </span>
           </div>
         </div>
       )}

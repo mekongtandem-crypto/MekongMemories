@@ -139,7 +139,7 @@ console.log('📸 Photo data:', photo); //log temporaire
             e.stopPropagation();
             window.memoriesPageActions?.deletePhoto(moment.id, photo.google_drive_id || photo.filename, photo.filename);
           }}
-          title="Supprimer cette photo"
+          title="Effacer ce souvenir de la mémoire"
         >
           <Trash2 className="w-4 h-4" />
         </button>
