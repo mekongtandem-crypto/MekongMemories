@@ -23,7 +23,7 @@ import {
 } from '../../utils/sessionUtils.js';
 import {
   Clock, MoreVertical, Edit, Trash2,
-  Archive, ChevronDown, X, Eye, EyeOff
+  Archive, ChevronDown, X, Eye, EyeOff, Check
 } from 'lucide-react';
 
 export default function SessionsPage() {
@@ -147,32 +147,37 @@ export default function SessionsPage() {
     const lastMessageTime = lastMessage?.timestamp || session.createdAt;
     const lastMessageAuthor = lastMessage?.author || session.user;
     const sessionCreator = session.user;
-    
+    const sessionUpdatedAt = session.updatedAt || session.createdAt; // ⭐ v2.9g : Prendre en compte updatedAt
+
     // ⚠️ IMPORTANT : Une session/message créé par le user courant ne peut pas être "non lu" pour lui
-    
+
     // Si je suis le créateur et pas de message, c'est READ pour moi
     if (sessionCreator === app.currentUser?.id && !lastMessage) {
       return 'read';
     }
-    
+
     // Si je suis l'auteur du dernier message, c'est READ pour moi
     if (lastMessageAuthor === app.currentUser?.id) {
       return 'read';
     }
-    
+
     // NEW : jamais ouverte PAR MOI + créée par quelqu'un d'autre
     if (!tracking?.hasBeenOpened && sessionCreator !== app.currentUser?.id) {
       return 'new';
     }
-    
-    // UNREAD : nouveau message depuis dernière ouverture + message de quelqu'un d'autre
-    if (tracking?.hasBeenOpened && 
-        tracking.lastOpenedAt && 
-        new Date(lastMessageTime) > new Date(tracking.lastOpenedAt) &&
-        lastMessageAuthor !== app.currentUser?.id) {
-      return 'unread';
+
+    // ⭐ v2.9g : UNREAD si session modifiée (updatedAt) OU nouveau message
+    // UNREAD : nouveau message/modification depuis dernière ouverture + par quelqu'un d'autre
+    if (tracking?.hasBeenOpened && tracking.lastOpenedAt) {
+      const lastOpenedDate = new Date(tracking.lastOpenedAt);
+      const hasNewMessage = new Date(lastMessageTime) > lastOpenedDate && lastMessageAuthor !== app.currentUser?.id;
+      const hasUpdate = new Date(sessionUpdatedAt) > lastOpenedDate;
+
+      if (hasNewMessage || hasUpdate) {
+        return 'unread';
+      }
     }
-    
+
     // READ : à jour
     return 'read';
   };

@@ -64,6 +64,13 @@ export function useAppState() {
   const regenerateMasterIndex = useCallback(() => dataManager.regenerateMasterIndex(), []);
   const reloadMasterIndex = useCallback(() => dataManager.reloadMasterIndex(), []); // ✅ FIX v2.6.5
 
+  // ⭐ v2.9 : Actions CRUD Moments, Posts, Photos
+  const updateMoment = useCallback((moment) => dataManager.updateMoment(moment), []);
+  const deleteMoment = useCallback((momentId) => dataManager.deleteMoment(momentId), []);
+  const updatePost = useCallback((momentId, post) => dataManager.updatePost(momentId, post), []);
+  const deletePost = useCallback((momentId, postId) => dataManager.deletePost(momentId, postId), []);
+  const deletePhoto = useCallback((momentId, photoId) => dataManager.deletePhoto(momentId, photoId), []);
+
   // Actions notifications (Phase 15a)
   const sendNotification = useCallback((toUserId, sessionId, sessionTitle) => 
     dataManager.sendNotification(toUserId, sessionId, sessionTitle), []);
@@ -140,7 +147,14 @@ export function useAppState() {
     sendNotification,
     getUnreadNotifications,
     getUnreadNotificationCount,
-    
+
+    // ⭐ v2.9 : Actions CRUD Moments, Posts, Photos
+    updateMoment,
+    deleteMoment,
+    updatePost,
+    deletePost,
+    deletePhoto,
+
     // ⭐ CORRECTION BUG 2 - Phase 18/19 : Exposition contentLinks pour pastilles 💬
     // AVANT : contentLinks non exposé → getSessionsForContent() retournait toujours []
     // APRÈS : app.contentLinks accessible depuis MemoriesPage/PhotoViewer
