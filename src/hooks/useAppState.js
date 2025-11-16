@@ -66,10 +66,11 @@ export function useAppState() {
 
   // ⭐ v2.9 : Actions CRUD Moments, Posts, Photos
   const updateMoment = useCallback((moment) => dataManager.updateMoment(moment), []);
-  const deleteMoment = useCallback((momentId) => dataManager.deleteMoment(momentId), []);
+  const deleteMoment = useCallback((momentId, cascadeOptions) => dataManager.deleteMoment(momentId, cascadeOptions), []);
   const updatePost = useCallback((momentId, post) => dataManager.updatePost(momentId, post), []);
   const deletePost = useCallback((momentId, postId) => dataManager.deletePost(momentId, postId), []);
-  const deletePhoto = useCallback((momentId, photoId) => dataManager.deletePhoto(momentId, photoId), []);
+  const deletePhoto = useCallback((momentId, photoId, filename, deleteFromDrive, showSpinner) =>
+    dataManager.deletePhoto(momentId, photoId, filename, deleteFromDrive, showSpinner), []);
 
   // Actions notifications (Phase 15a)
   const sendNotification = useCallback((toUserId, sessionId, sessionTitle) => 

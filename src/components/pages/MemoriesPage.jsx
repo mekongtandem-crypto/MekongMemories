@@ -99,7 +99,10 @@ const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
     momentId: null,  // Pour photos et posts
     itemId: null,    // photoId ou postId
     deleteFromDrive: false,  // ⭐ Option suppression Drive pour photos
-    onConfirm: null
+    onConfirm: null,
+    // ⭐ v2.9j : Suppression en cascade (moments)
+    childrenCounts: null,  // { notes: X, photos: Y }
+    cascadeOptions: null   // { deleteNotes: false, deletePhotos: false, deleteFiles: false }
   });
 
   // ========================================
@@ -339,6 +342,17 @@ const handleSaveMoment = useCallback(async (updatedMoment) => {
 }, [app]);
 
 const handleDeleteMoment = useCallback((moment) => {
+  // ⭐ v2.9j : Compter les enfants (notes et photos importées)
+  const noteCount = (moment.posts || []).filter(post => post.category === 'user_added').length;
+  const photoCount = (moment.dayPhotos || []).filter(photo => photo.source === 'imported').length;
+
+  // ⭐ v2.9j : Initialiser les options de cascade
+  const initialCascadeOptions = {
+    deleteNotes: false,
+    deletePhotos: false,
+    deleteFiles: false  // Option Drive conditionnelle (seulement si deletePhotos = true)
+  };
+
   setConfirmDeleteModal({
     isOpen: true,
     type: 'moment',
@@ -346,10 +360,14 @@ const handleDeleteMoment = useCallback((moment) => {
     momentId: moment.id,
     itemId: null,
     deleteFromDrive: false,
-    onConfirm: async () => {
+    // ⭐ v2.9j : Cascade deletion
+    childrenCounts: (noteCount > 0 || photoCount > 0) ? { notes: noteCount, photos: photoCount } : null,
+    cascadeOptions: (noteCount > 0 || photoCount > 0) ? initialCascadeOptions : null,
+    onConfirm: async (cascadeOpts) => {
       try {
-        await app.deleteMoment(moment.id);
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null });
+        // ⭐ v2.9j : Passer les options de cascade au deleteMoment
+        await app.deleteMoment(moment.id, cascadeOpts);
+        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null, childrenCounts: null, cascadeOptions: null });
       } catch (error) {
         alert('Erreur lors de la suppression : ' + error.message);
       }
@@ -399,8 +417,8 @@ const handleDeletePhoto = useCallback((momentId, photoId, photoFilename) => {
     deleteFromDrive: false,  // Valeur par défaut : ne pas supprimer du Drive
     onConfirm: async (deleteFromDrive) => {
       try {
-        await app.deletePhoto(momentId, photoId, deleteFromDrive);
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null });
+        await app.deletePhoto(momentId, photoId, photoFilename, deleteFromDrive);
+        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null, childrenCounts: null, cascadeOptions: null });
       } catch (error) {
         alert('Erreur lors de la suppression : ' + error.message);
       }
@@ -1340,7 +1358,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
 
       <ConfirmDeleteModal
         isOpen={confirmDeleteModal.isOpen}
-        onClose={() => setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null })}
+        onClose={() => setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null, childrenCounts: null, cascadeOptions: null })}
         onConfirm={confirmDeleteModal.onConfirm}
         itemName={confirmDeleteModal.itemName}
         itemType={
@@ -1352,6 +1370,20 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         showDriveOption={confirmDeleteModal.type === 'photo'}
         deleteFromDrive={confirmDeleteModal.deleteFromDrive}
         onToggleDriveOption={(value) => setConfirmDeleteModal(prev => ({ ...prev, deleteFromDrive: value }))}
+        // ⭐ v2.9j : Options suppression en cascade (moments)
+        childrenCounts={confirmDeleteModal.childrenCounts}
+        cascadeOptions={confirmDeleteModal.cascadeOptions}
+        onToggleCascadeOption={(optionName, value) => {
+          setConfirmDeleteModal(prev => ({
+            ...prev,
+            cascadeOptions: {
+              ...prev.cascadeOptions,
+              [optionName]: value,
+              // ⭐ Si deletePhotos = false, forcer deleteFiles = false
+              ...(optionName === 'deletePhotos' && !value ? { deleteFiles: false } : {})
+            }
+          }));
+        }}
       />
     </div>
   );
