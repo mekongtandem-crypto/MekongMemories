@@ -139,24 +139,6 @@ export default function MemoriesTopBar({
       <div className="flex-1 flex items-center justify-center px-4 min-w-0">
         <div className="flex items-center space-x-2">
 
-          {/* ⭐ v2.9 : Badge Mode Édition */}
-          {editionMode?.active && (
-            <>
-              <div className="flex items-center space-x-2 px-3 py-1 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                <Edit2 className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                <span className="text-orange-700 dark:text-orange-300 font-medium text-sm">Mode Édition</span>
-              </div>
-              <button
-                onClick={onCancelEditionMode}
-                className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
-                title="Annuler l'édition"
-              >
-                <X className="w-5 h-5 text-red-600 dark:text-red-400" />
-              </button>
-              <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
-            </>
-          )}
-
           {/* Toggle affichage posts */}
           <button
             onClick={() => toggleDisplayOption('showPostText')}
@@ -265,14 +247,14 @@ export default function MemoriesTopBar({
               onToggleEditionMode?.();
             }}
             className={`flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 ${
-              editionMode?.active ? 'bg-orange-50 dark:bg-orange-900/20' : ''
+              editionMode?.active ? 'bg-red-50 dark:bg-red-900/20' : ''
             }`}
           >
             <Edit2 className={`w-5 h-5 ${
-              editionMode?.active ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-gray-400'
+              editionMode?.active ? 'text-red-600 dark:text-red-400' : 'text-red-600 dark:text-red-400'
             }`} />
             <span className={`font-medium ${
-              editionMode?.active ? 'text-orange-700 dark:text-orange-300' : 'text-gray-700 dark:text-gray-200'
+              editionMode?.active ? 'text-red-700 dark:text-red-300' : 'text-gray-700 dark:text-gray-200'
             }`}>
               {editionMode?.active ? 'Quitter mode édition' : 'Mode édition'}
             </span>
