@@ -10,6 +10,7 @@ import { X, MapPin, Plus, FileText } from 'lucide-react';
 
 export default function PhotoToMemoryModal({
   isOpen,
+  photoData,
   onClose,
   moments = [],
   onConvert
@@ -18,7 +19,7 @@ export default function PhotoToMemoryModal({
   const [selectedMomentId, setSelectedMomentId] = useState('');
   const [newMomentTitle, setNewMomentTitle] = useState('');
   const [newMomentDate, setNewMomentDate] = useState('');
-  const [newMomentJnnn, setNewMomentJnnn] = useState('undefined');
+  const [newMomentJnnn, setNewMomentJnnn] = useState('IMP');
   const [isCreatingNewMoment, setIsCreatingNewMoment] = useState(false);
 
   // Section 2 : Texte (optionnel pour Photo Note)
@@ -28,15 +29,23 @@ export default function PhotoToMemoryModal({
   // Réinitialiser l'état à l'ouverture
   useEffect(() => {
     if (isOpen) {
+      // ⭐ v2.8e : Utiliser la date de création de la photo si disponible
+      let defaultDate = '';
+      if (photoData?.uploadedAt) {
+        // Convertir ISO timestamp en format YYYY-MM-DD
+        const uploadDate = new Date(photoData.uploadedAt);
+        defaultDate = uploadDate.toISOString().split('T')[0];
+      }
+
       setSelectedMomentId('');
       setNewMomentTitle('');
-      setNewMomentDate('');
-      setNewMomentJnnn('undefined');
+      setNewMomentDate(defaultDate);
+      setNewMomentJnnn('IMP');  // ⭐ v2.8e : "IMP" au lieu de "undefined" (plus court)
       setIsCreatingNewMoment(false);
       setNoteTitle('');
       setNoteContent('');
     }
-  }, [isOpen]);
+  }, [isOpen, photoData]);
 
   if (!isOpen) return null;
 
@@ -69,7 +78,7 @@ export default function PhotoToMemoryModal({
       newMoment: isCreatingNewMoment ? {
         title: newMomentTitle.trim(),
         date: newMomentDate,
-        jnnn: newMomentJnnn.trim() || 'undefined'
+        jnnn: newMomentJnnn.trim() || 'IMP'  // ⭐ v2.8e : "IMP" au lieu de "undefined"
       } : null,
 
       // Section 2 : Texte (Photo Note)

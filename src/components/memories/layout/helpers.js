@@ -13,26 +13,32 @@
  */
 export function enrichMomentsWithData(rawMoments) {
   if (!rawMoments) return [];
-  
+
   return rawMoments.map((moment, index) => {
     const enrichedPosts = moment.posts?.map(post => ({
       ...post,
       photos: post.photos?.map(photo => normalizePhoto(photo)) || []
     })) || [];
-    
+
+    // ⭐ v2.8e : Séparer comptage posts Mastodon vs Photo Notes (category: user_added)
+    const mastodonPosts = enrichedPosts.filter(p => p.category !== 'user_added');
+    const photoNotes = enrichedPosts.filter(p => p.category === 'user_added');
+
     return {
       ...moment,
       id: moment.id || `moment_${moment.dayStart}_${moment.dayEnd}_${index}`,
       posts: enrichedPosts,
-      postCount: enrichedPosts.length,
+      postCount: enrichedPosts.length,  // Total (rétrocompatibilité)
+      mastodonPostCount: mastodonPosts.length,  // ⭐ Posts Mastodon uniquement
+      noteCount: photoNotes.length,  // ⭐ Photo Notes uniquement
       dayPhotoCount: moment.dayPhotos?.length || 0,
       postPhotoCount: moment.postPhotos?.length || 0,
       photoCount: (moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0),
       displayTitle: moment.title || `Moment du jour ${moment.dayStart}`,
-      displaySubtitle: moment.dayEnd > moment.dayStart 
-        ? `J${moment.dayStart}-J${moment.dayEnd}` 
+      displaySubtitle: moment.dayEnd > moment.dayStart
+        ? `J${moment.dayStart}-J${moment.dayEnd}`
         : `J${moment.dayStart}`,
-      isEmpty: enrichedPosts.length === 0 && 
+      isEmpty: enrichedPosts.length === 0 &&
         ((moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0)) === 0,
     };
   }).filter(moment => !moment.isEmpty);

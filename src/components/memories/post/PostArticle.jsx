@@ -42,8 +42,16 @@ export const PostArticle = memo(({
   }, [displayOptions.showPostPhotos]);
 
   const contentParts = post.content ? post.content.trim().split('\n') : [];
-  const title = contentParts.shift() || `Article du jour ${post.dayNumber}`;
-  const body = contentParts.filter(part => part.trim() !== '').join('<br />');
+
+  // ⭐ v2.8e : Pour Photo Notes (user_added), utiliser post.title si présent
+  const title = post.title
+    ? post.title
+    : (contentParts.shift() || `Article du jour ${post.dayNumber}`);
+
+  // ⭐ v2.8e : Pour Photo Notes, afficher tout le content (pas de split)
+  const body = post.title
+    ? post.content
+    : contentParts.filter(part => part.trim() !== '').join('<br />');
 
   const handleTagPost = useCallback((e) => {
     e.stopPropagation();
@@ -74,12 +82,23 @@ export const PostArticle = memo(({
   const hasPhotos = post.photos && post.photos.length > 0;
   const photosAreVisible = showThisPostPhotos && hasPhotos;
 
+  // ⭐ v2.8e : Distinction visuelle Photo Note (jaune) vs Post Mastodon (gris/bleu)
+  const isPhotoNote = post.category === 'user_added';
+
   return (
     <div className="mt-2" data-post-id={post.id}>
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-        
+      <div className={`border rounded-lg overflow-hidden ${
+        isPhotoNote
+          ? 'border-amber-200 dark:border-amber-700'
+          : 'border-gray-200 dark:border-gray-700'
+      }`}>
+
         {/* Header */}
-        <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 border-b border-gray-200 dark:border-gray-600">
+        <div className={`flex justify-between items-center p-2 border-b ${
+          isPhotoNote
+            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
+            : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+        }`}>
           
           {/* Gauche : Titre + indicateur photos inline */}
           <div className="flex items-center gap-x-3 flex-1 min-w-0">

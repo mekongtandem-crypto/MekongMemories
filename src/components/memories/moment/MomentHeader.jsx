@@ -8,8 +8,8 @@
  */
 
 import React, { memo, useCallback } from 'react';
-import { 
-  ChevronDown, FileText, Camera, MapPin, Tag, Link, MessageCircle
+import {
+  ChevronDown, FileText, Camera, MapPin, Tag, Link, MessageCircle, FileEdit
 } from 'lucide-react';
 import { generateMomentKey, getMomentChildrenKeys } from '../../../utils/themeUtils.js';
 import { getSessionsForContent } from '../../../utils/sessionUtils.js';
@@ -133,24 +133,38 @@ export const MomentHeader = memo(({
 
       {/* Compteurs + Badges */}
       <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm mt-2 pt-0 border-t border-gray-100 dark:border-gray-700">
-        
-        {/* Compteurs cliquables */}
-        {moment.postCount > 0 && (
+
+        {/* Compteurs cliquables - ⭐ v2.8e : Séparation posts Mastodon / Photo Notes */}
+
+        {/* 🗒️ Posts Mastodon (bleu) */}
+        {moment.mastodonPostCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'posts')}
             className="flex items-center font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all"
           >
-            <FileText className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} /> 
-            {moment.postCount} post{moment.postCount > 1 ? 's' : ''}
+            <FileText className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+            {moment.mastodonPostCount} post{moment.mastodonPostCount > 1 ? 's' : ''}
           </button>
         )}
-        
+
+        {/* 📝 Photo Notes (jaune/amber) */}
+        {moment.noteCount > 0 && (
+          <button
+            onClick={(e) => handleLinkClick(e, 'posts')}
+            className="flex items-center font-medium text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 transition-all"
+          >
+            <FileEdit className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts ? 'text-amber-600 dark:text-amber-500' : 'text-gray-400 dark:text-gray-500'}`} />
+            {moment.noteCount} note{moment.noteCount > 1 ? 's' : ''}
+          </button>
+        )}
+
+        {/* 📸 Photos (vert) */}
         {moment.dayPhotoCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'photos')}
             className="flex items-center font-medium text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400 transition-all"
           >
-            <Camera className={`w-4 h-4 mr-1.5 ${localDisplay.showDayPhotos ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-500'}`} /> 
+            <Camera className={`w-4 h-4 mr-1.5 ${localDisplay.showDayPhotos ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-500'}`} />
             {moment.dayPhotoCount} photo{moment.dayPhotoCount > 1 ? 's' : ''}
           </button>
         )}

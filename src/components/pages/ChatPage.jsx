@@ -348,6 +348,26 @@ useEffect(() => {
         throw new Error(result.error || 'Échec de la conversion');
       }
 
+      // ⭐ v2.8e : Créer lien ContentLinks automatique (photo/note → session)
+      if (app.currentChatSession && result.contentId && result.contentType && window.contentLinks) {
+        try {
+          await window.contentLinks.addLink({
+            sessionId: app.currentChatSession.id,
+            messageId: `import_${Date.now()}`,
+            contentType: result.contentType,  // 'post' ou 'photo'
+            contentId: result.contentId,
+            contentTitle: result.contentType === 'post'
+              ? (conversionData.noteTitle || 'Photo Note')
+              : photoData.filename,
+            linkedBy: app.currentUser
+          });
+          logger.success(`🔗 Lien ContentLinks créé: ${result.contentType} → session ${app.currentChatSession.id}`);
+        } catch (linkError) {
+          logger.error('❌ Erreur création lien ContentLinks:', linkError);
+          // Non-bloquant
+        }
+      }
+
       // ⭐ v3.0e : Insérer la photo dans le chat après conversion réussie
       setAttachedPhoto(photoData);
       logger.info('📸 Photo attachée au chat après conversion');
@@ -1225,6 +1245,7 @@ function LinkPhotoPreview({ photo }) {
       {photoToMemoryModal.isOpen && (
         <PhotoToMemoryModal
           isOpen={photoToMemoryModal.isOpen}
+          photoData={photoToMemoryModal.photoData}
           onClose={() => setPhotoToMemoryModal({ isOpen: false, photoData: null })}
           moments={app.masterIndex?.moments || []}
           onConvert={handleConvertPhotoToMemory}
