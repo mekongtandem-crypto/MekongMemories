@@ -1334,7 +1334,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         <PhotoToMemoryModal
           isOpen={photoToMemoryModal.isOpen}
           photoData={photoToMemoryModal.photoData}
-          file={photoToMemoryModal.file}  {/* ⭐ v2.9j : Passer le fichier brut */}
+          file={photoToMemoryModal.file}
           onClose={() => setPhotoToMemoryModal({ isOpen: false, photoData: null, file: null })}
           moments={app.masterIndex?.moments || []}
           onConvert={handleConvertPhotoToMemory}
