@@ -1,10 +1,11 @@
 /**
- * ChatPage.jsx v3.0a - Import d'images depuis chat
+ * ChatPage.jsx v3.0b - Upload rapide de photos fonctionnel
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
+ * ✅ Upload rapide : file picker + compression + Drive upload
+ * ✅ Preview photo importée avant envoi
+ * ✅ Envoi message avec photoData (source: 'imported')
  * ✅ État pendingLink + attachedPhoto
- * ✅ Preview lien avant envoi
- * ✅ Envoi message avec linkedContent
  * ✅ SessionInfoPanel (slide-in)
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -16,6 +17,8 @@ import { dataManager } from '../../core/dataManager.js';
 import { Send, Trash2, Edit, Camera, Link, FileText, MapPin, Image as ImageIcon, Tag, Plus, Sparkles } from 'lucide-react';
 import PhotoViewer from '../PhotoViewer.jsx';
 import ThemeModal from '../ThemeModal.jsx';
+import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';
+import { logger } from '../../utils/logger.js';
 
 export default function ChatPage({ navigationContext, onClearAttachment, onStartSelectionMode }) {
   const app = useAppState();
@@ -203,10 +206,56 @@ useEffect(() => {
   };
 
   const handleInsertQuickPhoto = async () => {
-    console.log('📷 Insert photo rapide (v2.8b - TODO)');
+    logger.info('📷 Insert photo rapide - Ouverture file picker');
     setAttachmentMenuOpen(false);
-    // TODO: Implémenter dans v2.8b
-    alert('📷 Insertion photo rapide - Fonctionnalité en cours de développement (v2.8b)');
+
+    try {
+      // 1. Ouvrir le file picker
+      const files = await openFilePicker(false); // false = sélection unique
+      const file = files[0];
+
+      if (!file) {
+        logger.warn('Aucun fichier sélectionné');
+        return;
+      }
+
+      logger.info(`📸 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
+
+      // 2. Afficher le spinner de loading
+      dataManager.setLoadingOperation(
+        true,
+        'Traitement de l\'image...',
+        'Compression et upload vers Google Drive',
+        'spin'
+      );
+
+      // 3. Traiter et uploader l'image
+      const photoMetadata = await processAndUploadImage(file, app.currentUser.id);
+
+      logger.success('✅ Photo uploadée avec succès:', photoMetadata);
+
+      // 4. Attacher la photo au message
+      setAttachedPhoto(photoMetadata);
+
+      // 5. Désactiver le spinner
+      dataManager.setLoadingOperation(false);
+
+      // 6. Focus sur le textarea pour permettre d'ajouter un message
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+        }
+      }, 100);
+
+    } catch (error) {
+      logger.error('❌ Erreur upload photo rapide:', error);
+
+      // Désactiver le spinner
+      dataManager.setLoadingOperation(false);
+
+      // Afficher message d'erreur
+      alert(`Erreur lors de l'upload de la photo:\n${error.message}`);
+    }
   };
 
   const handleInsertMemoryPhoto = async () => {
@@ -1159,17 +1208,29 @@ function PhotoMessage({ photo, onPhotoClick }) {
     );
   }
 
+  // ⭐ v3.0b : Distinguer photos importées
+  const isImported = photo.source === 'imported';
+
   return (
-    <div 
+    <div
       className="mb-2 cursor-pointer group relative"
       onClick={() => onPhotoClick(photo)}
     >
       <img
         src={imageUrl}
         alt={photo.filename}
-        className="max-w-[200px] rounded-lg shadow-md hover:shadow-lg transition-shadow"
+        className={`max-w-[200px] rounded-lg shadow-md hover:shadow-lg transition-shadow ${
+          isImported ? 'border-2 border-amber-500 dark:border-amber-400' : ''
+        }`}
       />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-lg"></div>
+
+      {/* Badge ⬆️ pour photos importées */}
+      {isImported && (
+        <div className="absolute bottom-2 right-2 bg-amber-500 dark:bg-amber-400 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm shadow-lg">
+          ⬆️
+        </div>
+      )}
     </div>
   );
 }
@@ -1221,11 +1282,26 @@ function PhotoPreview({ photo }) {
     );
   }
 
+  // ⭐ v3.0b : Distinguer photos importées avec bordure + badge
+  const isImported = photo.source === 'imported';
+
   return (
-    <img
-      src={imageUrl}
-      alt={photo.filename}
-      className="w-full max-h-96 object-contain bg-gray-100"
-    />
+    <div className="relative">
+      <img
+        src={imageUrl}
+        alt={photo.filename}
+        className={`w-full max-h-96 object-contain bg-gray-100 rounded-lg ${
+          isImported ? 'border-2 border-amber-500 dark:border-amber-400' : ''
+        }`}
+      />
+
+      {/* Badge pour photos importées */}
+      {isImported && (
+        <div className="absolute bottom-2 right-2 bg-amber-500 dark:bg-amber-400 text-white px-2 py-1 rounded-md text-xs font-medium flex items-center space-x-1 shadow-lg">
+          <span>⬆️</span>
+          <span>Photo importée</span>
+        </div>
+      )}
+    </div>
   );
 }
