@@ -10,15 +10,15 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Search, X, XCircle, MoreVertical, 
-  FileText, Image as ImageIcon, Camera, 
-  Tag, Dices, ArrowUpDown
+import {
+  Search, X, XCircle, MoreVertical,
+  FileText, Image as ImageIcon, Camera,
+  Tag, Dices, ArrowUpDown, Plus, Sparkles
 } from 'lucide-react';
 import OverflowMenu from './OverflowMenu.jsx';
 
-export default function MemoriesTopBar({ 
-  isSearchOpen, 
+export default function MemoriesTopBar({
+  isSearchOpen,
   setIsSearchOpen,
   displayOptions,
   setDisplayOptions,
@@ -225,7 +225,17 @@ export default function MemoriesTopBar({
           isOpen={showMenu}
           onClose={() => setShowMenu(false)}
         >
-          {/* Actions spécifiques Memories : aucune pour l'instant */}
+          {/* ⭐ v2.8f : Ajouter photo souvenir */}
+          <button
+            onClick={() => {
+              setShowMenu(false);
+              window.memoriesPageActions?.addPhotoSouvenir?.();
+            }}
+            className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
+          >
+            <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <span className="text-gray-700 dark:text-gray-200 font-medium">Ajouter photo souvenir</span>
+          </button>
         </OverflowMenu>
       </div>
       

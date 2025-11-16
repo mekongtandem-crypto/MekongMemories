@@ -17,6 +17,10 @@ import PhotoContextMenu from '../memories/shared/PhotoContextMenu.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
 import SessionCreationModal from '../SessionCreationModal.jsx';
 import ThemeModal from '../ThemeModal.jsx';
+import PhotoToMemoryModal from '../PhotoToMemoryModal.jsx';  // ⭐ v2.8f
+import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';  // ⭐ v2.8f
+import { dataManager } from '../../core/dataManager.js';  // ⭐ v2.8f
+import { logger } from '../../utils/logger.js';  // ⭐ v2.8f
 import { enrichMomentsWithData } from '../memories/layout/helpers.js';
 //import TimelineRuleV2 from '../TimelineRule.jsx';
 import { 
@@ -71,7 +75,13 @@ const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const [displayMode, setDisplayMode] = useState('focus');
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  
+
+  // ⭐ v2.8f : Modal PhotoToMemoryModal
+  const [photoToMemoryModal, setPhotoToMemoryModal] = useState({
+    isOpen: false,
+    photoData: null
+  });
+
   // ========================================
   // Déstructuration
   // ========================================
@@ -187,6 +197,54 @@ const handleOpenThemeModal = useCallback((contentKey, contentType, currentThemes
 const handleCloseThemeModal = useCallback(() => {
   closeThemeModal();
 }, [closeThemeModal]);
+
+// ⭐ v2.8f : Handler pour ajouter photo souvenir
+const handleAddPhotoSouvenir = useCallback(async () => {
+  try {
+    logger.info('📷 Ouverture file picker pour photo souvenir');
+    const files = await openFilePicker(false);
+    const photoMetadata = await processAndUploadImage(files[0], app.currentUser);
+
+    setPhotoToMemoryModal({
+      isOpen: true,
+      photoData: photoMetadata
+    });
+  } catch (error) {
+    logger.error('❌ Erreur upload photo souvenir:', error);
+    if (error.message !== 'Sélection annulée') {
+      alert(`Erreur lors de l'upload de la photo:\n${error.message}`);
+    }
+  }
+}, [app.currentUser]);
+
+// ⭐ v2.8f : Handler pour conversion photo → souvenir
+const handleConvertPhotoToMemory = useCallback(async (conversionData) => {
+  const { photoData } = photoToMemoryModal;
+  if (!photoData) return;
+
+  try {
+    dataManager.setLoadingOperation(true, 'Conversion en souvenir...', 'Mise à jour du master index', 'monkey');
+
+    const result = await dataManager.addImportedPhotoToMasterIndex(photoData, conversionData);
+
+    dataManager.setLoadingOperation(false);
+
+    if (!result.success) {
+      throw new Error(result.error || 'Échec de la conversion');
+    }
+
+    setPhotoToMemoryModal({ isOpen: false, photoData: null });
+    logger.success('🎉 Photo souvenir ajoutée depuis Memories');
+
+    // Recharger le master index pour afficher la nouvelle photo
+    await dataManager.reloadMasterIndex();
+
+  } catch (error) {
+    logger.error('❌ Erreur conversion photo:', error);
+    dataManager.setLoadingOperation(false);
+    alert(`Erreur lors de la conversion:\n${error.message}`);
+  }
+}, [photoToMemoryModal]);
 
 // Handler pour sauvegarder les thèmes d'un post
 const handleSavePostThemes = useCallback(async (selectedThemes, propagationOptions, postData) => {
@@ -524,24 +582,25 @@ const navigationProcessedRef = useRef(null);
         }, 100);
       }
     };
-    
+
     window.memoriesPageActions = {
       openThemeModal: handleOpenThemeModal,
       togglePhotoSelection: togglePhotoSelection,
-      activatePhotoSelection: activatePhotoSelection
+      activatePhotoSelection: activatePhotoSelection,
+      addPhotoSouvenir: handleAddPhotoSouvenir  // ⭐ v2.8f : Ajouter photo souvenir
     };
-    
+
     window.memoriesPageState = {
       activePhotoGrid,
       selectedPhotos
     };
-    
+
     return () => {
       delete window.memoriesPageFilters;
       delete window.memoriesPageActions;
       delete window.memoriesPageState;
     };
-  }, [handleOpenThemeModal, togglePhotoSelection, activatePhotoSelection, activePhotoGrid, selectedPhotos]);
+  }, [handleOpenThemeModal, togglePhotoSelection, activatePhotoSelection, activePhotoGrid, selectedPhotos, handleAddPhotoSouvenir]);
   
   useEffect(() => {
     if (!isSearchOpen) {
@@ -1039,7 +1098,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
       )}
 
       {viewerState.isOpen && (
-  <PhotoViewer 
+  <PhotoViewer
     photo={viewerState.photo}
     gallery={viewerState.gallery}
     contextMoment={viewerState.contextMoment}
@@ -1050,6 +1109,17 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
     onContentSelected={handleLongPressForSelection}
   />
 )}
+
+      {/* ⭐ v2.8f : Modal PhotoToMemoryModal */}
+      {photoToMemoryModal.isOpen && (
+        <PhotoToMemoryModal
+          isOpen={photoToMemoryModal.isOpen}
+          photoData={photoToMemoryModal.photoData}
+          onClose={() => setPhotoToMemoryModal({ isOpen: false, photoData: null })}
+          moments={app.masterIndex?.moments || []}
+          onConvert={handleConvertPhotoToMemory}
+        />
+      )}
     </div>
   );
 }
