@@ -17,12 +17,21 @@ export default function ConfirmDeleteModal({
   itemName = null,
   itemType = 'élément',
   confirmText = 'Supprimer',
-  cancelText = 'Annuler'
+  cancelText = 'Annuler',
+  // ⭐ v2.9 : Options pour suppression photos
+  showDriveOption = false,
+  deleteFromDrive = false,
+  onToggleDriveOption = null
 }) {
   if (!isOpen) return null;
 
   const handleConfirm = () => {
-    onConfirm();
+    // ⭐ v2.9 : Passer l'option deleteFromDrive pour les photos
+    if (showDriveOption && onConfirm) {
+      onConfirm(deleteFromDrive);
+    } else {
+      onConfirm();
+    }
     onClose();
   };
 
@@ -71,11 +80,33 @@ export default function ConfirmDeleteModal({
             </div>
           )}
 
+          {/* ⭐ v2.9 : Option suppression Drive pour photos */}
+          {showDriveOption && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <label className="flex items-start space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={deleteFromDrive}
+                  onChange={(e) => onToggleDriveOption?.(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <div>
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                    Effacer définitivement du cloud
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                    Supprimer aussi le fichier physique de Google Drive (recommandé pour économiser l'espace de stockage)
+                  </p>
+                </div>
+              </label>
+            </div>
+          )}
+
           {/* Avertissement */}
           <div className="mt-4 flex items-start space-x-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
             <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-amber-900 dark:text-amber-200">
-              Cette action est <strong>irréversible</strong>. L'élément sera définitivement supprimé.
+              Cette action est <strong>irréversible</strong>. {showDriveOption && deleteFromDrive ? 'Le fichier sera supprimé du cloud et' : 'L\'élément'} sera définitivement supprimé{showDriveOption && !deleteFromDrive ? ' (le fichier restera dans le cloud)' : ''}.
             </p>
           </div>
         </div>

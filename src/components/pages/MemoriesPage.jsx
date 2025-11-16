@@ -18,6 +18,9 @@ import PhotoViewer from '../PhotoViewer.jsx';
 import SessionCreationModal from '../SessionCreationModal.jsx';
 import ThemeModal from '../ThemeModal.jsx';
 import PhotoToMemoryModal from '../PhotoToMemoryModal.jsx';  // ⭐ v2.8f
+import EditMomentModal from '../EditMomentModal.jsx';  // ⭐ v2.9
+import EditPostModal from '../EditPostModal.jsx';  // ⭐ v2.9
+import ConfirmDeleteModal from '../ConfirmDeleteModal.jsx';  // ⭐ v2.9
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';  // ⭐ v2.8f
 import { dataManager } from '../../core/dataManager.js';  // ⭐ v2.8f
 import { logger } from '../../utils/logger.js';  // ⭐ v2.8f
@@ -82,6 +85,19 @@ const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   const [photoToMemoryModal, setPhotoToMemoryModal] = useState({
     isOpen: false,
     photoData: null
+  });
+
+  // ⭐ v2.9 : Modals édition
+  const [editMomentModal, setEditMomentModal] = useState({ isOpen: false, moment: null });
+  const [editPostModal, setEditPostModal] = useState({ isOpen: false, post: null, momentId: null });
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState({
+    isOpen: false,
+    type: null,  // 'moment' | 'post' | 'photo'
+    itemName: null,
+    momentId: null,  // Pour photos et posts
+    itemId: null,    // photoId ou postId
+    deleteFromDrive: false,  // ⭐ Option suppression Drive pour photos
+    onConfirm: null
   });
 
   // ========================================
@@ -260,6 +276,93 @@ const handleConvertPhotoToMemory = useCallback(async (conversionData) => {
     alert(`Erreur lors de la conversion:\n${error.message}`);
   }
 }, [photoToMemoryModal]);
+
+// ========================================
+// ⭐ v2.9 : HANDLERS ÉDITION
+// ========================================
+
+const handleEditMoment = useCallback((moment) => {
+  setEditMomentModal({ isOpen: true, moment });
+}, []);
+
+const handleSaveMoment = useCallback(async (updatedMoment) => {
+  try {
+    await app.updateMoment(updatedMoment);
+    setEditMomentModal({ isOpen: false, moment: null });
+  } catch (error) {
+    alert('Erreur lors de la modification : ' + error.message);
+  }
+}, [app]);
+
+const handleDeleteMoment = useCallback((moment) => {
+  setConfirmDeleteModal({
+    isOpen: true,
+    type: 'moment',
+    itemName: moment.title,
+    momentId: moment.id,
+    itemId: null,
+    deleteFromDrive: false,
+    onConfirm: async () => {
+      try {
+        await app.deleteMoment(moment.id);
+        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null });
+      } catch (error) {
+        alert('Erreur lors de la suppression : ' + error.message);
+      }
+    }
+  });
+}, [app]);
+
+const handleEditPost = useCallback((post, momentId) => {
+  setEditPostModal({ isOpen: true, post, momentId });
+}, []);
+
+const handleSavePost = useCallback(async (updatedPost) => {
+  try {
+    await app.updatePost(editPostModal.momentId, updatedPost);
+    setEditPostModal({ isOpen: false, post: null, momentId: null });
+  } catch (error) {
+    alert('Erreur lors de la modification : ' + error.message);
+  }
+}, [app, editPostModal.momentId]);
+
+const handleDeletePost = useCallback((momentId, postId, postTitle) => {
+  setConfirmDeleteModal({
+    isOpen: true,
+    type: 'post',
+    itemName: postTitle,
+    momentId,
+    itemId: postId,
+    deleteFromDrive: false,
+    onConfirm: async () => {
+      try {
+        await app.deletePost(momentId, postId);
+        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null });
+      } catch (error) {
+        alert('Erreur lors de la suppression : ' + error.message);
+      }
+    }
+  });
+}, [app]);
+
+const handleDeletePhoto = useCallback((momentId, photoId, photoFilename) => {
+  setConfirmDeleteModal({
+    isOpen: true,
+    type: 'photo',
+    itemName: photoFilename,
+    momentId,
+    itemId: photoId,
+    deleteFromDrive: false,  // Valeur par défaut : ne pas supprimer du Drive
+    onConfirm: async (deleteFromDrive) => {
+      try {
+        await app.deletePhoto(momentId, photoId, deleteFromDrive);
+        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null });
+      } catch (error) {
+        alert('Erreur lors de la suppression : ' + error.message);
+      }
+    }
+  });
+}, [app]);
 
 // Handler pour sauvegarder les thèmes d'un post
 const handleSavePostThemes = useCallback(async (selectedThemes, propagationOptions, postData) => {
@@ -602,7 +705,13 @@ const navigationProcessedRef = useRef(null);
       openThemeModal: handleOpenThemeModal,
       togglePhotoSelection: togglePhotoSelection,
       activatePhotoSelection: activatePhotoSelection,
-      addPhotoSouvenir: handleAddPhotoSouvenir  // ⭐ v2.8f : Ajouter photo souvenir
+      addPhotoSouvenir: handleAddPhotoSouvenir,  // ⭐ v2.8f : Ajouter photo souvenir
+      // ⭐ v2.9 : Actions édition
+      editMoment: handleEditMoment,
+      deleteMoment: handleDeleteMoment,
+      editPost: handleEditPost,
+      deletePost: handleDeletePost,
+      deletePhoto: handleDeletePhoto
     };
 
     window.memoriesPageState = {
@@ -615,7 +724,7 @@ const navigationProcessedRef = useRef(null);
       delete window.memoriesPageActions;
       delete window.memoriesPageState;
     };
-  }, [handleOpenThemeModal, togglePhotoSelection, activatePhotoSelection, activePhotoGrid, selectedPhotos, handleAddPhotoSouvenir]);
+  }, [handleOpenThemeModal, togglePhotoSelection, activatePhotoSelection, activePhotoGrid, selectedPhotos, handleAddPhotoSouvenir, handleEditMoment, handleDeleteMoment, handleEditPost, handleDeletePost, handleDeletePhoto]);
   
   useEffect(() => {
     if (!isSearchOpen) {
@@ -1158,6 +1267,37 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           onConvert={handleConvertPhotoToMemory}
         />
       )}
+
+      {/* ⭐ v2.9 : Modals édition */}
+      <EditMomentModal
+        isOpen={editMomentModal.isOpen}
+        moment={editMomentModal.moment}
+        onClose={() => setEditMomentModal({ isOpen: false, moment: null })}
+        onSave={handleSaveMoment}
+      />
+
+      <EditPostModal
+        isOpen={editPostModal.isOpen}
+        post={editPostModal.post}
+        onClose={() => setEditPostModal({ isOpen: false, post: null, momentId: null })}
+        onSave={handleSavePost}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={confirmDeleteModal.isOpen}
+        onClose={() => setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null })}
+        onConfirm={confirmDeleteModal.onConfirm}
+        itemName={confirmDeleteModal.itemName}
+        itemType={
+          confirmDeleteModal.type === 'moment' ? 'Moment' :
+          confirmDeleteModal.type === 'post' ? 'Photo Note' :
+          'Photo'
+        }
+        // ⭐ Option spéciale pour photos : suppression Drive
+        showDriveOption={confirmDeleteModal.type === 'photo'}
+        deleteFromDrive={confirmDeleteModal.deleteFromDrive}
+        onToggleDriveOption={(value) => setConfirmDeleteModal(prev => ({ ...prev, deleteFromDrive: value }))}
+      />
     </div>
   );
 }
