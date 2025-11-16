@@ -1176,6 +1176,8 @@ class DataManager {
         // ⭐ v2.9 : Supprimer fichier Drive si demandé
         if (deleteFromDrive && dayPhoto.google_drive_id) {
           try {
+            logger.info(`🗑️ Suppression fichier Drive demandée - ID: ${dayPhoto.google_drive_id}, filename: ${dayPhoto.filename}`);
+            console.log('📸 Photo dayPhoto complète:', dayPhoto);
             await this.driveSync.deleteFileById(dayPhoto.google_drive_id);
             logger.success('📸 Fichier image supprimé du cloud');
           } catch (error) {
@@ -1227,6 +1229,8 @@ class DataManager {
           // ⭐ v2.9 : Supprimer fichier Drive si demandé
           if (deleteFromDrive && postPhoto.google_drive_id) {
             try {
+              logger.info(`🗑️ Suppression fichier Drive demandée - ID: ${postPhoto.google_drive_id}, filename: ${postPhoto.filename}`);
+              console.log('📸 Photo postPhoto complète:', postPhoto);
               await this.driveSync.deleteFileById(postPhoto.google_drive_id);
               logger.success('📸 Fichier image supprimé du cloud');
             } catch (error) {
