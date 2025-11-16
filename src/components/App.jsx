@@ -99,6 +99,11 @@ export default function App() {
     callback: null
   });
 
+  // ⭐ v2.9 : Mode Édition
+  const [editionMode, setEditionMode] = useState({
+    active: false
+  });
+
   // ============================================
   // 3. RÉFÉRENCES (useRef)
   // ============================================
@@ -140,7 +145,7 @@ export default function App() {
   const handlePageChange = useCallback((newPage) => {
     console.log('📄 Changement page:', app.currentPage, '→', newPage);
     console.log('🔍 navigationContext actuel:', navigationContext);
-    
+
     // Désactiver mode sélection si actif
     if (selectionMode.active) {
       console.log('❌ Annulation mode sélection lors navigation manuelle');
@@ -149,6 +154,12 @@ export default function App() {
         type: null,
         callback: null
       });
+    }
+
+    // ⭐ v2.9 : Désactiver mode édition si actif
+    if (editionMode.active) {
+      console.log('❌ Annulation mode édition lors navigation');
+      setEditionMode({ active: false });
     }
     
     // Navigation spéciale Chat → Memories (transmettre momentId)
@@ -171,7 +182,7 @@ export default function App() {
     }
     
     app.updateCurrentPage(newPage);
-  }, [app, selectionMode.active]);
+  }, [app, selectionMode.active, editionMode.active]);
 
   /**
    * Navigation avec contexte (générique)
@@ -278,6 +289,22 @@ export default function App() {
 
     app.updateCurrentPage(previousPage);
   }, [navigationContext, app]);
+
+  /**
+   * ⭐ v2.9 : Activer/désactiver mode édition
+   */
+  const handleToggleEditionMode = useCallback(() => {
+    setEditionMode(prev => {
+      const newState = !prev.active;
+      console.log(newState ? '📝 Activation mode édition' : '✖️ Désactivation mode édition');
+      return { active: newState };
+    });
+  }, []);
+
+  const handleCancelEditionMode = useCallback(() => {
+    console.log('✖️ Annulation mode édition');
+    setEditionMode({ active: false });
+  }, []);
 
   /**
    * Validation sélection contenu
@@ -437,6 +464,9 @@ export default function App() {
             selectionMode={selectionMode}
             onContentSelected={handleContentSelected}
             onOpenSessionFromMemories={handleOpenSessionFromMemories}
+            editionMode={editionMode}
+            onToggleEditionMode={handleToggleEditionMode}
+            onCancelEditionMode={handleCancelEditionMode}
           />
         );
       
@@ -492,7 +522,10 @@ export default function App() {
               selectionMode={selectionMode}
               onCancelSelectionMode={handleCancelSelectionMode}
               selectedTheme={selectedTheme}
-              setSelectedTheme={setSelectedTheme} 
+              setSelectedTheme={setSelectedTheme}
+              editionMode={editionMode}
+              onToggleEditionMode={handleToggleEditionMode}
+              onCancelEditionMode={handleCancelEditionMode} 
             />
           </div>
 

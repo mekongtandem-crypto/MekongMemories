@@ -45,6 +45,9 @@ export default function TopBar({
           navigationContext={props.navigationContext}
           selectedTheme={props.selectedTheme}
           setSelectedTheme={props.setSelectedTheme}
+          editionMode={props.editionMode}
+          onToggleEditionMode={props.onToggleEditionMode}
+          onCancelEditionMode={props.onCancelEditionMode}
         />
       );
     
