@@ -663,9 +663,29 @@ const handleOpenPhotoLocal = (linkedContent) => {
 };
 
 /**
+ * ⭐ v2.8e : Vérifier si une photo est linkée à du contenu (moment/post)
+ * Utilisé pour afficher les icônes Zoom/Localiser
+ */
+const isPhotoLinkedToContent = (photoData) => {
+  if (!window.contentLinks || !photoData) return false;
+
+  // Vérifier par google_drive_id OU filename
+  const photoId = photoData.google_drive_id || photoData.filename;
+  if (!photoId) return false;
+
+  try {
+    const links = window.contentLinks.getLinksForContent('photo', photoId);
+    return links && links.length > 0;
+  } catch (error) {
+    console.error('Erreur vérification liens photo:', error);
+    return false;
+  }
+};
+
+/**
  * 📍 NAVIGATION GLOBALE : Aller dans Memories et localiser le contenu
  * Utilisé par : LinkedContent (bouton Localiser), SessionInfoPanel
- * 
+ *
  * Comportements par type :
  * - Moment : Ouvrir le moment dans Memories
  * - Post : Ouvrir parent moment + scroll vers post
@@ -928,13 +948,19 @@ function LinkPhotoPreview({ photo }) {
           </div>
         )}
 
-        {app.currentChatSession.notes?.map((message) => (
+        {app.currentChatSession.notes?.map((message) => {
+          // ⭐ v2.8e : Détecter si le message a une photo linkée pour séparer les zones hover
+          const hasLinkedPhoto = message.photoData && (
+            message.id.endsWith('-origin') || isPhotoLinkedToContent(message.photoData)
+          );
+
+          return (
           <div
             key={message.id}
             className={`flex ${getCurrentUserStyle(message.author)} max-w-xs sm:max-w-md lg:max-w-lg`}
           >
-            <div className="group relative">
-              
+            <div className={hasLinkedPhoto ? "relative" : "group relative"}>
+
               <div className={`px-4 py-3 ${getUserBubbleStyle(message.author)} transition-all duration-200`}>
                 
                 {editingMessage === message.id ? (
@@ -982,10 +1008,10 @@ function LinkPhotoPreview({ photo }) {
     
     {/* Photo si présente */}
 {message.photoData && (
-  message.id.endsWith('-origin') ? (
-    // ⭐ Photo origine = LinkedContent avec double action
+  message.id.endsWith('-origin') || isPhotoLinkedToContent(message.photoData) ? (
+    // ⭐ Photo origine OU photo linkée = LinkedContent avec Zoom/Localiser
     <div className="w-full max-w-full overflow-hidden mb-2">
-      <LinkedContent 
+      <LinkedContent
         linkedContent={{
           type: 'photo',
           id: message.photoData.filename || message.photoData.google_drive_id,
@@ -1003,42 +1029,64 @@ function LinkPhotoPreview({ photo }) {
       />
     </div>
   ) : (
-    // Photo normale dans message
-    <PhotoMessage 
+    // Photo normale sans lien
+    <PhotoMessage
       photo={message.photoData}
       onPhotoClick={openPhotoViewer}
     />
   )
 )}
     
-    {/* Texte */}
+    {/* Texte - ⭐ v2.8e : Groupe séparé si photo linkée */}
     {message.content && (
-      <div className="text-sm whitespace-pre-wrap leading-relaxed">
-        {message.content}
+      <div className={hasLinkedPhoto ? "group relative" : ""}>
+        <div className="text-sm whitespace-pre-wrap leading-relaxed">
+          {message.content}
+        </div>
+
+        {/* Badge modifié */}
+        {message.edited && (
+          <div className="text-xs opacity-70 italic mt-1">modifié</div>
+        )}
+
+        {/* ⭐ v2.8e : Boutons édition/suppression DANS le groupe texte si photo linkée */}
+        {hasLinkedPhoto && app.currentUser && message.author === app.currentUser.id && (
+          <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-700 rounded shadow-lg p-1 -mr-2 -mt-2">
+            <button
+              onClick={() => handleEditMessage(message)}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
+              title="Modifier"
+            >
+              <Edit className="w-3 h-3 text-gray-600 dark:text-gray-300" />
+            </button>
+            <button
+              onClick={() => handleDeleteMessage(message.id)}
+              className="p-1 hover:bg-red-100 dark:hover:bg-red-900/50 rounded ml-1"
+              title="Supprimer"
+            >
+              <Trash2 className="w-3 h-3 text-red-600 dark:text-red-400" />
+            </button>
+          </div>
+        )}
       </div>
     )}
-    
-    {/* Badge modifié */}
-    {message.edited && (
-      <div className="text-xs opacity-70 italic mt-1">modifié</div>
-    )}
 
-    {/* Boutons édition/suppression */}
-    {app.currentUser && message.author === app.currentUser.id && (
-      <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded shadow-lg p-1 -mr-2 -mt-2">
-        <button 
-          onClick={() => handleEditMessage(message)} 
-          className="p-1 hover:bg-gray-100 rounded" 
+    {/* ⭐ v2.8e : Boutons HORS du groupe texte si pas de photo linkée */}
+    {!hasLinkedPhoto && app.currentUser && message.author === app.currentUser.id && (
+      <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-700 rounded shadow-lg p-1 -mr-2 -mt-2">
+        <button
+          onClick={() => handleEditMessage(message)}
+          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
           title="Modifier"
         >
-          <Edit className="w-3 h-3 text-gray-600" />
+          <Edit className="w-3 h-3 text-gray-600 dark:text-gray-300" />
         </button>
-        <button 
-          onClick={() => handleDeleteMessage(message.id)} 
-          className="p-1 hover:bg-red-100 rounded ml-1" 
+        <button
+          onClick={() => handleDeleteMessage(message.id)}
+          className="p-1 hover:bg-red-100 dark:hover:bg-red-900/50 rounded ml-1"
           title="Supprimer"
         >
-          <Trash2 className="w-3 h-3 text-red-600" />
+          <Trash2 className="w-3 h-3 text-red-600 dark:text-red-400" />
         </button>
       </div>
     )}
@@ -1047,7 +1095,8 @@ function LinkPhotoPreview({ photo }) {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
