@@ -24,6 +24,13 @@ export function enrichMomentsWithData(rawMoments) {
     const mastodonPosts = enrichedPosts.filter(p => p.category !== 'user_added');
     const photoNotes = enrichedPosts.filter(p => p.category === 'user_added');
 
+    // ⭐ v2.8f : Gérer jnnn pour moments importés (au lieu de dayStart/dayEnd)
+    const displaySubtitle = moment.jnnn
+      ? moment.jnnn  // Moments importés: utiliser jnnn directement
+      : moment.dayEnd > moment.dayStart
+        ? `J${moment.dayStart}-J${moment.dayEnd}`  // Moments multi-jours
+        : `J${moment.dayStart}`;  // Moments simples
+
     return {
       ...moment,
       id: moment.id || `moment_${moment.dayStart}_${moment.dayEnd}_${index}`,
@@ -35,9 +42,7 @@ export function enrichMomentsWithData(rawMoments) {
       postPhotoCount: moment.postPhotos?.length || 0,
       photoCount: (moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0),
       displayTitle: moment.title || `Moment du jour ${moment.dayStart}`,
-      displaySubtitle: moment.dayEnd > moment.dayStart
-        ? `J${moment.dayStart}-J${moment.dayEnd}`
-        : `J${moment.dayStart}`,
+      displaySubtitle: displaySubtitle,
       isEmpty: enrichedPosts.length === 0 &&
         ((moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0)) === 0,
     };

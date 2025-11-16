@@ -402,6 +402,13 @@ useEffect(() => {
 
       logger.success('🎉 Conversion terminée avec succès !');
 
+      // ⭐ v2.8f : Scroll vers le bas pour focusser sur la textarea
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+
     } catch (error) {
       logger.error('❌ Erreur conversion photo:', error);
       dataManager.setLoadingOperation(false);
