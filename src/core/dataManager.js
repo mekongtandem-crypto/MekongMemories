@@ -1,18 +1,25 @@
 /**
  * ==============================================================================
- * DataManager v3.8 - Logger intégré + Code nettoyé
+ * DataManager v3.9 - Import de photos + MasterIndex éditable
  * ==============================================================================
- * 
+ *
  * RESPONSABILITÉS :
  * - Gestion centralisée de l'état application (sessions, masterIndex, user)
  * - CRUD sessions (create, update, delete)
  * - Synchronisation Drive via DriveSync
  * - Pub/Sub pour React (listeners)
  * - Indexation ContentLinks (liens bidirectionnels)
- * 
+ * - Import de photos et ajout au masterIndex (v3.0)
+ *
  * ARCHITECTURE :
  * DataManager ↔ useAppState ↔ React Components
- * 
+ *
+ * NOUVELLES FONCTIONNALITÉS v3.0 :
+ * - addImportedPhotoToMasterIndex() : Ajout photos importées au masterIndex
+ * - Support création de nouveaux moments
+ * - Support posts avec photos (caption)
+ * - Photos standalone dans dayPhotos
+ *
  * ==============================================================================
  */
 
@@ -755,6 +762,121 @@ class DataManager {
     } catch (error) {
       logger.error('Erreur sauvegarde MasterIndex', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Ajouter une photo importée au MasterIndex (v3.0)
+   * @param {Object} photoData - Métadonnées photo (google_drive_id, filename, etc.)
+   * @param {Object} conversionData - { momentId, newMoment, caption }
+   * @returns {Promise<Object>} { success, momentId, photoAdded }
+   */
+  addImportedPhotoToMasterIndex = async (photoData, conversionData) => {
+    try {
+      logger.info('📝 Ajout photo importée au masterIndex', { photoData, conversionData });
+
+      // 1. Charger le masterIndex actuel
+      const masterIndex = { ...this.appState.masterIndex };
+      if (!masterIndex || !masterIndex.moments) {
+        throw new Error('MasterIndex non disponible');
+      }
+
+      let targetMoment;
+      let momentId;
+
+      // 2a. Créer un nouveau moment si demandé
+      if (conversionData.newMoment) {
+        const { title, date } = conversionData.newMoment;
+
+        // Générer ID unique pour le moment
+        momentId = `moment_imported_${Date.now()}`;
+
+        targetMoment = {
+          id: momentId,
+          title: title,
+          date: date,
+          description: '',
+          location: '',
+          dayPhotos: [],
+          posts: [],
+          themes: []
+        };
+
+        // Ajouter le moment à la liste
+        masterIndex.moments.push(targetMoment);
+        logger.info(`✅ Nouveau moment créé: ${momentId}`);
+      }
+      // 2b. Trouver le moment existant
+      else {
+        momentId = conversionData.momentId;
+        targetMoment = masterIndex.moments.find(m => m.id === momentId);
+
+        if (!targetMoment) {
+          throw new Error(`Moment ${momentId} introuvable`);
+        }
+
+        logger.info(`✅ Moment trouvé: ${momentId}`);
+      }
+
+      // 3. Préparer l'objet photo pour le masterIndex
+      const photoForMasterIndex = {
+        google_drive_id: photoData.google_drive_id,
+        filename: photoData.filename,
+        url: photoData.url,
+        source: 'imported',
+        uploadedBy: photoData.uploadedBy,
+        uploadedAt: photoData.uploadedAt,
+        width: photoData.width || null,
+        height: photoData.height || null,
+        mime_type: photoData.type || 'image/jpeg'
+      };
+
+      // 4a. Si caption → créer un post avec photo
+      if (conversionData.caption) {
+        const newPost = {
+          id: `post_imported_${Date.now()}`,
+          content: conversionData.caption,
+          date: new Date().toISOString(),
+          url: null,
+          source: 'imported',
+          photos: [photoForMasterIndex],
+          uploadedBy: photoData.uploadedBy
+        };
+
+        if (!targetMoment.posts) {
+          targetMoment.posts = [];
+        }
+        targetMoment.posts.push(newPost);
+
+        logger.info(`✅ Post avec photo créé: ${newPost.id}`);
+      }
+      // 4b. Sinon → ajouter photo standalone dans dayPhotos
+      else {
+        if (!targetMoment.dayPhotos) {
+          targetMoment.dayPhotos = [];
+        }
+        targetMoment.dayPhotos.push(photoForMasterIndex);
+
+        logger.info(`✅ Photo ajoutée à dayPhotos`);
+      }
+
+      // 5. Sauvegarder le masterIndex modifié
+      await this.saveMasterIndex(masterIndex);
+
+      logger.success('🎉 Photo importée ajoutée au masterIndex avec succès');
+
+      return {
+        success: true,
+        momentId: momentId,
+        photoAdded: true
+      };
+
+    } catch (error) {
+      logger.error('❌ Erreur ajout photo au masterIndex:', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
