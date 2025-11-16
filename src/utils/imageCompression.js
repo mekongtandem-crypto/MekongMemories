@@ -1,9 +1,9 @@
 /**
- * imageCompression.js v3.0a - Utilitaires de compression et upload d'images
+ * imageCompression.js v3.0b - Utilitaires de compression et upload d'images
  * ✅ Compression automatique si > 2MB
  * ✅ Génération de thumbnails
- * ✅ Upload vers Google Drive (/media/imported/)
- * ✅ Support JPEG, PNG, HEIC
+ * ✅ Upload vers Google Drive (/Medias/imported/)
+ * ✅ Support JPEG, PNG, HEIC, WebP
  */
 
 import { logger } from './logger.js';
@@ -242,7 +242,7 @@ export function generateUploadFilename(userId, originalName) {
 }
 
 /**
- * Uploader une image vers Google Drive (/media/imported/)
+ * Uploader une image vers Google Drive (/Medias/imported/)
  * @param {Blob} imageBlob - Image à uploader
  * @param {Blob} thumbBlob - Thumbnail
  * @param {string} filename - Nom du fichier
@@ -258,7 +258,7 @@ export async function uploadImageToDrive(imageBlob, thumbBlob, filename, userId)
       throw new Error('Google Drive API non disponible');
     }
 
-    // 1. Créer le dossier /media/imported/ s'il n'existe pas
+    // 1. Créer le dossier /Medias/imported/ s'il n'existe pas
     const importedFolderId = await getOrCreateImportedFolder();
 
     // 2. Uploader l'image principale
@@ -296,14 +296,14 @@ export async function uploadImageToDrive(imageBlob, thumbBlob, filename, userId)
 }
 
 /**
- * Obtenir ou créer le dossier /media/imported/
+ * Obtenir ou créer le dossier /Medias/imported/
  * @returns {Promise<string>} ID du dossier
  */
 async function getOrCreateImportedFolder() {
   try {
-    // 1. Chercher le dossier "media" à la racine
+    // 1. Chercher le dossier "Medias" à la racine
     const mediaFolderResponse = await window.gapi.client.drive.files.list({
-      q: "name='media' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+      q: "name='Medias' and mimeType='application/vnd.google-apps.folder' and trashed=false",
       fields: 'files(id, name)',
       pageSize: 1
     });
@@ -312,21 +312,21 @@ async function getOrCreateImportedFolder() {
 
     if (mediaFolderResponse.result.files && mediaFolderResponse.result.files.length > 0) {
       mediaFolderId = mediaFolderResponse.result.files[0].id;
-      logger.debug('📁 Dossier media trouvé:', mediaFolderId);
+      logger.debug('📁 Dossier Medias trouvé:', mediaFolderId);
     } else {
-      // Créer le dossier media
+      // Créer le dossier Medias
       const mediaFolder = await window.gapi.client.drive.files.create({
         resource: {
-          name: 'media',
+          name: 'Medias',
           mimeType: 'application/vnd.google-apps.folder'
         },
         fields: 'id'
       });
       mediaFolderId = mediaFolder.result.id;
-      logger.info('📁 Dossier media créé:', mediaFolderId);
+      logger.info('📁 Dossier Medias créé:', mediaFolderId);
     }
 
-    // 2. Chercher le sous-dossier "imported" dans media
+    // 2. Chercher le sous-dossier "imported" dans Medias
     const importedFolderResponse = await window.gapi.client.drive.files.list({
       q: `name='imported' and '${mediaFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       fields: 'files(id, name)',

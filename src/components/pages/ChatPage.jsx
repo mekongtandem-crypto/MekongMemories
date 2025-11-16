@@ -1,11 +1,12 @@
 /**
- * ChatPage.jsx v3.0b - Upload rapide de photos fonctionnel
+ * ChatPage.jsx v3.0c - Modal de conversion photo → souvenir
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
+ * ✅ Upload avec conversion : modal de sélection moment + légende
+ * ✅ PhotoToMemoryModal : création/sélection moment + caption optionnel
  * ✅ Preview photo importée avant envoi
  * ✅ Envoi message avec photoData (source: 'imported')
- * ✅ État pendingLink + attachedPhoto
  * ✅ SessionInfoPanel (slide-in)
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -17,6 +18,7 @@ import { dataManager } from '../../core/dataManager.js';
 import { Send, Trash2, Edit, Camera, Link, FileText, MapPin, Image as ImageIcon, Tag, Plus, Sparkles } from 'lucide-react';
 import PhotoViewer from '../PhotoViewer.jsx';
 import ThemeModal from '../ThemeModal.jsx';
+import PhotoToMemoryModal from '../PhotoToMemoryModal.jsx';
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';
 import { logger } from '../../utils/logger.js';
 
@@ -41,6 +43,12 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   const [themeModal, setThemeModal] = useState({
     isOpen: false,
     currentThemes: []
+  });
+
+  // ⭐ v3.0c : État modal conversion photo → souvenir
+  const [photoToMemoryModal, setPhotoToMemoryModal] = useState({
+    isOpen: false,
+    photoData: null
   });
 
   // ✨ PHASE 19C : État panel infos
@@ -259,10 +267,104 @@ useEffect(() => {
   };
 
   const handleInsertMemoryPhoto = async () => {
-    console.log('📷✨ Insert photo souvenir (v2.8c - TODO)');
+    logger.info('📷✨ Insert photo souvenir - Ouverture file picker');
     setAttachmentMenuOpen(false);
-    // TODO: Implémenter dans v2.8c
-    alert('📷✨ Insertion photo souvenir - Fonctionnalité en cours de développement (v2.8c)');
+
+    try {
+      // 1. Ouvrir le file picker
+      const files = await openFilePicker(false);
+      const file = files[0];
+
+      if (!file) {
+        logger.warn('Aucun fichier sélectionné');
+        return;
+      }
+
+      logger.info(`📸 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
+
+      // 2. Afficher le spinner de loading
+      dataManager.setLoadingOperation(
+        true,
+        'Traitement de l\'image...',
+        'Compression et upload vers Google Drive',
+        'spin'
+      );
+
+      // 3. Traiter et uploader l'image
+      const photoMetadata = await processAndUploadImage(file, app.currentUser.id);
+
+      logger.success('✅ Photo uploadée avec succès:', photoMetadata);
+
+      // 4. Désactiver le spinner
+      dataManager.setLoadingOperation(false);
+
+      // 5. Ouvrir le modal de conversion
+      setPhotoToMemoryModal({
+        isOpen: true,
+        photoData: photoMetadata
+      });
+
+    } catch (error) {
+      logger.error('❌ Erreur upload photo souvenir:', error);
+
+      // Désactiver le spinner
+      dataManager.setLoadingOperation(false);
+
+      // Afficher message d'erreur
+      alert(`Erreur lors de l'upload de la photo:\n${error.message}`);
+    }
+  };
+
+  const handleConvertPhotoToMemory = async (conversionData) => {
+    logger.info('🔄 Conversion photo → souvenir', conversionData);
+
+    const { photoData } = photoToMemoryModal;
+    if (!photoData) {
+      logger.error('❌ Pas de photo à convertir');
+      return;
+    }
+
+    try {
+      // Afficher le spinner
+      dataManager.setLoadingOperation(
+        true,
+        'Conversion en souvenir...',
+        'Mise à jour du master index',
+        'monkey'
+      );
+
+      // TODO v3.0d : Implémenter l'ajout au masterIndex
+      // Pour l'instant, on simule juste
+      logger.info('📝 Données de conversion:', {
+        photo: photoData,
+        moment: conversionData.newMoment || conversionData.momentId,
+        caption: conversionData.caption
+      });
+
+      // Simuler un délai
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Désactiver le spinner
+      dataManager.setLoadingOperation(false);
+
+      // Feedback
+      if (window.chatPageActions?.showFeedback) {
+        window.chatPageActions.showFeedback('✅ Photo convertie en souvenir !');
+      }
+
+      // Fermer le modal
+      setPhotoToMemoryModal({
+        isOpen: false,
+        photoData: null
+      });
+
+      // TODO v3.0d : Recharger le masterIndex pour afficher la nouvelle photo
+
+    } catch (error) {
+      logger.error('❌ Erreur conversion photo:', error);
+      dataManager.setLoadingOperation(false);
+      alert(`Erreur lors de la conversion:\n${error.message}`);
+    }
   };
 
   // ========================================
@@ -1108,6 +1210,16 @@ function LinkPhotoPreview({ photo }) {
           onSave={handleSaveThemes}
           title="Assigner des thèmes à cette session"
           contentType="session"
+        />
+      )}
+
+      {/* ⭐ v3.0c : PhotoToMemoryModal */}
+      {photoToMemoryModal.isOpen && (
+        <PhotoToMemoryModal
+          isOpen={photoToMemoryModal.isOpen}
+          onClose={() => setPhotoToMemoryModal({ isOpen: false, photoData: null })}
+          moments={app.masterIndex?.moments || []}
+          onConvert={handleConvertPhotoToMemory}
         />
       )}
 
