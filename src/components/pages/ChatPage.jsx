@@ -1,10 +1,13 @@
 /**
- * ChatPage.jsx v3.0c - Modal de conversion photo → souvenir
+ * ChatPage.jsx v3.0d - Conversion photo → souvenir FONCTIONNELLE
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
  * ✅ Upload avec conversion : modal de sélection moment + légende
  * ✅ PhotoToMemoryModal : création/sélection moment + caption optionnel
+ * ✅ Ajout réel au masterIndex (nouveau moment ou existant)
+ * ✅ Support post avec photo (si caption) ou photo standalone
+ * ✅ Sauvegarde masterIndex sur Drive + reload automatique
  * ✅ Preview photo importée avant envoi
  * ✅ Envoi message avec photoData (source: 'imported')
  * ✅ SessionInfoPanel (slide-in)
@@ -329,27 +332,26 @@ useEffect(() => {
       dataManager.setLoadingOperation(
         true,
         'Conversion en souvenir...',
-        'Mise à jour du master index',
+        'Mise à jour du master index et sauvegarde sur Drive',
         'monkey'
       );
 
-      // TODO v3.0d : Implémenter l'ajout au masterIndex
-      // Pour l'instant, on simule juste
-      logger.info('📝 Données de conversion:', {
-        photo: photoData,
-        moment: conversionData.newMoment || conversionData.momentId,
-        caption: conversionData.caption
-      });
-
-      // Simuler un délai
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // ✅ v3.0d : Appel de la méthode réelle d'ajout au masterIndex
+      const result = await dataManager.addImportedPhotoToMasterIndex(photoData, conversionData);
 
       // Désactiver le spinner
       dataManager.setLoadingOperation(false);
 
+      if (!result.success) {
+        throw new Error(result.error || 'Échec de la conversion');
+      }
+
       // Feedback
       if (window.chatPageActions?.showFeedback) {
-        window.chatPageActions.showFeedback('✅ Photo convertie en souvenir !');
+        const message = conversionData.newMoment
+          ? '✅ Nouveau moment créé et photo ajoutée !'
+          : '✅ Photo ajoutée au moment !';
+        window.chatPageActions.showFeedback(message);
       }
 
       // Fermer le modal
@@ -358,7 +360,7 @@ useEffect(() => {
         photoData: null
       });
 
-      // TODO v3.0d : Recharger le masterIndex pour afficher la nouvelle photo
+      logger.success('🎉 Conversion terminée avec succès !');
 
     } catch (error) {
       logger.error('❌ Erreur conversion photo:', error);
