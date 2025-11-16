@@ -92,9 +92,20 @@ export default function PhotoToMemoryModal({
   const toggleCreateMode = () => {
     setIsCreatingNewMoment(prev => !prev);
     setSelectedMomentId('');
+
+    // ⭐ v2.8e : Réinitialiser avec valeurs par défaut intelligentes
     setNewMomentTitle('');
-    setNewMomentDate('');
-    setNewMomentJnnn('undefined');
+
+    // Date par défaut = date photo si disponible
+    let defaultDate = '';
+    if (photoData?.uploadedAt) {
+      const uploadDate = new Date(photoData.uploadedAt);
+      defaultDate = uploadDate.toISOString().split('T')[0];
+    }
+    setNewMomentDate(defaultDate);
+
+    // Jnnn par défaut = "IMP"
+    setNewMomentJnnn('IMP');
   };
 
   // Déterminer si c'est une Photo Note (texte présent)
@@ -191,7 +202,8 @@ export default function PhotoToMemoryModal({
                       type="text"
                       value={newMomentJnnn}
                       onChange={(e) => setNewMomentJnnn(e.target.value)}
-                      placeholder="J7, undefined..."
+                      placeholder="J7, IMP..."
+                      maxLength={5}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                         bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
                         focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
