@@ -1,9 +1,11 @@
 /**
- * ChatPage.jsx v2.9 - Phase 19E  : SessionInfoPanel
- * ✅ Bouton [🔗 Liens/Photos]
+ * ChatPage.jsx v3.0b - Upload rapide de photos fonctionnel
+ * ✅ Bouton [+] avec menu contextuel
+ * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
+ * ✅ Upload rapide : file picker + compression + Drive upload
+ * ✅ Preview photo importée avant envoi
+ * ✅ Envoi message avec photoData (source: 'imported')
  * ✅ État pendingLink + attachedPhoto
- * ✅ Preview lien avant envoi
- * ✅ Envoi message avec linkedContent
  * ✅ SessionInfoPanel (slide-in)
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -12,9 +14,11 @@ import SessionInfoPanel from '../SessionInfoPanel.jsx';
 import { useAppState } from '../../hooks/useAppState.js';
 import { userManager } from '../../core/UserManager.js';
 import { dataManager } from '../../core/dataManager.js';
-import { Send, Trash2, Edit, Camera, Link, FileText, MapPin, Image as ImageIcon, Tag } from 'lucide-react';
+import { Send, Trash2, Edit, Camera, Link, FileText, MapPin, Image as ImageIcon, Tag, Plus, Sparkles } from 'lucide-react';
 import PhotoViewer from '../PhotoViewer.jsx';
 import ThemeModal from '../ThemeModal.jsx';
+import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';
+import { logger } from '../../utils/logger.js';
 
 export default function ChatPage({ navigationContext, onClearAttachment, onStartSelectionMode }) {
   const app = useAppState();
@@ -25,9 +29,12 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   
   const [attachedPhoto, setAttachedPhoto] = useState(null);
   const [pendingLink, setPendingLink] = useState(null);
-  
-  const [viewerState, setViewerState] = useState({ 
-    isOpen: false, photo: null 
+
+  // ⭐ v3.0a : Menu d'attachement (lien/photo rapide/photo souvenir)
+  const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
+
+  const [viewerState, setViewerState] = useState({
+    isOpen: false, photo: null
   });
   
   // ✨ État modal thèmes
@@ -58,6 +65,7 @@ useEffect(() => {
   setAttachedPhoto(null);
   setNewMessage('');
   setEditingMessage(null);
+  setAttachmentMenuOpen(false); // ⭐ v3.0a : Fermer le menu aussi
 }, [app.currentChatSession?.id]); // Dépendance : l'ID de la session actuelle
 
   // Détecter photo attachée ou lien depuis Memories
@@ -183,7 +191,80 @@ useEffect(() => {
     console.log('🧹 Clear pending link');
     setPendingLink(null);
   };
-  
+
+  // ========================================
+  // HANDLERS MENU ATTACHEMENT (⭐ v3.0a)
+  // ========================================
+
+  const handleToggleAttachmentMenu = () => {
+    setAttachmentMenuOpen(prev => !prev);
+  };
+
+  const handleInsertLink = () => {
+    setAttachmentMenuOpen(false);
+    handleOpenLinkPicker();
+  };
+
+  const handleInsertQuickPhoto = async () => {
+    logger.info('📷 Insert photo rapide - Ouverture file picker');
+    setAttachmentMenuOpen(false);
+
+    try {
+      // 1. Ouvrir le file picker
+      const files = await openFilePicker(false); // false = sélection unique
+      const file = files[0];
+
+      if (!file) {
+        logger.warn('Aucun fichier sélectionné');
+        return;
+      }
+
+      logger.info(`📸 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
+
+      // 2. Afficher le spinner de loading
+      dataManager.setLoadingOperation(
+        true,
+        'Traitement de l\'image...',
+        'Compression et upload vers Google Drive',
+        'spin'
+      );
+
+      // 3. Traiter et uploader l'image
+      const photoMetadata = await processAndUploadImage(file, app.currentUser.id);
+
+      logger.success('✅ Photo uploadée avec succès:', photoMetadata);
+
+      // 4. Attacher la photo au message
+      setAttachedPhoto(photoMetadata);
+
+      // 5. Désactiver le spinner
+      dataManager.setLoadingOperation(false);
+
+      // 6. Focus sur le textarea pour permettre d'ajouter un message
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+        }
+      }, 100);
+
+    } catch (error) {
+      logger.error('❌ Erreur upload photo rapide:', error);
+
+      // Désactiver le spinner
+      dataManager.setLoadingOperation(false);
+
+      // Afficher message d'erreur
+      alert(`Erreur lors de l'upload de la photo:\n${error.message}`);
+    }
+  };
+
+  const handleInsertMemoryPhoto = async () => {
+    console.log('📷✨ Insert photo souvenir (v2.8c - TODO)');
+    setAttachmentMenuOpen(false);
+    // TODO: Implémenter dans v2.8c
+    alert('📷✨ Insertion photo souvenir - Fonctionnalité en cours de développement (v2.8c)');
+  };
+
   // ========================================
   // HANDLERS THÈMES
   // ========================================
@@ -894,17 +975,84 @@ function LinkPhotoPreview({ photo }) {
     </div>
   )}
 
-  {/* ⭐ NOUVEAU LAYOUT : [🔗+] Input [✉️] */}
+  {/* ⭐ v3.0a : LAYOUT avec menu [+] Input [✉️] */}
   <div className="flex items-end space-x-2">
-    
-    {/* Bouton Liens/Photos à GAUCHE */}
-    <button
-      onClick={handleOpenLinkPicker}
-      className="flex-shrink-0 p-3 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
-      title="Ajouter lien ou photo"
-    >
-      <Link className="w-6 h-6" />
-    </button>
+
+    {/* Bouton [+] avec menu contextuel à GAUCHE */}
+    <div className="relative flex-shrink-0">
+      <button
+        onClick={handleToggleAttachmentMenu}
+        className="p-3 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+        title="Ajouter contenu"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
+      {/* Menu contextuel */}
+      {attachmentMenuOpen && (
+        <>
+          {/* Overlay pour fermer au clic extérieur */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setAttachmentMenuOpen(false)}
+          />
+
+          {/* Menu */}
+          <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50 min-w-[220px]">
+            {/* Option 1 : Lier un souvenir */}
+            <button
+              onClick={handleInsertLink}
+              className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
+            >
+              <Link className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+              <div>
+                <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                  Lier un souvenir
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Depuis la timeline
+                </div>
+              </div>
+            </button>
+
+            {/* Option 2 : Photo rapide */}
+            <button
+              onClick={handleInsertQuickPhoto}
+              className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-left"
+            >
+              <Camera className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <div>
+                <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                  Insérer photo (rapide)
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Sans association moment
+                </div>
+              </div>
+            </button>
+
+            {/* Option 3 : Photo souvenir */}
+            <button
+              onClick={handleInsertMemoryPhoto}
+              className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-left"
+            >
+              <div className="relative flex-shrink-0">
+                <Camera className="w-5 h-5 text-green-600 dark:text-green-400" />
+                <Sparkles className="w-3 h-3 text-green-400 dark:text-green-300 absolute -top-1 -right-1" />
+              </div>
+              <div>
+                <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                  Insérer photo souvenir
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Avec association moment
+                </div>
+              </div>
+            </button>
+          </div>
+        </>
+      )}
+    </div>
     
     
     
@@ -1060,17 +1208,29 @@ function PhotoMessage({ photo, onPhotoClick }) {
     );
   }
 
+  // ⭐ v3.0b : Distinguer photos importées
+  const isImported = photo.source === 'imported';
+
   return (
-    <div 
+    <div
       className="mb-2 cursor-pointer group relative"
       onClick={() => onPhotoClick(photo)}
     >
       <img
         src={imageUrl}
         alt={photo.filename}
-        className="max-w-[200px] rounded-lg shadow-md hover:shadow-lg transition-shadow"
+        className={`max-w-[200px] rounded-lg shadow-md hover:shadow-lg transition-shadow ${
+          isImported ? 'border-2 border-amber-500 dark:border-amber-400' : ''
+        }`}
       />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-lg"></div>
+
+      {/* Badge ⬆️ pour photos importées */}
+      {isImported && (
+        <div className="absolute bottom-2 right-2 bg-amber-500 dark:bg-amber-400 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm shadow-lg">
+          ⬆️
+        </div>
+      )}
     </div>
   );
 }
@@ -1122,11 +1282,26 @@ function PhotoPreview({ photo }) {
     );
   }
 
+  // ⭐ v3.0b : Distinguer photos importées avec bordure + badge
+  const isImported = photo.source === 'imported';
+
   return (
-    <img
-      src={imageUrl}
-      alt={photo.filename}
-      className="w-full max-h-96 object-contain bg-gray-100"
-    />
+    <div className="relative">
+      <img
+        src={imageUrl}
+        alt={photo.filename}
+        className={`w-full max-h-96 object-contain bg-gray-100 rounded-lg ${
+          isImported ? 'border-2 border-amber-500 dark:border-amber-400' : ''
+        }`}
+      />
+
+      {/* Badge pour photos importées */}
+      {isImported && (
+        <div className="absolute bottom-2 right-2 bg-amber-500 dark:bg-amber-400 text-white px-2 py-1 rounded-md text-xs font-medium flex items-center space-x-1 shadow-lg">
+          <span>⬆️</span>
+          <span>Photo importée</span>
+        </div>
+      )}
+    </div>
   );
 }

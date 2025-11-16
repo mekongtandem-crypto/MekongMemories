@@ -1,8 +1,15 @@
 /**
- * PhotoDataV2.js v3.6 - OPTIMISÉ MOBILE (lh3 priorité)
+ * PhotoDataV2.js v3.7 - OPTIMISÉ MOBILE + Support photos importées (v3.0)
  * ✅ FIX: Format lh3.googleusercontent.com en priorité pour mobile
  * ✅ PERFORMANCE: Moins de tests d'URL, résolution plus rapide
  * ✅ FALLBACKS: Autres formats en cas d'échec
+ *
+ * ⭐ v3.0 Extension :
+ * - Support photos importées avec source: 'imported'
+ * - Les objets photo portent maintenant :
+ *   - source: 'mastodon' | 'moment' | 'imported'
+ *   - momentId: string | null (null = photo non associée, en attente)
+ * - PhotoDataV2 reste un résolveur d'URL agnostique de la source
  */
 
 import { stateManager } from './StateManager.js';
