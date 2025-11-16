@@ -92,10 +92,10 @@ export default function ConfirmDeleteModal({
                 />
                 <div>
                   <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
-                    Effacer définitivement du cloud
+                    Supprimer le fichier image du cloud
                   </p>
                   <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                    Supprimer aussi le fichier physique de Google Drive (recommandé pour économiser l'espace de stockage)
+                    Effacer aussi le fichier physique de Google Drive (recommandé pour économiser l'espace de stockage)
                   </p>
                 </div>
               </label>
@@ -106,7 +106,7 @@ export default function ConfirmDeleteModal({
           <div className="mt-4 flex items-start space-x-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
             <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-amber-900 dark:text-amber-200">
-              Cette action est <strong>irréversible</strong>. {showDriveOption && deleteFromDrive ? 'Le fichier sera supprimé du cloud et' : 'L\'élément'} sera définitivement supprimé{showDriveOption && !deleteFromDrive ? ' (le fichier restera dans le cloud)' : ''}.
+              Cette action est <strong>irréversible</strong>. {showDriveOption && deleteFromDrive ? 'Le fichier image sera supprimé du cloud et le' : 'Le'} souvenir sera effacé de la mémoire{showDriveOption && !deleteFromDrive ? ' (le fichier restera dans le cloud)' : ''}.
             </p>
           </div>
         </div>
