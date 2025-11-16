@@ -795,7 +795,7 @@ class DataManager {
           id: momentId,
           title: title,
           date: date,
-          jnnn: jnnn || 'undefined',
+          jnnn: jnnn || 'IMP',  // ⭐ v2.8e : "IMP" par défaut
           description: '',
           location: '',
           dayPhotos: [],
@@ -805,7 +805,7 @@ class DataManager {
 
         // Ajouter le moment à la liste
         masterIndex.moments.push(targetMoment);
-        logger.info(`✅ Nouveau moment créé: ${momentId} (jnnn: ${jnnn || 'undefined'})`);
+        logger.info(`✅ Nouveau moment créé: ${momentId} (jnnn: ${jnnn || 'IMP'})`);
       }
       // 2b. Trouver le moment existant
       else {
@@ -835,6 +835,10 @@ class DataManager {
       // 4. Déterminer si c'est une Photo Note (texte présent)
       const isPhotoNote = conversionData.noteTitle || conversionData.noteContent;
 
+      // ⭐ v2.8e : Garder contentId et contentType pour ContentLinks
+      let contentId;
+      let contentType;
+
       // 4a. Si texte → créer un post avec photo (Photo Note)
       if (isPhotoNote) {
         const newPost = {
@@ -855,6 +859,10 @@ class DataManager {
         }
         targetMoment.posts.push(newPost);
 
+        // ⭐ v2.8e : Pour ContentLinks
+        contentId = newPost.id;
+        contentType = 'post';
+
         logger.info(`✅ Photo Note créée: ${newPost.id} (titre: "${conversionData.noteTitle || 'sans titre'}")`);
       }
       // 4b. Sinon → ajouter photo standalone dans dayPhotos
@@ -863,6 +871,10 @@ class DataManager {
           targetMoment.dayPhotos = [];
         }
         targetMoment.dayPhotos.push(photoForMasterIndex);
+
+        // ⭐ v2.8e : Pour ContentLinks
+        contentId = photoForMasterIndex.google_drive_id;
+        contentType = 'photo';
 
         logger.info(`✅ Photo simple ajoutée à dayPhotos`);
       }
@@ -875,7 +887,9 @@ class DataManager {
       return {
         success: true,
         momentId: momentId,
-        photoAdded: true
+        photoAdded: true,
+        contentId: contentId,  // ⭐ v2.8e : Pour ContentLinks
+        contentType: contentType  // ⭐ v2.8e : 'post' ou 'photo'
       };
 
     } catch (error) {
