@@ -638,13 +638,16 @@ useEffect(() => {
     // ⭐ NOUVEAU : Nettoyer ContentLinks si le message avait un lien
     if (hasLink && window.contentLinks) {
       console.log('🗑️ Nettoyage ContentLinks pour message supprimé:', messageToDelete.linkedContent);
-      
+
       await window.contentLinks.removeLink(
         updatedSession.id,
         messageToDelete.linkedContent.type,
         messageToDelete.linkedContent.id
       );
-      
+
+      // ⭐ v2.9o : Forcer re-render React pour mettre à jour les pastilles
+      dataManager.notify();  // Force tous les composants React à se rafraîchir
+
       // ⭐ DEBUG : Vérifier que le lien a bien été supprimé
 const linksAfter = window.contentLinks.getLinksForSession(updatedSession.id);
 console.log('🔍 Liens restants pour cette session:', linksAfter);
@@ -655,7 +658,7 @@ const sessionsForContent = window.contentLinks.getSessionsForContent(
   messageToDelete.linkedContent.id
 );
 console.log('🔍 Sessions liées à ce contenu:', sessionsForContent);
-      
+
       console.log('✅ ContentLinks mis à jour et sauvegardé');
     }
 
