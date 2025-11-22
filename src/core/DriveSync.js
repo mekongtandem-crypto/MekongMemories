@@ -116,6 +116,54 @@ class DriveSync {
   }
 
   /**
+   * ⭐ v2.9n : Chercher un fichier par nom (pour retrouver le thumbnail)
+   * @param {string} filename - Nom du fichier à chercher
+   * @param {string} folderPath - Chemin du dossier (ex: 'Medias/imported')
+   * @returns {Promise<string|null>} - ID du fichier ou null si non trouvé
+   */
+  async findFileIdByName(filename, folderPath = 'Medias/imported') {
+    if (!this.connectionManager.getState().isOnline) throw new Error('Non connecté.');
+
+    try {
+      // Naviguer jusqu'au dossier
+      const pathParts = folderPath.split('/').filter(p => p);
+      let currentFolderId = this.appFolderId;
+
+      for (const folderName of pathParts) {
+        const folders = await this.listFiles({
+          q: `'${currentFolderId}' in parents and name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+          fields: 'files(id)',
+          pageSize: 1
+        });
+
+        if (folders.length === 0) {
+          console.log(`⚠️ Dossier "${folderName}" introuvable dans le chemin`);
+          return null;
+        }
+        currentFolderId = folders[0].id;
+      }
+
+      // Chercher le fichier dans le dossier
+      const files = await this.listFiles({
+        q: `'${currentFolderId}' in parents and name='${filename}' and trashed=false`,
+        fields: 'files(id, name)',
+        pageSize: 1
+      });
+
+      if (files.length === 0) {
+        console.log(`⚠️ Fichier "${filename}" introuvable dans ${folderPath}`);
+        return null;
+      }
+
+      console.log(`✅ Fichier trouvé: ${files[0].name} (ID: ${files[0].id})`);
+      return files[0].id;
+    } catch (error) {
+      console.error(`❌ Erreur recherche fichier "${filename}":`, error);
+      return null;
+    }
+  }
+
+  /**
    * ⭐ v2.9 : Supprimer un fichier par son ID Drive (pour photos)
    * @param {string} fileId - ID Google Drive du fichier
    */

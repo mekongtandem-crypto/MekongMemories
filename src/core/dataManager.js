@@ -983,6 +983,36 @@ class DataManager {
         throw new Error('Seuls les moments importés peuvent être supprimés');
       }
 
+      // ⭐ v2.9n : Vérifier cross-références AVANT suppression Drive
+      if (cascadeOptions?.deleteFiles) {
+        const deleteNoteIds = cascadeOptions.deleteNotes
+          ? (moment.posts || [])
+              .filter(p => p.category === 'user_added')
+              .map(p => p.id)
+          : [];
+
+        const photoIds = this.collectMomentPhotos(moment, deleteNoteIds);
+
+        // Vérifier chaque photo
+        const allCrossRefs = [];
+        for (const photoId of photoIds) {
+          const crossRefs = this.checkPhotoCrossReferences(photoId, momentId);
+          if (crossRefs.length > 0) {
+            allCrossRefs.push({ photoId, crossRefs });
+          }
+        }
+
+        if (allCrossRefs.length > 0) {
+          this.setLoadingOperation(false);
+          logger.warn('⚠️ Photos utilisées ailleurs:', allCrossRefs);
+          return {
+            success: false,
+            reason: 'cross_references',
+            allCrossRefs
+          };
+        }
+      }
+
       // ⭐ v2.9j : Suppression en cascade des enfants
       if (cascadeOptions) {
         // 1. Supprimer les Photo Notes (category='user_added')
@@ -1000,7 +1030,13 @@ class DataManager {
           logger.info(`🗑️ Suppression de ${photosToDelete.length} photo(s)...`);
           for (const photo of photosToDelete) {
             // Passer deleteFromDrive=cascadeOptions.deleteFiles
-            await this.deletePhoto(momentId, photo.google_drive_id || photo.filename, photo.filename, cascadeOptions.deleteFiles, false);  // false = pas de reload
+            const result = await this.deletePhoto(momentId, photo.google_drive_id || photo.filename, photo.filename, cascadeOptions.deleteFiles, false);  // false = pas de reload
+
+            // ⭐ v2.9n : Gérer cas improbable de cross-ref (déjà vérifié en amont)
+            if (result && !result.success && result.reason === 'cross_references') {
+              logger.warn('⚠️ Cross-ref détectée durant cascade (ne devrait pas arriver):', result.crossRefs);
+              // Continue quand même (on a déjà vérifié en amont, donc c'est incohérent)
+            }
           }
         }
       }
@@ -1156,6 +1192,103 @@ class DataManager {
   }
 
   /**
+   * ⭐ v2.9n : Collecter toutes les photos d'un moment (dayPhotos + posts)
+   * @param {Object} moment - Le moment
+   * @param {Array} deleteNoteIds - IDs des notes à supprimer (optionnel)
+   * @returns {Array} - Liste des photoIds
+   */
+  collectMomentPhotos = (moment, deleteNoteIds = []) => {
+    const photoIds = [];
+
+    // Photos directes du moment
+    if (moment.dayPhotos) {
+      moment.dayPhotos
+        .filter(p => p.source === 'imported')
+        .forEach(p => {
+          const id = p.google_drive_id || p.filename;
+          if (id && !photoIds.includes(id)) {
+            photoIds.push(id);
+          }
+        });
+    }
+
+    // Photos des notes (seulement si la note sera supprimée)
+    if (moment.posts && deleteNoteIds.length > 0) {
+      moment.posts
+        .filter(post => post.category === 'user_added' && deleteNoteIds.includes(post.id))
+        .forEach(post => {
+          if (post.photos) {
+            post.photos
+              .filter(p => p.source === 'imported')
+              .forEach(p => {
+                const id = p.google_drive_id || p.filename;
+                if (id && !photoIds.includes(id)) {
+                  photoIds.push(id);
+                }
+              });
+          }
+        });
+    }
+
+    return photoIds;
+  }
+
+  /**
+   * ⭐ v2.9n : Vérifier si une photo est utilisée dans d'autres moments
+   * @param {string} photoId - ID de la photo (google_drive_id ou filename)
+   * @param {string} excludeMomentId - ID du moment à exclure de la recherche
+   * @returns {Array} - Liste des moments où la photo est utilisée
+   */
+  checkPhotoCrossReferences = (photoId, excludeMomentId) => {
+    const masterIndex = this.appState.masterIndex;
+    if (!masterIndex?.moments) return [];
+
+    const crossRefs = [];
+
+    for (const moment of masterIndex.moments) {
+      // Ignorer le moment actuel
+      if (moment.id === excludeMomentId) continue;
+
+      // Chercher dans dayPhotos
+      const foundInDay = moment.dayPhotos?.find(p =>
+        p.google_drive_id === photoId || p.filename === photoId
+      );
+
+      if (foundInDay) {
+        crossRefs.push({
+          momentId: moment.id,
+          momentTitle: moment.title,
+          momentDate: moment.date,
+          location: 'dayPhotos'
+        });
+        continue; // Pas besoin de chercher dans les posts de ce moment
+      }
+
+      // Chercher dans les posts
+      if (moment.posts) {
+        for (const post of moment.posts) {
+          const foundInPost = post.photos?.find(p =>
+            p.google_drive_id === photoId || p.filename === photoId
+          );
+
+          if (foundInPost) {
+            crossRefs.push({
+              momentId: moment.id,
+              momentTitle: moment.title,
+              momentDate: moment.date,
+              location: `post:${post.id}`,
+              postTitle: post.title || 'Sans titre'
+            });
+            break; // Pas besoin de chercher dans les autres posts
+          }
+        }
+      }
+    }
+
+    return crossRefs;
+  }
+
+  /**
    * Supprimer une photo (seulement source='imported')
    * @param {string} momentId - ID du moment parent
    * @param {string} photoId - ID de la photo (google_drive_id ou filename)
@@ -1165,6 +1298,20 @@ class DataManager {
    */
   deletePhoto = async (momentId, photoId, filename = null, deleteFromDrive = false, showSpinner = true) => {
     logger.info('Suppression photo:', photoId, deleteFromDrive ? '(+ Drive)' : '(uniquement index)');
+
+    // ⭐ v2.9n : Vérifier cross-références AVANT suppression Drive
+    if (deleteFromDrive) {
+      const crossRefs = this.checkPhotoCrossReferences(photoId, momentId);
+
+      if (crossRefs.length > 0) {
+        logger.warn('⚠️ Photo utilisée dans d\'autres moments:', crossRefs);
+        return {
+          success: false,
+          reason: 'cross_references',
+          crossRefs
+        };
+      }
+    }
 
     if (showSpinner) {
       this.setLoadingOperation(
@@ -1205,15 +1352,32 @@ class DataManager {
           }
         }
 
-        // ⭐ v2.9 : Supprimer fichier Drive si demandé
+        // ⭐ v2.9n : Supprimer fichier Drive ET thumbnail si demandé
         if (deleteFromDrive && dayPhoto.google_drive_id) {
           try {
             logger.info(`🗑️ Suppression fichier Drive demandée - ID: ${dayPhoto.google_drive_id}, filename: ${dayPhoto.filename}`);
             console.log('📸 Photo dayPhoto complète:', dayPhoto);
+
+            // 1. Supprimer le fichier principal
             await this.driveSync.deleteFileById(dayPhoto.google_drive_id);
-            logger.success('📸 Fichier image supprimé du cloud');
+            logger.success('📸 Fichier image principal supprimé du cloud');
+
+            // 2. Supprimer le thumbnail (pattern: filename_thumb.ext)
+            if (dayPhoto.filename) {
+              const thumbFilename = dayPhoto.filename.replace(/\.(\w+)$/, '_thumb.$1');
+              logger.info(`🔍 Recherche thumbnail: ${thumbFilename}`);
+
+              const thumbFileId = await this.driveSync.findFileIdByName(thumbFilename, 'Medias/imported');
+
+              if (thumbFileId) {
+                await this.driveSync.deleteFileById(thumbFileId);
+                logger.success('🖼️ Thumbnail supprimé du cloud');
+              } else {
+                logger.warn(`⚠️ Thumbnail non trouvé: ${thumbFilename}`);
+              }
+            }
           } catch (error) {
-            logger.warn('⚠️ Impossible de supprimer le fichier du cloud:', error);
+            logger.warn('⚠️ Impossible de supprimer les fichiers du cloud:', error);
             // Non-bloquant, on continue
           }
         }
@@ -1260,15 +1424,32 @@ class DataManager {
             }
           }
 
-          // ⭐ v2.9 : Supprimer fichier Drive si demandé
+          // ⭐ v2.9n : Supprimer fichier Drive ET thumbnail si demandé
           if (deleteFromDrive && postPhoto.google_drive_id) {
             try {
               logger.info(`🗑️ Suppression fichier Drive demandée - ID: ${postPhoto.google_drive_id}, filename: ${postPhoto.filename}`);
               console.log('📸 Photo postPhoto complète:', postPhoto);
+
+              // 1. Supprimer le fichier principal
               await this.driveSync.deleteFileById(postPhoto.google_drive_id);
-              logger.success('📸 Fichier image supprimé du cloud');
+              logger.success('📸 Fichier image principal supprimé du cloud');
+
+              // 2. Supprimer le thumbnail (pattern: filename_thumb.ext)
+              if (postPhoto.filename) {
+                const thumbFilename = postPhoto.filename.replace(/\.(\w+)$/, '_thumb.$1');
+                logger.info(`🔍 Recherche thumbnail: ${thumbFilename}`);
+
+                const thumbFileId = await this.driveSync.findFileIdByName(thumbFilename, 'Medias/imported');
+
+                if (thumbFileId) {
+                  await this.driveSync.deleteFileById(thumbFileId);
+                  logger.success('🖼️ Thumbnail supprimé du cloud');
+                } else {
+                  logger.warn(`⚠️ Thumbnail non trouvé: ${thumbFilename}`);
+                }
+              }
             } catch (error) {
-              logger.warn('⚠️ Impossible de supprimer le fichier du cloud:', error);
+              logger.warn('⚠️ Impossible de supprimer les fichiers du cloud:', error);
               // Non-bloquant, on continue
             }
           }
