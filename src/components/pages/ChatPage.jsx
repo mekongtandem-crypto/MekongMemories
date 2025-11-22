@@ -635,7 +635,7 @@ useEffect(() => {
 
     await app.updateSession(updatedSession);
     
-    // ⭐ NOUVEAU : Nettoyer ContentLinks si le message avait un lien
+    // ⭐ v2.9o : Nettoyer ContentLinks si le message avait un lien
     if (hasLink && window.contentLinks) {
       console.log('🗑️ Nettoyage ContentLinks pour message supprimé:', messageToDelete.linkedContent);
 
@@ -645,21 +645,24 @@ useEffect(() => {
         messageToDelete.linkedContent.id
       );
 
-      // ⭐ v2.9o : Forcer re-render React pour mettre à jour les pastilles
-      dataManager.notify();  // Force tous les composants React à se rafraîchir
+      // ⭐ v2.9o : Forcer re-render React en créant nouvelle référence sessions
+      // Nécessaire car les composants memoizés (SessionBadgePhotoThumb) ne se rafraîchissent
+      // que si la référence de l'array change
+      const currentSessions = dataManager.getState().sessions;
+      dataManager.updateState({ sessions: [...currentSessions] });
 
       // ⭐ DEBUG : Vérifier que le lien a bien été supprimé
-const linksAfter = window.contentLinks.getLinksForSession(updatedSession.id);
-console.log('🔍 Liens restants pour cette session:', linksAfter);
+      const linksAfter = window.contentLinks.getLinksForSession(updatedSession.id);
+      console.log('🔍 Liens restants pour cette session:', linksAfter);
 
-// ⭐ DEBUG : Vérifier l'index côté contenu
-const sessionsForContent = window.contentLinks.getSessionsForContent(
-  messageToDelete.linkedContent.type,
-  messageToDelete.linkedContent.id
-);
-console.log('🔍 Sessions liées à ce contenu:', sessionsForContent);
+      // ⭐ DEBUG : Vérifier l'index côté contenu
+      const sessionsForContent = window.contentLinks.getSessionsForContent(
+        messageToDelete.linkedContent.type,
+        messageToDelete.linkedContent.id
+      );
+      console.log('🔍 Sessions liées à ce contenu:', sessionsForContent);
 
-      console.log('✅ ContentLinks mis à jour et sauvegardé');
+      console.log('✅ ContentLinks mis à jour et sauvegardé - Pastilles rafraîchies');
     }
 
     // ✨ Désactiver le spinner
