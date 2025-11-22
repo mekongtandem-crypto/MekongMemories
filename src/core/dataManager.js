@@ -998,8 +998,10 @@ class DataManager {
         const allCrossRefs = [];
         for (const photoId of photoIds) {
           const crossRefs = this.checkPhotoCrossReferences(photoId, momentId);
-          if (crossRefs.length > 0) {
-            allCrossRefs.push({ photoId, crossRefs });
+          const sessionRefs = this.checkPhotoInSessions(photoId); // ⭐ v2.9n3 : Vérifier sessions aussi
+
+          if (crossRefs.length > 0 || sessionRefs.length > 0) {
+            allCrossRefs.push({ photoId, crossRefs, sessionRefs });
           }
         }
 
@@ -1290,6 +1292,44 @@ class DataManager {
   }
 
   /**
+   * ⭐ v2.9n3 : Vérifier si une photo est utilisée dans des sessions/chats
+   * @param {string} photoId - ID de la photo (google_drive_id ou filename)
+   * @returns {Array} - Liste des sessions où la photo est utilisée
+   */
+  checkPhotoInSessions = (photoId) => {
+    const sessions = this.appState.sessions;
+    if (!sessions || sessions.length === 0) return [];
+
+    const sessionRefs = [];
+
+    for (const session of sessions) {
+      if (!session.notes || session.notes.length === 0) continue;
+
+      // Chercher dans les messages (notes) de la session
+      for (const note of session.notes) {
+        if (!note.photoData) continue;
+
+        // Vérifier si ce message contient la photo
+        const matchById = note.photoData.google_drive_id === photoId;
+        const matchByFilename = note.photoData.filename === photoId;
+
+        if (matchById || matchByFilename) {
+          sessionRefs.push({
+            sessionId: session.id,
+            sessionTitle: session.gameTitle || 'Sans titre',
+            messageId: note.id,
+            messageAuthor: note.author,
+            messageDate: note.timestamp
+          });
+          break; // Pas besoin de chercher dans les autres messages de cette session
+        }
+      }
+    }
+
+    return sessionRefs;
+  }
+
+  /**
    * Supprimer une photo (seulement source='imported')
    * @param {string} momentId - ID du moment parent
    * @param {string} photoId - ID de la photo (google_drive_id ou filename)
@@ -1303,13 +1343,15 @@ class DataManager {
     // ⭐ v2.9n : Vérifier cross-références AVANT suppression Drive
     if (deleteFromDrive) {
       const crossRefs = this.checkPhotoCrossReferences(photoId, momentId);
+      const sessionRefs = this.checkPhotoInSessions(photoId); // ⭐ v2.9n3 : Vérifier sessions aussi
 
-      if (crossRefs.length > 0) {
-        logger.warn('⚠️ Photo utilisée dans d\'autres moments:', crossRefs);
+      if (crossRefs.length > 0 || sessionRefs.length > 0) {
+        logger.warn('⚠️ Photo utilisée ailleurs:', { crossRefs, sessionRefs });
         return {
           success: false,
           reason: 'cross_references',
-          crossRefs
+          crossRefs,
+          sessionRefs  // ⭐ v2.9n3 : Retourner aussi les refs sessions
         };
       }
     }

@@ -125,13 +125,18 @@ class DriveSync {
     if (!this.connectionManager.getState().isOnline) throw new Error('Non connecté.');
 
     try {
-      // Naviguer jusqu'au dossier
+      // Naviguer jusqu'au dossier (depuis la RACINE du Drive, pas appFolderId)
       const pathParts = folderPath.split('/').filter(p => p);
-      let currentFolderId = this.appFolderId;
+      let currentFolderId = null; // ⭐ v2.9n3 : null = chercher à la racine du Drive
 
       for (const folderName of pathParts) {
+        // Construire requête : si currentFolderId = null, chercher à la racine
+        const parentQuery = currentFolderId
+          ? `'${currentFolderId}' in parents`
+          : `'root' in parents`; // Chercher à la racine du Drive
+
         const folders = await this.listFiles({
-          q: `'${currentFolderId}' in parents and name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+          q: `${parentQuery} and name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
           fields: 'files(id)',
           pageSize: 1
         });

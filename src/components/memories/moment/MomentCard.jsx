@@ -12,28 +12,29 @@ import React, { useState, useEffect, useRef, memo, forwardRef } from 'react';
 import MomentHeader from './MomentHeader.jsx';
 import MomentContent from './MomentContent.jsx';
 
-export const MomentCard = memo(forwardRef(({ 
-  moment, 
-  isSelected, 
-  isExplored, 
-  matchesFilter, 
-  displayOptions, 
-  onSelect, 
-  onPhotoClick, 
+export const MomentCard = memo(forwardRef(({
+  moment,
+  isSelected,
+  isExplored,
+  matchesFilter,
+  displayOptions,
+  onSelect,
+  onPhotoClick,
   onCreateSession,
-  activePhotoGrid, 
-  selectedPhotos, 
-  onActivateSelection, 
+  activePhotoGrid,
+  selectedPhotos,
+  onActivateSelection,
   onTogglePhotoSelection,
-  onBulkTagPhotos, 
+  onBulkTagPhotos,
   onCancelSelection,
-  isFromChat, 
+  isFromChat,
   onOpenPhotoContextMenu,
-  selectionMode, 
+  selectionMode,
   onContentSelected,
-  sessions, 
-  onShowSessions, 
-  onCreateSessionFromContent
+  sessions,
+  onShowSessions,
+  onCreateSessionFromContent,
+  editionMode  // ⭐ v2.9n3 : Recevoir editionMode
 }, ref) => {
   
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
@@ -86,7 +87,7 @@ export const MomentCard = memo(forwardRef(({
       }`}
     >
       <div className="px-3 pt-3 pb-0">
-        <MomentHeader 
+        <MomentHeader
           moment={moment}
           isSelected={isSelected}
           isExplored={isExplored}
@@ -99,6 +100,7 @@ export const MomentCard = memo(forwardRef(({
           onContentSelected={onContentSelected}
           sessions={sessions}
           onShowSessions={onShowSessions}
+          editionMode={editionMode}
         />
       </div>
       

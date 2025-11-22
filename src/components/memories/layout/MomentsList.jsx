@@ -8,28 +8,29 @@
 import React, { memo } from 'react';
 import MomentCard from '../moment/MomentCard.jsx';
 
-export const MomentsList = memo(({ 
-  moments, 
-  selectedMoments, 
-  displayOptions, 
-  momentFilter, 
-  sessions, 
-  onMomentSelect, 
-  onPhotoClick, 
-  onCreateSession, 
+export const MomentsList = memo(({
+  moments,
+  selectedMoments,
+  displayOptions,
+  momentFilter,
+  sessions,
+  onMomentSelect,
+  onPhotoClick,
+  onCreateSession,
   momentRefs,
-  activePhotoGrid, 
-  selectedPhotos, 
-  onActivateSelection, 
+  activePhotoGrid,
+  selectedPhotos,
+  onActivateSelection,
   onTogglePhotoSelection,
-  onBulkTagPhotos, 
+  onBulkTagPhotos,
   onCancelSelection,
-  isFromChat, 
+  isFromChat,
   onOpenPhotoContextMenu,
-  selectionMode, 
+  selectionMode,
   onContentSelected,
-  onShowSessions, 
-  onCreateSessionFromContent
+  onShowSessions,
+  onCreateSessionFromContent,
+  editionMode  // ⭐ v2.9n3 : Recevoir editionMode
 }) => {
   
   return (
@@ -66,6 +67,7 @@ export const MomentsList = memo(({
             selectionMode={selectionMode}
             onContentSelected={onContentSelected}
             onCreateSessionFromContent={onCreateSessionFromContent}
+            editionMode={editionMode}
           />
         );
       })}

@@ -1329,6 +1329,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
             selectionMode={selectionMode}
   			onContentSelected={handleLongPressForSelection}
   			onCreateSessionFromContent={handleCreateSessionFromContent}
+			editionMode={editionMode}
 			/>
         </div>
       </main>

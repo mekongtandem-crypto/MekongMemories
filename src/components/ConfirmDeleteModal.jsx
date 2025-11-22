@@ -210,6 +210,43 @@ export default function ConfirmDeleteModal({
             </div>
           )}
 
+          {/* ⭐ v2.9n3 : Warnings sessions/causeries */}
+          {crossRefsWarnings && crossRefsWarnings.some(w => w.sessionRefs && w.sessionRefs.length > 0) && (
+            <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-lg">
+              <p className="text-sm font-bold text-orange-900 dark:text-orange-200 mb-2 flex items-center">
+                <AlertTriangle className="w-5 h-5 mr-2" />
+                💬 ATTENTION - PHOTOS UTILISÉES DANS DES CAUSERIES
+              </p>
+              <div className="space-y-3 ml-4">
+                {crossRefsWarnings.filter(w => w.sessionRefs && w.sessionRefs.length > 0).map((warning, idx) => (
+                  <div key={idx} className="text-xs">
+                    <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">
+                      Photo : {warning.filename || warning.photoId.substring(0, 20) + '...'}
+                    </p>
+                    <p className="text-orange-800 dark:text-orange-300 mb-1">
+                      Utilisée dans {warning.sessionRefs.length} causerie{warning.sessionRefs.length > 1 ? 's' : ''} :
+                    </p>
+                    <div className="ml-3 space-y-1">
+                      {warning.sessionRefs.map((ref, refIdx) => (
+                        <div key={refIdx} className="text-orange-700 dark:text-orange-300">
+                          <p className="font-medium">
+                            → "{ref.sessionTitle}"
+                          </p>
+                          <p className="text-xs text-orange-600 dark:text-orange-400 ml-3">
+                            Message de {ref.messageAuthor} le {new Date(ref.messageDate).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-orange-800 dark:text-orange-300 mt-3 font-medium">
+                ⚠️ La suppression du Drive empêchera l'affichage de la photo dans ces causeries !
+              </p>
+            </div>
+          )}
+
           {/* ⭐ v2.9j : Options suppression en cascade (moments avec enfants) */}
           {childrenCounts && cascadeOptions && (
             <div className="mt-4 space-y-2">
