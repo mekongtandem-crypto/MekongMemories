@@ -14,25 +14,26 @@ import { SessionBadgePost } from '../shared/SessionBadges.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import { generatePostKey } from '../../../utils/themeUtils.js';
 
-export const PostArticle = memo(({ 
-  post, 
-  moment, 
-  displayOptions, 
-  onPhotoClick, 
+export const PostArticle = memo(({
+  post,
+  moment,
+  displayOptions,
+  onPhotoClick,
   onCreateSession,
-  activePhotoGrid, 
-  selectedPhotos, 
-  onActivateSelection, 
+  activePhotoGrid,
+  selectedPhotos,
+  onActivateSelection,
   onTogglePhotoSelection,
-  onBulkTagPhotos, 
+  onBulkTagPhotos,
   onCancelSelection,
-  isFromChat, 
+  isFromChat,
   onOpenPhotoContextMenu,
-  selectionMode, 
+  selectionMode,
   onContentSelected,
-  sessions, 
-  onShowSessions, 
-  onCreateSessionFromContent
+  sessions,
+  onShowSessions,
+  onCreateSessionFromContent,
+  editionMode  // ⭐ v2.9o : Recevoir editionMode
 }) => {
   
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
@@ -165,7 +166,7 @@ export const PostArticle = memo(({
             )}
 
             {/* ⭐ v2.9 : Boutons édition (seulement si mode édition + category='user_added') */}
-            {window.appState?.editionMode?.active && post.category === 'user_added' && (
+            {editionMode?.active && post.category === 'user_added' && (
               <>
                 <button
                   onClick={(e) => {
@@ -223,6 +224,7 @@ export const PostArticle = memo(({
             onContentSelected={onContentSelected}
             sessions={sessions}
             onShowSessions={onShowSessions}
+            editionMode={editionMode}
           />
         </div>
       )}

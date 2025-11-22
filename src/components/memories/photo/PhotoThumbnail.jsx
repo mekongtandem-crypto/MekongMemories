@@ -12,9 +12,9 @@ import React, { useState, useEffect, memo } from 'react';
 import { Camera, AlertCircle, ZoomIn, Link, Trash2 } from 'lucide-react';
 import { SessionBadgePhotoThumb } from '../shared/SessionBadges.jsx';
 
-export const PhotoThumbnail = memo(({ 
-  photo, 
-  moment, 
+export const PhotoThumbnail = memo(({
+  photo,
+  moment,
   onPhotoClick,
   selectionMode,
   globalSelectionMode,
@@ -22,7 +22,8 @@ export const PhotoThumbnail = memo(({
   onToggleSelect,
   sessions,
   onShowSessions,
-  onContentSelected
+  onContentSelected,
+  editionMode  // ⭐ v2.9o : Recevoir editionMode
 }) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'loaded' | 'error'
@@ -138,8 +139,8 @@ console.log('📸 Photo data:', photo); //log temporaire
         </button>
       )}
 
-      {/* ⭐ v2.9 : Bouton suppression (seulement si mode édition + source='imported') */}
-      {window.appState?.editionMode?.active && photo.source === 'imported' && !selectionMode && !globalSelectionMode?.active && (
+      {/* ⭐ v2.9o : Bouton suppression (seulement si mode édition + source='imported') */}
+      {editionMode?.active && photo.source === 'imported' && !selectionMode && !globalSelectionMode?.active && (
         <button
           className="absolute top-1 right-1 z-10 w-7 h-7 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg transition-all group/delete"
           onClick={(e) => {
