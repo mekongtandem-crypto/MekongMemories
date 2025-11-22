@@ -342,9 +342,41 @@ const handleSaveMoment = useCallback(async (updatedMoment) => {
 }, [app]);
 
 const handleDeleteMoment = useCallback((moment) => {
-  // ⭐ v2.9j : Compter les enfants (notes et photos importées)
-  const noteCount = (moment.posts || []).filter(post => post.category === 'user_added').length;
-  const photoCount = (moment.dayPhotos || []).filter(photo => photo.source === 'imported').length;
+  // ⭐ v2.9n : Préparer les détails enrichis des enfants
+  const notes = (moment.posts || [])
+    .filter(post => post.category === 'user_added')
+    .map(post => ({
+      id: post.id,
+      title: post.title || 'Sans titre',
+      photoCount: (post.photos || []).filter(p => p.source === 'imported').length
+    }));
+
+  const photosMoment = (moment.dayPhotos || []).filter(photo => photo.source === 'imported').length;
+  const photosNotes = notes.reduce((sum, note) => sum + note.photoCount, 0);
+  const photoCount = photosMoment + photosNotes;
+
+  // ⭐ v2.9n : Vérifier cross-refs pour TOUTES les photos du moment
+  const allPhotoIds = dataManager.collectMomentPhotos(moment, notes.map(n => n.id));
+  const crossRefsWarnings = [];
+
+  for (const photoId of allPhotoIds) {
+    const crossRefs = dataManager.checkPhotoCrossReferences(photoId, moment.id);
+    if (crossRefs.length > 0) {
+      crossRefsWarnings.push({
+        photoId,
+        filename: photoId,
+        crossRefs
+      });
+    }
+  }
+
+  // ⭐ v2.9n : Préparer childrenDetails pour affichage détaillé
+  const childrenDetails = (notes.length > 0 || photoCount > 0) ? {
+    notes,
+    photos: photoCount,
+    photosMoment,
+    photosNotes
+  } : null;
 
   // ⭐ v2.9j : Initialiser les options de cascade
   const initialCascadeOptions = {
@@ -361,15 +393,68 @@ const handleDeleteMoment = useCallback((moment) => {
     itemId: null,
     deleteFromDrive: false,
     // ⭐ v2.9j : Cascade deletion
-    childrenCounts: (noteCount > 0 || photoCount > 0) ? { notes: noteCount, photos: photoCount } : null,
-    cascadeOptions: (noteCount > 0 || photoCount > 0) ? initialCascadeOptions : null,
+    childrenCounts: childrenDetails ? { notes: notes.length, photos: photoCount } : null,
+    cascadeOptions: childrenDetails ? initialCascadeOptions : null,
+    // ⭐ v2.9n : Détails enrichis + cross-refs warnings
+    childrenDetails,
+    crossRefsWarnings: crossRefsWarnings.length > 0 ? crossRefsWarnings : null,
+    showRemoveOnlyButton: crossRefsWarnings.length > 0,
     onConfirm: async (cascadeOpts) => {
       try {
-        // ⭐ v2.9j : Passer les options de cascade au deleteMoment
-        await app.deleteMoment(moment.id, cascadeOpts);
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null, childrenCounts: null, cascadeOptions: null });
+        // ⭐ v2.9n : Appeler deleteMoment (vérification cross-refs déjà faite)
+        const result = await app.deleteMoment(moment.id, cascadeOpts);
+
+        if (result && !result.success && result.reason === 'cross_references') {
+          // Cross-refs détectées (double sécurité)
+          alert(`⚠️ Impossible de supprimer : photos utilisées dans d'autres moments`);
+          return;
+        }
+
+        setConfirmDeleteModal({
+          isOpen: false,
+          type: null,
+          itemName: null,
+          momentId: null,
+          itemId: null,
+          deleteFromDrive: false,
+          onConfirm: null,
+          childrenCounts: null,
+          cascadeOptions: null,
+          childrenDetails: null,
+          crossRefsWarnings: null,
+          showRemoveOnlyButton: false
+        });
       } catch (error) {
         alert('Erreur lors de la suppression : ' + error.message);
+      }
+    },
+    // ⭐ v2.9n : Handler "Retirer du moment seulement"
+    onRemoveOnly: async () => {
+      try {
+        // Supprimer du masterIndex sans toucher Drive
+        const cascadeOptsNoFiles = {
+          deleteNotes: false,  // Ne supprimer que le moment
+          deletePhotos: false,
+          deleteFiles: false
+        };
+
+        await app.deleteMoment(moment.id, cascadeOptsNoFiles);
+        setConfirmDeleteModal({
+          isOpen: false,
+          type: null,
+          itemName: null,
+          momentId: null,
+          itemId: null,
+          deleteFromDrive: false,
+          onConfirm: null,
+          childrenCounts: null,
+          cascadeOptions: null,
+          childrenDetails: null,
+          crossRefsWarnings: null,
+          showRemoveOnlyButton: false
+        });
+      } catch (error) {
+        alert('Erreur lors du retrait : ' + error.message);
       }
     }
   });
@@ -1358,7 +1443,20 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
 
       <ConfirmDeleteModal
         isOpen={confirmDeleteModal.isOpen}
-        onClose={() => setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null, childrenCounts: null, cascadeOptions: null })}
+        onClose={() => setConfirmDeleteModal({
+          isOpen: false,
+          type: null,
+          itemName: null,
+          momentId: null,
+          itemId: null,
+          deleteFromDrive: false,
+          onConfirm: null,
+          childrenCounts: null,
+          cascadeOptions: null,
+          childrenDetails: null,
+          crossRefsWarnings: null,
+          showRemoveOnlyButton: false
+        })}
         onConfirm={confirmDeleteModal.onConfirm}
         itemName={confirmDeleteModal.itemName}
         itemType={
@@ -1373,6 +1471,11 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         // ⭐ v2.9j : Options suppression en cascade (moments)
         childrenCounts={confirmDeleteModal.childrenCounts}
         cascadeOptions={confirmDeleteModal.cascadeOptions}
+        // ⭐ v2.9n : Détails enrichis + cross-refs warnings
+        childrenDetails={confirmDeleteModal.childrenDetails}
+        crossRefsWarnings={confirmDeleteModal.crossRefsWarnings}
+        showRemoveOnlyButton={confirmDeleteModal.showRemoveOnlyButton}
+        onRemoveOnly={confirmDeleteModal.onRemoveOnly}
         onToggleCascadeOption={(optionName, value) => {
           setConfirmDeleteModal(prev => ({
             ...prev,
