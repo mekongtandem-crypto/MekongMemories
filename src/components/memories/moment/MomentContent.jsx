@@ -12,7 +12,7 @@ import PostArticle from '../post/PostArticle.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import PhotoGridHeader from '../photo/PhotoGridHeader.jsx';
 
-export const MomentContent = memo(({ 
+export const MomentContent = memo(({
   moment,
   displayOptions,
   localDisplay,
@@ -34,7 +34,8 @@ export const MomentContent = memo(({
   onContentSelected,
   sessions,
   onShowSessions,
-  onCreateSessionFromContent
+  onCreateSessionFromContent,
+  editionMode  // ⭐ v2.9o : Recevoir editionMode pour posts et photos
 }) => {
   
   return (
@@ -64,6 +65,7 @@ export const MomentContent = memo(({
               sessions={sessions}
               onShowSessions={onShowSessions}
               onCreateSessionFromContent={onCreateSessionFromContent}
+              editionMode={editionMode}
             />
           ))}
         </div>
@@ -85,7 +87,7 @@ export const MomentContent = memo(({
           
           {localDisplay.showDayPhotos && (
             <>
-              <PhotoGrid 
+              <PhotoGrid
                 photos={moment.dayPhotos.slice(0, visibleDayPhotos)}
                 moment={moment}
                 onPhotoClick={onPhotoClick}
@@ -103,6 +105,7 @@ export const MomentContent = memo(({
                 onContentSelected={onContentSelected}
                 sessions={sessions}
                 onShowSessions={onShowSessions}
+                editionMode={editionMode}
               />
               
               {visibleDayPhotos < moment.dayPhotoCount && (

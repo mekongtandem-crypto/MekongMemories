@@ -10,7 +10,7 @@ import React, { memo } from 'react';
 import { Tag, X } from 'lucide-react';
 import PhotoThumbnail from './PhotoThumbnail.jsx';
 
-export const PhotoGrid = memo(({ 
+export const PhotoGrid = memo(({
   photos,
   moment,
   gridId,
@@ -24,7 +24,8 @@ export const PhotoGrid = memo(({
   selectionMode,
   onContentSelected,
   sessions,
-  onShowSessions
+  onShowSessions,
+  editionMode  // ⭐ v2.9o : Recevoir editionMode pour PhotoThumbnail
 }) => {
   
   const isThisGridActive = activePhotoGrid === gridId;
@@ -85,6 +86,7 @@ export const PhotoGrid = memo(({
             sessions={sessions}
             onShowSessions={onShowSessions}
             onContentSelected={onContentSelected}
+            editionMode={editionMode}
           />
         ))}
       </div>

@@ -105,7 +105,7 @@ export const MomentCard = memo(forwardRef(({
       </div>
       
       {isSelected && (
-        <MomentContent 
+        <MomentContent
           moment={moment}
           displayOptions={displayOptions}
           localDisplay={localDisplay}
@@ -127,7 +127,8 @@ export const MomentCard = memo(forwardRef(({
           onContentSelected={onContentSelected}
           sessions={sessions}
           onShowSessions={onShowSessions}
-          onCreateSessionFromContent={onCreateSessionFromContent}        	
+          onCreateSessionFromContent={onCreateSessionFromContent}
+          editionMode={editionMode}
         />
       )}
     </div>
