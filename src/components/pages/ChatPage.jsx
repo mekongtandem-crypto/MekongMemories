@@ -1443,13 +1443,13 @@ function PhotoMessage({ photo, onPhotoClick }) {
   let borderClass = '';
   if (isImported) {
     if (hasAssociation) {
-      // PhotoSouvenir (associée) : cadre gris épais
-      borderClass = 'ring-4 ring-gray-400 dark:ring-gray-500';
-      console.log('✅ Bordure: PhotoSouvenir (gris épais 4px)');
+      // PhotoSouvenir (associée) : cadre BLEU vif
+      borderClass = 'border-4 border-blue-500 dark:border-blue-400';
+      console.log('✅ Bordure: PhotoSouvenir (BLEU VIF border-4)');
     } else {
-      // PhotoENVrac (non associée) : cadre noir épais
-      borderClass = 'ring-4 ring-black dark:ring-white';
-      console.log('✅ Bordure: PhotoENVrac (noir épais 4px / blanc en dark)');
+      // PhotoENVrac (non associée) : cadre ROUGE vif
+      borderClass = 'border-4 border-red-500 dark:border-red-400';
+      console.log('✅ Bordure: PhotoENVrac (ROUGE VIF border-4)');
     }
   } else {
     console.log('⚠️ Pas de bordure - source:', photo.source, 'isImported:', isImported);
