@@ -704,6 +704,49 @@ const isPhotoLinkedToContent = (photoData) => {
 };
 
 /**
+ * ⭐ v2.9l2 : Trouver le momentId d'une photo importée dans le masterIndex
+ * Retourne le momentId si la photo est associée à un moment, sinon null
+ */
+const findPhotoMomentId = (photoData, masterIndex) => {
+  if (!photoData || !masterIndex?.moments) return null;
+
+  const photoId = photoData.google_drive_id || photoData.filename;
+  if (!photoId) return null;
+
+  // Chercher dans tous les moments
+  for (const moment of masterIndex.moments) {
+    // Chercher dans dayPhotos
+    if (moment.dayPhotos) {
+      const foundInDay = moment.dayPhotos.find(p =>
+        p.google_drive_id === photoId || p.filename === photoId
+      );
+      if (foundInDay) {
+        console.log(`📍 Photo trouvée dans moment ${moment.id} (dayPhotos)`);
+        return moment.id;
+      }
+    }
+
+    // Chercher dans les photos des posts
+    if (moment.posts) {
+      for (const post of moment.posts) {
+        if (post.photos) {
+          const foundInPost = post.photos.find(p =>
+            p.google_drive_id === photoId || p.filename === photoId
+          );
+          if (foundInPost) {
+            console.log(`📍 Photo trouvée dans moment ${moment.id} (post photos)`);
+            return moment.id;
+          }
+        }
+      }
+    }
+  }
+
+  console.log(`⚠️ Photo ${photoId} non trouvée dans masterIndex`);
+  return null;
+};
+
+/**
  * 📍 NAVIGATION GLOBALE : Aller dans Memories et localiser le contenu
  * Utilisé par : LinkedContent (bouton Localiser), SessionInfoPanel
  *
@@ -1033,23 +1076,29 @@ function LinkPhotoPreview({ photo }) {
     )}
     
     {/* Photo si présente */}
-{message.photoData && (
-  hasInteractivePhoto ? (
+{message.photoData && (() => {
+  // ⭐ v2.9l2 : Enrichir photoData avec momentId depuis masterIndex
+  const enrichedPhotoData = {
+    ...message.photoData,
+    momentId: message.photoData.momentId || findPhotoMomentId(message.photoData, app.masterIndex)
+  };
+
+  return hasInteractivePhoto ? (
     // ⭐ v2.8f : Photo interactive (origin/linkée/importée) = LinkedContent avec Zoom/Localiser
     <div className="w-full max-w-full overflow-hidden mb-2">
       <LinkedContent
         linkedContent={{
           type: 'photo',
-          id: message.photoData.filename || message.photoData.google_drive_id,
-          title: message.photoData.filename,
-          google_drive_id: message.photoData.google_drive_id,
-          url: message.photoData.url,
-          width: message.photoData.width,
-          height: message.photoData.height,
-          mime_type: message.photoData.mime_type,
-          photoType: message.photoData.type,
-          source: message.photoData.source,  // ⭐ v2.9l : Pour déterminer la bordure
-          momentId: message.photoData.momentId  // ⭐ v2.9l : Association au souvenir
+          id: enrichedPhotoData.filename || enrichedPhotoData.google_drive_id,
+          title: enrichedPhotoData.filename,
+          google_drive_id: enrichedPhotoData.google_drive_id,
+          url: enrichedPhotoData.url,
+          width: enrichedPhotoData.width,
+          height: enrichedPhotoData.height,
+          mime_type: enrichedPhotoData.mime_type,
+          photoType: enrichedPhotoData.type,
+          source: enrichedPhotoData.source,  // ⭐ v2.9l : Pour déterminer la bordure
+          momentId: enrichedPhotoData.momentId  // ⭐ v2.9l2 : Association enrichie depuis masterIndex
         }}
         onOpenLocal={handleOpenPhotoLocal}
         onNavigate={handleNavigateToMemories}
@@ -1059,11 +1108,11 @@ function LinkPhotoPreview({ photo }) {
   ) : (
     // Photo normale sans interaction
     <PhotoMessage
-      photo={message.photoData}
+      photo={enrichedPhotoData}
       onPhotoClick={openPhotoViewer}
     />
-  )
-)}
+  );
+})()}
     
     {/* Texte - ⭐ v2.8f : Groupe séparé si photo+texte */}
     {message.content && (
