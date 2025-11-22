@@ -1441,10 +1441,9 @@ function LinkPhotoPreview({ photo }) {
 
       {/* PhotoViewer */}
       {viewerState.isOpen && viewerState.photo && (
-        <PhotoViewer 
+        <PhotoViewer
           photo={viewerState.photo}
           gallery={viewerState.gallery || [viewerState.photo]}  // ✅ Utiliser gallery depuis state
-          contextMoment={null}
           contextMoment={viewerState.contextMoment}
           onClose={closePhotoViewer}
           onCreateSession={null}
