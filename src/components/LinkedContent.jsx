@@ -111,13 +111,13 @@ function LinkedPhoto({ linkedContent, onOpenLocal, onNavigate }) {
   let borderClass = '';
   if (isImported) {
     if (hasAssociation) {
-      // PhotoSouvenir (associée) : cadre gris clair
-      borderClass = 'ring-2 ring-gray-300 dark:ring-gray-600';
-      console.log('✅ Bordure: PhotoSouvenir (gris)');
+      // PhotoSouvenir (associée) : cadre gris épais
+      borderClass = 'ring-4 ring-gray-400 dark:ring-gray-500';
+      console.log('✅ Bordure: PhotoSouvenir (gris épais 4px)');
     } else {
-      // PhotoENVrac (non associée) : cadre noir
-      borderClass = 'ring-2 ring-black dark:ring-gray-400';
-      console.log('✅ Bordure: PhotoENVrac (noir)');
+      // PhotoENVrac (non associée) : cadre noir épais
+      borderClass = 'ring-4 ring-black dark:ring-white';
+      console.log('✅ Bordure: PhotoENVrac (noir épais 4px / blanc en dark)');
     }
   } else {
     console.log('⚠️ Pas de bordure - source:', linkedContent.source, 'isImported:', isImported);
