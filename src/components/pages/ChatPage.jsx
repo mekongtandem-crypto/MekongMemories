@@ -1427,12 +1427,13 @@ function LinkPhotoPreview({ photo }) {
       )}
 
       {/* ⭐ v3.0c : PhotoToMemoryModal */}
+      {/* ⭐ v2.9m : processedData + cleanup handler */}
       {photoToMemoryModal.isOpen && (
         <PhotoToMemoryModal
           isOpen={photoToMemoryModal.isOpen}
           photoData={photoToMemoryModal.photoData}
-          processedData={photoToMemoryModal.processedData}  {/* ⭐ v2.9m : Passer processedData au modal */}
-          onClose={handleClosePhotoToMemoryModal}  {/* ⭐ v2.9m : Utiliser handler avec cleanup */}
+          processedData={photoToMemoryModal.processedData}
+          onClose={handleClosePhotoToMemoryModal}
           moments={app.masterIndex?.moments || []}
           onConvert={handleConvertPhotoToMemory}
         />
