@@ -398,6 +398,84 @@ async function uploadFileToDrive(blob, filename, parentFolderId) {
 // ========================================
 
 /**
+ * ⭐ v2.9m : Traitement LOCAL uniquement (sans upload Drive)
+ * Utilisé pour préparer une image avant confirmation utilisateur
+ * @param {File} file - Fichier image à traiter
+ * @param {string} userId - ID de l'utilisateur
+ * @returns {Promise<Object>} Données image en mémoire (Blobs + ObjectURL)
+ */
+export async function processImageLocally(file, userId) {
+  logger.info(`🎨 Traitement LOCAL image: ${file.name}`);
+
+  // 1. Validation
+  const validation = validateImageFile(file);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+
+  // 2. Compression (si nécessaire)
+  const compressedBlob = await compressImage(file);
+
+  // 3. Génération thumbnail
+  const thumbBlob = await generateThumbnail(compressedBlob);
+
+  // 4. Génération nom de fichier
+  const filename = generateUploadFilename(userId, file.name);
+
+  // 5. Créer ObjectURL pour preview (à révoquer plus tard)
+  const previewUrl = URL.createObjectURL(compressedBlob);
+  const thumbPreviewUrl = URL.createObjectURL(thumbBlob);
+
+  logger.success(`✅ Image traitée en mémoire: ${filename} (${(compressedBlob.size / 1024).toFixed(1)}KB)`);
+
+  // 6. Retourner données en mémoire (PAS encore uploadé sur Drive)
+  return {
+    file,                  // File original (pour référence)
+    compressedBlob,        // Image compressée (à uploader plus tard)
+    thumbBlob,             // Thumbnail (à uploader plus tard)
+    filename,              // Nom généré pour l'upload
+    originalName: file.name,
+    size: compressedBlob.size,
+    type: compressedBlob.type,
+    previewUrl,            // ObjectURL pour affichage immédiat
+    thumbPreviewUrl,       // ObjectURL du thumbnail
+    processedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * ⭐ v2.9m : Upload d'une image déjà traitée localement
+ * @param {Object} processedData - Résultat de processImageLocally()
+ * @param {string} userId - ID de l'utilisateur
+ * @returns {Promise<Object>} Métadonnées de l'image uploadée
+ */
+export async function uploadProcessedImage(processedData, userId) {
+  logger.info(`☁️ Upload image prétraitée: ${processedData.filename}`);
+
+  const { compressedBlob, thumbBlob, filename, originalName, size, type } = processedData;
+
+  // 1. Upload vers Drive
+  const uploadResult = await uploadImageToDrive(compressedBlob, thumbBlob, filename, userId);
+
+  logger.success(`✅ Upload terminé: ${filename}`);
+
+  // 2. Retourner métadonnées complètes
+  return {
+    google_drive_id: uploadResult.fileId,
+    filename: uploadResult.filename,
+    url: uploadResult.url,
+    thumb_url: uploadResult.thumbUrl,
+    source: 'imported',
+    momentId: null, // Non associé à un moment
+    uploadedBy: userId,
+    uploadedAt: new Date().toISOString(),
+    originalName,
+    size,
+    type
+  };
+}
+
+/**
  * Workflow complet: validation + compression + upload
  * @param {File} file - Fichier image à traiter
  * @param {string} userId - ID de l'utilisateur
@@ -438,6 +516,24 @@ export async function processAndUploadImage(file, userId) {
     size: compressedBlob.size,
     type: compressedBlob.type
   };
+}
+
+/**
+ * ⭐ v2.9m : Nettoyer les ObjectURLs d'une image traitée localement
+ * @param {Object} processedData - Résultat de processImageLocally()
+ */
+export function cleanupProcessedImage(processedData) {
+  if (!processedData) return;
+
+  if (processedData.previewUrl) {
+    URL.revokeObjectURL(processedData.previewUrl);
+    logger.debug('🧹 ObjectURL révoqué: previewUrl');
+  }
+
+  if (processedData.thumbPreviewUrl) {
+    URL.revokeObjectURL(processedData.thumbPreviewUrl);
+    logger.debug('🧹 ObjectURL révoqué: thumbPreviewUrl');
+  }
 }
 
 /**
