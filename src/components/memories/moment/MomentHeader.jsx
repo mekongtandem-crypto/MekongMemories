@@ -14,19 +14,20 @@ import {
 import { generateMomentKey, getMomentChildrenKeys } from '../../../utils/themeUtils.js';
 import { getSessionsForContent } from '../../../utils/sessionUtils.js';
 
-export const MomentHeader = memo(({ 
-  moment, 
-  isSelected, 
-  isExplored, 
-  onSelect, 
-  onOpenWith, 
-  onCreateSession, 
-  localDisplay, 
+export const MomentHeader = memo(({
+  moment,
+  isSelected,
+  isExplored,
+  onSelect,
+  onOpenWith,
+  onCreateSession,
+  localDisplay,
   onToggleLocal,
-  selectionMode, 
+  selectionMode,
   onContentSelected,
-  sessions, 
-  onShowSessions
+  sessions,
+  onShowSessions,
+  editionMode  // ⭐ v2.9n3 : Recevoir editionMode comme prop
 }) => {
   
   // Badge moment : UNIQUEMENT le moment lui-même
@@ -215,7 +216,7 @@ export const MomentHeader = memo(({
           )}
 
           {/* ⭐ v2.9 : Boutons édition (seulement si mode édition + source='imported') */}
-          {window.appState?.editionMode?.active && moment.source === 'imported' && (
+          {editionMode?.active && moment.source === 'imported' && (
             <>
               <button
                 onClick={(e) => {
