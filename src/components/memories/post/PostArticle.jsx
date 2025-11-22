@@ -205,10 +205,9 @@ export const PostArticle = memo(({
       {/* Photos */}
       {photosAreVisible && (
         <div className="mt-2">
-          <PhotoGrid 
+          <PhotoGrid
             photos={post.photos}
             moment={moment}
-            onPhotoClick={onPhotoClick}
             allPhotos={post.photos}
             onPhotoClick={(photo) => {
   onPhotoClick(photo, post.photos, moment);
