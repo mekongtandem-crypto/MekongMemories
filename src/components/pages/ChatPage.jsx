@@ -1047,7 +1047,9 @@ function LinkPhotoPreview({ photo }) {
           width: message.photoData.width,
           height: message.photoData.height,
           mime_type: message.photoData.mime_type,
-          photoType: message.photoData.type
+          photoType: message.photoData.type,
+          source: message.photoData.source,  // ⭐ v2.9l : Pour déterminer la bordure
+          momentId: message.photoData.momentId  // ⭐ v2.9l : Association au souvenir
         }}
         onOpenLocal={handleOpenPhotoLocal}
         onNavigate={handleNavigateToMemories}
@@ -1424,8 +1426,21 @@ function PhotoMessage({ photo, onPhotoClick }) {
     );
   }
 
-  // ⭐ v3.0b : Distinguer photos importées
+  // ⭐ v2.9l : Distinguer photos importées et leur association
   const isImported = photo.source === 'imported';
+  const hasAssociation = photo.momentId;  // Photo associée à un souvenir
+
+  // Déterminer la bordure appropriée
+  let borderClass = '';
+  if (isImported) {
+    if (hasAssociation) {
+      // PhotoSouvenir (associée) : cadre gris clair
+      borderClass = 'ring-2 ring-gray-300 dark:ring-gray-600';
+    } else {
+      // PhotoENVrac (non associée) : cadre noir
+      borderClass = 'ring-2 ring-black dark:ring-gray-400';
+    }
+  }
 
   return (
     <div
@@ -1435,9 +1450,7 @@ function PhotoMessage({ photo, onPhotoClick }) {
       <img
         src={imageUrl}
         alt={photo.filename}
-        className={`max-w-[200px] rounded-lg shadow-md hover:shadow-lg transition-shadow ${
-          isImported ? 'border-2 border-amber-500 dark:border-amber-400' : ''
-        }`}
+        className={`max-w-[200px] rounded-lg shadow-md hover:shadow-lg transition-shadow ${borderClass}`}
       />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-lg"></div>
 

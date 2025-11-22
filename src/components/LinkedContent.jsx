@@ -94,12 +94,28 @@ function LinkedPhoto({ linkedContent, onOpenLocal, onNavigate }) {
     );
   }
 
+  // ⭐ v2.9l : Distinguer photos importées et leur association
+  const isImported = linkedContent.source === 'imported';
+  const hasAssociation = linkedContent.momentId;
+
+  // Déterminer la bordure appropriée
+  let borderClass = '';
+  if (isImported) {
+    if (hasAssociation) {
+      // PhotoSouvenir (associée) : cadre gris clair
+      borderClass = 'ring-2 ring-gray-300 dark:ring-gray-600';
+    } else {
+      // PhotoENVrac (non associée) : cadre noir
+      borderClass = 'ring-2 ring-black dark:ring-gray-400';
+    }
+  }
+
   return (
     <div className="mb-2 relative group inline-block">
       <img
         src={imageUrl}
         alt={linkedContent.title}
-        className="max-w-[200px] rounded-lg shadow-md transition-shadow"
+        className={`max-w-[200px] rounded-lg shadow-md transition-shadow ${borderClass}`}
       />
       
       {/* ⭐ NOUVEAU : Overlay avec 2 boutons */}
