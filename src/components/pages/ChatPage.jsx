@@ -1430,16 +1430,29 @@ function PhotoMessage({ photo, onPhotoClick }) {
   const isImported = photo.source === 'imported';
   const hasAssociation = photo.momentId;  // Photo associée à un souvenir
 
+  // 🔍 Debug: Log pour vérifier les valeurs
+  console.log('📸 PhotoMessage - Debug bordure:', {
+    filename: photo.filename,
+    source: photo.source,
+    momentId: photo.momentId,
+    isImported,
+    hasAssociation
+  });
+
   // Déterminer la bordure appropriée
   let borderClass = '';
   if (isImported) {
     if (hasAssociation) {
       // PhotoSouvenir (associée) : cadre gris clair
       borderClass = 'ring-2 ring-gray-300 dark:ring-gray-600';
+      console.log('✅ Bordure: PhotoSouvenir (gris)');
     } else {
       // PhotoENVrac (non associée) : cadre noir
       borderClass = 'ring-2 ring-black dark:ring-gray-400';
+      console.log('✅ Bordure: PhotoENVrac (noir)');
     }
+  } else {
+    console.log('⚠️ Pas de bordure - source:', photo.source, 'isImported:', isImported);
   }
 
   return (
