@@ -21,6 +21,7 @@ import PhotoToMemoryModal from '../PhotoToMemoryModal.jsx';  // ⭐ v2.8f
 import EditMomentModal from '../EditMomentModal.jsx';  // ⭐ v2.9
 import EditPostModal from '../EditPostModal.jsx';  // ⭐ v2.9
 import ConfirmDeleteModal from '../ConfirmDeleteModal.jsx';  // ⭐ v2.9
+import CrossRefsWarningModal from '../CrossRefsWarningModal.jsx';  // ⭐ v2.9o
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';  // ⭐ v2.8f
 import { dataManager } from '../../core/dataManager.js';  // ⭐ v2.8f
 import { logger } from '../../utils/logger.js';  // ⭐ v2.8f
@@ -103,6 +104,18 @@ const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
     // ⭐ v2.9j : Suppression en cascade (moments)
     childrenCounts: null,  // { notes: X, photos: Y }
     cascadeOptions: null   // { deleteNotes: false, deletePhotos: false, deleteFiles: false }
+  });
+
+  // ⭐ v2.9o : Modal warning cross-références
+  const [crossRefsWarningModal, setCrossRefsWarningModal] = useState({
+    isOpen: false,
+    itemType: 'photo',
+    itemName: '',
+    crossRefs: [],
+    sessionRefs: [],
+    onRemoveOnly: null,
+    momentId: null,
+    photoId: null
   });
 
   // ========================================
@@ -493,6 +506,41 @@ const handleDeletePost = useCallback((momentId, postId, postTitle) => {
 }, [app]);
 
 const handleDeletePhoto = useCallback((momentId, photoId, photoFilename) => {
+  // ⭐ v2.9o : Vérifier cross-références (moments + sessions) AVANT d'ouvrir modal
+  const crossRefs = dataManager.checkPhotoCrossReferences(photoId, momentId);
+  const linkedSessions = getSessionsForContent(app.sessions, 'photo', photoId);
+
+  // Si cross-références détectées → Ouvrir modal warning
+  if (crossRefs.length > 0 || linkedSessions.length > 0) {
+    const sessionRefs = linkedSessions.map(session => ({
+      sessionId: session.id,
+      sessionTitle: session.gameTitle || 'Sans titre',
+      messageAuthor: 'unknown',  // On ne sait pas quel message exactement
+      messageDate: session.updatedAt || session.createdAt
+    }));
+
+    setCrossRefsWarningModal({
+      isOpen: true,
+      itemType: 'photo',
+      itemName: photoFilename,
+      crossRefs,
+      sessionRefs,
+      momentId,
+      photoId,
+      onRemoveOnly: async () => {
+        try {
+          // Supprimer SEULEMENT de l'index (deleteFromDrive = false)
+          await app.deletePhoto(momentId, photoId, photoFilename, false);
+          setCrossRefsWarningModal({ isOpen: false, itemType: 'photo', itemName: '', crossRefs: [], sessionRefs: [], onRemoveOnly: null, momentId: null, photoId: null });
+        } catch (error) {
+          alert('Erreur lors du retrait : ' + error.message);
+        }
+      }
+    });
+    return;  // Arrêter ici, ne pas ouvrir ConfirmDeleteModal
+  }
+
+  // Sinon → Modal normal de suppression
   setConfirmDeleteModal({
     isOpen: true,
     type: 'photo',
@@ -1487,6 +1535,30 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
               ...(optionName === 'deletePhotos' && !value ? { deleteFiles: false } : {})
             }
           }));
+        }}
+      />
+
+      {/* ⭐ v2.9o : Modal warning cross-références */}
+      <CrossRefsWarningModal
+        isOpen={crossRefsWarningModal.isOpen}
+        onClose={() => setCrossRefsWarningModal({
+          isOpen: false,
+          itemType: 'photo',
+          itemName: '',
+          crossRefs: [],
+          sessionRefs: [],
+          onRemoveOnly: null,
+          momentId: null,
+          photoId: null
+        })}
+        itemType={crossRefsWarningModal.itemType}
+        itemName={crossRefsWarningModal.itemName}
+        crossRefs={crossRefsWarningModal.crossRefs}
+        sessionRefs={crossRefsWarningModal.sessionRefs}
+        onRemoveOnly={crossRefsWarningModal.onRemoveOnly}
+        onNavigateToSession={(sessionId) => {
+          // Navigation vers la causerie
+          app.navigateTo('chat', { sessionId });
         }}
       />
     </div>
