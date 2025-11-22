@@ -487,6 +487,59 @@ const handleSavePost = useCallback(async (updatedPost) => {
 }, [app, editPostModal.momentId]);
 
 const handleDeletePost = useCallback((momentId, postId, postTitle) => {
+  // ⭐ v2.9o : Trouver le post dans le masterIndex
+  const moment = app.masterIndex?.moments?.find(m => m.id === momentId);
+  const post = moment?.posts?.find(p => p.id === postId);
+
+  if (!post) {
+    alert('Post introuvable');
+    return;
+  }
+
+  // ⭐ v2.9o : Vérifier photos dans le post
+  const hasPhotos = post.photos && post.photos.length > 0;
+  let childrenDetails = null;
+  let cascadeOptions = null;
+  let crossRefsWarnings = [];
+
+  if (hasPhotos) {
+    // Vérifier cross-références pour chaque photo
+    for (const photo of post.photos) {
+      const photoId = photo.google_drive_id || photo.filename;
+      const crossRefs = dataManager.checkPhotoCrossReferences(photoId, momentId);
+      const linkedSessions = getSessionsForContent(app.sessions, 'photo', photoId);
+
+      if (crossRefs.length > 0 || linkedSessions.length > 0) {
+        const sessionRefs = linkedSessions.map(session => ({
+          sessionId: session.id,
+          sessionTitle: session.gameTitle || 'Sans titre',
+          messageAuthor: 'unknown',
+          messageDate: session.updatedAt || session.createdAt
+        }));
+
+        crossRefsWarnings.push({
+          photoId,
+          filename: photo.filename,
+          crossRefs,
+          sessionRefs
+        });
+      }
+    }
+
+    // Préparer les détails
+    childrenDetails = {
+      photos: post.photos.length,
+      photosMoment: 0,  // Photos du post seulement
+      photosNotes: post.photos.length
+    };
+
+    // Options cascade initiales (décoché par défaut)
+    cascadeOptions = {
+      deletePhotos: false,
+      deleteFiles: false
+    };
+  }
+
   setConfirmDeleteModal({
     isOpen: true,
     type: 'post',
@@ -494,16 +547,42 @@ const handleDeletePost = useCallback((momentId, postId, postTitle) => {
     momentId,
     itemId: postId,
     deleteFromDrive: false,
-    onConfirm: async () => {
+    childrenDetails,
+    cascadeOptions,
+    crossRefsWarnings: crossRefsWarnings.length > 0 ? crossRefsWarnings : null,
+    onConfirm: async (cascadeOpts) => {
       try {
-        await app.deletePost(momentId, postId);
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null });
+        // Si cascade options, passer à deletePost
+        await app.deletePost(momentId, postId, cascadeOpts);
+        setConfirmDeleteModal({
+          isOpen: false,
+          type: null,
+          itemName: null,
+          momentId: null,
+          itemId: null,
+          deleteFromDrive: false,
+          onConfirm: null,
+          childrenDetails: null,
+          cascadeOptions: null,
+          crossRefsWarnings: null
+        });
       } catch (error) {
         alert('Erreur lors de la suppression : ' + error.message);
       }
+    },
+    onToggleCascadeOption: (optionKey, value) => {
+      setConfirmDeleteModal(prev => ({
+        ...prev,
+        cascadeOptions: {
+          ...prev.cascadeOptions,
+          [optionKey]: value,
+          // Si deletePhotos décoché, forcer deleteFiles à false
+          ...(optionKey === 'deletePhotos' && !value ? { deleteFiles: false } : {})
+        }
+      }));
     }
   });
-}, [app]);
+}, [app, dataManager]);
 
 const handleDeletePhoto = useCallback((momentId, photoId, photoFilename) => {
   // ⭐ v2.9o : Vérifier cross-références (moments + sessions) AVANT d'ouvrir modal

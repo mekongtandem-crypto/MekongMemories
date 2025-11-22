@@ -1131,8 +1131,14 @@ class DataManager {
    * @param {string} momentId - ID du moment parent
    * @param {string} postId - ID du post à supprimer
    */
-  deletePost = async (momentId, postId, showSpinner = true) => {
+  deletePost = async (momentId, postId, cascadeOptions = null, showSpinner = true) => {
     logger.info('Suppression post:', postId);
+
+    // ⭐ v2.9o : Si cascadeOptions est un booléen (ancien API), le convertir en showSpinner
+    if (typeof cascadeOptions === 'boolean') {
+      showSpinner = cascadeOptions;
+      cascadeOptions = null;
+    }
 
     if (showSpinner) {
       this.setLoadingOperation(true, 'Suppression de la Photo Note...', 'Enregistrement sur Google Drive', 'monkey');
@@ -1154,6 +1160,21 @@ class DataManager {
 
       if (post.category !== 'user_added') {
         throw new Error('Seuls les posts user_added peuvent être supprimés');
+      }
+
+      // ⭐ v2.9o : Supprimer photos du post si demandé
+      if (cascadeOptions?.deletePhotos && post.photos && post.photos.length > 0) {
+        logger.info(`Suppression en cascade de ${post.photos.length} photo(s) du post...`);
+        for (const photo of post.photos) {
+          const photoId = photo.google_drive_id || photo.filename;
+          try {
+            await this.deletePhoto(momentId, photoId, photo.filename, cascadeOptions.deleteFiles, false);
+            logger.debug(`Photo ${photo.filename} supprimée`);
+          } catch (error) {
+            logger.warn(`Erreur suppression photo ${photo.filename}:`, error);
+            // Continue avec les autres photos
+          }
+        }
       }
 
       // Supprimer tous les liens ContentLinks associés
@@ -1182,7 +1203,7 @@ class DataManager {
       if (showSpinner) {
         this.setLoadingOperation(false);
       }
-      logger.success('Post supprimé');
+      logger.success('Post supprimé' + (cascadeOptions?.deletePhotos ? ' avec photos' : ''));
 
       return { success: true };
     } catch (error) {
