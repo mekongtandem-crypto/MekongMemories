@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mémoire du Mékong
 
-> **Version:** 2.9 "Mode Édition" (WIP - 1/3 Complete) | **Last Updated:** November 16, 2025
+> **Version:** 2.9n "Suppression Sécurisée" | **Last Updated:** November 22, 2025
 > **Purpose:** Comprehensive guide for development teams and AI assistants working on this codebase
 
 ---
@@ -9,10 +9,9 @@
 
 **Mémoire du Mékong** is a Progressive Web App that transforms a travel diary into an interactive, conversation-based memory exploration platform. Users can discuss and organize travel experiences through themed "sessions" (chats), explore a timeline of "moments" (thematic units), and manage photos and Mastodon posts.
 
-**Current Version:** 2.9 - Mode Édition (⚠️ **WORK IN PROGRESS - 1/3 Complete**)
-**Release Date:** TBD (in development)
-**Previous Stable:** v2.8f - Photo Souvenir depuis MemoriesPage
-**Total LOC:** ~9,200 lines
+**Current Version:** 2.9n - Suppression Sécurisée - Cross-Refs Check
+**Release Date:** November 22, 2025
+**Total LOC:** ~9,400 lines
 **Language:** JavaScript (ES6+), no TypeScript
 **Code Language:** French comments/documentation with English variable names
 
@@ -39,6 +38,78 @@
 - **Posts Mastodon** (category: 'mastodon') → NON ÉDITABLES
 - **Photo Notes** (category: 'user_added') → ÉDITABLES (titre, contenu) + SUPPRIMABLES
 - **Photos Importées** (source: 'imported') → SUPPRIMABLES uniquement
+
+---
+
+## 📝 Recent Changelog
+
+### Version 2.9n (November 22, 2025) - Suppression Sécurisée ✅
+
+**🐛 Bug Fix: Suppression thumbnails**
+- Les thumbnails (`_thumb.ext`) n'étaient pas supprimés du Drive
+- Ajout `findFileIdByName()` dans DriveSync pour retrouver fichiers par nom
+- `deletePhoto()` supprime maintenant fichier principal + thumbnail
+- Pattern automatique: `filename.ext` → `filename_thumb.ext`
+
+**🔒 Sécurité: Vérification cross-références**
+- `checkPhotoCrossReferences()`: Détecte si photo utilisée dans plusieurs moments
+- `collectMomentPhotos()`: Inventaire complet photos d'un moment
+- Vérification AVANT suppression Drive (Option A validée par user)
+- `deletePhoto()` retourne `{success: false, reason: 'cross_references', crossRefs: [...]}` si photo utilisée ailleurs
+- `deleteMoment()` vérifie toutes photos en amont de la cascade
+- Empêche casse de références accidentelle
+
+**📦 Nouvelles méthodes (dataManager.js)**
+```javascript
+checkPhotoCrossReferences(photoId, excludeMomentId) // Retourne liste moments utilisant photo
+collectMomentPhotos(moment, deleteNoteIds)          // Inventaire photos du moment
+```
+
+**📦 Nouvelles méthodes (DriveSync.js)**
+```javascript
+findFileIdByName(filename, folderPath)  // Recherche fichier par nom dans Drive
+```
+
+### Version 2.9m (November 22, 2025) - Upload Optimisé Photo Souvenir 🚀
+
+**✨ Nouvelle séquence UX améliorée**
+1. Sélection photo → Spinner court "Préparation..." (~1s)
+2. Conversion locale (compression + thumbnail) **en mémoire**
+3. Modal création moment s'ouvre **immédiatement**
+4. Preview photo dans Chat (ObjectURL temporaire)
+5. Upload Drive + création moment **SEULEMENT à l'envoi message**
+6. Si annulation → cleanup mémoire, **0 gaspillage cloud** ✅
+
+**📦 Nouvelles fonctions (imageCompression.js)**
+```javascript
+processImageLocally(file, userId)      // Conversion locale sans upload
+uploadProcessedImage(processedData, userId)  // Upload image prétraitée
+cleanupProcessedImage(processedData)   // Nettoyage ObjectURLs
+```
+
+**🎯 Avantages**
+- UX plus fluide (attente répartie, non-bloquante)
+- Pas de gaspillage cloud si annulation
+- Un seul spinner après validation (upload + création)
+- Compatible avec ancien flow (photoData direct)
+
+### Version 2.9l2 (November 16, 2025) - Cadres Photos Distinctifs 🔴🔵
+
+**🖼️ Distinction visuelle photos importées dans ChatPage**
+- PhotoENVrac (sans association moment): **Bordure ROUGE** `border-4 border-red-500`
+- PhotoSouvenir (associée à moment): **Bordure BLEUE** `border-4 border-blue-500`
+
+**🔍 Enrichissement automatique momentId**
+- `findPhotoMomentId()`: Recherche photo dans masterIndex
+- Enrichissement `message.photoData` avant affichage
+- Recherche dans `moment.dayPhotos[]` et `moment.posts[].photos[]`
+- Matching par `google_drive_id` ET `filename`
+
+**🐛 Fix syntaxe JSX**
+- Correction erreur: `Expected "..." but found "}"`
+- Déplacement commentaires JSX hors des props
+
+---
 
 ### Version 2.8f Highlights (Stable)
 
