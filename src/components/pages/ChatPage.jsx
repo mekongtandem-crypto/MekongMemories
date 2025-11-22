@@ -53,7 +53,8 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   // ⭐ v3.0c : État modal conversion photo → souvenir
   const [photoToMemoryModal, setPhotoToMemoryModal] = useState({
     isOpen: false,
-    photoData: null
+    photoData: null,
+    processedData: null  // ⭐ v2.9m : Données image traitées localement
   });
 
   // ✨ PHASE 19C : État panel infos
@@ -287,59 +288,109 @@ useEffect(() => {
 
       logger.info(`📸 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
 
-      // 2. Afficher le spinner de loading
+      // ⭐ v2.9m : Importer processImageLocally au lieu de processAndUploadImage
+      const { processImageLocally } = await import('../../utils/imageCompression.js');
+
+      // 2. Spinner court : Traitement LOCAL uniquement (pas d'upload)
       dataManager.setLoadingOperation(
         true,
-        'Traitement de l\'image...',
-        'Compression et upload vers Google Drive',
+        'Préparation de l\'image...',
+        'Compression et génération du thumbnail',
         'spin'
       );
 
-      // 3. Traiter et uploader l'image
-      const photoMetadata = await processAndUploadImage(file, app.currentUser.id);
+      // 3. Traiter l'image LOCALEMENT (en mémoire, pas d'upload Drive)
+      const processedData = await processImageLocally(file, app.currentUser.id);
 
-      logger.success('✅ Photo uploadée avec succès:', photoMetadata);
+      logger.success('✅ Image traitée en mémoire:', processedData);
 
       // 4. Désactiver le spinner
       dataManager.setLoadingOperation(false);
 
-      // 5. Ouvrir le modal de conversion
+      // 5. Ouvrir le modal de conversion IMMÉDIATEMENT avec les données locales
+      // ⭐ v2.9m : photoData = null (pas encore uploadée), processedData en mémoire
       setPhotoToMemoryModal({
         isOpen: true,
-        photoData: photoMetadata
+        photoData: null,  // Pas encore uploadée sur Drive
+        processedData     // Données en mémoire (Blobs + ObjectURLs)
       });
 
     } catch (error) {
-      logger.error('❌ Erreur upload photo souvenir:', error);
+      logger.error('❌ Erreur traitement photo souvenir:', error);
 
       // Désactiver le spinner
       dataManager.setLoadingOperation(false);
 
       // Afficher message d'erreur
-      alert(`Erreur lors de l'upload de la photo:\n${error.message}`);
+      if (error.message !== 'Sélection annulée') {
+        alert(`Erreur lors du traitement de la photo:\n${error.message}`);
+      }
     }
+  };
+
+  // ⭐ v2.9m : Handler pour fermer le modal avec cleanup
+  const handleClosePhotoToMemoryModal = async () => {
+    const { processedData } = photoToMemoryModal;
+
+    // Cleanup des ObjectURLs si annulation avec processedData
+    if (processedData) {
+      const { cleanupProcessedImage } = await import('../../utils/imageCompression.js');
+      cleanupProcessedImage(processedData);
+      logger.info('🧹 Annulation : ObjectURLs nettoyés');
+    }
+
+    setPhotoToMemoryModal({
+      isOpen: false,
+      photoData: null,
+      processedData: null
+    });
   };
 
   const handleConvertPhotoToMemory = async (conversionData) => {
     logger.info('🔄 Conversion photo → souvenir', conversionData);
 
-    const { photoData } = photoToMemoryModal;
-    if (!photoData) {
+    const { photoData, processedData } = photoToMemoryModal;
+
+    // ⭐ v2.9m : Gérer les deux cas (ancien flow + nouveau flow)
+    if (!photoData && !processedData) {
       logger.error('❌ Pas de photo à convertir');
       return;
     }
 
     try {
-      // Afficher le spinner
+      let finalPhotoData = photoData;
+
+      // ⭐ v2.9m : Si on a des données traitées localement, les uploader d'abord
+      if (processedData) {
+        logger.info('☁️ Upload de l\'image traitée localement vers Drive...');
+
+        // Importer uploadProcessedImage
+        const { uploadProcessedImage } = await import('../../utils/imageCompression.js');
+
+        // Spinner : Upload vers Drive
+        dataManager.setLoadingOperation(
+          true,
+          'Envoi vers le cloud...',
+          'Upload de l\'image vers Google Drive',
+          'spin'
+        );
+
+        // Upload vers Drive
+        finalPhotoData = await uploadProcessedImage(processedData, app.currentUser.id);
+
+        logger.success('✅ Upload terminé:', finalPhotoData);
+      }
+
+      // Spinner : Création du souvenir
       dataManager.setLoadingOperation(
         true,
-        'Conversion en souvenir...',
+        'Création du souvenir...',
         'Mise à jour du master index et sauvegarde sur Drive',
         'monkey'
       );
 
       // ✅ v3.0d : Appel de la méthode réelle d'ajout au masterIndex
-      const result = await dataManager.addImportedPhotoToMasterIndex(photoData, conversionData);
+      const result = await dataManager.addImportedPhotoToMasterIndex(finalPhotoData, conversionData);
 
       // Désactiver le spinner
       dataManager.setLoadingOperation(false);
@@ -359,22 +410,22 @@ useEffect(() => {
             contentId: result.contentId,
             contentTitle: result.contentType === 'post'
               ? (conversionData.noteTitle || 'Photo Note')
-              : photoData.filename,
+              : finalPhotoData.filename,
             linkedBy: app.currentUser
           });
           logger.success(`🔗 Lien ContentLinks créé: ${result.contentType} → session ${app.currentChatSession.id}`);
 
           // ⭐ v2.8f : Si c'est un post (Photo Note), créer AUSSI un lien pour la photo
-          if (result.contentType === 'post' && photoData.google_drive_id) {
+          if (result.contentType === 'post' && finalPhotoData.google_drive_id) {
             await window.contentLinks.addLink({
               sessionId: app.currentChatSession.id,
               messageId: `import_photo_${Date.now()}`,
               contentType: 'photo',
-              contentId: photoData.google_drive_id,
-              contentTitle: photoData.filename,
+              contentId: finalPhotoData.google_drive_id,
+              contentTitle: finalPhotoData.filename,
               linkedBy: app.currentUser
             });
-            logger.success(`🔗 Lien photo supplémentaire créé: ${photoData.google_drive_id}`);
+            logger.success(`🔗 Lien photo supplémentaire créé: ${finalPhotoData.google_drive_id}`);
           }
         } catch (linkError) {
           logger.error('❌ Erreur création lien ContentLinks:', linkError);
@@ -383,7 +434,7 @@ useEffect(() => {
       }
 
       // ⭐ v3.0e : Insérer la photo dans le chat après conversion réussie
-      setAttachedPhoto(photoData);
+      setAttachedPhoto(finalPhotoData);
       logger.info('📸 Photo attachée au chat après conversion');
 
       // Feedback
@@ -394,10 +445,18 @@ useEffect(() => {
         window.chatPageActions.showFeedback(message);
       }
 
+      // ⭐ v2.9m : Cleanup des ObjectURLs si on a utilisé processedData
+      if (processedData) {
+        const { cleanupProcessedImage } = await import('../../utils/imageCompression.js');
+        cleanupProcessedImage(processedData);
+        logger.debug('🧹 ObjectURLs nettoyés après upload réussi');
+      }
+
       // Fermer le modal
       setPhotoToMemoryModal({
         isOpen: false,
-        photoData: null
+        photoData: null,
+        processedData: null
       });
 
       logger.success('🎉 Conversion terminée avec succès !');
@@ -1372,7 +1431,8 @@ function LinkPhotoPreview({ photo }) {
         <PhotoToMemoryModal
           isOpen={photoToMemoryModal.isOpen}
           photoData={photoToMemoryModal.photoData}
-          onClose={() => setPhotoToMemoryModal({ isOpen: false, photoData: null })}
+          processedData={photoToMemoryModal.processedData}  {/* ⭐ v2.9m : Passer processedData au modal */}
+          onClose={handleClosePhotoToMemoryModal}  {/* ⭐ v2.9m : Utiliser handler avec cleanup */}
           moments={app.masterIndex?.moments || []}
           onConvert={handleConvertPhotoToMemory}
         />
