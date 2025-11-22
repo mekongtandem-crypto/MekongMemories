@@ -813,6 +813,7 @@ class DataManager {
           jnnn: jnnn || 'IMP',  // ⭐ v2.8e : "IMP" par défaut
           description: '',
           location: '',
+          source: 'imported',  // ⭐ v2.9n2 : Marquer comme importé pour activer boutons édition
           dayPhotos: [],
           posts: [],
           themes: []
