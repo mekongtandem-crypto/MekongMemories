@@ -1,13 +1,14 @@
 /**
- * ConfirmDeleteModal.jsx v2.9n - Modal de confirmation de suppression amélioré
- * ✅ Modal générique réutilisable
+ * ConfirmDeleteModal.jsx v2.9p - Modal de confirmation de suppression unifié
+ * ✅ Modal générique pour Moment / Note / Photo
  * ✅ Dark mode support
- * ✅ Transitions 150ms
- * ✅ Bouton danger (rouge)
- * ⭐ v2.9n : Warnings cross-références + bouton "Retirer seulement"
+ * ✅ Scrollbar automatique (max-height 90vh)
+ * ✅ Checkboxes intégrées pour cascade
+ * ✅ Warnings cross-références intégrés (pas de modal séparé)
+ * ✅ Boutons adaptatifs selon cross-refs
  */
 import React from 'react';
-import { X, AlertTriangle, FileEdit, Camera, Info } from 'lucide-react';
+import { X, AlertTriangle, FileEdit, Camera, Info, Calendar, MessageCircle } from 'lucide-react';
 
 export default function ConfirmDeleteModal({
   isOpen,
@@ -16,24 +17,29 @@ export default function ConfirmDeleteModal({
   title = 'Confirmer la suppression',
   message = 'Êtes-vous sûr de vouloir supprimer cet élément ?',
   itemName = null,
-  itemType = 'élément',
+  itemType = 'élément',  // 'moment' | 'post' | 'photo'
+  itemIcon = null,  // ⭐ v2.9p : Icône de l'élément
   confirmText = 'Supprimer',
   cancelText = 'Annuler',
-  // ⭐ v2.9 : Options pour suppression photos
+  // Options pour suppression photos simples
   showDriveOption = false,
   deleteFromDrive = false,
   onToggleDriveOption = null,
-  // ⭐ v2.9j : Options pour suppression en cascade
-  childrenCounts = null,  // { notes: 2, photos: 5 }
-  cascadeOptions = null,  // { deleteNotes: false, deletePhotos: false, deleteFiles: false }
+  // Options pour suppression en cascade
+  childrenDetails = null,
+  cascadeOptions = null,
   onToggleCascadeOption = null,
-  // ⭐ v2.9n : Détails des enfants + cross-refs warnings
-  childrenDetails = null,  // { notes: [{id, title, photoCount}], photos: 6 }
-  crossRefsWarnings = null, // [{ photoId, crossRefs: [...] }]
-  showRemoveOnlyButton = false, // Afficher bouton "Retirer du moment seulement"
-  onRemoveOnly = null  // Handler pour retirer sans supprimer Drive
+  // ⭐ v2.9p : Cross-refs warnings intégrés
+  crossRefsWarnings = null,
+  // eslint-disable-next-line no-unused-vars
+  showRemoveOnlyButton = false,  // Accepté pour compatibilité (auto-détecté via hasCrossRefs)
+  onRemoveOnly = null
 }) {
   if (!isOpen) return null;
+
+  // ⭐ v2.9p : Détection automatique des cross-refs
+  const hasCrossRefs = crossRefsWarnings && crossRefsWarnings.length > 0 &&
+    (crossRefsWarnings.some(w => (w.crossRefs && w.crossRefs.length > 0) || (w.sessionRefs && w.sessionRefs.length > 0)));
 
   const handleConfirm = () => {
     // ⭐ v2.9j : Passer les options de suppression (Drive + cascade)
@@ -80,16 +86,86 @@ export default function ConfirmDeleteModal({
 
         {/* Body - Scrollable */}
         <div className="p-4 overflow-y-auto flex-1">
-          <p className="text-gray-700 dark:text-gray-300">
+          <p className="text-gray-700 dark:text-gray-300 text-sm">
             {message}
           </p>
 
-          {/* Nom de l'élément à supprimer */}
+          {/* ⭐ v2.9p : Élément à supprimer avec icône */}
           {itemName && (
-            <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm font-medium text-red-900 dark:text-red-200">
-                {itemType} : <span className="font-bold">{itemName}</span>
-              </p>
+            <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg">
+              <div className="flex items-center space-x-2">
+                {itemIcon && <span className="text-2xl">{itemIcon}</span>}
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase">
+                    {itemType}
+                  </p>
+                  <p className="text-sm font-bold text-red-900 dark:text-red-200">
+                    {itemName}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ⭐ v2.9p : Warnings cross-références (moments + causeries) */}
+          {crossRefsWarnings && crossRefsWarnings.length > 0 && (
+            <div className="mt-4 space-y-3">
+              {/* Warning moments (rouge) */}
+              {crossRefsWarnings.some(w => w.crossRefs && w.crossRefs.length > 0) && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg">
+                  <p className="text-sm font-bold text-red-900 dark:text-red-200 mb-2 flex items-center">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    ⚠️ UTILISÉ DANS D'AUTRES MOMENTS
+                  </p>
+                  <div className="space-y-2 ml-4">
+                    {crossRefsWarnings.filter(w => w.crossRefs && w.crossRefs.length > 0).map((warning, idx) => (
+                      <div key={idx} className="text-xs">
+                        <p className="font-semibold text-red-900 dark:text-red-200">
+                          📸 {warning.filename || warning.photoId?.substring(0, 30) + '...'}
+                        </p>
+                        <div className="ml-3 mt-1 space-y-0.5">
+                          {warning.crossRefs.map((ref, refIdx) => (
+                            <p key={refIdx} className="text-red-700 dark:text-red-300">
+                              → {ref.momentTitle} ({ref.momentDate})
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Warning causeries (orange) */}
+              {crossRefsWarnings.some(w => w.sessionRefs && w.sessionRefs.length > 0) && (
+                <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-lg">
+                  <p className="text-sm font-bold text-orange-900 dark:text-orange-200 mb-2 flex items-center">
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    💬 UTILISÉ DANS DES CAUSERIES
+                  </p>
+                  <div className="space-y-2 ml-4">
+                    {crossRefsWarnings.filter(w => w.sessionRefs && w.sessionRefs.length > 0).map((warning, idx) => (
+                      <div key={idx} className="text-xs">
+                        <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">
+                          📸 {warning.filename || warning.photoId?.substring(0, 30) + '...'}
+                        </p>
+                        <div className="ml-3 space-y-1">
+                          {warning.sessionRefs.map((ref, refIdx) => (
+                            <div key={refIdx}>
+                              <p className="text-orange-800 dark:text-orange-300 font-medium">
+                                → "{ref.sessionTitle}"
+                              </p>
+                              <p className="text-xs text-orange-700 dark:text-orange-400 ml-3">
+                                Message de {ref.messageAuthor}, {new Date(ref.messageDate).toLocaleDateString('fr-FR')}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -139,7 +215,7 @@ export default function ConfirmDeleteModal({
                         NOTES ({childrenDetails.notes.length}) - Cocher pour supprimer
                       </p>
                       <div className="space-y-1 ml-5 mt-1">
-                        {childrenDetails.notes.map((note, idx) => (
+                        {childrenDetails.notes.map((note) => (
                           <div key={note.id} className="text-xs text-gray-700 dark:text-gray-300">
                             • "{note.title || 'Sans titre'}"
                             {note.photoCount > 0 && (
@@ -206,78 +282,9 @@ export default function ConfirmDeleteModal({
               )}
             </div>
           )}
-
-          {/* ⭐ v2.9n : Warnings cross-références */}
-          {crossRefsWarnings && crossRefsWarnings.length > 0 && (
-            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg">
-              <p className="text-sm font-bold text-red-900 dark:text-red-200 mb-2 flex items-center">
-                <AlertTriangle className="w-5 h-5 mr-2" />
-                ⚠️ ATTENTION - PHOTOS UTILISÉES AILLEURS
-              </p>
-              <p className="text-xs text-red-800 dark:text-red-300 mb-3">
-                {crossRefsWarnings.length} photo{crossRefsWarnings.length > 1 ? 's sont' : ' est'} également utilisée{crossRefsWarnings.length > 1 ? 's' : ''} dans d'autres moments :
-              </p>
-              <div className="space-y-2 ml-4">
-                {crossRefsWarnings.map((warning, idx) => (
-                  <div key={idx} className="text-xs">
-                    <p className="font-semibold text-red-900 dark:text-red-200">
-                      Photo {idx + 1} : {warning.filename || warning.photoId.substring(0, 20) + '...'}
-                    </p>
-                    <div className="ml-3 mt-1 space-y-0.5">
-                      {warning.crossRefs.map((ref, refIdx) => (
-                        <p key={refIdx} className="text-red-700 dark:text-red-300">
-                          → {ref.momentTitle} ({ref.momentDate})
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-red-800 dark:text-red-300 mt-3 font-medium">
-                ⚠️ La suppression du Drive cassera ces autres moments !
-              </p>
-            </div>
-          )}
-
-          {/* ⭐ v2.9n3 : Warnings sessions/causeries */}
-          {crossRefsWarnings && crossRefsWarnings.some(w => w.sessionRefs && w.sessionRefs.length > 0) && (
-            <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-lg">
-              <p className="text-sm font-bold text-orange-900 dark:text-orange-200 mb-2 flex items-center">
-                <AlertTriangle className="w-5 h-5 mr-2" />
-                💬 ATTENTION - PHOTOS UTILISÉES DANS DES CAUSERIES
-              </p>
-              <div className="space-y-3 ml-4">
-                {crossRefsWarnings.filter(w => w.sessionRefs && w.sessionRefs.length > 0).map((warning, idx) => (
-                  <div key={idx} className="text-xs">
-                    <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">
-                      Photo : {warning.filename || warning.photoId.substring(0, 20) + '...'}
-                    </p>
-                    <p className="text-orange-800 dark:text-orange-300 mb-1">
-                      Utilisée dans {warning.sessionRefs.length} causerie{warning.sessionRefs.length > 1 ? 's' : ''} :
-                    </p>
-                    <div className="ml-3 space-y-1">
-                      {warning.sessionRefs.map((ref, refIdx) => (
-                        <div key={refIdx} className="text-orange-700 dark:text-orange-300">
-                          <p className="font-medium">
-                            → "{ref.sessionTitle}"
-                          </p>
-                          <p className="text-xs text-orange-600 dark:text-orange-400 ml-3">
-                            Message de {ref.messageAuthor} le {new Date(ref.messageDate).toLocaleDateString('fr-FR')}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-orange-800 dark:text-orange-300 mt-3 font-medium">
-                ⚠️ La suppression du Drive empêchera l'affichage de la photo dans ces causeries !
-              </p>
-            </div>
-          )}
         </div>
 
-        {/* Footer */}
+        {/* Footer - ⭐ v2.9p : Adaptatif selon cross-refs */}
         <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
           <button
             onClick={handleCancel}
@@ -286,28 +293,28 @@ export default function ConfirmDeleteModal({
             {cancelText}
           </button>
 
-          {/* ⭐ v2.9n : Bouton "Retirer du moment seulement" (si cross-refs détectées) */}
-          {showRemoveOnlyButton && onRemoveOnly && (
+          {/* ⭐ v2.9p : Bouton "Retirer" si cross-refs, "Supprimer" sinon */}
+          {hasCrossRefs && onRemoveOnly ? (
             <button
               onClick={() => {
                 onRemoveOnly();
                 onClose();
               }}
-              className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-800 border border-blue-300 dark:border-blue-700 rounded-lg transition-colors duration-150"
-              title="Retirer du moment sans supprimer les fichiers Drive"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-150"
+              title="Retirer de la mémoire sans supprimer du cloud (action sûre)"
             >
-              Retirer du moment seulement
+              🔵 Retirer du moment
+            </button>
+          ) : (
+            <button
+              onClick={handleConfirm}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={hasCrossRefs && cascadeOptions?.deleteFiles}
+              title={hasCrossRefs && cascadeOptions?.deleteFiles ? 'Suppression bloquée : éléments utilisés ailleurs' : ''}
+            >
+              {confirmText}
             </button>
           )}
-
-          <button
-            onClick={handleConfirm}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150"
-            disabled={crossRefsWarnings && crossRefsWarnings.length > 0 && cascadeOptions?.deleteFiles}
-            title={crossRefsWarnings && crossRefsWarnings.length > 0 && cascadeOptions?.deleteFiles ? 'Suppression bloquée : photos utilisées ailleurs' : ''}
-          >
-            {confirmText}
-          </button>
         </div>
       </div>
     </div>
