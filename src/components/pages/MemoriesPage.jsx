@@ -1635,10 +1635,6 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         crossRefs={crossRefsWarningModal.crossRefs}
         sessionRefs={crossRefsWarningModal.sessionRefs}
         onRemoveOnly={crossRefsWarningModal.onRemoveOnly}
-        onNavigateToSession={(sessionId) => {
-          // Navigation vers la causerie
-          app.navigateTo('chat', { sessionId });
-        }}
       />
     </div>
   );
