@@ -196,38 +196,38 @@ export const PostArticle = memo(({
         
         {/* Texte */}
         {displayOptions.showPostText && (
-          <div 
+          <div
             className="prose prose-sm max-w-none bg-white dark:bg-gray-800 p-3 dark:text-gray-100"
-            dangerouslySetInnerHTML={{ __html: body }} 
+            dangerouslySetInnerHTML={{ __html: body }}
           />
         )}
-      </div>
 
-      {/* Photos */}
-      {photosAreVisible && (
-        <div className="mt-2">
-          <PhotoGrid
-            photos={post.photos}
-            moment={moment}
-            allPhotos={post.photos}
-            onPhotoClick={(photo) => {
+        {/* Photos - ⭐ v2.9p : Déplacées À L'INTÉRIEUR du cadre de la note */}
+        {photosAreVisible && (
+          <div className="p-2">
+            <PhotoGrid
+              photos={post.photos}
+              moment={moment}
+              allPhotos={post.photos}
+              onPhotoClick={(photo) => {
   onPhotoClick(photo, post.photos, moment);
 }}
-            gridId={`post_${post.id}`}
-            activePhotoGrid={activePhotoGrid}
-            selectedPhotos={selectedPhotos}
-            onActivateSelection={onActivateSelection}
-            onTogglePhotoSelection={onTogglePhotoSelection}
-            onBulkTagPhotos={onBulkTagPhotos}
-            onCancelSelection={onCancelSelection}
-            selectionMode={selectionMode}
-            onContentSelected={onContentSelected}
-            sessions={sessions}
-            onShowSessions={onShowSessions}
-            editionMode={editionMode}
-          />
-        </div>
-      )}
+              gridId={`post_${post.id}`}
+              activePhotoGrid={activePhotoGrid}
+              selectedPhotos={selectedPhotos}
+              onActivateSelection={onActivateSelection}
+              onTogglePhotoSelection={onTogglePhotoSelection}
+              onBulkTagPhotos={onBulkTagPhotos}
+              onCancelSelection={onCancelSelection}
+              selectionMode={selectionMode}
+              onContentSelected={onContentSelected}
+              sessions={sessions}
+              onShowSessions={onShowSessions}
+              editionMode={editionMode}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 });

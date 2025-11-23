@@ -1,8 +1,7 @@
 /**
- * CrossRefsWarningModal.jsx v2.9o - Modal d'avertissement cross-références
+ * CrossRefsWarningModal.jsx v2.9p - Modal d'avertissement cross-références
  * ⚠️ Affiché quand une photo/post est utilisé(e) ailleurs
- * ✅ Liste des moments et causeries
- * 🔗 Liens cliquables vers causeries
+ * ✅ Liste des moments et causeries (info seulement)
  * 🔵 Option "Retirer seulement" (sûre)
  */
 import React from 'react';
@@ -15,8 +14,7 @@ export default function CrossRefsWarningModal({
   itemName = '',
   crossRefs = [],      // Références dans d'autres moments
   sessionRefs = [],    // Références dans des causeries
-  onRemoveOnly,        // Handler pour retirer sans supprimer Drive
-  onNavigateToSession  // Handler pour visiter une causerie
+  onRemoveOnly         // Handler pour retirer sans supprimer Drive
 }) {
   if (!isOpen) return null;
 
@@ -101,28 +99,15 @@ export default function CrossRefsWarningModal({
                 {sessionRefs.map((ref, idx) => (
                   <div
                     key={idx}
-                    className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg flex items-start justify-between"
+                    className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg"
                   >
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-purple-900 dark:text-purple-200">
-                        • "{ref.sessionTitle}"
-                      </p>
-                      <p className="text-xs text-purple-700 dark:text-purple-300 mt-1">
-                        Message de <span className="font-semibold">{ref.messageAuthor}</span> le{' '}
-                        {new Date(ref.messageDate).toLocaleDateString('fr-FR')}
-                      </p>
-                    </div>
-                    {onNavigateToSession && (
-                      <button
-                        onClick={() => {
-                          onNavigateToSession(ref.sessionId);
-                          onClose();
-                        }}
-                        className="ml-3 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
-                      >
-                        Visiter 🔗
-                      </button>
-                    )}
+                    <p className="text-sm font-medium text-purple-900 dark:text-purple-200">
+                      • "{ref.sessionTitle}"
+                    </p>
+                    <p className="text-xs text-purple-700 dark:text-purple-300 mt-1">
+                      Message de <span className="font-semibold">{ref.messageAuthor}</span> le{' '}
+                      {new Date(ref.messageDate).toLocaleDateString('fr-FR')}
+                    </p>
                   </div>
                 ))}
               </div>
