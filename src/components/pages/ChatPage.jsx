@@ -626,28 +626,36 @@ useEffect(() => {
   try {
     const updatedSession = { ...app.currentChatSession };
 
-    // ⭐ NOUVEAU : Détecter si message a un lien avant suppression
+    // ⭐ v2.9o FIX : Détecter si message a un lien (linkedContent OU photoData)
     const messageToDelete = updatedSession.notes.find(m => m.id === messageId);
-    const hasLink = messageToDelete?.linkedContent;
+    const hasLinkedContent = messageToDelete?.linkedContent;
+    const hasPhoto = messageToDelete?.photoData;
+
+    console.log('🗑️ Suppression message:', {
+      messageId,
+      hasLinkedContent,
+      hasPhoto,
+      photoData: hasPhoto ? messageToDelete.photoData : null
+    });
 
     // Supprimer le message
     updatedSession.notes = updatedSession.notes.filter(note => note.id !== messageId);
 
     await app.updateSession(updatedSession);
-    
-    // ⭐ v2.9o : Nettoyer ContentLinks si le message avait un lien
-    if (hasLink && window.contentLinks) {
-      console.log('🗑️ Nettoyage ContentLinks pour message supprimé:', messageToDelete.linkedContent);
+
+    // ⭐ v2.9o : Nettoyer ContentLinks si le message avait un lien OU une photo
+    if (window.contentLinks && (hasLinkedContent || hasPhoto)) {
+      console.log('🔗 Nettoyage ContentLinks...');
 
       // ⚠️ FIX CRITIQUE : Pour les photos, essayer BOTH google_drive_id ET filename
       // Car le lien peut avoir été créé avec l'un ou l'autre
-      if (messageToDelete.linkedContent.type === 'photo' && messageToDelete.photoData) {
+      if (hasPhoto) {
         const photo = messageToDelete.photoData;
-        console.log('📸 Photo data:', photo);
+        console.log('📸 Photo à supprimer:', photo);
 
         // Essayer google_drive_id
         if (photo.google_drive_id) {
-          console.log('🔍 Tentative suppression avec google_drive_id:', photo.google_drive_id);
+          console.log('🔍 Tentative suppression lien avec google_drive_id:', photo.google_drive_id);
           await window.contentLinks.removeLink(
             updatedSession.id,
             'photo',
@@ -657,15 +665,18 @@ useEffect(() => {
 
         // Essayer filename (au cas où le lien aurait été créé avec filename)
         if (photo.filename && photo.filename !== photo.google_drive_id) {
-          console.log('🔍 Tentative suppression avec filename:', photo.filename);
+          console.log('🔍 Tentative suppression lien avec filename:', photo.filename);
           await window.contentLinks.removeLink(
             updatedSession.id,
             'photo',
             photo.filename
           );
         }
-      } else {
-        // Pour moment/post, utiliser l'ID normal
+      }
+
+      // Pour linkedContent (moment/post), utiliser l'ID normal
+      if (hasLinkedContent) {
+        console.log('🔗 Suppression lien linkedContent:', messageToDelete.linkedContent);
         await window.contentLinks.removeLink(
           updatedSession.id,
           messageToDelete.linkedContent.type,
@@ -680,29 +691,42 @@ useEffect(() => {
       dataManager.updateState({ sessions: [...currentSessions] });
 
       // ⭐ DEBUG : Vérifier que le lien a bien été supprimé
-      const linksAfter = window.contentLinks.getLinksForSession(updatedSession.id);
-      console.log('🔍 Liens restants pour cette session:', linksAfter);
+      console.log('═══════════════════════════════════════════════════');
+      console.log('🔍 VÉRIFICATION SUPPRESSION LIEN');
+      console.log('═══════════════════════════════════════════════════');
 
-      // ⭐ DEBUG : Vérifier l'index côté contenu (essayer les deux IDs)
-      if (messageToDelete.linkedContent.type === 'photo' && messageToDelete.photoData) {
+      const linksAfter = window.contentLinks.getLinksForSession(updatedSession.id);
+      console.log('📊 Liens restants pour session', updatedSession.id, ':', linksAfter.length, 'lien(s)');
+      linksAfter.forEach((link, idx) => {
+        console.log(`  ${idx + 1}.`, link.contentType, ':', link.contentId);
+      });
+
+      // Vérifier l'index côté contenu
+      if (hasPhoto) {
         const photo = messageToDelete.photoData;
         if (photo.google_drive_id) {
           const sessions1 = window.contentLinks.getSessionsForContent('photo', photo.google_drive_id);
-          console.log('🔍 Sessions liées (google_drive_id):', sessions1);
+          console.log('📸 Sessions liées à photo (google_drive_id):', photo.google_drive_id);
+          console.log('   → ', sessions1.length, 'session(s)');
         }
         if (photo.filename) {
           const sessions2 = window.contentLinks.getSessionsForContent('photo', photo.filename);
-          console.log('🔍 Sessions liées (filename):', sessions2);
+          console.log('📸 Sessions liées à photo (filename):', photo.filename);
+          console.log('   → ', sessions2.length, 'session(s)');
         }
-      } else {
+      }
+
+      if (hasLinkedContent) {
         const sessionsForContent = window.contentLinks.getSessionsForContent(
           messageToDelete.linkedContent.type,
           messageToDelete.linkedContent.id
         );
-        console.log('🔍 Sessions liées à ce contenu:', sessionsForContent);
+        console.log('🔗 Sessions liées au contenu:', messageToDelete.linkedContent.id);
+        console.log('   → ', sessionsForContent.length, 'session(s)');
       }
 
-      console.log('✅ ContentLinks mis à jour et sauvegardé - Pastilles rafraîchies');
+      console.log('═══════════════════════════════════════════════════');
+      console.log('✅ ContentLinks mis à jour - Pastilles devraient être rafraîchies');
     }
 
     // ✨ Désactiver le spinner
