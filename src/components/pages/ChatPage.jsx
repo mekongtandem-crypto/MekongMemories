@@ -639,11 +639,39 @@ useEffect(() => {
     if (hasLink && window.contentLinks) {
       console.log('🗑️ Nettoyage ContentLinks pour message supprimé:', messageToDelete.linkedContent);
 
-      await window.contentLinks.removeLink(
-        updatedSession.id,
-        messageToDelete.linkedContent.type,
-        messageToDelete.linkedContent.id
-      );
+      // ⚠️ FIX CRITIQUE : Pour les photos, essayer BOTH google_drive_id ET filename
+      // Car le lien peut avoir été créé avec l'un ou l'autre
+      if (messageToDelete.linkedContent.type === 'photo' && messageToDelete.photoData) {
+        const photo = messageToDelete.photoData;
+        console.log('📸 Photo data:', photo);
+
+        // Essayer google_drive_id
+        if (photo.google_drive_id) {
+          console.log('🔍 Tentative suppression avec google_drive_id:', photo.google_drive_id);
+          await window.contentLinks.removeLink(
+            updatedSession.id,
+            'photo',
+            photo.google_drive_id
+          );
+        }
+
+        // Essayer filename (au cas où le lien aurait été créé avec filename)
+        if (photo.filename && photo.filename !== photo.google_drive_id) {
+          console.log('🔍 Tentative suppression avec filename:', photo.filename);
+          await window.contentLinks.removeLink(
+            updatedSession.id,
+            'photo',
+            photo.filename
+          );
+        }
+      } else {
+        // Pour moment/post, utiliser l'ID normal
+        await window.contentLinks.removeLink(
+          updatedSession.id,
+          messageToDelete.linkedContent.type,
+          messageToDelete.linkedContent.id
+        );
+      }
 
       // ⭐ v2.9o : Forcer re-render React en créant nouvelle référence sessions
       // Nécessaire car les composants memoizés (SessionBadgePhotoThumb) ne se rafraîchissent
@@ -655,12 +683,24 @@ useEffect(() => {
       const linksAfter = window.contentLinks.getLinksForSession(updatedSession.id);
       console.log('🔍 Liens restants pour cette session:', linksAfter);
 
-      // ⭐ DEBUG : Vérifier l'index côté contenu
-      const sessionsForContent = window.contentLinks.getSessionsForContent(
-        messageToDelete.linkedContent.type,
-        messageToDelete.linkedContent.id
-      );
-      console.log('🔍 Sessions liées à ce contenu:', sessionsForContent);
+      // ⭐ DEBUG : Vérifier l'index côté contenu (essayer les deux IDs)
+      if (messageToDelete.linkedContent.type === 'photo' && messageToDelete.photoData) {
+        const photo = messageToDelete.photoData;
+        if (photo.google_drive_id) {
+          const sessions1 = window.contentLinks.getSessionsForContent('photo', photo.google_drive_id);
+          console.log('🔍 Sessions liées (google_drive_id):', sessions1);
+        }
+        if (photo.filename) {
+          const sessions2 = window.contentLinks.getSessionsForContent('photo', photo.filename);
+          console.log('🔍 Sessions liées (filename):', sessions2);
+        }
+      } else {
+        const sessionsForContent = window.contentLinks.getSessionsForContent(
+          messageToDelete.linkedContent.type,
+          messageToDelete.linkedContent.id
+        );
+        console.log('🔍 Sessions liées à ce contenu:', sessionsForContent);
+      }
 
       console.log('✅ ContentLinks mis à jour et sauvegardé - Pastilles rafraîchies');
     }
