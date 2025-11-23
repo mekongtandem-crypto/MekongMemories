@@ -20,8 +20,7 @@ import ThemeModal from '../ThemeModal.jsx';
 import PhotoToMemoryModal from '../PhotoToMemoryModal.jsx';  // ⭐ v2.8f
 import EditMomentModal from '../EditMomentModal.jsx';  // ⭐ v2.9
 import EditPostModal from '../EditPostModal.jsx';  // ⭐ v2.9
-import ConfirmDeleteModal from '../ConfirmDeleteModal.jsx';  // ⭐ v2.9
-import CrossRefsWarningModal from '../CrossRefsWarningModal.jsx';  // ⭐ v2.9o
+import ConfirmDeleteModal from '../ConfirmDeleteModal.jsx';  // ⭐ v2.9p - Modal unifié
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';  // ⭐ v2.8f
 import { dataManager } from '../../core/dataManager.js';  // ⭐ v2.8f
 import { logger } from '../../utils/logger.js';  // ⭐ v2.8f
@@ -106,17 +105,6 @@ const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
     cascadeOptions: null   // { deleteNotes: false, deletePhotos: false, deleteFiles: false }
   });
 
-  // ⭐ v2.9o : Modal warning cross-références
-  const [crossRefsWarningModal, setCrossRefsWarningModal] = useState({
-    isOpen: false,
-    itemType: 'photo',
-    itemName: '',
-    crossRefs: [],
-    sessionRefs: [],
-    onRemoveOnly: null,
-    momentId: null,
-    photoId: null
-  });
 
   // ========================================
   // Déstructuration
@@ -402,13 +390,15 @@ const handleDeleteMoment = useCallback((moment) => {
     isOpen: true,
     type: 'moment',
     itemName: moment.title,
+    itemType: 'Moment',  // ⭐ v2.9p
+    itemIcon: '📅',      // ⭐ v2.9p
     momentId: moment.id,
     itemId: null,
     deleteFromDrive: false,
     // ⭐ v2.9j : Cascade deletion
     childrenCounts: childrenDetails ? { notes: notes.length, photos: photoCount } : null,
     cascadeOptions: childrenDetails ? initialCascadeOptions : null,
-    // ⭐ v2.9n : Détails enrichis + cross-refs warnings
+    // ⭐ v2.9p : Détails enrichis + cross-refs warnings intégrés
     childrenDetails,
     crossRefsWarnings: crossRefsWarnings.length > 0 ? crossRefsWarnings : null,
     showRemoveOnlyButton: crossRefsWarnings.length > 0,
@@ -427,6 +417,8 @@ const handleDeleteMoment = useCallback((moment) => {
           isOpen: false,
           type: null,
           itemName: null,
+          itemType: null,
+          itemIcon: null,
           momentId: null,
           itemId: null,
           deleteFromDrive: false,
@@ -435,7 +427,8 @@ const handleDeleteMoment = useCallback((moment) => {
           cascadeOptions: null,
           childrenDetails: null,
           crossRefsWarnings: null,
-          showRemoveOnlyButton: false
+          showRemoveOnlyButton: false,
+          onRemoveOnly: null
         });
       } catch (error) {
         alert('Erreur lors de la suppression : ' + error.message);
@@ -456,6 +449,8 @@ const handleDeleteMoment = useCallback((moment) => {
           isOpen: false,
           type: null,
           itemName: null,
+          itemType: null,
+          itemIcon: null,
           momentId: null,
           itemId: null,
           deleteFromDrive: false,
@@ -464,7 +459,8 @@ const handleDeleteMoment = useCallback((moment) => {
           cascadeOptions: null,
           childrenDetails: null,
           crossRefsWarnings: null,
-          showRemoveOnlyButton: false
+          showRemoveOnlyButton: false,
+          onRemoveOnly: null
         });
       } catch (error) {
         alert('Erreur lors du retrait : ' + error.message);
@@ -487,7 +483,7 @@ const handleSavePost = useCallback(async (updatedPost) => {
 }, [app, editPostModal.momentId]);
 
 const handleDeletePost = useCallback((momentId, postId, postTitle) => {
-  // ⭐ v2.9o : Trouver le post dans le masterIndex
+  // ⭐ v2.9p : Trouver le post dans le masterIndex
   const moment = app.masterIndex?.moments?.find(m => m.id === momentId);
   const post = moment?.posts?.find(p => p.id === postId);
 
@@ -496,7 +492,7 @@ const handleDeletePost = useCallback((momentId, postId, postTitle) => {
     return;
   }
 
-  // ⭐ v2.9o : Vérifier photos dans le post
+  // ⭐ v2.9p : Vérifier photos dans le post
   const hasPhotos = post.photos && post.photos.length > 0;
   let childrenDetails = null;
   let cascadeOptions = null;
@@ -540,16 +536,44 @@ const handleDeletePost = useCallback((momentId, postId, postTitle) => {
     };
   }
 
+  // ⭐ v2.9p : Modal unifié avec warnings intégrés
   setConfirmDeleteModal({
     isOpen: true,
     type: 'post',
     itemName: postTitle,
+    itemType: 'Photo Note',  // ⭐ v2.9p
+    itemIcon: '📝',          // ⭐ v2.9p
     momentId,
     itemId: postId,
     deleteFromDrive: false,
     childrenDetails,
     cascadeOptions,
     crossRefsWarnings: crossRefsWarnings.length > 0 ? crossRefsWarnings : null,
+    showRemoveOnlyButton: crossRefsWarnings.length > 0,  // ⭐ v2.9p
+    onRemoveOnly: crossRefsWarnings.length > 0 ? async () => {
+      try {
+        // Retirer le post SANS supprimer les fichiers Drive (action sûre)
+        await app.deletePost(momentId, postId, { deletePhotos: false, deleteFiles: false });
+        setConfirmDeleteModal({
+          isOpen: false,
+          type: null,
+          itemName: null,
+          itemType: null,
+          itemIcon: null,
+          momentId: null,
+          itemId: null,
+          deleteFromDrive: false,
+          onConfirm: null,
+          childrenDetails: null,
+          cascadeOptions: null,
+          crossRefsWarnings: null,
+          showRemoveOnlyButton: false,
+          onRemoveOnly: null
+        });
+      } catch (error) {
+        alert('Erreur lors du retrait : ' + error.message);
+      }
+    } : null,
     onConfirm: async (cascadeOpts) => {
       try {
         // Si cascade options, passer à deletePost
@@ -558,13 +582,17 @@ const handleDeletePost = useCallback((momentId, postId, postTitle) => {
           isOpen: false,
           type: null,
           itemName: null,
+          itemType: null,
+          itemIcon: null,
           momentId: null,
           itemId: null,
           deleteFromDrive: false,
           onConfirm: null,
           childrenDetails: null,
           cascadeOptions: null,
-          crossRefsWarnings: null
+          crossRefsWarnings: null,
+          showRemoveOnlyButton: false,
+          onRemoveOnly: null
         });
       } catch (error) {
         alert('Erreur lors de la suppression : ' + error.message);
@@ -585,58 +613,84 @@ const handleDeletePost = useCallback((momentId, postId, postTitle) => {
 }, [app, dataManager]);
 
 const handleDeletePhoto = useCallback((momentId, photoId, photoFilename) => {
-  // ⭐ v2.9o : Vérifier cross-références (moments + sessions) AVANT d'ouvrir modal
+  // ⭐ v2.9p : Vérifier cross-références (moments + sessions) pour modal unifié
   const crossRefs = dataManager.checkPhotoCrossReferences(photoId, momentId);
   const linkedSessions = getSessionsForContent(app.sessions, 'photo', photoId);
 
-  // Si cross-références détectées → Ouvrir modal warning
-  if (crossRefs.length > 0 || linkedSessions.length > 0) {
-    const sessionRefs = linkedSessions.map(session => ({
-      sessionId: session.id,
-      sessionTitle: session.gameTitle || 'Sans titre',
-      messageAuthor: 'unknown',  // On ne sait pas quel message exactement
-      messageDate: session.updatedAt || session.createdAt
-    }));
+  // ⭐ v2.9p : Préparer warnings formatés pour modal unifié
+  const crossRefsWarnings = [];
 
-    setCrossRefsWarningModal({
-      isOpen: true,
-      itemType: 'photo',
-      itemName: photoFilename,
-      crossRefs,
-      sessionRefs,
-      momentId,
+  if (crossRefs.length > 0 || linkedSessions.length > 0) {
+    crossRefsWarnings.push({
       photoId,
-      onRemoveOnly: async () => {
-        try {
-          // Supprimer SEULEMENT de l'index (deleteFromDrive = false)
-          await app.deletePhoto(momentId, photoId, photoFilename, false);
-          setCrossRefsWarningModal({ isOpen: false, itemType: 'photo', itemName: '', crossRefs: [], sessionRefs: [], onRemoveOnly: null, momentId: null, photoId: null });
-        } catch (error) {
-          alert('Erreur lors du retrait : ' + error.message);
-        }
-      }
+      filename: photoFilename,
+      crossRefs: crossRefs,  // Array de { momentId, momentTitle, momentDate }
+      sessionRefs: linkedSessions.map(session => ({
+        sessionId: session.id,
+        sessionTitle: session.gameTitle || 'Sans titre',
+        messageAuthor: 'unknown',
+        messageDate: session.updatedAt || session.createdAt
+      }))
     });
-    return;  // Arrêter ici, ne pas ouvrir ConfirmDeleteModal
   }
 
-  // Sinon → Modal normal de suppression
+  // ⭐ v2.9p : Ouvrir modal unifié avec warnings intégrés
   setConfirmDeleteModal({
     isOpen: true,
     type: 'photo',
     itemName: photoFilename,
+    itemType: 'photo',  // ⭐ v2.9p
+    itemIcon: '📸',     // ⭐ v2.9p
     momentId,
     itemId: photoId,
-    deleteFromDrive: false,  // Valeur par défaut : ne pas supprimer du Drive
+    deleteFromDrive: false,
+    crossRefsWarnings: crossRefsWarnings.length > 0 ? crossRefsWarnings : null,  // ⭐ v2.9p
+    showRemoveOnlyButton: crossRefsWarnings.length > 0,  // ⭐ v2.9p
+    onRemoveOnly: crossRefsWarnings.length > 0 ? async () => {
+      try {
+        // Supprimer SEULEMENT de l'index (deleteFromDrive = false)
+        await app.deletePhoto(momentId, photoId, photoFilename, false);
+        setConfirmDeleteModal({
+          isOpen: false,
+          type: null,
+          itemName: null,
+          momentId: null,
+          itemId: null,
+          deleteFromDrive: false,
+          onConfirm: null,
+          childrenDetails: null,
+          cascadeOptions: null,
+          crossRefsWarnings: null,
+          showRemoveOnlyButton: false,
+          onRemoveOnly: null
+        });
+      } catch (error) {
+        alert('Erreur lors du retrait : ' + error.message);
+      }
+    } : null,
     onConfirm: async (deleteFromDrive) => {
       try {
         await app.deletePhoto(momentId, photoId, photoFilename, deleteFromDrive);
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false, onConfirm: null, childrenCounts: null, cascadeOptions: null });
+        setConfirmDeleteModal({
+          isOpen: false,
+          type: null,
+          itemName: null,
+          momentId: null,
+          itemId: null,
+          deleteFromDrive: false,
+          onConfirm: null,
+          childrenDetails: null,
+          cascadeOptions: null,
+          crossRefsWarnings: null,
+          showRemoveOnlyButton: false,
+          onRemoveOnly: null
+        });
       } catch (error) {
         alert('Erreur lors de la suppression : ' + error.message);
       }
     }
   });
-}, [app]);
+}, [app, dataManager]);
 
 // Handler pour sauvegarder les thèmes d'un post
 const handleSavePostThemes = useCallback(async (selectedThemes, propagationOptions, postData) => {
@@ -1575,6 +1629,8 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           isOpen: false,
           type: null,
           itemName: null,
+          itemType: null,
+          itemIcon: null,
           momentId: null,
           itemId: null,
           deleteFromDrive: false,
@@ -1583,15 +1639,17 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           cascadeOptions: null,
           childrenDetails: null,
           crossRefsWarnings: null,
-          showRemoveOnlyButton: false
+          showRemoveOnlyButton: false,
+          onRemoveOnly: null
         })}
         onConfirm={confirmDeleteModal.onConfirm}
         itemName={confirmDeleteModal.itemName}
-        itemType={
+        itemType={confirmDeleteModal.itemType || (
           confirmDeleteModal.type === 'moment' ? 'Moment' :
           confirmDeleteModal.type === 'post' ? 'Photo Note' :
           'Photo'
-        }
+        )}
+        itemIcon={confirmDeleteModal.itemIcon}
         // ⭐ Option spéciale pour photos : suppression Drive
         showDriveOption={confirmDeleteModal.type === 'photo'}
         deleteFromDrive={confirmDeleteModal.deleteFromDrive}
@@ -1599,7 +1657,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         // ⭐ v2.9j : Options suppression en cascade (moments)
         childrenCounts={confirmDeleteModal.childrenCounts}
         cascadeOptions={confirmDeleteModal.cascadeOptions}
-        // ⭐ v2.9n : Détails enrichis + cross-refs warnings
+        // ⭐ v2.9p : Détails enrichis + cross-refs warnings intégrés
         childrenDetails={confirmDeleteModal.childrenDetails}
         crossRefsWarnings={confirmDeleteModal.crossRefsWarnings}
         showRemoveOnlyButton={confirmDeleteModal.showRemoveOnlyButton}
@@ -1617,25 +1675,6 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         }}
       />
 
-      {/* ⭐ v2.9o : Modal warning cross-références */}
-      <CrossRefsWarningModal
-        isOpen={crossRefsWarningModal.isOpen}
-        onClose={() => setCrossRefsWarningModal({
-          isOpen: false,
-          itemType: 'photo',
-          itemName: '',
-          crossRefs: [],
-          sessionRefs: [],
-          onRemoveOnly: null,
-          momentId: null,
-          photoId: null
-        })}
-        itemType={crossRefsWarningModal.itemType}
-        itemName={crossRefsWarningModal.itemName}
-        crossRefs={crossRefsWarningModal.crossRefs}
-        sessionRefs={crossRefsWarningModal.sessionRefs}
-        onRemoveOnly={crossRefsWarningModal.onRemoveOnly}
-      />
     </div>
   );
 }
