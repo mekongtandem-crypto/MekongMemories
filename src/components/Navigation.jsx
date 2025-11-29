@@ -50,11 +50,16 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
   const isInChat = currentPage === 'chat';
   const isInMemories = currentPage === 'memories';
   const previousPage = navigationContext?.previousPage;
-  
+
+  // ⭐ v2.9s : Détecter returnContext depuis modal cross-refs
+  const hasReturnContext = navigationContext?.returnContext?.type === 'cross_refs_modal';
+  const returnPage = navigationContext?.returnContext?.returnPage;
+
   // Afficher bouton retour si :
   // - Dans Chat (retour vers previousPage ou Sessions par défaut)
   // - Dans Memories venant de Chat (retour vers Chat)
-  const showReturnButton = (isInChat && previousPage) || 
+  // - Dans Chat/Memories avec returnContext (retour modal cross-refs)
+  const showReturnButton = (isInChat && (previousPage || hasReturnContext)) ||
                            (isInMemories && previousPage === 'chat');
 
   const navItems = [
@@ -73,29 +78,37 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
 
   // ⭐ PHASE 19D : Handler retour intelligent
   const handleReturn = () => {
-    console.log('🔙 BottomBar Retour - currentPage:', currentPage, 'previousPage:', previousPage);
-    
+    console.log('🔙 BottomBar Retour - currentPage:', currentPage, 'previousPage:', previousPage, 'returnContext:', hasReturnContext);
+
+    // ⭐ v2.9s : Cas prioritaire - Retour depuis modal cross-refs
+    if (hasReturnContext && returnPage) {
+      console.log('📍 Retour modal cross-refs: → ', returnPage);
+      onPageChange(returnPage);
+      // Le useEffect dans MemoriesPage va détecter returnContext et rouvrir le modal
+      return;
+    }
+
     // Cas 1 : Dans Memories, venant de Chat → Retour au Chat
     if (currentPage === 'memories' && previousPage === 'chat') {
       console.log('📍 Retour: Memories → Chat');
       onPageChange('chat');
       return;
     }
-    
+
     // Cas 2 : Dans Chat, venant de Memories → Retour à Memories
     if (currentPage === 'chat' && previousPage === 'memories') {
       console.log('📍 Retour: Chat → Memories');
       onPageChange('memories');
       return;
     }
-    
+
     // Cas 3 : Dans Chat, venant de Sessions (ou sans contexte) → Retour Sessions
     if (currentPage === 'chat' && (!previousPage || previousPage === 'sessions')) {
       console.log('📍 Retour: Chat → Sessions');
       onPageChange('sessions');
       return;
     }
-    
+
     // Fallback : Retour Sessions par défaut
     console.log('📍 Retour fallback: → Sessions');
     onPageChange('sessions');
@@ -103,6 +116,13 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
 
   // Déterminer le label du bouton retour
   const getReturnLabel = () => {
+    // ⭐ v2.9s : Retour depuis modal cross-refs
+    if (hasReturnContext && returnPage) {
+      if (returnPage === 'memories') return 'Souvenirs';
+      if (returnPage === 'chat') return 'Chat';
+      if (returnPage === 'sessions') return 'Causeries';
+    }
+
     if (currentPage === 'memories' && previousPage === 'chat') {
       return 'Chat';
     }

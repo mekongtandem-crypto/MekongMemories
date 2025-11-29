@@ -1280,8 +1280,16 @@ setTimeout(() => {
 
 
   // ⭐ v2.9s : Restaurer modal cross-refs au retour
+  const returnContextProcessedRef = useRef(null);
+
   useEffect(() => {
     if (navigationContext?.returnContext?.type === 'cross_refs_modal') {
+      // ⭐ Créer clé unique pour éviter traitement multiple
+      const contextKey = JSON.stringify(navigationContext.returnContext);
+      if (returnContextProcessedRef.current === contextKey) {
+        return; // Déjà traité
+      }
+
       const { scrollPosition, openMomentId: savedMomentId, editionMode: savedEditionMode, crossRefsModal: savedModal } = navigationContext.returnContext;
 
       // Restaurer état page
@@ -1323,15 +1331,17 @@ setTimeout(() => {
         });
       }
 
-      // Restaurer scroll
+      // Restaurer scroll + cleanup
       setTimeout(() => {
         window.scrollTo(0, scrollPosition || 0);
+        // Nettoyer le navigationContext APRES restauration complète
+        onNavigateBack();
       }, 300);
 
-      // Clear navigationContext
-      onNavigateBack();
+      // Marquer comme traité
+      returnContextProcessedRef.current = contextKey;
     }
-  }, [navigationContext]);
+  }, [navigationContext, momentsData, app, onNavigateBack]);
 
   // Helper pour formater cross-refs depuis impact
   const formatCrossRefsFromImpact = (impact) => {
