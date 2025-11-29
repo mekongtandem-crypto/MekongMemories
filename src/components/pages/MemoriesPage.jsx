@@ -1334,14 +1334,16 @@ setTimeout(() => {
       // Restaurer scroll + cleanup
       setTimeout(() => {
         window.scrollTo(0, scrollPosition || 0);
-        // Nettoyer le navigationContext APRES restauration complète
-        onNavigateBack();
+        // ⭐ v2.9s : Nettoyer UNIQUEMENT le returnContext (ne pas naviguer ailleurs !)
+        app.updateState({
+          navigationContext: null
+        });
       }, 300);
 
       // Marquer comme traité
       returnContextProcessedRef.current = contextKey;
     }
-  }, [navigationContext, momentsData, app, onNavigateBack]);
+  }, [navigationContext, momentsData, app]);
 
   // Helper pour formater cross-refs depuis impact
   const formatCrossRefsFromImpact = (impact) => {
