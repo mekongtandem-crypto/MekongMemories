@@ -72,6 +72,12 @@ export function useAppState() {
   const deletePhoto = useCallback((momentId, photoId, filename, deleteFromDrive, showSpinner) =>
     dataManager.deletePhoto(momentId, photoId, filename, deleteFromDrive, showSpinner), []);
 
+  // ⭐ v2.9q : Nouvelles actions - Analyse impact et nettoyage global
+  const analyzeDeleteImpact = useCallback((type, params) => dataManager.analyzeDeleteImpact(type, params), []);
+  const cleanPhotoEverywhere = useCallback((photoId, filename) => dataManager.cleanPhotoEverywhere(photoId, filename), []);
+  const navigateToMoment = useCallback((momentId, returnContext) => dataManager.navigateToMoment(momentId, returnContext), []);
+  const navigateToSession = useCallback((sessionId, returnContext) => dataManager.navigateToSession(sessionId, returnContext), []);
+
   // Actions notifications (Phase 15a)
   const sendNotification = useCallback((toUserId, sessionId, sessionTitle) => 
     dataManager.sendNotification(toUserId, sessionId, sessionTitle), []);
@@ -156,11 +162,17 @@ export function useAppState() {
     deletePost,
     deletePhoto,
 
+    // ⭐ v2.9q : Nouvelles actions - Analyse impact et nettoyage global
+    analyzeDeleteImpact,
+    cleanPhotoEverywhere,
+    navigateToMoment,
+    navigateToSession,
+
     // ⭐ CORRECTION BUG 2 - Phase 18/19 : Exposition contentLinks pour pastilles 💬
     // AVANT : contentLinks non exposé → getSessionsForContent() retournait toujours []
     // APRÈS : app.contentLinks accessible depuis MemoriesPage/PhotoViewer
     contentLinks: dataManager.contentLinks,
-    
+
     // ⭐ NEW Phase 19D : Fonction helper pour récupérer sessions liées à un contenu
     getAllSessionsForContent,
   };
