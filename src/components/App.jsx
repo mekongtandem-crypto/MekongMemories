@@ -144,7 +144,9 @@ export default function App() {
    */
   const handlePageChange = useCallback((newPage) => {
     console.log('📄 Changement page:', app.currentPage, '→', newPage);
-    console.log('🔍 navigationContext actuel:', navigationContext);
+    console.log('🔍 navigationContext LOCAL:', navigationContext);
+    console.log('🔍 app.navigationContext:', app.navigationContext);
+    console.log('🔍 app.navigationContext.returnContext:', app.navigationContext?.returnContext);
 
     // Désactiver mode sélection si actif
     if (selectionMode.active) {
@@ -161,11 +163,18 @@ export default function App() {
       console.log('❌ Annulation mode édition lors navigation');
       setEditionMode({ active: false });
     }
-    
+
+    // ⭐ v2.9s : Si retour avec returnContext, ne pas écraser le navigationContext
+    if (app.navigationContext?.returnContext) {
+      console.log('🔄 Retour avec returnContext détecté, préservation du contexte');
+      app.updateCurrentPage(newPage);
+      return;
+    }
+
     // Navigation spéciale Chat → Memories (transmettre momentId)
     if (newPage === 'memories' && app.currentPage === 'chat' && app.currentChatSession?.gameId) {
       console.log('🎯 Navigation Chat → Memories détectée, momentId:', app.currentChatSession.gameId);
-      
+
       setNavigationContext({
         previousPage: 'chat',
         pendingAttachment: null,
@@ -180,7 +189,7 @@ export default function App() {
         pendingLink: null
       });
     }
-    
+
     app.updateCurrentPage(newPage);
   }, [app, selectionMode.active, editionMode.active]);
 
