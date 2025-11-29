@@ -1675,7 +1675,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
             crossRefsModal: { ...crossRefsModal, isOpen: true },
             returnPage: 'memories'
           };
-          app.navigateTo('memories', { targetMomentId: momentId, returnContext });
+          app.navigateToMoment(momentId, returnContext);
           setCrossRefsModal({ isOpen: false });
         }}
         onNavigateToSession={(sessionId) => {
@@ -1688,7 +1688,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
             crossRefsModal: { ...crossRefsModal, isOpen: true },
             returnPage: 'memories'
           };
-          app.navigateTo('chat', { sessionId, returnContext });
+          app.navigateToSession(sessionId, returnContext);
           setCrossRefsModal({ isOpen: false });
         }}
       />
