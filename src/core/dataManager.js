@@ -1546,6 +1546,374 @@ class DataManager {
     }
   }
 
+  /**
+   * ⭐ v2.9q : Analyser l'impact d'une suppression AVANT ouverture modal
+   * @param {string} type - 'moment' | 'post' | 'photo'
+   * @param {Object} params - { momentId, postId, photoId, filename }
+   * @returns {Object} - Analyse complète de l'impact
+   */
+  analyzeDeleteImpact = (type, params) => {
+    const { momentId, postId, photoId, filename } = params;
+
+    const result = {
+      canDelete: true,
+      crossRefs: {
+        moments: [],
+        sessions: [],
+        total: 0
+      },
+      nestedElements: null,
+      recommendedOptions: {
+        deleteNotes: true,
+        deletePhotos: true,
+        deleteFiles: false  // Safe par défaut
+      },
+      requiresDoubleConfirmation: false
+    };
+
+    if (type === 'moment') {
+      const moment = this.appState.masterIndex?.moments.find(m => m.id === momentId);
+      if (!moment) return result;
+
+      // Inventaire éléments imbriqués
+      const userNotes = (moment.posts || []).filter(p => p.category === 'user_added');
+      const importedPhotos = (moment.dayPhotos || []).filter(p => p.source === 'imported');
+
+      // Compter photos dans notes
+      let photosInNotes = 0;
+      userNotes.forEach(note => {
+        photosInNotes += (note.photos || []).filter(p => p.source === 'imported').length;
+      });
+
+      result.nestedElements = {
+        notes: userNotes.map(note => ({
+          id: note.id,
+          title: note.title || 'Sans titre',
+          photoCount: (note.photos || []).filter(p => p.source === 'imported').length
+        })),
+        photos: importedPhotos.length + photosInNotes,
+        photosMoment: importedPhotos.length,
+        photosNotes: photosInNotes
+      };
+
+      // Vérifier cross-refs pour TOUTES les photos
+      const deleteNoteIds = userNotes.map(n => n.id);
+      const allPhotoIds = this.collectMomentPhotos(moment, deleteNoteIds);
+
+      allPhotoIds.forEach(pid => {
+        const momentRefs = this.checkPhotoCrossReferences(pid, momentId);
+        const sessionRefs = this.checkPhotoInSessions(pid);
+
+        if (momentRefs.length > 0) {
+          result.crossRefs.moments.push({ photoId: pid, refs: momentRefs });
+        }
+        if (sessionRefs.length > 0) {
+          result.crossRefs.sessions.push({ photoId: pid, refs: sessionRefs });
+        }
+      });
+
+      result.crossRefs.total = result.crossRefs.moments.length + result.crossRefs.sessions.length;
+      result.requiresDoubleConfirmation = result.crossRefs.total > 0;
+    }
+
+    else if (type === 'photo') {
+      // Analyse pour photo simple
+      const momentRefs = this.checkPhotoCrossReferences(photoId, momentId);
+      const sessionRefs = this.checkPhotoInSessions(photoId);
+
+      if (momentRefs.length > 0) {
+        result.crossRefs.moments.push({
+          photoId,
+          filename,
+          refs: momentRefs
+        });
+      }
+      if (sessionRefs.length > 0) {
+        result.crossRefs.sessions.push({
+          photoId,
+          filename,
+          refs: sessionRefs
+        });
+      }
+
+      result.crossRefs.total = momentRefs.length + sessionRefs.length;
+      result.requiresDoubleConfirmation = result.crossRefs.total > 0;
+    }
+
+    else if (type === 'post') {
+      // Analyse pour post (Photo Note)
+      const moment = this.appState.masterIndex?.moments.find(m => m.id === momentId);
+      if (!moment) return result;
+
+      const post = moment.posts?.find(p => p.id === postId);
+      if (!post) return result;
+
+      const importedPhotos = (post.photos || []).filter(p => p.source === 'imported');
+
+      result.nestedElements = {
+        photos: importedPhotos.length
+      };
+
+      // Vérifier cross-refs pour les photos du post
+      importedPhotos.forEach(photo => {
+        const pid = photo.google_drive_id || photo.filename;
+        const momentRefs = this.checkPhotoCrossReferences(pid, momentId);
+        const sessionRefs = this.checkPhotoInSessions(pid);
+
+        if (momentRefs.length > 0) {
+          result.crossRefs.moments.push({ photoId: pid, filename: photo.filename, refs: momentRefs });
+        }
+        if (sessionRefs.length > 0) {
+          result.crossRefs.sessions.push({ photoId: pid, filename: photo.filename, refs: sessionRefs });
+        }
+      });
+
+      result.crossRefs.total = result.crossRefs.moments.length + result.crossRefs.sessions.length;
+      result.requiresDoubleConfirmation = result.crossRefs.total > 0;
+    }
+
+    logger.debug('Analyse impact suppression:', { type, params, result });
+    return result;
+  }
+
+  /**
+   * ⭐ v2.9q : Supprimer une photo de PARTOUT (moments + sessions + Drive)
+   * @param {string} photoId - ID de la photo
+   * @param {string} filename - Nom du fichier
+   * @returns {Object} - Rapport de suppression détaillé
+   */
+  cleanPhotoEverywhere = async (photoId, filename) => {
+    logger.info('🧹 Nettoyage global photo:', photoId);
+
+    this.setLoadingOperation(true, 'Suppression globale...', 'Nettoyage en cours', 'monkey');
+
+    const report = {
+      success: true,
+      momentsAffected: [],
+      sessionsAffected: [],
+      driveDeleted: false,
+      errors: []
+    };
+
+    try {
+      const masterIndex = this.appState.masterIndex;
+
+      // 1. Retirer de tous les moments
+      for (const moment of masterIndex.moments) {
+        let modified = false;
+
+        // Retirer de dayPhotos
+        const originalDayPhotosCount = moment.dayPhotos?.length || 0;
+        if (moment.dayPhotos) {
+          moment.dayPhotos = moment.dayPhotos.filter(p =>
+            p.google_drive_id !== photoId && p.filename !== filename
+          );
+          if (moment.dayPhotos.length < originalDayPhotosCount) {
+            modified = true;
+          }
+        }
+
+        // Retirer des posts
+        if (moment.posts) {
+          for (const post of moment.posts) {
+            if (post.photos) {
+              const originalCount = post.photos.length;
+              post.photos = post.photos.filter(p =>
+                p.google_drive_id !== photoId && p.filename !== filename
+              );
+              if (post.photos.length < originalCount) {
+                modified = true;
+              }
+            }
+          }
+        }
+
+        if (modified) {
+          report.momentsAffected.push({
+            id: moment.id,
+            title: moment.title
+          });
+        }
+      }
+
+      // Sauvegarder masterIndex modifié
+      if (report.momentsAffected.length > 0) {
+        await this.driveSync.saveFile('mekong_master_index_v3_moments.json', masterIndex);
+        this.updateState({ masterIndex });
+        logger.debug(`📝 MasterIndex sauvegardé (${report.momentsAffected.length} moments modifiés)`);
+      }
+
+      // 2. Retirer de toutes les sessions
+      const sessions = [...this.appState.sessions];
+      let sessionsModified = false;
+
+      for (const session of sessions) {
+        if (!session.notes) continue;
+
+        const matchingMessages = session.notes.filter(note =>
+          note.photoData?.google_drive_id === photoId ||
+          note.photoData?.filename === filename
+        );
+
+        if (matchingMessages.length > 0) {
+          // Retirer photoData des messages
+          session.notes = session.notes.map(note => {
+            if (note.photoData?.google_drive_id === photoId ||
+                note.photoData?.filename === filename) {
+              const { photoData, ...noteWithoutPhoto } = note;
+              return noteWithoutPhoto;
+            }
+            return note;
+          });
+
+          // Sauvegarder session modifiée
+          try {
+            await this.driveSync.saveFile(`session_${session.id}.json`, session);
+            report.sessionsAffected.push({
+              id: session.id,
+              title: session.gameTitle,
+              messagesCount: matchingMessages.length
+            });
+            sessionsModified = true;
+            logger.debug(`💬 Session ${session.id} sauvegardée`);
+          } catch (error) {
+            report.errors.push({
+              type: 'session_save',
+              sessionId: session.id,
+              error: error.message
+            });
+          }
+        }
+      }
+
+      // Mettre à jour état sessions
+      if (sessionsModified) {
+        this.updateState({ sessions });
+      }
+
+      // 3. Supprimer fichiers Drive (principal + thumbnail)
+      try {
+        // Trouver google_drive_id si on a seulement filename
+        let driveId = photoId;
+        if (!photoId.includes('drive') && !photoId.includes('_')) {
+          // Chercher dans masterIndex pour trouver l'ID
+          for (const moment of masterIndex.moments) {
+            const foundInDay = moment.dayPhotos?.find(p => p.filename === filename);
+            if (foundInDay?.google_drive_id) {
+              driveId = foundInDay.google_drive_id;
+              break;
+            }
+
+            if (moment.posts) {
+              for (const post of moment.posts) {
+                const foundInPost = post.photos?.find(p => p.filename === filename);
+                if (foundInPost?.google_drive_id) {
+                  driveId = foundInPost.google_drive_id;
+                  break;
+                }
+              }
+              if (driveId !== photoId) break;
+            }
+          }
+        }
+
+        if (driveId && driveId !== 'unknown') {
+          // Supprimer fichier principal
+          await this.driveSync.deleteFileById(driveId);
+          logger.success('📸 Fichier principal supprimé du cloud');
+
+          // Supprimer thumbnail
+          if (filename) {
+            const thumbFilename = filename.replace(/\.(\w+)$/, '_thumb.$1');
+            try {
+              const thumbFileId = await this.driveSync.findFileIdByName(thumbFilename, 'Medias/imported');
+              if (thumbFileId) {
+                await this.driveSync.deleteFileById(thumbFileId);
+                logger.success('🖼️ Thumbnail supprimé du cloud');
+              }
+            } catch (error) {
+              logger.warn('Thumbnail non trouvé ou déjà supprimé');
+            }
+          }
+
+          report.driveDeleted = true;
+        }
+      } catch (error) {
+        report.errors.push({
+          type: 'drive_delete',
+          error: error.message
+        });
+        logger.warn('Erreur suppression Drive:', error);
+      }
+
+      // 4. Nettoyer ContentLinks
+      if (this.contentLinks) {
+        try {
+          const links = this.contentLinks.getLinksForContent('photo', photoId);
+          for (const link of links) {
+            await this.contentLinks.removeLink(link.sessionId, 'photo', photoId);
+          }
+          logger.debug('🔗 ContentLinks nettoyés');
+        } catch (error) {
+          logger.warn('Erreur nettoyage ContentLinks:', error);
+        }
+      }
+
+      this.setLoadingOperation(false);
+      logger.success('🧹 Nettoyage global terminé:', report);
+
+      return report;
+
+    } catch (error) {
+      logger.error('❌ Erreur nettoyage global:', error);
+      this.setLoadingOperation(false);
+      report.success = false;
+      report.errors.push({
+        type: 'critical',
+        error: error.message
+      });
+      return report;
+    }
+  }
+
+  /**
+   * ⭐ v2.9q : Naviguer vers un moment avec contexte mémorisé
+   * @param {string} momentId - ID du moment cible
+   * @param {Object} returnContext - Contexte pour retour au modal
+   */
+  navigateToMoment = (momentId, returnContext = null) => {
+    logger.debug('Navigation vers moment:', momentId, returnContext);
+    this.updateState({
+      currentPage: 'memories',
+      navigationContext: {
+        targetMomentId: momentId,
+        scrollToMoment: true,
+        returnContext: returnContext
+      }
+    });
+  }
+
+  /**
+   * ⭐ v2.9q : Naviguer vers une session avec contexte mémorisé
+   * @param {string} sessionId - ID de la session cible
+   * @param {Object} returnContext - Contexte pour retour au modal
+   */
+  navigateToSession = (sessionId, returnContext = null) => {
+    logger.debug('Navigation vers session:', sessionId, returnContext);
+    const session = this.appState.sessions.find(s => s.id === sessionId);
+    if (session) {
+      this.updateState({
+        currentPage: 'chat',
+        currentChatSession: session,
+        navigationContext: {
+          returnContext: returnContext
+        }
+      });
+    } else {
+      logger.warn('Session introuvable:', sessionId);
+    }
+  }
+
   // ========================================
   // USER & PAGE
   // ========================================

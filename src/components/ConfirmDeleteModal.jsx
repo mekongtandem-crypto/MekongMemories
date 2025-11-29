@@ -1,14 +1,16 @@
 /**
- * ConfirmDeleteModal.jsx v2.9p - Modal de confirmation de suppression unifié
+ * ConfirmDeleteModal.jsx v2.9q - Modal de confirmation de suppression unifié
  * ✅ Modal générique pour Moment / Note / Photo
  * ✅ Dark mode support
  * ✅ Scrollbar automatique (max-height 90vh)
  * ✅ Checkboxes intégrées pour cascade
  * ✅ Warnings cross-références intégrés (pas de modal séparé)
  * ✅ Boutons adaptatifs selon cross-refs
+ * ✅ v2.9q : Double confirmation "Supprimer PARTOUT"
+ * ✅ v2.9q : Cross-refs cliquables avec navigation
  */
-import React from 'react';
-import { X, AlertTriangle, FileEdit, Camera, Info, Calendar, MessageCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, AlertTriangle, FileEdit, Camera, Info, Calendar, MessageCircle, ExternalLink } from 'lucide-react';
 
 export default function ConfirmDeleteModal({
   isOpen,
@@ -33,8 +35,22 @@ export default function ConfirmDeleteModal({
   crossRefsWarnings = null,
   // eslint-disable-next-line no-unused-vars
   showRemoveOnlyButton = false,  // Accepté pour compatibilité (auto-détecté via hasCrossRefs)
-  onRemoveOnly = null
+  onRemoveOnly = null,
+  // ⭐ v2.9q : Nouvelles props pour suppression globale et navigation
+  onCleanEverywhere = null,  // Callback pour "Supprimer PARTOUT"
+  onNavigateToMoment = null,  // Callback navigation vers moment
+  onNavigateToSession = null  // Callback navigation vers session
 }) {
+  // ⭐ v2.9q : État double confirmation
+  const [confirmCleanEverywhere, setConfirmCleanEverywhere] = useState(false);
+
+  // Réinitialiser à l'ouverture
+  useEffect(() => {
+    if (isOpen) {
+      setConfirmCleanEverywhere(false);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // ⭐ v2.9p : Détection automatique des cross-refs
@@ -125,8 +141,19 @@ export default function ConfirmDeleteModal({
                         </p>
                         <div className="ml-3 mt-1 space-y-0.5">
                           {warning.crossRefs.map((ref, refIdx) => (
-                            <p key={refIdx} className="text-red-700 dark:text-red-300">
+                            <p
+                              key={refIdx}
+                              onClick={() => {
+                                if (onNavigateToMoment) {
+                                  onNavigateToMoment(ref.momentId);
+                                  onClose();
+                                }
+                              }}
+                              className={`text-red-700 dark:text-red-300 flex items-center ${onNavigateToMoment ? 'cursor-pointer hover:underline hover:text-red-900 dark:hover:text-red-100' : ''}`}
+                              title={onNavigateToMoment ? 'Cliquer pour aller au moment' : ''}
+                            >
                               → {ref.momentTitle} ({ref.momentDate})
+                              {onNavigateToMoment && <ExternalLink className="w-3 h-3 ml-1" />}
                             </p>
                           ))}
                         </div>
@@ -151,9 +178,20 @@ export default function ConfirmDeleteModal({
                         </p>
                         <div className="ml-3 space-y-1">
                           {warning.sessionRefs.map((ref, refIdx) => (
-                            <div key={refIdx}>
-                              <p className="text-orange-800 dark:text-orange-300 font-medium">
+                            <div
+                              key={refIdx}
+                              onClick={() => {
+                                if (onNavigateToSession) {
+                                  onNavigateToSession(ref.sessionId);
+                                  onClose();
+                                }
+                              }}
+                              className={onNavigateToSession ? 'cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 p-1 rounded transition-colors' : ''}
+                            >
+                              <p className={`text-orange-800 dark:text-orange-300 font-medium flex items-center ${onNavigateToSession ? 'hover:underline' : ''}`}
+                                 title={onNavigateToSession ? 'Cliquer pour aller à la causerie' : ''}>
                                 → "{ref.sessionTitle}"
+                                {onNavigateToSession && <ExternalLink className="w-3 h-3 ml-1" />}
                               </p>
                               <p className="text-xs text-orange-700 dark:text-orange-400 ml-3">
                                 Message de {ref.messageAuthor}, {new Date(ref.messageDate).toLocaleDateString('fr-FR')}
@@ -166,6 +204,51 @@ export default function ConfirmDeleteModal({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ⭐ v2.9q : Double confirmation si cross-refs + deleteFiles (ou cascade deleteFiles) */}
+          {hasCrossRefs && (cascadeOptions?.deleteFiles || deleteFromDrive) && onCleanEverywhere && (
+            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/30 border-2 border-red-500 dark:border-red-600 rounded-lg">
+              <label className="flex items-start space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={confirmCleanEverywhere}
+                  onChange={(e) => setConfirmCleanEverywhere(e.target.checked)}
+                  className="mt-1 w-5 h-5 text-red-600 border-red-400 rounded focus:ring-red-500"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-red-900 dark:text-red-100 flex items-center">
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    ⚠️ JE VEUX SUPPRIMER CETTE PHOTO DE PARTOUT
+                  </p>
+                  <p className="text-xs text-red-800 dark:text-red-200 mt-2 leading-relaxed">
+                    Cette action va supprimer la photo de :
+                  </p>
+                  <ul className="text-xs text-red-800 dark:text-red-200 mt-1 ml-4 space-y-0.5">
+                    {crossRefsWarnings.some(w => w.crossRefs?.length > 0) && (
+                      <li>
+                        • <strong>
+                          {crossRefsWarnings.filter(w => w.crossRefs?.length > 0)
+                            .reduce((sum, w) => sum + w.crossRefs.length, 0)} moment(s)
+                        </strong>
+                      </li>
+                    )}
+                    {crossRefsWarnings.some(w => w.sessionRefs?.length > 0) && (
+                      <li>
+                        • <strong>
+                          {crossRefsWarnings.filter(w => w.sessionRefs?.length > 0)
+                            .reduce((sum, w) => sum + w.sessionRefs.length, 0)} causerie(s)
+                        </strong>
+                      </li>
+                    )}
+                    <li>• <strong>Fichier cloud</strong> (suppression définitive)</li>
+                  </ul>
+                  <p className="text-xs text-red-800 dark:text-red-200 mt-2 font-semibold">
+                    ⚠️ Cette action est IRRÉVERSIBLE
+                  </p>
+                </div>
+              </label>
             </div>
           )}
 
@@ -284,7 +367,7 @@ export default function ConfirmDeleteModal({
           )}
         </div>
 
-        {/* Footer - ⭐ v2.9p : Adaptatif selon cross-refs */}
+        {/* Footer - ⭐ v2.9q : Adaptatif selon cross-refs avec "Supprimer PARTOUT" */}
         <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
           <button
             onClick={handleCancel}
@@ -293,8 +376,28 @@ export default function ConfirmDeleteModal({
             {cancelText}
           </button>
 
-          {/* ⭐ v2.9p : Bouton "Retirer" si cross-refs, "Supprimer" sinon */}
-          {hasCrossRefs && onRemoveOnly ? (
+          {/* ⭐ v2.9q : Logique boutons selon contexte */}
+          {hasCrossRefs && (cascadeOptions?.deleteFiles || deleteFromDrive) && onCleanEverywhere ? (
+            // Scénario 3 : Cross-refs + deleteFiles → Bouton "Supprimer PARTOUT" avec double confirmation
+            <button
+              onClick={() => {
+                if (confirmCleanEverywhere) {
+                  onCleanEverywhere();
+                  onClose();
+                }
+              }}
+              disabled={!confirmCleanEverywhere}
+              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors duration-150 ${
+                confirmCleanEverywhere
+                  ? 'bg-red-700 hover:bg-red-800 cursor-pointer'
+                  : 'bg-gray-400 cursor-not-allowed opacity-50'
+              }`}
+              title={!confirmCleanEverywhere ? 'Cochez la case ci-dessus pour activer' : 'Supprimer de partout (irréversible)'}
+            >
+              🔴 Supprimer PARTOUT
+            </button>
+          ) : hasCrossRefs && onRemoveOnly ? (
+            // Scénario 2 : Cross-refs MAIS pas deleteFiles → Bouton "Retirer" safe
             <button
               onClick={() => {
                 onRemoveOnly();
@@ -306,11 +409,10 @@ export default function ConfirmDeleteModal({
               🔵 Retirer du moment
             </button>
           ) : (
+            // Scénario 1 : Pas de cross-refs → Bouton "Supprimer" normal
             <button
               onClick={handleConfirm}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={hasCrossRefs && cascadeOptions?.deleteFiles}
-              title={hasCrossRefs && cascadeOptions?.deleteFiles ? 'Suppression bloquée : éléments utilisés ailleurs' : ''}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150"
             >
               {confirmText}
             </button>
