@@ -72,9 +72,8 @@ export function useAppState() {
   const deletePhoto = useCallback((momentId, photoId, filename, deleteFromDrive, showSpinner) =>
     dataManager.deletePhoto(momentId, photoId, filename, deleteFromDrive, showSpinner), []);
 
-  // ⭐ v2.9q : Nouvelles actions - Analyse impact et nettoyage global
+  // ⭐ v2.9q : Nouvelles actions - Analyse impact et navigation
   const analyzeDeleteImpact = useCallback((type, params) => dataManager.analyzeDeleteImpact(type, params), []);
-  const cleanPhotoEverywhere = useCallback((photoId, filename) => dataManager.cleanPhotoEverywhere(photoId, filename), []);
   const navigateToMoment = useCallback((momentId, returnContext) => dataManager.navigateToMoment(momentId, returnContext), []);
   const navigateToSession = useCallback((sessionId, returnContext) => dataManager.navigateToSession(sessionId, returnContext), []);
 
@@ -162,9 +161,8 @@ export function useAppState() {
     deletePost,
     deletePhoto,
 
-    // ⭐ v2.9q : Nouvelles actions - Analyse impact et nettoyage global
+    // ⭐ v2.9r : Nouvelles actions - Analyse impact et navigation
     analyzeDeleteImpact,
-    cleanPhotoEverywhere,
     navigateToMoment,
     navigateToSession,
 
