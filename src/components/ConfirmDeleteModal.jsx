@@ -1,15 +1,15 @@
 /**
- * ConfirmDeleteModal.jsx v2.9q - Modal de confirmation de suppression unifié
+ * ConfirmDeleteModal.jsx v2.9r - Modal de confirmation de suppression unifié
  * ✅ Modal générique pour Moment / Note / Photo
  * ✅ Dark mode support
  * ✅ Scrollbar automatique (max-height 90vh)
- * ✅ Checkboxes intégrées pour cascade
+ * ✅ Checkboxes intégrées pour cascade (DEPRECATED - voir CascadeOptionsModal)
  * ✅ Warnings cross-références intégrés (pas de modal séparé)
  * ✅ Boutons adaptatifs selon cross-refs
- * ✅ v2.9q : Double confirmation "Supprimer PARTOUT"
- * ✅ v2.9q : Cross-refs cliquables avec navigation
+ * ✅ v2.9r : BLOCAGE si cross-refs + deleteFiles (sécurité max)
+ * ✅ v2.9r : Cross-refs cliquables avec navigation
  */
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { X, AlertTriangle, FileEdit, Camera, Info, Calendar, MessageCircle, ExternalLink } from 'lucide-react';
 
 export default function ConfirmDeleteModal({
@@ -36,21 +36,10 @@ export default function ConfirmDeleteModal({
   // eslint-disable-next-line no-unused-vars
   showRemoveOnlyButton = false,  // Accepté pour compatibilité (auto-détecté via hasCrossRefs)
   onRemoveOnly = null,
-  // ⭐ v2.9q : Nouvelles props pour suppression globale et navigation
-  onCleanEverywhere = null,  // Callback pour "Supprimer PARTOUT"
+  // ⭐ v2.9r : Navigation cliquable (suppression de onCleanEverywhere)
   onNavigateToMoment = null,  // Callback navigation vers moment
   onNavigateToSession = null  // Callback navigation vers session
 }) {
-  // ⭐ v2.9q : État double confirmation
-  const [confirmCleanEverywhere, setConfirmCleanEverywhere] = useState(false);
-
-  // Réinitialiser à l'ouverture
-  useEffect(() => {
-    if (isOpen) {
-      setConfirmCleanEverywhere(false);
-    }
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   // ⭐ v2.9p : Détection automatique des cross-refs
@@ -207,48 +196,31 @@ export default function ConfirmDeleteModal({
             </div>
           )}
 
-          {/* ⭐ v2.9q : Double confirmation si cross-refs + deleteFiles (ou cascade deleteFiles) */}
-          {hasCrossRefs && (cascadeOptions?.deleteFiles || deleteFromDrive) && onCleanEverywhere && (
-            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/30 border-2 border-red-500 dark:border-red-600 rounded-lg">
-              <label className="flex items-start space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={confirmCleanEverywhere}
-                  onChange={(e) => setConfirmCleanEverywhere(e.target.checked)}
-                  className="mt-1 w-5 h-5 text-red-600 border-red-400 rounded focus:ring-red-500"
-                />
+          {/* ⭐ v2.9r : Message BLOCAGE si cross-refs + deleteFiles */}
+          {hasCrossRefs && (cascadeOptions?.deleteFiles || deleteFromDrive) && (
+            <div className="mt-4 p-4 bg-red-100 dark:bg-red-900/40 border-2 border-red-600 dark:border-red-500 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="w-5 h-5 text-red-700 dark:text-red-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-red-900 dark:text-red-100 flex items-center">
-                    <AlertTriangle className="w-4 h-4 mr-2" />
-                    ⚠️ JE VEUX SUPPRIMER CETTE PHOTO DE PARTOUT
+                  <p className="text-sm font-bold text-red-900 dark:text-red-100 mb-2">
+                    🚫 SUPPRESSION BLOQUÉE
                   </p>
-                  <p className="text-xs text-red-800 dark:text-red-200 mt-2 leading-relaxed">
-                    Cette action va supprimer la photo de :
+                  <p className="text-xs text-red-800 dark:text-red-200 leading-relaxed">
+                    Les photos sont utilisées dans d'autres moments ou causeries.
+                    La suppression des fichiers cloud est impossible pour préserver l'intégrité de vos souvenirs.
                   </p>
-                  <ul className="text-xs text-red-800 dark:text-red-200 mt-1 ml-4 space-y-0.5">
-                    {crossRefsWarnings.some(w => w.crossRefs?.length > 0) && (
-                      <li>
-                        • <strong>
-                          {crossRefsWarnings.filter(w => w.crossRefs?.length > 0)
-                            .reduce((sum, w) => sum + w.crossRefs.length, 0)} moment(s)
-                        </strong>
-                      </li>
-                    )}
-                    {crossRefsWarnings.some(w => w.sessionRefs?.length > 0) && (
-                      <li>
-                        • <strong>
-                          {crossRefsWarnings.filter(w => w.sessionRefs?.length > 0)
-                            .reduce((sum, w) => sum + w.sessionRefs.length, 0)} causerie(s)
-                        </strong>
-                      </li>
-                    )}
-                    <li>• <strong>Fichier cloud</strong> (suppression définitive)</li>
-                  </ul>
-                  <p className="text-xs text-red-800 dark:text-red-200 mt-2 font-semibold">
-                    ⚠️ Cette action est IRRÉVERSIBLE
-                  </p>
+                  <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded">
+                    <p className="text-xs text-blue-900 dark:text-blue-200 font-medium">
+                      💡 Solutions possibles :
+                    </p>
+                    <ul className="text-xs text-blue-800 dark:text-blue-300 mt-1 ml-4 space-y-0.5">
+                      <li>• <strong>Retirer du moment</strong> sans supprimer les fichiers (bouton bleu ci-dessous)</li>
+                      <li>• <strong>Décocher "Supprimer fichiers"</strong> et réessayer</li>
+                      <li>• <strong>Visiter les moments/causeries</strong> listés ci-dessus et supprimer les références d'abord</li>
+                    </ul>
+                  </div>
                 </div>
-              </label>
+              </div>
             </div>
           )}
 
@@ -367,7 +339,7 @@ export default function ConfirmDeleteModal({
           )}
         </div>
 
-        {/* Footer - ⭐ v2.9q : Adaptatif selon cross-refs avec "Supprimer PARTOUT" */}
+        {/* Footer - ⭐ v2.9r : Adaptatif selon cross-refs avec BLOCAGE */}
         <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
           <button
             onClick={handleCancel}
@@ -376,38 +348,42 @@ export default function ConfirmDeleteModal({
             {cancelText}
           </button>
 
-          {/* ⭐ v2.9q : Logique boutons selon contexte */}
-          {hasCrossRefs && (cascadeOptions?.deleteFiles || deleteFromDrive) && onCleanEverywhere ? (
-            // Scénario 3 : Cross-refs + deleteFiles → Bouton "Supprimer PARTOUT" avec double confirmation
-            <button
-              onClick={() => {
-                if (confirmCleanEverywhere) {
-                  onCleanEverywhere();
+          {/* ⭐ v2.9r : Logique boutons selon contexte */}
+          {hasCrossRefs && (cascadeOptions?.deleteFiles || deleteFromDrive) ? (
+            // Scénario BLOQUÉ : Cross-refs + deleteFiles → SEULEMENT bouton "Retirer"
+            onRemoveOnly && (
+              <button
+                onClick={() => {
+                  onRemoveOnly();
                   onClose();
-                }
-              }}
-              disabled={!confirmCleanEverywhere}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors duration-150 ${
-                confirmCleanEverywhere
-                  ? 'bg-red-700 hover:bg-red-800 cursor-pointer'
-                  : 'bg-gray-400 cursor-not-allowed opacity-50'
-              }`}
-              title={!confirmCleanEverywhere ? 'Cochez la case ci-dessus pour activer' : 'Supprimer de partout (irréversible)'}
-            >
-              🔴 Supprimer PARTOUT
-            </button>
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-150"
+                title="Retirer de ce moment sans supprimer du cloud (action sûre)"
+              >
+                🔵 Retirer du moment
+              </button>
+            )
           ) : hasCrossRefs && onRemoveOnly ? (
-            // Scénario 2 : Cross-refs MAIS pas deleteFiles → Bouton "Retirer" safe
-            <button
-              onClick={() => {
-                onRemoveOnly();
-                onClose();
-              }}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-150"
-              title="Retirer de la mémoire sans supprimer du cloud (action sûre)"
-            >
-              🔵 Retirer du moment
-            </button>
+            // Scénario 2 : Cross-refs MAIS pas deleteFiles → Bouton "Retirer" ET "Supprimer"
+            <>
+              <button
+                onClick={() => {
+                  onRemoveOnly();
+                  onClose();
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-150"
+                title="Retirer de ce moment sans supprimer du cloud (action sûre)"
+              >
+                🔵 Retirer du moment
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150"
+                title="Supprimer de ce moment (sans les fichiers cloud)"
+              >
+                {confirmText}
+              </button>
+            </>
           ) : (
             // Scénario 1 : Pas de cross-refs → Bouton "Supprimer" normal
             <button

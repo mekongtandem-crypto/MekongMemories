@@ -20,7 +20,8 @@ import ThemeModal from '../ThemeModal.jsx';
 import PhotoToMemoryModal from '../PhotoToMemoryModal.jsx';  // ⭐ v2.8f
 import EditMomentModal from '../EditMomentModal.jsx';  // ⭐ v2.9
 import EditPostModal from '../EditPostModal.jsx';  // ⭐ v2.9
-import ConfirmDeleteModal from '../ConfirmDeleteModal.jsx';  // ⭐ v2.9p - Modal unifié
+import CascadeOptionsModal from '../CascadeOptionsModal.jsx';  // ⭐ v2.9r - Sélection cascade
+import ConfirmDeleteModal from '../ConfirmDeleteModal.jsx';  // ⭐ v2.9r - Modal confirmation
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';  // ⭐ v2.8f
 import { dataManager } from '../../core/dataManager.js';  // ⭐ v2.8f
 import { logger } from '../../utils/logger.js';  // ⭐ v2.8f
@@ -92,6 +93,19 @@ const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
   // ⭐ v2.9 : Modals édition
   const [editMomentModal, setEditMomentModal] = useState({ isOpen: false, moment: null });
   const [editPostModal, setEditPostModal] = useState({ isOpen: false, post: null, momentId: null });
+
+  // ⭐ v2.9r : Modal sélection cascade (étape 1)
+  const [cascadeOptionsModal, setCascadeOptionsModal] = useState({
+    isOpen: false,
+    itemName: null,
+    itemType: null,
+    itemIcon: null,
+    childrenDetails: null,
+    momentData: null,  // Données complètes du moment pour étape 2
+    onConfirm: null
+  });
+
+  // ⭐ v2.9r : Modal confirmation (étape 2)
   const [confirmDeleteModal, setConfirmDeleteModal] = useState({
     isOpen: false,
     type: null,  // 'moment' | 'post' | 'photo'
@@ -343,88 +357,121 @@ const handleSaveMoment = useCallback(async (updatedMoment) => {
 }, [app]);
 
 const handleDeleteMoment = useCallback((moment) => {
-  // ⭐ v2.9q : Utiliser analyzeDeleteImpact pour pré-analyse complète
+  // ⭐ v2.9r : Workflow en 2 étapes avec CascadeOptionsModal
   const impact = app.analyzeDeleteImpact('moment', { momentId: moment.id });
 
-  // Formater warnings pour le modal (incluant moments + sessions)
-  const crossRefsWarnings = [];
-
-  if (impact.crossRefs.total > 0) {
-    // Combiner tous les warnings par photo
-    const photoMap = new Map();
-
-    // Ajouter warnings moments
-    impact.crossRefs.moments.forEach(m => {
-      if (!photoMap.has(m.photoId)) {
-        photoMap.set(m.photoId, { photoId: m.photoId, filename: m.photoId, crossRefs: [], sessionRefs: [] });
+  // Si pas d'éléments imbriqués → Aller direct à la confirmation
+  if (!impact.nestedElements || (impact.nestedElements.notes.length === 0 && impact.nestedElements.photos === 0)) {
+    // Pas d'enfants → Confirmation directe
+    setConfirmDeleteModal({
+      isOpen: true,
+      type: 'moment',
+      itemName: moment.title,
+      itemType: 'Moment',
+      itemIcon: '📅',
+      momentId: moment.id,
+      itemId: null,
+      deleteFromDrive: false,
+      onConfirm: async () => {
+        try {
+          await app.deleteMoment(moment.id, null);
+          setConfirmDeleteModal({ isOpen: false, type: null, itemName: null });
+        } catch (error) {
+          alert('Erreur lors de la suppression : ' + error.message);
+        }
       }
-      photoMap.get(m.photoId).crossRefs.push(...m.refs);
     });
-
-    // Ajouter warnings sessions
-    impact.crossRefs.sessions.forEach(s => {
-      if (!photoMap.has(s.photoId)) {
-        photoMap.set(s.photoId, { photoId: s.photoId, filename: s.photoId, crossRefs: [], sessionRefs: [] });
-      }
-      photoMap.get(s.photoId).sessionRefs.push(...s.refs);
-    });
-
-    crossRefsWarnings.push(...Array.from(photoMap.values()));
+    return;
   }
 
-  // Initialiser options cascade avec pré-cochage
-  const initialCascadeOptions = {
-    deleteNotes: impact.recommendedOptions.deleteNotes,
-    deletePhotos: impact.recommendedOptions.deletePhotos,
-    deleteFiles: impact.recommendedOptions.deleteFiles
-  };
-
-  setConfirmDeleteModal({
+  // ⭐ ÉTAPE 1 : Ouvrir CascadeOptionsModal pour sélection
+  setCascadeOptionsModal({
     isOpen: true,
-    type: 'moment',
     itemName: moment.title,
-    itemType: 'Moment',
+    itemType: 'moment',
     itemIcon: '📅',
-    momentId: moment.id,
-    itemId: null,
-    deleteFromDrive: false,
     childrenDetails: impact.nestedElements,
-    cascadeOptions: impact.nestedElements ? initialCascadeOptions : null,
-    crossRefsWarnings: crossRefsWarnings.length > 0 ? crossRefsWarnings : null,
-    showRemoveOnlyButton: crossRefsWarnings.length > 0,
+    momentData: { moment, impact },  // Garder pour étape 2
+    onConfirm: (selectedOptions) => {
+      // Fermer étape 1
+      setCascadeOptionsModal({ isOpen: false, itemName: null, momentData: null, onConfirm: null });
 
-    // ⭐ v2.9q : Navigation cliquable
-    onNavigateToMoment: (targetMomentId) => {
-      app.navigateToMoment(targetMomentId, { type: 'delete_moment', momentId: moment.id });
-    },
-    onNavigateToSession: (sessionId) => {
-      app.navigateToSession(sessionId, { type: 'delete_moment', momentId: moment.id });
-    },
+      // Formater warnings cross-refs (incluant moments + sessions)
+      const crossRefsWarnings = [];
 
-    // Suppression normale
-    onConfirm: async (cascadeOpts) => {
-      try {
-        const result = await app.deleteMoment(moment.id, cascadeOpts);
+      if (impact.crossRefs.total > 0) {
+        const photoMap = new Map();
 
-        if (result && !result.success && result.reason === 'cross_references') {
-          alert(`⚠️ Impossible de supprimer : photos utilisées dans d'autres moments`);
-          return;
+        impact.crossRefs.moments.forEach(m => {
+          if (!photoMap.has(m.photoId)) {
+            photoMap.set(m.photoId, { photoId: m.photoId, filename: m.photoId, crossRefs: [], sessionRefs: [] });
+          }
+          photoMap.get(m.photoId).crossRefs.push(...m.refs);
+        });
+
+        impact.crossRefs.sessions.forEach(s => {
+          if (!photoMap.has(s.photoId)) {
+            photoMap.set(s.photoId, { photoId: s.photoId, filename: s.photoId, crossRefs: [], sessionRefs: [] });
+          }
+          photoMap.get(s.photoId).sessionRefs.push(...s.refs);
+        });
+
+        crossRefsWarnings.push(...Array.from(photoMap.values()));
+      }
+
+      // ⭐ ÉTAPE 2 : Ouvrir ConfirmDeleteModal avec les options
+      setConfirmDeleteModal({
+        isOpen: true,
+        type: 'moment',
+        itemName: moment.title,
+        itemType: 'Moment',
+        itemIcon: '📅',
+        momentId: moment.id,
+        cascadeOptions: selectedOptions,
+        crossRefsWarnings: crossRefsWarnings.length > 0 ? crossRefsWarnings : null,
+
+        onNavigateToMoment: (targetMomentId) => {
+          app.navigateToMoment(targetMomentId, { type: 'delete_moment', momentId: moment.id });
+        },
+        onNavigateToSession: (sessionId) => {
+          app.navigateToSession(sessionId, { type: 'delete_moment', momentId: moment.id });
+        },
+
+        onConfirm: async (cascadeOpts) => {
+          try {
+            const result = await app.deleteMoment(moment.id, cascadeOpts || selectedOptions);
+
+            if (result && !result.success && result.reason === 'cross_references') {
+              alert(`⚠️ Impossible de supprimer : photos utilisées dans d'autres moments`);
+              return;
+            }
+
+            setConfirmDeleteModal({ isOpen: false, type: null, itemName: null });
+          } catch (error) {
+            alert('Erreur lors de la suppression : ' + error.message);
+          }
+        },
+
+        onRemoveOnly: async () => {
+          try {
+            await app.deleteMoment(moment.id, { deleteNotes: false, deletePhotos: false, deleteFiles: false });
+            setConfirmDeleteModal({ isOpen: false, type: null, itemName: null });
+          } catch (error) {
+            alert('Erreur lors du retrait : ' + error.message);
+          }
+        },
+
+        onToggleCascadeOption: (optionName, value) => {
+          setConfirmDeleteModal(prev => ({
+            ...prev,
+            cascadeOptions: {
+              ...prev.cascadeOptions,
+              [optionName]: value,
+              ...(optionName === 'deletePhotos' && !value ? { deleteFiles: false } : {})
+            }
+          }));
         }
-
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null });
-      } catch (error) {
-        alert('Erreur lors de la suppression : ' + error.message);
-      }
-    },
-
-    // Retirer uniquement (safe)
-    onRemoveOnly: async () => {
-      try {
-        await app.deleteMoment(moment.id, { deleteNotes: false, deletePhotos: false, deleteFiles: false });
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null });
-      } catch (error) {
-        alert('Erreur lors du retrait : ' + error.message);
-      }
+      });
     }
   });
 }, [app]);
@@ -443,78 +490,117 @@ const handleSavePost = useCallback(async (updatedPost) => {
 }, [app, editPostModal.momentId]);
 
 const handleDeletePost = useCallback((momentId, postId, postTitle) => {
-  // ⭐ v2.9q : Utiliser analyzeDeleteImpact
+  // ⭐ v2.9r : Workflow en 2 étapes avec CascadeOptionsModal
   const impact = app.analyzeDeleteImpact('post', { momentId, postId });
 
-  // Formater warnings
-  const crossRefsWarnings = [];
-
-  if (impact.crossRefs.total > 0) {
-    const photoMap = new Map();
-
-    impact.crossRefs.moments.forEach(m => {
-      if (!photoMap.has(m.photoId)) {
-        photoMap.set(m.photoId, { photoId: m.photoId, filename: m.filename, crossRefs: [], sessionRefs: [] });
+  // Si pas de photos imbriquées → Aller direct à la confirmation
+  if (!impact.nestedElements || impact.nestedElements.photos === 0) {
+    // Pas de photos → Confirmation directe
+    setConfirmDeleteModal({
+      isOpen: true,
+      type: 'post',
+      itemName: postTitle,
+      itemType: 'Photo Note',
+      itemIcon: '📝',
+      momentId,
+      itemId: postId,
+      onConfirm: async () => {
+        try {
+          await app.deletePost(momentId, postId, null);
+          setConfirmDeleteModal({ isOpen: false });
+        } catch (error) {
+          alert('Erreur lors de la suppression : ' + error.message);
+        }
       }
-      photoMap.get(m.photoId).crossRefs.push(...m.refs);
     });
-
-    impact.crossRefs.sessions.forEach(s => {
-      if (!photoMap.has(s.photoId)) {
-        photoMap.set(s.photoId, { photoId: s.photoId, filename: s.filename, crossRefs: [], sessionRefs: [] });
-      }
-      photoMap.get(s.photoId).sessionRefs.push(...s.refs);
-    });
-
-    crossRefsWarnings.push(...Array.from(photoMap.values()));
+    return;
   }
 
-  const initialCascadeOptions = impact.nestedElements ? {
-    deletePhotos: impact.recommendedOptions.deletePhotos,
-    deleteFiles: impact.recommendedOptions.deleteFiles
-  } : null;
-
-  setConfirmDeleteModal({
+  // ⭐ ÉTAPE 1 : Ouvrir CascadeOptionsModal pour sélection
+  setCascadeOptionsModal({
     isOpen: true,
-    type: 'post',
     itemName: postTitle,
     itemType: 'Photo Note',
     itemIcon: '📝',
-    momentId,
-    itemId: postId,
     childrenDetails: impact.nestedElements,
-    cascadeOptions: initialCascadeOptions,
-    crossRefsWarnings: crossRefsWarnings.length > 0 ? crossRefsWarnings : null,
+    postData: { momentId, postId, postTitle, impact },  // Garder pour étape 2
+    onConfirm: (selectedOptions) => {
+      // Fermer étape 1
+      setCascadeOptionsModal({ isOpen: false });
 
-    onNavigateToMoment: (targetMomentId) => {
-      app.navigateToMoment(targetMomentId, { type: 'delete_post', momentId, postId });
-    },
-    onNavigateToSession: (sessionId) => {
-      app.navigateToSession(sessionId, { type: 'delete_post', momentId, postId });
-    },
-
-    onConfirm: async (cascadeOpts) => {
-      try {
-        await app.deletePost(momentId, postId, cascadeOpts);
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null });
-      } catch (error) {
-        alert('Erreur lors de la suppression : ' + error.message);
+      // Formater warnings cross-refs
+      const crossRefsWarnings = [];
+      if (impact.crossRefs.total > 0) {
+        const photoMap = new Map();
+        impact.crossRefs.moments.forEach(m => {
+          if (!photoMap.has(m.photoId)) {
+            photoMap.set(m.photoId, { photoId: m.photoId, filename: m.filename, crossRefs: [], sessionRefs: [] });
+          }
+          photoMap.get(m.photoId).crossRefs.push(...m.refs);
+        });
+        impact.crossRefs.sessions.forEach(s => {
+          if (!photoMap.has(s.photoId)) {
+            photoMap.set(s.photoId, { photoId: s.photoId, filename: s.filename, crossRefs: [], sessionRefs: [] });
+          }
+          photoMap.get(s.photoId).sessionRefs.push(...s.refs);
+        });
+        crossRefsWarnings.push(...Array.from(photoMap.values()));
       }
-    },
 
-    onRemoveOnly: async () => {
-      try {
-        await app.deletePost(momentId, postId, { deletePhotos: false, deleteFiles: false });
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null });
-      } catch (error) {
-        alert('Erreur lors du retrait : ' + error.message);
-      }
+      // ⭐ ÉTAPE 2 : Ouvrir ConfirmDeleteModal avec les options
+      setConfirmDeleteModal({
+        isOpen: true,
+        type: 'post',
+        itemName: postTitle,
+        itemType: 'Photo Note',
+        itemIcon: '📝',
+        momentId,
+        itemId: postId,
+        cascadeOptions: selectedOptions,
+        crossRefsWarnings: crossRefsWarnings.length > 0 ? crossRefsWarnings : null,
+        onNavigateToMoment: (targetMomentId) => {
+          app.navigateToMoment(targetMomentId, { type: 'delete_post', momentId, postId });
+        },
+        onNavigateToSession: (sessionId) => {
+          app.navigateToSession(sessionId, { type: 'delete_post', momentId, postId });
+        },
+        onConfirm: async (cascadeOpts) => {
+          try {
+            const result = await app.deletePost(momentId, postId, cascadeOpts || selectedOptions);
+            if (result && !result.success && result.reason === 'cross_references') {
+              alert(`⚠️ Impossible de supprimer : photos utilisées dans d'autres moments`);
+              return;
+            }
+            setConfirmDeleteModal({ isOpen: false });
+          } catch (error) {
+            alert('Erreur lors de la suppression : ' + error.message);
+          }
+        },
+        onRemoveOnly: async () => {
+          try {
+            await app.deletePost(momentId, postId, { deletePhotos: false, deleteFiles: false });
+            setConfirmDeleteModal({ isOpen: false });
+          } catch (error) {
+            alert('Erreur lors du retrait : ' + error.message);
+          }
+        },
+        onToggleCascadeOption: (optionName, value) => {
+          setConfirmDeleteModal(prev => ({
+            ...prev,
+            cascadeOptions: {
+              ...prev.cascadeOptions,
+              [optionName]: value,
+              ...(optionName === 'deletePhotos' && !value ? { deleteFiles: false } : {})
+            }
+          }));
+        }
+      });
     }
   });
 }, [app]);
 
 const handleDeletePhoto = useCallback((momentId, photoId, photoFilename) => {
-  // ⭐ v2.9q : Utiliser analyzeDeleteImpact pour pré-analyse complète
+  // ⭐ v2.9r : Analyse impact + blocage si cross-refs + deleteFiles
   const impact = app.analyzeDeleteImpact('photo', { momentId, photoId, filename: photoFilename });
 
   // Formater warnings pour le modal
@@ -529,7 +615,7 @@ const handleDeletePhoto = useCallback((momentId, photoId, photoFilename) => {
     });
   }
 
-  // ⭐ v2.9q : Ouvrir modal unifié avec nouvelle architecture
+  // ⭐ v2.9r : Ouvrir modal confirmation directement (pas de cascade pour photo seule)
   setConfirmDeleteModal({
     isOpen: true,
     type: 'photo',
@@ -542,7 +628,7 @@ const handleDeletePhoto = useCallback((momentId, photoId, photoFilename) => {
     crossRefsWarnings: crossRefsWarnings.length > 0 ? crossRefsWarnings : null,
     showRemoveOnlyButton: crossRefsWarnings.length > 0,
 
-    // ⭐ v2.9q : Navigation cliquable vers moments/sessions
+    // ⭐ v2.9r : Navigation cliquable vers moments/sessions
     onNavigateToMoment: (targetMomentId) => {
       app.navigateToMoment(targetMomentId, {
         type: 'delete_photo',
@@ -560,41 +646,27 @@ const handleDeletePhoto = useCallback((momentId, photoId, photoFilename) => {
       });
     },
 
-    // ⭐ v2.9q : Retirer uniquement du moment actuel (safe)
+    // ⭐ v2.9r : Retirer uniquement du moment actuel (safe)
     onRemoveOnly: crossRefsWarnings.length > 0 ? async () => {
       try {
         await app.deletePhoto(momentId, photoId, photoFilename, false);
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false });
+        setConfirmDeleteModal({ isOpen: false });
       } catch (error) {
         alert('Erreur lors du retrait : ' + error.message);
       }
     } : null,
 
-    // ⭐ v2.9q : Suppression normale (sans cross-refs)
+    // ⭐ v2.9r : Suppression avec blocage si cross-refs + deleteFiles
     onConfirm: async (deleteFromDrive) => {
       try {
-        await app.deletePhoto(momentId, photoId, photoFilename, deleteFromDrive);
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false });
+        const result = await app.deletePhoto(momentId, photoId, photoFilename, deleteFromDrive);
+        if (result && !result.success && result.reason === 'cross_references') {
+          alert(`⚠️ Impossible de supprimer : photo utilisée dans d'autres moments`);
+          return;
+        }
+        setConfirmDeleteModal({ isOpen: false });
       } catch (error) {
         alert('Erreur lors de la suppression : ' + error.message);
-      }
-    },
-
-    // ⭐ v2.9q : Suppression globale (PARTOUT)
-    onCleanEverywhere: async () => {
-      try {
-        const report = await app.cleanPhotoEverywhere(photoId, photoFilename);
-        setConfirmDeleteModal({ isOpen: false, type: null, itemName: null, momentId: null, itemId: null, deleteFromDrive: false });
-
-        // Afficher rapport
-        const momentCount = report.momentsAffected.length;
-        const sessionCount = report.sessionsAffected.length;
-        const driveStatus = report.driveDeleted ? '✅ Fichier cloud supprimé' : '⚠️ Fichier cloud non trouvé';
-        const errors = report.errors.length > 0 ? `\n⚠️ ${report.errors.length} erreur(s)` : '';
-
-        alert(`🧹 Nettoyage global terminé :\n\n• ${momentCount} moment(s) modifié(s)\n• ${sessionCount} causerie(s) modifiée(s)\n• ${driveStatus}${errors}`);
-      } catch (error) {
-        alert('Erreur lors du nettoyage global : ' + error.message);
       }
     }
   });
@@ -1531,6 +1603,26 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         onSave={handleSavePost}
       />
 
+      {/* ⭐ v2.9r : Modal sélection cascade (ÉTAPE 1) */}
+      <CascadeOptionsModal
+        isOpen={cascadeOptionsModal.isOpen}
+        onClose={() => setCascadeOptionsModal({
+          isOpen: false,
+          itemName: null,
+          itemType: null,
+          itemIcon: null,
+          childrenDetails: null,
+          momentData: null,
+          onConfirm: null
+        })}
+        onConfirm={cascadeOptionsModal.onConfirm}
+        itemName={cascadeOptionsModal.itemName}
+        itemType={cascadeOptionsModal.itemType}
+        itemIcon={cascadeOptionsModal.itemIcon}
+        childrenDetails={cascadeOptionsModal.childrenDetails}
+      />
+
+      {/* ⭐ v2.9r : Modal confirmation (ÉTAPE 2) */}
       <ConfirmDeleteModal
         isOpen={confirmDeleteModal.isOpen}
         onClose={() => setConfirmDeleteModal({
@@ -1549,7 +1641,6 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           crossRefsWarnings: null,
           showRemoveOnlyButton: false,
           onRemoveOnly: null,
-          onCleanEverywhere: null,
           onNavigateToMoment: null,
           onNavigateToSession: null
         })}
@@ -1565,16 +1656,15 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         showDriveOption={confirmDeleteModal.type === 'photo'}
         deleteFromDrive={confirmDeleteModal.deleteFromDrive}
         onToggleDriveOption={(value) => setConfirmDeleteModal(prev => ({ ...prev, deleteFromDrive: value }))}
-        // ⭐ v2.9j : Options suppression en cascade (moments)
+        // ⭐ v2.9r : Options suppression en cascade (moments/posts)
         childrenCounts={confirmDeleteModal.childrenCounts}
         cascadeOptions={confirmDeleteModal.cascadeOptions}
-        // ⭐ v2.9p : Détails enrichis + cross-refs warnings intégrés
+        // ⭐ v2.9r : Détails enrichis + cross-refs warnings intégrés
         childrenDetails={confirmDeleteModal.childrenDetails}
         crossRefsWarnings={confirmDeleteModal.crossRefsWarnings}
         showRemoveOnlyButton={confirmDeleteModal.showRemoveOnlyButton}
         onRemoveOnly={confirmDeleteModal.onRemoveOnly}
-        // ⭐ v2.9q : Nouveaux callbacks suppression globale et navigation
-        onCleanEverywhere={confirmDeleteModal.onCleanEverywhere}
+        // ⭐ v2.9r : Navigation cliquable vers moments/sessions
         onNavigateToMoment={confirmDeleteModal.onNavigateToMoment}
         onNavigateToSession={confirmDeleteModal.onNavigateToSession}
         onToggleCascadeOption={(optionName, value) => {
