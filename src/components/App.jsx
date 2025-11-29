@@ -543,11 +543,11 @@ export default function App() {
 
           {/* BottomNavigation fixe */}
           {app.isInitialized && (
-            <BottomNavigation 
+            <BottomNavigation
               currentPage={app.currentPage}
               onPageChange={handlePageChange}
               app={app}
-              navigationContext={navigationContext}
+              navigationContext={app.navigationContext || navigationContext}
             />
           )}
           
