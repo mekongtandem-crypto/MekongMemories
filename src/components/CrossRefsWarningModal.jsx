@@ -124,7 +124,12 @@ export default function CrossRefsWarningModal({
                                 key={refIdx}
                                 onClick={() => {
                                   if (onNavigateToSession) {
-                                    // ⭐ v2.9s : Passer aussi messageId pour encadrement visuel
+                                    // ⭐ v2.9t : Passer aussi messageId pour encadrement visuel
+                                    console.log('🔗 Clic lien session:', {
+                                      sessionId: ref.sessionId,
+                                      messageId: ref.messageId,
+                                      ref: ref
+                                    });
                                     onNavigateToSession(ref.sessionId, ref.messageId);
                                   }
                                 }}

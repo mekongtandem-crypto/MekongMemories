@@ -48,13 +48,13 @@ export default function ConfirmDeleteModal({
 
         {/* Body - Scrollable */}
         <div className="p-4 overflow-y-auto flex-1">
-          <p className="text-gray-700 dark:text-gray-300 text-sm">
-            Vous êtes sur le point de supprimer ce souvenir de votre mémoire.
+          <p className="text-gray-700 dark:text-gray-300 text-sm font-medium mb-3">
+            Vous êtes sur le point d'effacer ce souvenir :
           </p>
 
           {/* Élément à supprimer */}
           {itemName && (
-            <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg">
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg">
               <div className="flex items-center space-x-2">
                 {itemIcon && <span className="text-2xl">{itemIcon}</span>}
                 <div className="flex-1">
@@ -71,11 +71,11 @@ export default function ConfirmDeleteModal({
 
           {/* ⭐ Liste informative des éléments qui seront supprimés (SANS checkboxes) */}
           {childrenDetails && (childrenDetails.notes?.length > 0 || childrenDetails.photos > 0) && (
-            <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-              <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 flex items-center">
-                <Info className="w-4 h-4 mr-2" />
-                CONTENU QUI SERA SUPPRIMÉ
+            <>
+              <p className="text-gray-700 dark:text-gray-300 text-sm font-medium mt-4 mb-2">
+                qui contient aussi :
               </p>
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
 
               {/* Notes */}
               {childrenDetails.notes && childrenDetails.notes.length > 0 && (
@@ -119,6 +119,7 @@ export default function ConfirmDeleteModal({
                 </div>
               )}
             </div>
+            </>
           )}
 
           {/* ⭐ Info box bleue */}
@@ -150,7 +151,7 @@ export default function ConfirmDeleteModal({
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-150"
             title="Supprime du masterIndex, garde les photos sur Drive"
           >
-            Effacer de la mémoire
+            Effacer de la ✨Mémoire
           </button>
 
           <button
@@ -161,7 +162,7 @@ export default function ConfirmDeleteModal({
             className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150"
             title="Supprime aussi les fichiers physiques du cloud"
           >
-            Supprimer du Drive
+            Supprimer aussi du Drive
           </button>
         </div>
       </div>
