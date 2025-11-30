@@ -1191,9 +1191,7 @@ function LinkPhotoPreview({ photo }) {
           >
             <div className={shouldSeparateHoverZones ? "relative" : "group relative"}>
 
-              <div className={`px-4 py-3 ${getUserBubbleStyle(message.author)} transition-all duration-200 ${
-                isTargeted ? 'ring-4 ring-yellow-400 dark:ring-yellow-500 shadow-lg' : ''
-              }`}>
+              <div className={`px-4 py-3 ${getUserBubbleStyle(message.author)} transition-all duration-200`}>
                 
                 {editingMessage === message.id ? (
                   <div className="space-y-2">
@@ -1248,7 +1246,10 @@ function LinkPhotoPreview({ photo }) {
 
   return hasInteractivePhoto ? (
     // ⭐ v2.8f : Photo interactive (origin/linkée/importée) = LinkedContent avec Zoom/Localiser
-    <div className="w-full max-w-full overflow-hidden mb-2">
+    // ⭐ v2.9s : Cadre NOIR si message ciblé depuis cross-refs modal
+    <div className={`w-full max-w-full overflow-hidden mb-2 ${
+      isTargeted ? 'ring-4 ring-black dark:ring-white rounded-lg shadow-xl' : ''
+    }`}>
       <LinkedContent
         linkedContent={{
           type: 'photo',
@@ -1270,10 +1271,13 @@ function LinkPhotoPreview({ photo }) {
     </div>
   ) : (
     // Photo normale sans interaction
-    <PhotoMessage
-      photo={enrichedPhotoData}
-      onPhotoClick={openPhotoViewer}
-    />
+    // ⭐ v2.9s : Cadre NOIR si message ciblé
+    <div className={isTargeted ? 'ring-4 ring-black dark:ring-white rounded-lg shadow-xl' : ''}>
+      <PhotoMessage
+        photo={enrichedPhotoData}
+        onPhotoClick={openPhotoViewer}
+      />
+    </div>
   );
 })()}
     
