@@ -64,7 +64,7 @@ export default function DeletePhotoChoiceModal({
           <CollapsibleHelp defaultOpen={false}>
             <ul className="ml-4 space-y-1 text-blue-800 dark:text-blue-300">
               <li>• <strong>Message seulement</strong> : Le message disparaît de la causerie, mais la photo reste disponible sur Google Drive pour d'autres usages</li>
-              <li>• <strong>Message + fichier photo</strong> : Le message ET le fichier physique sont supprimés définitivement du cloud (⚠️ action irréversible)</li>
+              <li>• <strong>Message + fichier photo</strong> : Le message ET le fichier physique sont supprimés définitivement du cloud (action irréversible)</li>
             </ul>
           </CollapsibleHelp>
         </div>
@@ -91,7 +91,7 @@ export default function DeletePhotoChoiceModal({
               title="Supprimer le message uniquement, garder la photo sur Drive"
             >
               <MessageCircle className="w-4 h-4" />
-              <span>💬 Supprimer message seulement</span>
+              <span>Supprimer message seulement</span>
             </button>
 
             {/* Bouton Message + fichier (rouge) */}
@@ -104,7 +104,7 @@ export default function DeletePhotoChoiceModal({
               title="Supprimer le message ET le fichier physique du cloud (irréversible)"
             >
               <Trash2 className="w-4 h-4" />
-              <span>🗑️ Supprimer aussi le fichier photo</span>
+              <span>Supprimer aussi le fichier photo</span>
             </button>
           </div>
         </div>
