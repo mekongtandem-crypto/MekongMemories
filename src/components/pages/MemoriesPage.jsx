@@ -1690,7 +1690,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           app.navigateToMoment(momentId, returnContext);
           setCrossRefsModal({ isOpen: false });
         }}
-        onNavigateToSession={(sessionId) => {
+        onNavigateToSession={(sessionId, messageId) => {
           // ⭐ v2.9s : Mémoriser état complet et naviguer
           const returnContext = {
             type: 'cross_refs_modal',
@@ -1698,7 +1698,8 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
             openMomentId,
             editionMode,
             crossRefsModal: { ...crossRefsModal, isOpen: true },
-            returnPage: 'memories'
+            returnPage: 'memories',
+            targetMessageId: messageId  // ⭐ v2.9s : Pour encadrement visuel dans ChatPage
           };
           app.navigateToSession(sessionId, returnContext);
           setCrossRefsModal({ isOpen: false });

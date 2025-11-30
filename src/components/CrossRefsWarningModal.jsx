@@ -124,7 +124,8 @@ export default function CrossRefsWarningModal({
                                 key={refIdx}
                                 onClick={() => {
                                   if (onNavigateToSession) {
-                                    onNavigateToSession(ref.sessionId);
+                                    // ⭐ v2.9s : Passer aussi messageId pour encadrement visuel
+                                    onNavigateToSession(ref.sessionId, ref.messageId);
                                   }
                                 }}
                                 className="cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 p-1 rounded transition-colors"
