@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mémoire du Mékong
 
-> **Version:** 2.9n "Suppression Sécurisée" | **Last Updated:** November 22, 2025
+> **Version:** 2.9w6 "Fix Retour Auto MemoriesPage v2" | **Last Updated:** November 30, 2025
 > **Purpose:** Comprehensive guide for development teams and AI assistants working on this codebase
 
 ---
@@ -9,8 +9,8 @@
 
 **Mémoire du Mékong** is a Progressive Web App that transforms a travel diary into an interactive, conversation-based memory exploration platform. Users can discuss and organize travel experiences through themed "sessions" (chats), explore a timeline of "moments" (thematic units), and manage photos and Mastodon posts.
 
-**Current Version:** 2.9n - Suppression Sécurisée - Cross-Refs Check
-**Release Date:** November 22, 2025
+**Current Version:** 2.9w6 - Fix Retour Auto MemoriesPage v2
+**Release Date:** November 30, 2025
 **Total LOC:** ~9,400 lines
 **Language:** JavaScript (ES6+), no TypeScript
 **Code Language:** French comments/documentation with English variable names
@@ -42,6 +42,40 @@
 ---
 
 ## 📝 Recent Changelog
+
+### Version 2.9w6 (November 30, 2025) - Fix Retour Auto MemoriesPage v2 ✅
+
+**🐛 HOTFIX: Navigation method fix**
+- Fix critical error: `app.navigateTo is not a function`
+- Replaced all `app.navigateTo()` calls with `dataManager.updateState()`
+- Fixed in ChatPage.jsx (4 occurrences) for auto-return to MemoriesPage
+- Auto-return now works correctly after deletion from Modal 2
+
+**✨ UX Improvements: ChatPage input area (iMessage style)**
+- Redesigned input section with smaller + button on left
+- Send button integrated at bottom-right of textarea (rounded pill style)
+- Wider textarea with better use of horizontal space
+- Adaptive dark mode support
+- More modern, clean appearance
+
+**✨ UX Improvements: CrossRefsWarningModal**
+- Removed colored frame from info message (now neutral gray text)
+- Synthesized message: "Les photos que vous voulez supprimer du cloud, sont encore utilisées..."
+- Links more prominent with MessageCircle icon before session title
+- Session format: `[icon] Session Title : italic preview (author, date)`
+- Better visual hierarchy for easier scanning
+
+**🧹 Code Cleanup**
+- Removed 10+ debug console.logs from MemoriesPage.jsx
+- Commented out `📸 Photo data:` log in PhotoThumbnail.jsx
+- Cleaner console output for production
+
+**📱 Mobile Optimization: Edit mode banner**
+- Reduced from 4+ lines to 2 lines on mobile
+- Compact padding: `px-4 py-3` → `px-3 py-2`
+- Smaller text: `text-lg` → `text-base` for title, `text-sm` → `text-xs` for instructions
+- Simplified instructions: "Modifier" and "Supprimer" with icons only
+- Less horizontal spacing: `gap-2` and `gap-1` instead of `space-x-4`
 
 ### Version 2.9n (November 22, 2025) - Suppression Sécurisée ✅
 
