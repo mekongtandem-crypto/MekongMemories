@@ -1,7 +1,7 @@
 /**
  * Configuration version - MémoireDuMékong
  */
-export const APP_VERSION = "2.9w4";
+export const APP_VERSION = "2.9w5";
 export const APP_NAME = "Mémoire du Mékong";
 export const BUILD_DATE = "30 novembre 2025";
-export const PHASE = "Fix Suppression PhotoENVrac + Nettoyage logs";
+export const PHASE = "Fix Retour Auto MemoriesPage";

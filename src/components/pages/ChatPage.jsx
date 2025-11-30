@@ -160,7 +160,6 @@ console.log('🔍 DEBUG navigationContext:', {
     
     // ⭐ LIEN : Injecter lien sélectionné depuis Memories
     if (navigationContext?.pendingLink) {
-      console.log('🔗 Lien reçu depuis Memories:', navigationContext.pendingLink);
       setPendingLink(navigationContext.pendingLink);
 
       // Nettoyer navigationContext pour éviter persistance entre sessions
@@ -725,33 +724,20 @@ useEffect(() => {
 
   const hasPhoto = messageToDelete?.photoData;
   const isImportedPhoto = hasPhoto && messageToDelete.photoData.source === 'imported';
-  const cameFromModal = navigationContext?.returnContext?.fromPage === 'memories';
+  const cameFromModal = navigationContext?.returnContext?.returnPage === 'memories';
 
-  console.log('🗑️ handleDeleteMessage:', {
-    messageId,
-    isImportedPhoto,
-    cameFromModal,
-    hasPhoto
-  });
-
-  // ═══════════════════════════════════════════════════
   // CAS 2 : Venu de MemoriesPage Modal 2
-  // ═══════════════════════════════════════════════════
   if (cameFromModal) {
-    console.log('📋 CAS 2 : Suppression depuis MemoriesPage Modal 2');
-
     // Simple confirmation
     if (!confirm('Supprimer ce message ?')) return;
 
     // ⭐ v2.9w : Appeler performMessageDeletion avec flag cameFromModal
     // (pas de suppression Drive pour messages depuis Modal 2)
     await performMessageDeletion(messageId, false, true);  // deleteFromDrive=false, cameFromModal=true
-    return;  // Sortir immédiatement
+    return;
   }
 
-  // ═══════════════════════════════════════════════════
   // CAS 1 : ChatPage NORMAL
-  // ═══════════════════════════════════════════════════
   else if (isImportedPhoto) {
     const photoId = messageToDelete.photoData.google_drive_id || messageToDelete.photoData.filename;
 
@@ -762,11 +748,8 @@ useEffect(() => {
 
     const hasCrossRefs = momentRefs.length > 0 || sessionRefs.length > 0;
 
-    // ─────────────────────────────────────────────────
     // CAS 1A : Photo NON utilisée ailleurs
-    // ─────────────────────────────────────────────────
     if (!hasCrossRefs) {
-      console.log('💾 CAS 1A : Photo non utilisée ailleurs → Modal choix Drive');
 
       // Ouvrir modal de choix
       setDeleteChoiceModal({
@@ -775,26 +758,18 @@ useEffect(() => {
         photoFilename: messageToDelete.photoData.filename,
         deleteFromDrive: false
       });
-      return;  // Modal prendra le relais
+      return;
     }
 
-    // ─────────────────────────────────────────────────
     // CAS 1B : Photo utilisée ailleurs
-    // ─────────────────────────────────────────────────
     else {
-      console.log('🔗 CAS 1B : Photo utilisée ailleurs → Suppression silencieuse message seul');
-      console.log('   Cross-refs:', { momentRefs: momentRefs.length, sessionRefs: sessionRefs.length });
-
       // Simple confirmation (suppression message seul, photo reste)
       if (!confirm('Supprimer ce message ?')) return;
     }
   }
 
-  // ═══════════════════════════════════════════════════
   // CAS 1C : Message normal (sans photo importée)
-  // ═══════════════════════════════════════════════════
   else {
-    console.log('📝 CAS 1C : Message normal');
     if (!confirm('Supprimer ce message ?')) return;
   }
 
@@ -803,56 +778,26 @@ useEffect(() => {
 
   try {
     const updatedSession = { ...app.currentChatSession };
-
-    // ⭐ v2.9o FIX : Détecter si message a un lien (linkedContent OU photoData)
     const hasLinkedContent = messageToDelete?.linkedContent;
-
-    console.log('🗑️ Suppression message:', {
-      messageId,
-      hasLinkedContent,
-      hasPhoto,
-      photoData: hasPhoto ? messageToDelete.photoData : null
-    });
 
     // Supprimer le message
     updatedSession.notes = updatedSession.notes.filter(note => note.id !== messageId);
 
     await app.updateSession(updatedSession);
 
-    // ⭐ v2.9o : Nettoyer ContentLinks si le message avait un lien OU une photo
+    // Nettoyer ContentLinks
     if (window.contentLinks && (hasLinkedContent || hasPhoto)) {
-      console.log('🔗 Nettoyage ContentLinks...');
-
-      // ⚠️ FIX CRITIQUE : Pour les photos, essayer BOTH google_drive_id ET filename
-      // Car le lien peut avoir été créé avec l'un ou l'autre
       if (hasPhoto) {
         const photo = messageToDelete.photoData;
-        console.log('📸 Photo à supprimer:', photo);
-
-        // Essayer google_drive_id
         if (photo.google_drive_id) {
-          console.log('🔍 Tentative suppression lien avec google_drive_id:', photo.google_drive_id);
-          await window.contentLinks.removeLink(
-            updatedSession.id,
-            'photo',
-            photo.google_drive_id
-          );
+          await window.contentLinks.removeLink(updatedSession.id, 'photo', photo.google_drive_id);
         }
-
-        // Essayer filename (au cas où le lien aurait été créé avec filename)
         if (photo.filename && photo.filename !== photo.google_drive_id) {
-          console.log('🔍 Tentative suppression lien avec filename:', photo.filename);
-          await window.contentLinks.removeLink(
-            updatedSession.id,
-            'photo',
-            photo.filename
-          );
+          await window.contentLinks.removeLink(updatedSession.id, 'photo', photo.filename);
         }
       }
 
-      // Pour linkedContent (moment/post), utiliser l'ID normal
       if (hasLinkedContent) {
-        console.log('🔗 Suppression lien linkedContent:', messageToDelete.linkedContent);
         await window.contentLinks.removeLink(
           updatedSession.id,
           messageToDelete.linkedContent.type,
@@ -860,59 +805,14 @@ useEffect(() => {
         );
       }
 
-      // ⭐ v2.9o : Forcer re-render React en créant nouvelle référence sessions
-      // Nécessaire car les composants memoizés (SessionBadgePhotoThumb) ne se rafraîchissent
-      // que si la référence de l'array change
+      // Forcer re-render
       const currentSessions = dataManager.getState().sessions;
       dataManager.updateState({ sessions: [...currentSessions] });
-
-      // ⭐ DEBUG : Vérifier que le lien a bien été supprimé
-      console.log('═══════════════════════════════════════════════════');
-      console.log('🔍 VÉRIFICATION SUPPRESSION LIEN');
-      console.log('═══════════════════════════════════════════════════');
-
-      const linksAfter = window.contentLinks.getLinksForSession(updatedSession.id);
-      console.log('📊 Liens restants pour session', updatedSession.id, ':', linksAfter.length, 'lien(s)');
-      linksAfter.forEach((link, idx) => {
-        console.log(`  ${idx + 1}.`, link.contentType, ':', link.contentId);
-      });
-
-      // Vérifier l'index côté contenu
-      if (hasPhoto) {
-        const photo = messageToDelete.photoData;
-        if (photo.google_drive_id) {
-          const sessions1 = window.contentLinks.getSessionsForContent('photo', photo.google_drive_id);
-          console.log('📸 Sessions liées à photo (google_drive_id):', photo.google_drive_id);
-          console.log('   → ', sessions1.length, 'session(s)');
-        }
-        if (photo.filename) {
-          const sessions2 = window.contentLinks.getSessionsForContent('photo', photo.filename);
-          console.log('📸 Sessions liées à photo (filename):', photo.filename);
-          console.log('   → ', sessions2.length, 'session(s)');
-        }
-      }
-
-      if (hasLinkedContent) {
-        const sessionsForContent = window.contentLinks.getSessionsForContent(
-          messageToDelete.linkedContent.type,
-          messageToDelete.linkedContent.id
-        );
-        console.log('🔗 Sessions liées au contenu:', messageToDelete.linkedContent.id);
-        console.log('   → ', sessionsForContent.length, 'session(s)');
-      }
-
-      console.log('═══════════════════════════════════════════════════');
-      console.log('✅ ContentLinks mis à jour - Pastilles devraient être rafraîchies');
     }
 
-    // ⭐ v2.9u CAS 2 : Auto-retour + ré-ouverture Modal 2 si venu de MemoriesPage
+    // Auto-retour vers MemoriesPage si venu de Modal 2
     if (cameFromModal) {
-      console.log('🔙 CAS 2 : Auto-retour vers MemoriesPage + ré-ouverture Modal 2');
-
-      // Désactiver spinner avant navigation
       dataManager.setLoadingOperation(false);
-
-      // ⭐ Modif 1 : Afficher feedback avant retour auto
       setFeedbackMessage('Retour à la page Souvenirs...');
 
       // Attendre 800ms pour que l'utilisateur voie le message
@@ -939,13 +839,12 @@ useEffect(() => {
   }
 };
 
-// ⭐ v2.9u CAS 1A : Handlers pour modal choix Drive
+// Handlers pour modal choix Drive
 const handleDeleteMessageOnly = async () => {
-  console.log('💾 CAS 1A : Suppression message seulement (photo reste sur Drive)');
   const { messageId } = deleteChoiceModal;
 
   // ⭐ v2.9w2 : Détecter si on vient de MemoriesPage Modal 2
-  const cameFromModal = navigationContext?.returnContext?.fromPage === 'memories';
+  const cameFromModal = navigationContext?.returnContext?.returnPage === 'memories';
 
   // Fermer le modal
   setDeleteChoiceModal({ isOpen: false, messageId: null, photoFilename: null, deleteFromDrive: false });
@@ -955,11 +854,10 @@ const handleDeleteMessageOnly = async () => {
 };
 
 const handleDeleteMessageAndDrive = async () => {
-  console.log('🗑️ CAS 1A : Suppression message + photo du Drive');
   const { messageId } = deleteChoiceModal;
 
   // ⭐ v2.9w2 : Détecter si on vient de MemoriesPage Modal 2
-  const cameFromModal = navigationContext?.returnContext?.fromPage === 'memories';
+  const cameFromModal = navigationContext?.returnContext?.returnPage === 'memories';
 
   // Fermer le modal
   setDeleteChoiceModal({ isOpen: false, messageId: null, photoFilename: null, deleteFromDrive: false });
@@ -970,47 +868,26 @@ const handleDeleteMessageAndDrive = async () => {
 
 // ⭐ v2.9u : Fonction commune de suppression (appelée par les handlers)
 const performMessageDeletion = async (messageId, deleteFromDrive = false, cameFromModal = false) => {
-  console.log('═══════════════════════════════════════════════════');
-  console.log('🔥 performMessageDeletion DÉBUT');
-  console.log('═══════════════════════════════════════════════════');
-
   const messageToDelete = app.currentChatSession.notes.find(m => m.id === messageId);
-  if (!messageToDelete) {
-    console.log('❌ Message introuvable:', messageId);
-    return;
-  }
+  if (!messageToDelete) return;
 
-  // ⭐ v2.9u FIX : Sauvegarder photoData AVANT suppression message
   const photoDataBackup = messageToDelete.photoData ? { ...messageToDelete.photoData } : null;
   const hasLinkedContent = messageToDelete?.linkedContent;
   const hasPhoto = !!photoDataBackup;
-
-  console.log('📋 PARAMÈTRES:', {
-    messageId,
-    deleteFromDrive,
-    hasPhoto,
-    cameFromModal,
-    photoSource: photoDataBackup?.source,
-    photoId: photoDataBackup?.google_drive_id || photoDataBackup?.filename,
-    photoBackup: photoDataBackup
-  });
 
   dataManager.setLoadingOperation(true, 'Suppression du message...', 'Enregistrement sur Google Drive', 'monkey');
 
   try {
     const updatedSession = { ...app.currentChatSession };
 
-    // ⭐ v2.9w FIX : Nettoyer ContentLinks AVANT deletePhoto pour éviter faux positif cross-ref
+    // Nettoyer ContentLinks AVANT deletePhoto
     if (window.contentLinks && (hasLinkedContent || hasPhoto)) {
-      console.log('🧹 Nettoyage ContentLinks...');
       if (hasPhoto && photoDataBackup) {
         if (photoDataBackup.google_drive_id) {
           await window.contentLinks.removeLink(updatedSession.id, 'photo', photoDataBackup.google_drive_id);
-          console.log('  ✅ Lien supprimé (google_drive_id):', photoDataBackup.google_drive_id);
         }
         if (photoDataBackup.filename && photoDataBackup.filename !== photoDataBackup.google_drive_id) {
           await window.contentLinks.removeLink(updatedSession.id, 'photo', photoDataBackup.filename);
-          console.log('  ✅ Lien supprimé (filename):', photoDataBackup.filename);
         }
       }
       if (hasLinkedContent) {
@@ -1019,101 +896,61 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false, cameFr
           messageToDelete.linkedContent.type,
           messageToDelete.linkedContent.id
         );
-        console.log('  ✅ Lien supprimé (linkedContent)');
       }
-      console.log('✅ ContentLinks nettoyés AVANT suppression Drive');
     }
 
-    // ⭐ v2.9w2 FIX CRITIQUE : Supprimer message de la session EN MÉMOIRE avant deletePhoto
-    console.log('🗑️ Suppression message EN MÉMOIRE...');
+    // Supprimer message EN MÉMOIRE avant deletePhoto
     updatedSession.notes = updatedSession.notes.filter(note => note.id !== messageId);
-    console.log('  ✅ Message supprimé de updatedSession.notes');
 
-    // ⭐ v2.9w2 : Mettre à jour appState temporairement pour que checkPhotoInSessions ne voie plus le message
-    console.log('🔄 Mise à jour appState temporaire...');
+    // Mettre à jour appState temporairement
     dataManager.updateState({
       sessions: app.sessions.map(s => s.id === updatedSession.id ? updatedSession : s)
     });
-    console.log('  ✅ appState mis à jour (message invisible pour checkPhotoInSessions)');
 
-    // ⭐ Suppression Drive APRÈS nettoyage (checkPhotoInSessions ne verra plus le message)
-    console.log('🔍 Vérification conditions suppression Drive:');
-    console.log('  deleteFromDrive:', deleteFromDrive);
-    console.log('  hasPhoto:', hasPhoto);
-    console.log('  photoDataBackup.source:', photoDataBackup?.source);
-    console.log('  Condition complète:', deleteFromDrive && hasPhoto && photoDataBackup?.source === 'imported');
-
+    // Suppression Drive si demandé
     if (deleteFromDrive && hasPhoto && photoDataBackup.source === 'imported') {
-      console.log('💣 SUPPRESSION DRIVE ACTIVÉE');
       const photoId = photoDataBackup.google_drive_id || photoDataBackup.filename;
-      console.log('  📸 photoId:', photoId);
 
-      // ⭐ v2.9v FIX : Paramètres corrects pour deletePhoto
-      console.log('  🚀 Appel dataManager.deletePhoto...');
       const result = await dataManager.deletePhoto(
         null,                        // momentId (null car photo de chat)
-        photoId,                     // photoId (google_drive_id ou filename)
+        photoId,                     // photoId
         photoDataBackup.filename,    // filename
         true,                        // deleteFromDrive = true
         false                        // showSpinner = false (déjà affiché)
       );
 
-      console.log('  📊 Résultat deletePhoto:', result);
-
-      if (result && result.success) {
-        console.log('  ✅ Photo supprimée du Drive');
-      } else if (result && !result.success) {
-        console.error('  ❌ Erreur suppression Drive:', result.reason);
-        console.error('  📋 Détails:', result);
+      if (result && !result.success) {
+        console.error('Erreur suppression Drive:', result.reason);
         dataManager.setLoadingOperation(false);
         alert(`Erreur suppression Drive: ${result.reason}`);
-        return; // Annuler la suppression du message
+        return;
       }
-    } else {
-      console.log('⏭️ SUPPRESSION DRIVE IGNORÉE (conditions non remplies)');
     }
 
-    // Sauvegarder la session mise à jour sur Drive
-    console.log('💾 Sauvegarde session sur Drive...');
+    // Sauvegarder session
     await app.updateSession(updatedSession);
-    console.log('  ✅ Session sauvegardée');
 
     // Forcer re-render
     if (window.contentLinks) {
       const currentSessions = dataManager.getState().sessions;
       dataManager.updateState({ sessions: [...currentSessions] });
-      console.log('  ✅ Re-render forcé');
     }
 
-    // ⭐ v2.9w CAS 2 : Auto-retour + ré-ouverture Modal 2 si venu de MemoriesPage
-    console.log('🔍 Vérification retour auto:');
-    console.log('  cameFromModal:', cameFromModal);
-
+    // Auto-retour vers MemoriesPage si venu de Modal 2
     if (cameFromModal) {
-      console.log('🔙 CAS 2 DÉTECTÉ : Auto-retour vers MemoriesPage');
-
-      // Désactiver spinner avant navigation
       dataManager.setLoadingOperation(false);
-      console.log('  ✅ Spinner désactivé');
-
-      // ⭐ Afficher feedback avant retour auto
       setFeedbackMessage('Retour à la page Souvenirs...');
-      console.log('  ✅ Feedback affiché');
 
-      // Attendre 800ms pour que l'utilisateur voie le message
-      console.log('  ⏳ setTimeout 800ms avant navigation...');
       setTimeout(() => {
-        console.log('  🚀 NAVIGATION vers MemoriesPage');
-        // Retourner à MemoriesPage avec flag pour ré-ouvrir Modal 2
         app.navigateTo('memories', {
           previousPage: 'chat',
           returnContext: {
             ...navigationContext.returnContext,
-            reopenModal2: true  // ⭐ Flag pour ré-ouvrir Modal 2 avec cross-refs actualisées
+            reopenModal2: true
           }
         });
       }, 800);
-      return;  // Sortir immédiatement
+      return;
     }
 
     dataManager.setLoadingOperation(false);
