@@ -285,21 +285,29 @@ useEffect(() => {
 
       logger.info(`📸 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
 
-      // 2. Afficher le spinner de loading
+      // ⭐ v2.9v FIX : Traitement LOCAL pour preview instantané (pas d'upload)
+      const { processImageLocally } = await import('../../utils/imageCompression.js');
+
+      // 2. Spinner court : Traitement LOCAL uniquement (pas d'upload)
       dataManager.setLoadingOperation(
         true,
-        'Traitement de l\'image...',
-        'Compression et upload vers Google Drive',
+        'Préparation de l\'image...',
+        'Compression et génération du thumbnail',
         'spin'
       );
 
-      // 3. Traiter et uploader l'image
-      const photoMetadata = await processAndUploadImage(file, app.currentUser.id);
+      // 3. Traiter l'image LOCALEMENT (ObjectURL pour preview instantané)
+      const processedData = await processImageLocally(file, app.currentUser.id);
 
-      logger.success('✅ Photo uploadée avec succès:', photoMetadata);
+      logger.success('✅ Image traitée en mémoire:', processedData);
 
-      // 4. Attacher la photo au message
-      setAttachedPhoto(photoMetadata);
+      // 4. Attacher avec les données locales pour preview instantané
+      // L'upload se fera au moment de l'envoi du message
+      setAttachedPhoto({
+        processedData,  // ⭐ Données en mémoire (ObjectURLs)
+        source: 'imported',
+        filename: processedData.filename
+      });
 
       // 5. Désactiver le spinner
       dataManager.setLoadingOperation(false);
@@ -312,13 +320,15 @@ useEffect(() => {
       }, 100);
 
     } catch (error) {
-      logger.error('❌ Erreur upload photo rapide:', error);
+      logger.error('❌ Erreur traitement photo rapide:', error);
 
       // Désactiver le spinner
       dataManager.setLoadingOperation(false);
 
       // Afficher message d'erreur
-      alert(`Erreur lors de l'upload de la photo:\n${error.message}`);
+      if (error.message !== 'Sélection annulée') {
+        alert(`Erreur lors du traitement de la photo:\n${error.message}`);
+      }
     }
   };
 
@@ -608,6 +618,48 @@ useEffect(() => {
     if (!newMessage.trim() && !attachedPhoto && !pendingLink) return;
 
     try {
+      // ⭐ v2.9v : Si photo avec processedData, uploader AVANT envoi message
+      let finalPhotoData = attachedPhoto;
+
+      if (attachedPhoto?.processedData) {
+        logger.info('📤 Upload photo vers Drive avant envoi message');
+
+        const { uploadProcessedImage } = await import('../../utils/imageCompression.js');
+
+        // Spinner pendant l'upload
+        dataManager.setLoadingOperation(
+          true,
+          'Upload de la photo...',
+          'Envoi vers Google Drive',
+          'spin'
+        );
+
+        try {
+          // Upload et récupération des métadonnées Drive
+          const uploadedPhotoData = await uploadProcessedImage(
+            attachedPhoto.processedData,
+            app.currentUser.id
+          );
+
+          logger.success('✅ Photo uploadée:', uploadedPhotoData);
+
+          // Remplacer par les vraies données Drive
+          finalPhotoData = uploadedPhotoData;
+
+          // Cleanup des ObjectURLs
+          const { cleanupProcessedImage } = await import('../../utils/imageCompression.js');
+          cleanupProcessedImage(attachedPhoto.processedData);
+
+        } catch (uploadError) {
+          logger.error('❌ Erreur upload photo:', uploadError);
+          dataManager.setLoadingOperation(false);
+          alert(`Erreur lors de l'upload de la photo:\n${uploadError.message}`);
+          return; // Annuler l'envoi du message
+        }
+
+        dataManager.setLoadingOperation(false);
+      }
+
       // ⭐ MODIFIÉ : Support linkedContent
       const messageData = {
         content: newMessage.trim(),
@@ -617,14 +669,14 @@ useEffect(() => {
           title: pendingLink.title
         } : null
       };
-      
+
       await app.addMessageToSession(
-        app.currentChatSession.id, 
-        messageData.content, 
-        attachedPhoto,
-        messageData.linkedContent  // ⭐ Nouveau param
+        app.currentChatSession.id,
+        messageData.content,
+        finalPhotoData,  // ⭐ v2.9v : Photo uploadée ou null
+        messageData.linkedContent
       );
-      
+
       setNewMessage('');
       setAttachedPhoto(null);
       setPendingLink(null);
@@ -935,14 +987,23 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false) => {
       console.log('🗑️ Suppression photo du Drive...');
       const photoId = photoDataBackup.google_drive_id || photoDataBackup.filename;
 
-      // Utiliser dataManager.deletePhoto pour supprimer du Drive
-      const result = await dataManager.deletePhoto(null, photoId, true);
+      // ⭐ v2.9v FIX : Paramètres corrects pour deletePhoto
+      // deletePhoto(momentId, photoId, filename, deleteFromDrive, showSpinner)
+      const result = await dataManager.deletePhoto(
+        null,                        // momentId (null car photo de chat)
+        photoId,                     // photoId (google_drive_id ou filename)
+        photoDataBackup.filename,    // filename
+        true,                        // deleteFromDrive = true
+        false                        // showSpinner = false (déjà affiché)
+      );
 
-      if (result.success) {
+      if (result && result.success) {
         console.log('✅ Photo supprimée du Drive');
-      } else {
+      } else if (result && !result.success) {
         console.error('❌ Erreur suppression Drive:', result.reason);
+        dataManager.setLoadingOperation(false);
         alert(`Erreur suppression Drive: ${result.reason}`);
+        return; // Annuler la suppression du message
       }
     }
 
@@ -1845,9 +1906,12 @@ function LinkPhotoPreview({ photo }) {
       />
 
       {/* Feedback temporaire */}
+      {/* ⭐ v2.9v FIX : Modal feedback avec z-index élevé */}
       {feedbackMessage && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-pulse">
-          {feedbackMessage}
+        <div className="fixed inset-0 flex items-center justify-center z-[10002]" style={{ pointerEvents: 'none' }}>
+          <div className="bg-black/80 text-white px-6 py-4 rounded-xl shadow-2xl text-base font-medium animate-pulse">
+            {feedbackMessage}
+          </div>
         </div>
       )}
 
@@ -2026,10 +2090,20 @@ function PhotoPreview({ photo }) {
 
       try {
         setLoading(true);
-        // ⭐ v2.9t TÂCHE 3 : Utiliser thumbnail au lieu de full-size pour preview
-        const url = await window.photoDataV2.resolveImageUrl(photo, true);
-        if (isMounted && url && !url.startsWith('data:image/svg+xml')) {
-          setImageUrl(url);
+
+        // ⭐ v2.9v FIX : Si processedData disponible, utiliser ObjectURL instantané
+        if (photo.processedData?.thumbPreviewUrl) {
+          logger.debug('📸 Preview: Utilisation ObjectURL local (instantané)');
+          if (isMounted) {
+            setImageUrl(photo.processedData.thumbPreviewUrl);
+          }
+        } else {
+          // Sinon, résoudre depuis Drive (photo déjà uploadée)
+          logger.debug('📸 Preview: Résolution depuis Drive');
+          const url = await window.photoDataV2.resolveImageUrl(photo, true);
+          if (isMounted && url && !url.startsWith('data:image/svg+xml')) {
+            setImageUrl(url);
+          }
         }
       } catch (err) {
         console.error('❌ Erreur preview photo:', err);
@@ -2037,7 +2111,7 @@ function PhotoPreview({ photo }) {
         if (isMounted) setLoading(false);
       }
     };
-    
+
     resolveUrl();
     return () => { isMounted = false; };
   }, [photo]);
