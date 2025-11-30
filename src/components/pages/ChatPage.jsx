@@ -731,9 +731,22 @@ useEffect(() => {
     // Simple confirmation
     if (!confirm('Supprimer ce message ?')) return;
 
-    // ⭐ v2.9w : Appeler performMessageDeletion avec flag cameFromModal
-    // (pas de suppression Drive pour messages depuis Modal 2)
-    await performMessageDeletion(messageId, false, true);  // deleteFromDrive=false, cameFromModal=true
+    // Supprimer le message
+    const result = await performMessageDeletion(messageId, false, true);
+
+    // Auto-retour vers MemoriesPage
+    if (result?.success) {
+      setFeedbackMessage('Retour à la page Souvenirs...');
+      setTimeout(() => {
+        app.navigateTo('memories', {
+          previousPage: 'chat',
+          returnContext: {
+            ...navigationContext.returnContext,
+            reopenModal2: true
+          }
+        });
+      }, 800);
+    }
     return;
   }
 
@@ -842,28 +855,48 @@ useEffect(() => {
 // Handlers pour modal choix Drive
 const handleDeleteMessageOnly = async () => {
   const { messageId } = deleteChoiceModal;
-
-  // ⭐ v2.9w2 : Détecter si on vient de MemoriesPage Modal 2
   const cameFromModal = navigationContext?.returnContext?.returnPage === 'memories';
 
-  // Fermer le modal
   setDeleteChoiceModal({ isOpen: false, messageId: null, photoFilename: null, deleteFromDrive: false });
 
-  // Exécuter suppression normale (pas de suppression Drive)
-  await performMessageDeletion(messageId, false, cameFromModal);
+  const result = await performMessageDeletion(messageId, false, cameFromModal);
+
+  // Auto-retour vers MemoriesPage si venu de Modal 2
+  if (result?.success && cameFromModal) {
+    setFeedbackMessage('Retour à la page Souvenirs...');
+    setTimeout(() => {
+      app.navigateTo('memories', {
+        previousPage: 'chat',
+        returnContext: {
+          ...navigationContext.returnContext,
+          reopenModal2: true
+        }
+      });
+    }, 800);
+  }
 };
 
 const handleDeleteMessageAndDrive = async () => {
   const { messageId } = deleteChoiceModal;
-
-  // ⭐ v2.9w2 : Détecter si on vient de MemoriesPage Modal 2
   const cameFromModal = navigationContext?.returnContext?.returnPage === 'memories';
 
-  // Fermer le modal
   setDeleteChoiceModal({ isOpen: false, messageId: null, photoFilename: null, deleteFromDrive: false });
 
-  // Exécuter suppression avec Drive
-  await performMessageDeletion(messageId, true, cameFromModal);
+  const result = await performMessageDeletion(messageId, true, cameFromModal);
+
+  // Auto-retour vers MemoriesPage si venu de Modal 2
+  if (result?.success && cameFromModal) {
+    setFeedbackMessage('Retour à la page Souvenirs...');
+    setTimeout(() => {
+      app.navigateTo('memories', {
+        previousPage: 'chat',
+        returnContext: {
+          ...navigationContext.returnContext,
+          reopenModal2: true
+        }
+      });
+    }, 800);
+  }
 };
 
 // ⭐ v2.9u : Fonction commune de suppression (appelée par les handlers)
@@ -936,27 +969,12 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false, cameFr
       dataManager.updateState({ sessions: [...currentSessions] });
     }
 
-    // Auto-retour vers MemoriesPage si venu de Modal 2
-    if (cameFromModal) {
-      dataManager.setLoadingOperation(false);
-      setFeedbackMessage('Retour à la page Souvenirs...');
-
-      setTimeout(() => {
-        app.navigateTo('memories', {
-          previousPage: 'chat',
-          returnContext: {
-            ...navigationContext.returnContext,
-            reopenModal2: true
-          }
-        });
-      }, 800);
-      return;
-    }
-
     dataManager.setLoadingOperation(false);
+    return { success: true };
   } catch (error) {
     console.error('❌ Erreur suppression message:', error);
     dataManager.setLoadingOperation(false);
+    return { success: false, error };
   }
 };
 
