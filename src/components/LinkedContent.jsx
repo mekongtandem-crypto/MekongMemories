@@ -38,12 +38,12 @@ function LinkedPhoto({ linkedContent, onOpenLocal, onNavigate }) {
     
     const loadPhoto = async () => {
       try {
-        console.log('📷 LinkedPhoto - Résolution avec:', {
-          filename: linkedContent.id,
-          google_drive_id: linkedContent.google_drive_id,
-          url: linkedContent.url
-        });
-        
+        // console.log('📷 LinkedPhoto - Résolution avec:', {
+        //   filename: linkedContent.id,
+        //   google_drive_id: linkedContent.google_drive_id,
+        //   url: linkedContent.url
+        // });
+
         const photoData = {
           filename: linkedContent.id,
           google_drive_id: linkedContent.google_drive_id,
@@ -58,7 +58,7 @@ function LinkedPhoto({ linkedContent, onOpenLocal, onNavigate }) {
         
         if (isMounted) {
           if (url && !url.startsWith('data:image/svg+xml')) {
-            console.log('✅ Photo résolue:', url.substring(0, 80) + '...');
+            // console.log('✅ Photo résolue:', url.substring(0, 80) + '...');
             setImageUrl(url);
           } else {
             console.error('❌ URL invalide');
