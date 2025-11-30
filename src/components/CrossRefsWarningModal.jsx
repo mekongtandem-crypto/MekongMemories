@@ -58,14 +58,11 @@ export default function CrossRefsWarningModal({
         <div className="p-4 overflow-y-auto flex-1">
           {hasCrossRefs ? (
             <>
-              {/* Message d'avertissement */}
-              <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-lg mb-4">
-                <p className="text-sm font-bold text-orange-900 dark:text-orange-200 mb-2">
-                  Impossible de supprimer les fichiers du cloud
-                </p>
-                <p className="text-xs text-orange-800 dark:text-orange-300 leading-relaxed">
-                  Les photos de <strong>"{itemName}"</strong> sont encore utilisées dans d'autres moments ou causeries.
-                  Vous devez d'abord supprimer ces références.
+              {/* Message d'information neutre - sans cadre */}
+              <div className="mb-4">
+                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                  Les photos que vous voulez supprimer du cloud, sont encore utilisées dans d'autres souvenirs ou causeries.
+                  Vous devez d'abord supprimer ces références suivantes :
                 </p>
               </div>
 
@@ -120,9 +117,9 @@ export default function CrossRefsWarningModal({
                           <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">
                             {warning.filename || warning.photoId?.substring(0, 30) + '...'}
                           </p>
-                          <div className="ml-3 space-y-1">
+                          <div className="ml-3 space-y-2">
                             {warning.sessionRefs.map((ref, refIdx) => {
-                              // ⭐ v2.9t : Extraire début du message (max 50 chars)
+                              // ⭐ v2.9w6+ : Extraire début du message (max 50 chars)
                               const messagePreview = ref.messageContent
                                 ? ref.messageContent.substring(0, 50) + (ref.messageContent.length > 50 ? '...' : '')
                                 : '';
@@ -132,21 +129,17 @@ export default function CrossRefsWarningModal({
                                   key={refIdx}
                                   onClick={() => {
                                     if (onNavigateToSession) {
-                                      // ⭐ v2.9t : Passer aussi messageId pour encadrement visuel
-                                      console.log('🔗 Clic lien session:', {
-                                        sessionId: ref.sessionId,
-                                        messageId: ref.messageId,
-                                        ref: ref
-                                      });
                                       onNavigateToSession(ref.sessionId, ref.messageId);
                                     }
                                   }}
-                                  className="cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 p-1 rounded transition-colors"
+                                  className="cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 p-2 rounded transition-colors"
                                 >
-                                  <p className="text-orange-800 dark:text-orange-300 text-xs leading-relaxed hover:underline flex items-center"
+                                  <p className="text-orange-900 dark:text-orange-100 text-sm font-semibold leading-relaxed hover:underline flex items-start"
                                      title="Cliquer pour aller à la causerie">
-                                    → "<strong>{ref.sessionTitle}</strong>" : {messagePreview} (de {ref.messageAuthor}, {new Date(ref.messageDate).toLocaleDateString('fr-FR')})
-                                    <ExternalLink className="w-3 h-3 ml-1 flex-shrink-0" />
+                                    <MessageCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                                    <span>
+                                      {ref.sessionTitle} : <span className="italic font-normal text-orange-800 dark:text-orange-200">{messagePreview}</span> <span className="font-normal text-xs">({ref.messageAuthor}, {new Date(ref.messageDate).toLocaleDateString('fr-FR')})</span>
+                                    </span>
                                   </p>
                                 </div>
                               );

@@ -1736,74 +1736,81 @@ function LinkPhotoPreview({ photo }) {
     
     
     
-    {/* ⭐ v2.9w3 : Conteneur unifié preview + input */}
-    <div className="flex-1 flex flex-col border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-amber-500 focus-within:border-amber-500 overflow-hidden">
-      {/* Preview photo intégrée (si présente) */}
-      {attachedPhoto && (
-        <div className="flex items-center space-x-2 bg-amber-50 dark:bg-amber-900/20 p-2 border-b border-gray-200 dark:border-gray-700">
-          <div className="relative flex-shrink-0">
-            <PhotoPreview photo={attachedPhoto} />
+    {/* ⭐ Input area iMessage-style : + petit à gauche, textarea au milieu, send intégré à droite */}
+    <div className="flex items-end gap-2">
+      {/* Bouton + (plus petit et discret) */}
+      <button
+        onClick={() => setShowPhotoMenu(!showPhotoMenu)}
+        className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+        title="Ajouter photo"
+      >
+        <Plus className="w-5 h-5" />
+      </button>
+
+      {/* Conteneur textarea + bouton send intégré */}
+      <div className="flex-1 flex flex-col border border-gray-300 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-800 focus-within:border-amber-500 dark:focus-within:border-amber-400 transition-colors overflow-hidden">
+        {/* Preview photo intégrée (si présente) */}
+        {attachedPhoto && (
+          <div className="flex items-center space-x-2 bg-amber-50 dark:bg-amber-900/20 p-2 border-b border-gray-200 dark:border-gray-700">
+            <div className="relative flex-shrink-0">
+              <PhotoPreview photo={attachedPhoto} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-amber-900 dark:text-amber-200 font-medium truncate flex items-center space-x-1">
+                <ImageIcon className="w-3 h-3" />
+                <span>{attachedPhoto.filename || 'Photo'}</span>
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Prête à envoyer
+              </p>
+            </div>
+            <button
+              onClick={() => setAttachedPhoto(null)}
+              className="flex-shrink-0 p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+              title="Retirer photo"
+            >
+              <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-amber-900 dark:text-amber-200 font-medium truncate flex items-center space-x-1">
-              <ImageIcon className="w-3 h-3" />
-              <span>{attachedPhoto.filename || 'Photo'}</span>
-            </p>
-            <p className="text-xs text-amber-700 dark:text-amber-300">
-              Prête à envoyer
-            </p>
-          </div>
+        )}
+
+        {/* Textarea + bouton send */}
+        <div className="flex items-end">
+          <textarea
+            ref={textareaRef}
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            placeholder={
+              pendingLink || attachedPhoto
+                ? "Ajouter un message (optionnel)..."
+                : "Message..."
+            }
+            className="flex-1 bg-transparent p-3 pr-1 resize-none focus:outline-none text-gray-900 dark:text-gray-50 placeholder-gray-400 dark:placeholder-gray-500"
+            rows="1"
+            style={{ maxHeight: '120px', minHeight: '40px' }}
+          />
+
+          {/* Bouton send intégré en bas à droite */}
           <button
-            onClick={() => setAttachedPhoto(null)}
-            className="flex-shrink-0 p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
-            title="Retirer photo"
+            onClick={handleSendMessage}
+            disabled={!newMessage.trim() && !attachedPhoto && !pendingLink}
+            className="flex-shrink-0 p-2 mb-1 mr-1 rounded-full bg-transparent enabled:bg-amber-500 enabled:hover:bg-amber-600 disabled:text-gray-300 dark:disabled:text-gray-600 enabled:text-white transition-colors"
+            title="Envoyer"
           >
-            <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+            <Send className="w-5 h-5" />
           </button>
         </div>
-      )}
-
-      {/* Input message */}
-      <textarea
-        ref={textareaRef}
-        value={newMessage}
-        onChange={(e) => setNewMessage(e.target.value)}
-        onKeyDown={(e) => {
-          // ✨ Entrée = Envoyer, Shift+Entrée = Retour à la ligne
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSendMessage();
-          }
-        }}
-        placeholder={
-          pendingLink || attachedPhoto
-            ? "Ajouter un message (optionnel)..."
-            : "tapez votre message... (Entrée pour envoyer, Shift+Entrée pour retour à la ligne)"
-        }
-        className="w-full dark:text-gray-50 bg-transparent p-3 resize-none focus:outline-none"
-        rows="2"
-      />
+      </div>
     </div>
-    
-    {/* Bouton Envoyer à DROITE */}
-<button
-  onClick={handleSendMessage}
-  disabled={!newMessage.trim() && !attachedPhoto && !pendingLink}
-  className="relative flex-shrink-0 p-3 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-  title="Envoyer (Entrée)"
->
-  <Send className="w-6 h-6" />
-  
-  {/* ⭐ NOUVEAU : Pastille si contenu attaché */}
-  {(pendingLink || attachedPhoto) && (
-    <div className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-purple-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg">
-      {(pendingLink ? 1 : 0) + (attachedPhoto ? 1 : 0)}
-    </div>
-  )}
-</button>
   </div>
-  
-  
+
+
 </div>
 
 {/* ✨ PHASE B : ThemeModal */}

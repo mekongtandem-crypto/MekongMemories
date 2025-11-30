@@ -33,7 +33,7 @@ export const PhotoThumbnail = memo(({
 
     const loadImage = async () => {
       if (!photo) return;
-console.log('📸 Photo data:', photo); //log temporaire
+      // console.log('📸 Photo data:', photo); //log temporaire - commenté v2.9w6+
       setStatus('loading');
 
       try {
