@@ -119,32 +119,36 @@ export default function CrossRefsWarningModal({
                             📸 {warning.filename || warning.photoId?.substring(0, 30) + '...'}
                           </p>
                           <div className="ml-3 space-y-1">
-                            {warning.sessionRefs.map((ref, refIdx) => (
-                              <div
-                                key={refIdx}
-                                onClick={() => {
-                                  if (onNavigateToSession) {
-                                    // ⭐ v2.9t : Passer aussi messageId pour encadrement visuel
-                                    console.log('🔗 Clic lien session:', {
-                                      sessionId: ref.sessionId,
-                                      messageId: ref.messageId,
-                                      ref: ref
-                                    });
-                                    onNavigateToSession(ref.sessionId, ref.messageId);
-                                  }
-                                }}
-                                className="cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 p-1 rounded transition-colors"
-                              >
-                                <p className="text-orange-800 dark:text-orange-300 font-medium flex items-center hover:underline"
-                                   title="Cliquer pour aller à la causerie">
-                                  → "{ref.sessionTitle}"
-                                  <ExternalLink className="w-3 h-3 ml-1" />
-                                </p>
-                                <p className="text-xs text-orange-700 dark:text-orange-400 ml-3">
-                                  Message de {ref.messageAuthor}, {new Date(ref.messageDate).toLocaleDateString('fr-FR')}
-                                </p>
-                              </div>
-                            ))}
+                            {warning.sessionRefs.map((ref, refIdx) => {
+                              // ⭐ v2.9t : Extraire début du message (max 50 chars)
+                              const messagePreview = ref.messageContent
+                                ? ref.messageContent.substring(0, 50) + (ref.messageContent.length > 50 ? '...' : '')
+                                : '';
+
+                              return (
+                                <div
+                                  key={refIdx}
+                                  onClick={() => {
+                                    if (onNavigateToSession) {
+                                      // ⭐ v2.9t : Passer aussi messageId pour encadrement visuel
+                                      console.log('🔗 Clic lien session:', {
+                                        sessionId: ref.sessionId,
+                                        messageId: ref.messageId,
+                                        ref: ref
+                                      });
+                                      onNavigateToSession(ref.sessionId, ref.messageId);
+                                    }
+                                  }}
+                                  className="cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 p-1 rounded transition-colors"
+                                >
+                                  <p className="text-orange-800 dark:text-orange-300 text-xs leading-relaxed hover:underline flex items-center"
+                                     title="Cliquer pour aller à la causerie">
+                                    → "<strong>{ref.sessionTitle}</strong>" : {messagePreview} (de {ref.messageAuthor}, {new Date(ref.messageDate).toLocaleDateString('fr-FR')})
+                                    <ExternalLink className="w-3 h-3 ml-1 flex-shrink-0" />
+                                  </p>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       ))}
@@ -182,35 +186,46 @@ export default function CrossRefsWarningModal({
         </div>
 
         {/* Footer - Boutons adaptatifs */}
-        <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+          {/* ⭐ v2.9t : Bouton Annuler tout (ferme modal sans action) */}
           <button
-            onClick={() => {
-              onConfirmMemoryOnly();
-              onClose();
-            }}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-150"
-            title="Supprime de la mémoire, garde les photos sur Drive"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors duration-150"
+            title="Fermer sans action"
           >
-            Laisser sur Drive
+            Annuler tout
           </button>
 
-          <button
-            onClick={() => {
-              if (!hasCrossRefs) {
-                onConfirmWithDrive();
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => {
+                onConfirmMemoryOnly();
                 onClose();
-              }
-            }}
-            disabled={hasCrossRefs}
-            className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors duration-150 ${
-              hasCrossRefs
-                ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed opacity-50'
-                : 'bg-red-600 hover:bg-red-700'
-            }`}
-            title={hasCrossRefs ? "Désactivé : supprimez d'abord les références ci-dessus" : "Supprime aussi les fichiers du cloud"}
-          >
-            Supprimer du Drive
-          </button>
+              }}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-150"
+              title="Supprime de la mémoire, garde les photos sur Drive"
+            >
+              Laisser sur Drive
+            </button>
+
+            <button
+              onClick={() => {
+                if (!hasCrossRefs) {
+                  onConfirmWithDrive();
+                  onClose();
+                }
+              }}
+              disabled={hasCrossRefs}
+              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors duration-150 ${
+                hasCrossRefs
+                  ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed opacity-50'
+                  : 'bg-red-600 hover:bg-red-700'
+              }`}
+              title={hasCrossRefs ? "Désactivé : supprimez d'abord les références ci-dessus" : "Supprime aussi les fichiers du cloud"}
+            >
+              Supprimer du Drive
+            </button>
+          </div>
         </div>
       </div>
     </div>

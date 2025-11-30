@@ -111,9 +111,9 @@ function LinkedPhoto({ linkedContent, onOpenLocal, onNavigate }) {
   let borderClass = '';
   if (isImported) {
     if (hasAssociation) {
-      // PhotoSouvenir (associée) : cadre BLEU vif
-      borderClass = 'border-4 border-blue-500 dark:border-blue-400';
-      console.log('✅ Bordure: PhotoSouvenir (BLEU VIF border-4)');
+      // PhotoSouvenir (associée) : cadre JAUNE/AMBER vif ⭐ v2.9t
+      borderClass = 'border-4 border-amber-500 dark:border-amber-400';
+      console.log('✅ Bordure: PhotoSouvenir (JAUNE/AMBER VIF border-4)');
     } else {
       // PhotoENVrac (non associée) : cadre ROUGE vif
       borderClass = 'border-4 border-red-500 dark:border-red-400';
