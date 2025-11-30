@@ -491,8 +491,8 @@ export default function App() {
       
       case 'chat':
         return (
-          <ChatPage 
-            navigationContext={navigationContext}
+          <ChatPage
+            navigationContext={app.navigationContext || navigationContext}
             onClearAttachment={handleClearAttachment}
             onStartSelectionMode={handleStartSelectionMode}
           />
