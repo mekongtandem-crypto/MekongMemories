@@ -1335,7 +1335,7 @@ setTimeout(() => {
       setTimeout(() => {
         window.scrollTo(0, scrollPosition || 0);
         // ⭐ v2.9s : Nettoyer UNIQUEMENT le returnContext (ne pas naviguer ailleurs !)
-        app.updateState({
+        dataManager.updateState({
           navigationContext: null
         });
       }, 300);
