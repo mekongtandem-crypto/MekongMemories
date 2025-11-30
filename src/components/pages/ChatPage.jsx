@@ -666,15 +666,18 @@ useEffect(() => {
   const isImportedPhoto = hasPhoto && messageToDelete.photoData.source === 'imported';
   const cameFromModal = navigationContext?.returnContext?.fromPage === 'memories';
 
-  // ⭐ v2.9t TÂCHE 2 : Vérifier cross-refs si photo importée ET pas venu de modal
+  // ⭐ v2.9u TÂCHE 2 : Vérifier cross-refs si photo importée ET pas venu de modal
   if (isImportedPhoto && !cameFromModal) {
     const photoId = messageToDelete.photoData.google_drive_id || messageToDelete.photoData.filename;
 
     // Vérifier cross-références
     const momentRefs = dataManager.checkPhotoCrossReferences(photoId, null);
-    const sessionRefs = dataManager.checkPhotoInSessions(photoId);
+    const allSessionRefs = dataManager.checkPhotoInSessions(photoId);
 
-    // Si cross-refs trouvées, afficher Modal 2
+    // ⭐ v2.9u FIX : Filtrer AVANT de vérifier, sinon modal s'ouvre avec liste vide
+    const sessionRefs = allSessionRefs.filter(ref => ref.sessionId !== app.currentChatSession.id);
+
+    // Si cross-refs trouvées (hors session actuelle), afficher Modal 2
     if (momentRefs.length > 0 || sessionRefs.length > 0) {
       console.log('⚠️ Cross-refs détectées pour photo:', { momentRefs, sessionRefs });
 
@@ -686,7 +689,7 @@ useEffect(() => {
           photoId,
           filename: messageToDelete.photoData.filename,
           crossRefs: momentRefs,
-          sessionRefs: sessionRefs.filter(ref => ref.sessionId !== app.currentChatSession.id)  // Exclure session actuelle
+          sessionRefs: sessionRefs
         }]
       });
       return;  // Arrêter ici, le modal prendra le relais
@@ -806,21 +809,17 @@ useEffect(() => {
       console.log('✅ ContentLinks mis à jour - Pastilles devraient être rafraîchies');
     }
 
-    // ⭐ v2.9t TÂCHE 0 : Auto-retour MemoriesPage si venu depuis modal cross-refs
-    const cameFromMemoriesModal = navigationContext?.returnContext?.fromPage === 'memories';
-    if (cameFromMemoriesModal) {
-      console.log('🔙 Auto-retour vers MemoriesPage après suppression message depuis modal');
-
-      // ✨ Désactiver le spinner avant navigation
-      dataManager.setLoadingOperation(false);
-
-      // Naviguer vers MemoriesPage avec restauration du contexte (mode édition, modal)
-      app.navigateTo('memories', {
-        previousPage: 'chat',
-        returnContext: navigationContext.returnContext  // Restaurer édition mode + modal state
-      });
-      return;  // Sortir immédiatement pour éviter double désactivation spinner
-    }
+    // ⭐ v2.9u : DÉSACTIVÉ - Auto-retour causait problèmes de suppression
+    // const cameFromMemoriesModal = navigationContext?.returnContext?.fromPage === 'memories';
+    // if (cameFromMemoriesModal) {
+    //   console.log('🔙 Auto-retour vers MemoriesPage après suppression message depuis modal');
+    //   dataManager.setLoadingOperation(false);
+    //   app.navigateTo('memories', {
+    //     previousPage: 'chat',
+    //     returnContext: navigationContext.returnContext
+    //   });
+    //   return;
+    // }
 
     // ✨ Désactiver le spinner
     dataManager.setLoadingOperation(false);
