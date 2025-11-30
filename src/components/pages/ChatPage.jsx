@@ -738,11 +738,14 @@ useEffect(() => {
     if (result?.success) {
       setFeedbackMessage('Retour à la page Souvenirs...');
       setTimeout(() => {
-        app.navigateTo('memories', {
-          previousPage: 'chat',
-          returnContext: {
-            ...navigationContext.returnContext,
-            reopenModal2: true
+        dataManager.updateState({
+          currentPage: 'memories',
+          navigationContext: {
+            previousPage: 'chat',
+            returnContext: {
+              ...navigationContext.returnContext,
+              reopenModal2: true
+            }
           }
         });
       }, 800);
@@ -865,11 +868,14 @@ const handleDeleteMessageOnly = async () => {
   if (result?.success && cameFromModal) {
     setFeedbackMessage('Retour à la page Souvenirs...');
     setTimeout(() => {
-      app.navigateTo('memories', {
-        previousPage: 'chat',
-        returnContext: {
-          ...navigationContext.returnContext,
-          reopenModal2: true
+      dataManager.updateState({
+        currentPage: 'memories',
+        navigationContext: {
+          previousPage: 'chat',
+          returnContext: {
+            ...navigationContext.returnContext,
+            reopenModal2: true
+          }
         }
       });
     }, 800);
@@ -888,11 +894,14 @@ const handleDeleteMessageAndDrive = async () => {
   if (result?.success && cameFromModal) {
     setFeedbackMessage('Retour à la page Souvenirs...');
     setTimeout(() => {
-      app.navigateTo('memories', {
-        previousPage: 'chat',
-        returnContext: {
-          ...navigationContext.returnContext,
-          reopenModal2: true
+      dataManager.updateState({
+        currentPage: 'memories',
+        navigationContext: {
+          previousPage: 'chat',
+          returnContext: {
+            ...navigationContext.returnContext,
+            reopenModal2: true
+          }
         }
       });
     }, 800);
@@ -1880,12 +1889,15 @@ function LinkPhotoPreview({ photo }) {
           onNavigateToMoment={(momentId) => {
             // Fermer modal et naviguer vers moment
             setDeletePhotoModal({ isOpen: false, messageId: null, photoData: null, crossRefsWarnings: [] });
-            app.navigateTo('memories', {
-              previousPage: 'chat',
-              targetMomentId: momentId,
-              returnContext: {
-                fromPage: 'chat',
-                chatSessionId: app.currentChatSession.id
+            dataManager.updateState({
+              currentPage: 'memories',
+              navigationContext: {
+                previousPage: 'chat',
+                targetMomentId: momentId,
+                returnContext: {
+                  fromPage: 'chat',
+                  chatSessionId: app.currentChatSession.id
+                }
               }
             });
           }}
