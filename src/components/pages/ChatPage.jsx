@@ -24,7 +24,8 @@ import { Send, Trash2, Edit, Camera, Link, FileText, MapPin, Image as ImageIcon,
 import PhotoViewer from '../PhotoViewer.jsx';
 import ThemeModal from '../ThemeModal.jsx';
 import PhotoToMemoryModal from '../PhotoToMemoryModal.jsx';
-import CrossRefsWarningModal from '../CrossRefsWarningModal.jsx';  // ⭐ v2.9t TÂCHE 2
+import CrossRefsWarningModal from '../CrossRefsWarningModal.jsx';  // ⭐ v2.9u : Modal 2 cross-refs
+import DeletePhotoChoiceModal from '../DeletePhotoChoiceModal.jsx';  // ⭐ v2.9u : Modal choix Drive
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';
 import { logger } from '../../utils/logger.js';
 
@@ -64,12 +65,20 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   // ⭐ v2.9s : Encadrement message lié depuis cross-refs modal
   const [targetMessageId, setTargetMessageId] = useState(null);
 
-  // ⭐ v2.9t TÂCHE 2 : Modal suppression message avec photo importée
+  // ⭐ v2.9u : Modal 2 cross-refs (cas 1B depuis MemoriesPage)
   const [deletePhotoModal, setDeletePhotoModal] = useState({
     isOpen: false,
     messageId: null,
     photoData: null,
     crossRefsWarnings: []
+  });
+
+  // ⭐ v2.9u : Modal choix Drive (cas 1A photo non utilisée ailleurs)
+  const [deleteChoiceModal, setDeleteChoiceModal] = useState({
+    isOpen: false,
+    messageId: null,
+    photoFilename: null,
+    deleteFromDrive: false
   });
 
   const messagesEndRef = useRef(null);
@@ -666,39 +675,72 @@ useEffect(() => {
   const isImportedPhoto = hasPhoto && messageToDelete.photoData.source === 'imported';
   const cameFromModal = navigationContext?.returnContext?.fromPage === 'memories';
 
-  // ⭐ v2.9u TÂCHE 2 : Vérifier cross-refs si photo importée ET pas venu de modal
-  if (isImportedPhoto && !cameFromModal) {
+  console.log('🗑️ handleDeleteMessage:', {
+    messageId,
+    isImportedPhoto,
+    cameFromModal,
+    hasPhoto
+  });
+
+  // ═══════════════════════════════════════════════════
+  // CAS 2 : Venu de MemoriesPage Modal 2
+  // ═══════════════════════════════════════════════════
+  if (cameFromModal) {
+    console.log('📋 CAS 2 : Suppression depuis MemoriesPage Modal 2');
+
+    // Simple confirmation
+    if (!confirm('Supprimer ce message ?')) return;
+
+    // La suppression continue normalement
+    // Le retour auto + ré-ouverture Modal 2 sera géré après la suppression
+  }
+
+  // ═══════════════════════════════════════════════════
+  // CAS 1 : ChatPage NORMAL
+  // ═══════════════════════════════════════════════════
+  else if (isImportedPhoto) {
     const photoId = messageToDelete.photoData.google_drive_id || messageToDelete.photoData.filename;
 
-    // Vérifier cross-références
+    // Vérifier cross-références (hors session actuelle)
     const momentRefs = dataManager.checkPhotoCrossReferences(photoId, null);
     const allSessionRefs = dataManager.checkPhotoInSessions(photoId);
-
-    // ⭐ v2.9u FIX : Filtrer AVANT de vérifier, sinon modal s'ouvre avec liste vide
     const sessionRefs = allSessionRefs.filter(ref => ref.sessionId !== app.currentChatSession.id);
 
-    // Si cross-refs trouvées (hors session actuelle), afficher Modal 2
-    if (momentRefs.length > 0 || sessionRefs.length > 0) {
-      console.log('⚠️ Cross-refs détectées pour photo:', { momentRefs, sessionRefs });
+    const hasCrossRefs = momentRefs.length > 0 || sessionRefs.length > 0;
 
-      setDeletePhotoModal({
+    // ─────────────────────────────────────────────────
+    // CAS 1A : Photo NON utilisée ailleurs
+    // ─────────────────────────────────────────────────
+    if (!hasCrossRefs) {
+      console.log('💾 CAS 1A : Photo non utilisée ailleurs → Modal choix Drive');
+
+      // Ouvrir modal de choix
+      setDeleteChoiceModal({
         isOpen: true,
         messageId,
-        photoData: messageToDelete.photoData,
-        crossRefsWarnings: [{
-          photoId,
-          filename: messageToDelete.photoData.filename,
-          crossRefs: momentRefs,
-          sessionRefs: sessionRefs
-        }]
+        photoFilename: messageToDelete.photoData.filename,
+        deleteFromDrive: false
       });
-      return;  // Arrêter ici, le modal prendra le relais
+      return;  // Modal prendra le relais
     }
 
-    // Pas de cross-refs : demander simple confirmation avec option Drive
-    if (!confirm('Supprimer ce message et la photo de la mémoire ?\n(La photo restera sur le Drive)')) return;
-  } else {
-    // Message normal ou venu de modal : confirmation simple
+    // ─────────────────────────────────────────────────
+    // CAS 1B : Photo utilisée ailleurs
+    // ─────────────────────────────────────────────────
+    else {
+      console.log('🔗 CAS 1B : Photo utilisée ailleurs → Suppression silencieuse message seul');
+      console.log('   Cross-refs:', { momentRefs: momentRefs.length, sessionRefs: sessionRefs.length });
+
+      // Simple confirmation (suppression message seul, photo reste)
+      if (!confirm('Supprimer ce message ?')) return;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════
+  // CAS 1C : Message normal (sans photo importée)
+  // ═══════════════════════════════════════════════════
+  else {
+    console.log('📝 CAS 1C : Message normal');
     if (!confirm('Supprimer ce message ?')) return;
   }
 
@@ -809,17 +851,23 @@ useEffect(() => {
       console.log('✅ ContentLinks mis à jour - Pastilles devraient être rafraîchies');
     }
 
-    // ⭐ v2.9u : DÉSACTIVÉ - Auto-retour causait problèmes de suppression
-    // const cameFromMemoriesModal = navigationContext?.returnContext?.fromPage === 'memories';
-    // if (cameFromMemoriesModal) {
-    //   console.log('🔙 Auto-retour vers MemoriesPage après suppression message depuis modal');
-    //   dataManager.setLoadingOperation(false);
-    //   app.navigateTo('memories', {
-    //     previousPage: 'chat',
-    //     returnContext: navigationContext.returnContext
-    //   });
-    //   return;
-    // }
+    // ⭐ v2.9u CAS 2 : Auto-retour + ré-ouverture Modal 2 si venu de MemoriesPage
+    if (cameFromModal) {
+      console.log('🔙 CAS 2 : Auto-retour vers MemoriesPage + ré-ouverture Modal 2');
+
+      // Désactiver spinner avant navigation
+      dataManager.setLoadingOperation(false);
+
+      // Retourner à MemoriesPage avec flag pour ré-ouvrir Modal 2
+      app.navigateTo('memories', {
+        previousPage: 'chat',
+        returnContext: {
+          ...navigationContext.returnContext,
+          reopenModal2: true  // ⭐ Flag pour ré-ouvrir Modal 2 avec cross-refs actualisées
+        }
+      });
+      return;  // Sortir immédiatement
+    }
 
     // ✨ Désactiver le spinner
     dataManager.setLoadingOperation(false);
@@ -831,7 +879,92 @@ useEffect(() => {
   }
 };
 
-// ⭐ v2.9t TÂCHE 2 : Handlers pour modal suppression photo importée
+// ⭐ v2.9u CAS 1A : Handlers pour modal choix Drive
+const handleDeleteMessageOnly = async () => {
+  console.log('💾 CAS 1A : Suppression message seulement (photo reste sur Drive)');
+  const { messageId } = deleteChoiceModal;
+
+  // Fermer le modal
+  setDeleteChoiceModal({ isOpen: false, messageId: null, photoFilename: null, deleteFromDrive: false });
+
+  // Exécuter suppression normale (pas de suppression Drive)
+  await performMessageDeletion(messageId, false);
+};
+
+const handleDeleteMessageAndDrive = async () => {
+  console.log('🗑️ CAS 1A : Suppression message + photo du Drive');
+  const { messageId } = deleteChoiceModal;
+
+  // Fermer le modal
+  setDeleteChoiceModal({ isOpen: false, messageId: null, photoFilename: null, deleteFromDrive: false });
+
+  // Exécuter suppression avec Drive
+  await performMessageDeletion(messageId, true);
+};
+
+// ⭐ v2.9u : Fonction commune de suppression (appelée par les handlers)
+const performMessageDeletion = async (messageId, deleteFromDrive = false) => {
+  const messageToDelete = app.currentChatSession.notes.find(m => m.id === messageId);
+  if (!messageToDelete) return;
+
+  dataManager.setLoadingOperation(true, 'Suppression du message...', 'Enregistrement sur Google Drive', 'monkey');
+
+  try {
+    const updatedSession = { ...app.currentChatSession };
+    const hasLinkedContent = messageToDelete?.linkedContent;
+    const hasPhoto = messageToDelete?.photoData;
+
+    // Supprimer le message
+    updatedSession.notes = updatedSession.notes.filter(note => note.id !== messageId);
+    await app.updateSession(updatedSession);
+
+    // Nettoyer ContentLinks si nécessaire
+    if (window.contentLinks && (hasLinkedContent || hasPhoto)) {
+      if (hasPhoto) {
+        const photo = messageToDelete.photoData;
+        if (photo.google_drive_id) {
+          await window.contentLinks.removeLink(updatedSession.id, 'photo', photo.google_drive_id);
+        }
+        if (photo.filename && photo.filename !== photo.google_drive_id) {
+          await window.contentLinks.removeLink(updatedSession.id, 'photo', photo.filename);
+        }
+      }
+      if (hasLinkedContent) {
+        await window.contentLinks.removeLink(
+          updatedSession.id,
+          messageToDelete.linkedContent.type,
+          messageToDelete.linkedContent.id
+        );
+      }
+
+      // Forcer re-render
+      const currentSessions = dataManager.getState().sessions;
+      dataManager.updateState({ sessions: [...currentSessions] });
+    }
+
+    // ⭐ Suppression Drive si demandée (CAS 1A option 2)
+    if (deleteFromDrive && hasPhoto && messageToDelete.photoData.source === 'imported') {
+      console.log('🗑️ Suppression photo du Drive...');
+      const photoId = messageToDelete.photoData.google_drive_id || messageToDelete.photoData.filename;
+
+      // Utiliser dataManager.deletePhoto pour supprimer du Drive
+      const result = await dataManager.deletePhoto(null, photoId, true);
+
+      if (result.success) {
+        console.log('✅ Photo supprimée du Drive');
+      } else {
+        console.error('❌ Erreur suppression Drive:', result.reason);
+      }
+    }
+
+    dataManager.setLoadingOperation(false);
+  } catch (error) {
+    console.error('❌ Erreur suppression message:', error);
+    dataManager.setLoadingOperation(false);
+  }
+};
+
+// ⭐ v2.9t TÂCHE 2 : Handlers pour modal suppression photo importée (OBSOLÈTE - gardé pour compatibilité)
 const handleDeletePhotoMemoryOnly = async () => {
   console.log('📝 Suppression message (mémoire seulement)');
   const { messageId } = deletePhotoModal;
@@ -1699,7 +1832,18 @@ function LinkPhotoPreview({ photo }) {
         </div>
       )}
 
-      {/* ⭐ v2.9t TÂCHE 2 : Modal suppression photo importée avec cross-refs */}
+      {/* ⭐ v2.9u CAS 1A : Modal choix suppression Drive */}
+      {deleteChoiceModal.isOpen && (
+        <DeletePhotoChoiceModal
+          isOpen={deleteChoiceModal.isOpen}
+          onClose={() => setDeleteChoiceModal({ isOpen: false, messageId: null, photoFilename: null, deleteFromDrive: false })}
+          photoFilename={deleteChoiceModal.photoFilename}
+          onDeleteMessageOnly={handleDeleteMessageOnly}
+          onDeleteMessageAndDrive={handleDeleteMessageAndDrive}
+        />
+      )}
+
+      {/* ⭐ v2.9u : Modal 2 cross-refs (OBSOLÈTE pour ChatPage - gardé pour compatibilité) */}
       {deletePhotoModal.isOpen && (
         <CrossRefsWarningModal
           isOpen={deletePhotoModal.isOpen}
