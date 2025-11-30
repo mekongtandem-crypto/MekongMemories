@@ -1278,25 +1278,18 @@ class DataManager {
     const crossRefs = [];
 
     for (const moment of masterIndex.moments) {
-      // Ignorer le moment actuel
-      if (moment.id === excludeMomentId) continue;
+      const locations = [];
 
-      // Chercher dans dayPhotos
+      // ⭐ v2.9t : Chercher dans dayPhotos
       const foundInDay = moment.dayPhotos?.find(p =>
         p.google_drive_id === photoId || p.filename === photoId
       );
 
       if (foundInDay) {
-        crossRefs.push({
-          momentId: moment.id,
-          momentTitle: moment.title,
-          momentDate: moment.date,
-          location: 'dayPhotos'
-        });
-        continue; // Pas besoin de chercher dans les posts de ce moment
+        locations.push({ type: 'dayPhotos', location: 'dayPhotos' });
       }
 
-      // Chercher dans les posts
+      // ⭐ v2.9t : Chercher dans les posts
       if (moment.posts) {
         for (const post of moment.posts) {
           const foundInPost = post.photos?.find(p =>
@@ -1304,15 +1297,53 @@ class DataManager {
           );
 
           if (foundInPost) {
-            crossRefs.push({
-              momentId: moment.id,
-              momentTitle: moment.title,
-              momentDate: moment.date,
+            locations.push({
+              type: 'post',
               location: `post:${post.id}`,
               postTitle: post.title || 'Sans titre'
             });
-            break; // Pas besoin de chercher dans les autres posts
           }
+        }
+      }
+
+      // ⭐ v2.9t : Si moment actuel, vérifier duplications internes
+      if (moment.id === excludeMomentId) {
+        // Si photo trouvée à plusieurs endroits dans le MÊME moment
+        if (locations.length > 1) {
+          crossRefs.push({
+            momentId: moment.id,
+            momentTitle: moment.title + ' (même moment)',
+            momentDate: moment.date,
+            locations: locations,
+            isSameMoment: true  // ⭐ Flag spécial
+          });
+        }
+        continue; // Ne pas ajouter de cross-ref "normal" pour le moment actuel
+      }
+
+      // ⭐ v2.9t : Autres moments : ajouter cross-refs si photo trouvée
+      if (locations.length > 0) {
+        // Si trouvée dans dayPhotos, utiliser cette info
+        if (foundInDay) {
+          crossRefs.push({
+            momentId: moment.id,
+            momentTitle: moment.title,
+            momentDate: moment.date,
+            location: 'dayPhotos'
+          });
+        } else {
+          // Sinon, ajouter pour chaque post
+          locations.forEach(loc => {
+            if (loc.type === 'post') {
+              crossRefs.push({
+                momentId: moment.id,
+                momentTitle: moment.title,
+                momentDate: moment.date,
+                location: loc.location,
+                postTitle: loc.postTitle
+              });
+            }
+          });
         }
       }
     }

@@ -1292,9 +1292,17 @@ setTimeout(() => {
 
       const { scrollPosition, openMomentId: savedMomentId, editionMode: savedEditionMode, crossRefsModal: savedModal } = navigationContext.returnContext;
 
+      console.log('🔄 Restauration état page:', { savedMomentId, savedEditionMode, scrollPosition });
+
       // Restaurer état page
       if (savedMomentId) {
         setSelectedMoments(momentsData.filter(m => m.id === savedMomentId));
+      }
+
+      // ⭐ v2.9s : Restaurer mode édition
+      if (savedEditionMode?.active) {
+        console.log('✏️ Restauration mode édition');
+        setEditionMode({ active: true });
       }
 
       // Actualiser cross-refs
@@ -1687,6 +1695,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
             crossRefsModal: { ...crossRefsModal, isOpen: true },
             returnPage: 'memories'
           };
+          console.log('📤 Navigation vers moment, returnContext:', returnContext);
           app.navigateToMoment(momentId, returnContext);
           setCrossRefsModal({ isOpen: false });
         }}
@@ -1701,6 +1710,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
             returnPage: 'memories',
             targetMessageId: messageId  // ⭐ v2.9s : Pour encadrement visuel dans ChatPage
           };
+          console.log('📤 Navigation vers session, returnContext:', returnContext);
           app.navigateToSession(sessionId, returnContext);
           setCrossRefsModal({ isOpen: false });
         }}
