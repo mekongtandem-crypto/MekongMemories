@@ -1427,6 +1427,47 @@ class DataManager {
     }
 
     try {
+      // ⭐ v2.9w4 : CAS SPÉCIAL - Photo de chat (PhotoENVrac) sans moment parent
+      if (momentId === null) {
+        logger.info('📸 Photo de chat détectée (momentId = null) - Pas de moment parent');
+
+        // Supprimer uniquement du Drive si demandé (pas de masterIndex à mettre à jour)
+        if (deleteFromDrive) {
+          try {
+            logger.info(`🗑️ Suppression fichier Drive - ID: ${photoId}, filename: ${filename}`);
+
+            // 1. Supprimer le fichier principal
+            await this.driveSync.deleteFileById(photoId);
+            logger.success('📸 Fichier image principal supprimé du cloud');
+
+            // 2. Supprimer le thumbnail (pattern: filename_thumb.ext)
+            if (filename) {
+              const thumbFilename = filename.replace(/\.(\w+)$/, '_thumb.$1');
+              logger.info(`🔍 Recherche thumbnail: ${thumbFilename}`);
+
+              const thumbFileId = await this.driveSync.findFileIdByName(thumbFilename, 'Medias/imported');
+
+              if (thumbFileId) {
+                await this.driveSync.deleteFileById(thumbFileId);
+                logger.success('🖼️ Thumbnail supprimé du cloud');
+              } else {
+                logger.warn(`⚠️ Thumbnail non trouvé: ${thumbFilename}`);
+              }
+            }
+          } catch (error) {
+            logger.warn('⚠️ Impossible de supprimer les fichiers du cloud:', error);
+            // Non-bloquant
+          }
+        }
+
+        if (showSpinner) {
+          this.setLoadingOperation(false);
+        }
+        logger.success('✅ Photo de chat supprimée');
+        return { success: true };
+      }
+
+      // CAS NORMAL - Photo avec moment parent
       const masterIndex = this.appState.masterIndex;
       const moment = masterIndex.moments.find(m => m.id === momentId);
 
