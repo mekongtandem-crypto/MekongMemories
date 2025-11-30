@@ -162,7 +162,7 @@ export default function CrossRefsWarningModal({
               {/* Instructions */}
               {/* Instructions dépliables */}
               <div className="mt-4">
-                <CollapsibleHelp defaultOpen={true}>
+                <CollapsibleHelp defaultOpen={false}>
                   <p className="font-medium mb-2">Instructions :</p>
                   <ul className="space-y-1 ml-4">
                     <li>• <strong>Cliquez sur les liens ci-dessus</strong> pour visiter les moments/causeries</li>

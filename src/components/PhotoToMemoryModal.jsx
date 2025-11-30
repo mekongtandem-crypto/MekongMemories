@@ -44,7 +44,13 @@ export default function PhotoToMemoryModal({
         defaultDate = fileDate.toISOString().split('T')[0];
       }
 
-      setSelectedMomentId('');
+      // ⭐ v2.9w2 : Mémoriser dernier moment sélectionné
+      const lastMomentId = localStorage.getItem('mekong_lastSelectedMomentId') || '';
+
+      // Vérifier que le moment existe toujours
+      const momentExists = lastMomentId && moments.some(m => m.id === lastMomentId);
+
+      setSelectedMomentId(momentExists ? lastMomentId : '');
       setNewMomentTitle('');
       setNewMomentDate(defaultDate);
       setNewMomentJnnn('IMP');  // ⭐ v2.8e : "IMP" au lieu de "undefined" (plus court)
@@ -52,7 +58,7 @@ export default function PhotoToMemoryModal({
       setNoteTitle('');
       setNoteContent('');
     }
-  }, [isOpen, photoData, file]);
+  }, [isOpen, photoData, file, moments]);
 
   if (!isOpen) return null;
 
@@ -76,6 +82,11 @@ export default function PhotoToMemoryModal({
         alert('Veuillez saisir une date pour le nouveau moment');
         return;
       }
+    }
+
+    // ⭐ v2.9w2 : Sauvegarder le dernier moment sélectionné
+    if (!isCreatingNewMoment && selectedMomentId) {
+      localStorage.setItem('mekong_lastSelectedMomentId', selectedMomentId);
     }
 
     // Retourner les données au parent

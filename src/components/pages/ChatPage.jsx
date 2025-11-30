@@ -944,22 +944,28 @@ const handleDeleteMessageOnly = async () => {
   console.log('💾 CAS 1A : Suppression message seulement (photo reste sur Drive)');
   const { messageId } = deleteChoiceModal;
 
+  // ⭐ v2.9w2 : Détecter si on vient de MemoriesPage Modal 2
+  const cameFromModal = navigationContext?.returnContext?.fromPage === 'memories';
+
   // Fermer le modal
   setDeleteChoiceModal({ isOpen: false, messageId: null, photoFilename: null, deleteFromDrive: false });
 
   // Exécuter suppression normale (pas de suppression Drive)
-  await performMessageDeletion(messageId, false);
+  await performMessageDeletion(messageId, false, cameFromModal);
 };
 
 const handleDeleteMessageAndDrive = async () => {
   console.log('🗑️ CAS 1A : Suppression message + photo du Drive');
   const { messageId } = deleteChoiceModal;
 
+  // ⭐ v2.9w2 : Détecter si on vient de MemoriesPage Modal 2
+  const cameFromModal = navigationContext?.returnContext?.fromPage === 'memories';
+
   // Fermer le modal
   setDeleteChoiceModal({ isOpen: false, messageId: null, photoFilename: null, deleteFromDrive: false });
 
   // Exécuter suppression avec Drive
-  await performMessageDeletion(messageId, true);
+  await performMessageDeletion(messageId, true, cameFromModal);
 };
 
 // ⭐ v2.9u : Fonction commune de suppression (appelée par les handlers)
@@ -1005,7 +1011,16 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false, cameFr
       console.log('✅ ContentLinks nettoyés AVANT suppression Drive');
     }
 
-    // ⭐ Suppression Drive APRÈS nettoyage ContentLinks (évite faux positif)
+    // ⭐ v2.9w2 FIX CRITIQUE : Supprimer message de la session EN MÉMOIRE avant deletePhoto
+    // Sinon checkPhotoInSessions trouve encore le message et retourne cross_references
+    updatedSession.notes = updatedSession.notes.filter(note => note.id !== messageId);
+
+    // ⭐ v2.9w2 : Mettre à jour appState temporairement pour que checkPhotoInSessions ne voie plus le message
+    dataManager.updateState({
+      sessions: app.sessions.map(s => s.id === updatedSession.id ? updatedSession : s)
+    });
+
+    // ⭐ Suppression Drive APRÈS nettoyage (checkPhotoInSessions ne verra plus le message)
     if (deleteFromDrive && hasPhoto && photoDataBackup.source === 'imported') {
       console.log('🗑️ Suppression photo du Drive...');
       const photoId = photoDataBackup.google_drive_id || photoDataBackup.filename;
@@ -1030,8 +1045,7 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false, cameFr
       }
     }
 
-    // Supprimer le message de la session
-    updatedSession.notes = updatedSession.notes.filter(note => note.id !== messageId);
+    // Sauvegarder la session mise à jour sur Drive
     await app.updateSession(updatedSession);
 
     // Forcer re-render
@@ -1740,26 +1754,27 @@ function LinkPhotoPreview({ photo }) {
   </div>
 )}
   
-  {/* Preview photo (si présente) */}
+  {/* ⭐ v2.9w2 : Preview photo compacte et intégrée */}
   {attachedPhoto && (
-    <div className="mb-3 relative group">
-      <div className="relative rounded-lg overflow-hidden border-2 border-purple-300 shadow-md">
+    <div className="mb-2 flex items-center space-x-2 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg border border-amber-200 dark:border-amber-800">
+      <div className="relative flex-shrink-0">
         <PhotoPreview photo={attachedPhoto} />
-        
-        <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-bl-lg shadow-lg p-1">
-          <button
-            onClick={() => setAttachedPhoto(null)}
-            className="p-1 hover:bg-red-100 rounded"
-            title="Retirer photo"
-          >
-            <Trash2 className="w-4 h-4 text-red-600" />
-          </button>
-        </div>
-        
-        <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-          📎 Photo attachée
-        </div>
       </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-amber-900 dark:text-amber-200 font-medium truncate">
+          📸 {attachedPhoto.filename || 'Photo'}
+        </p>
+        <p className="text-xs text-amber-700 dark:text-amber-300">
+          Prête à envoyer
+        </p>
+      </div>
+      <button
+        onClick={() => setAttachedPhoto(null)}
+        className="flex-shrink-0 p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+        title="Retirer photo"
+      >
+        <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+      </button>
     </div>
   )}
 
@@ -2109,8 +2124,10 @@ function PhotoMessage({ photo, onPhotoClick }) {
 // ========================================
 
 function PhotoPreview({ photo }) {
-  const [imageUrl, setImageUrl] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // ⭐ v2.9w2 : Initialiser immédiatement l'URL si ObjectURL disponible (0 latence)
+  const initialUrl = photo?.processedData?.thumbPreviewUrl || null;
+  const [imageUrl, setImageUrl] = useState(initialUrl);
+  const [loading, setLoading] = useState(!initialUrl); // Pas de loading si ObjectURL
 
   useEffect(() => {
     let isMounted = true;
@@ -2118,22 +2135,20 @@ function PhotoPreview({ photo }) {
     const resolveUrl = async () => {
       if (!photo) return;
 
+      // Si déjà un ObjectURL, ne rien faire
+      if (photo.processedData?.thumbPreviewUrl) {
+        logger.debug('📸 Preview: ObjectURL déjà disponible (instantané)');
+        return;
+      }
+
       try {
         setLoading(true);
 
-        // ⭐ v2.9v FIX : Si processedData disponible, utiliser ObjectURL instantané
-        if (photo.processedData?.thumbPreviewUrl) {
-          logger.debug('📸 Preview: Utilisation ObjectURL local (instantané)');
-          if (isMounted) {
-            setImageUrl(photo.processedData.thumbPreviewUrl);
-          }
-        } else {
-          // Sinon, résoudre depuis Drive (photo déjà uploadée)
-          logger.debug('📸 Preview: Résolution depuis Drive');
-          const url = await window.photoDataV2.resolveImageUrl(photo, true);
-          if (isMounted && url && !url.startsWith('data:image/svg+xml')) {
-            setImageUrl(url);
-          }
+        // Résoudre depuis Drive (photo déjà uploadée)
+        logger.debug('📸 Preview: Résolution depuis Drive');
+        const url = await window.photoDataV2.resolveImageUrl(photo, true);
+        if (isMounted && url && !url.startsWith('data:image/svg+xml')) {
+          setImageUrl(url);
         }
       } catch (err) {
         console.error('❌ Erreur preview photo:', err);
