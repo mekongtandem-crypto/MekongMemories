@@ -858,14 +858,20 @@ useEffect(() => {
       // Désactiver spinner avant navigation
       dataManager.setLoadingOperation(false);
 
-      // Retourner à MemoriesPage avec flag pour ré-ouvrir Modal 2
-      app.navigateTo('memories', {
-        previousPage: 'chat',
-        returnContext: {
-          ...navigationContext.returnContext,
-          reopenModal2: true  // ⭐ Flag pour ré-ouvrir Modal 2 avec cross-refs actualisées
-        }
-      });
+      // ⭐ Modif 1 : Afficher feedback avant retour auto
+      setFeedbackMessage('🐒 Retour à la page Souvenirs...');
+
+      // Attendre 800ms pour que l'utilisateur voie le message
+      setTimeout(() => {
+        // Retourner à MemoriesPage avec flag pour ré-ouvrir Modal 2
+        app.navigateTo('memories', {
+          previousPage: 'chat',
+          returnContext: {
+            ...navigationContext.returnContext,
+            reopenModal2: true  // ⭐ Flag pour ré-ouvrir Modal 2 avec cross-refs actualisées
+          }
+        });
+      }, 800);
       return;  // Sortir immédiatement
     }
 
@@ -907,26 +913,51 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false) => {
   const messageToDelete = app.currentChatSession.notes.find(m => m.id === messageId);
   if (!messageToDelete) return;
 
+  // ⭐ v2.9u FIX : Sauvegarder photoData AVANT suppression message
+  const photoDataBackup = messageToDelete.photoData ? { ...messageToDelete.photoData } : null;
+  const hasLinkedContent = messageToDelete?.linkedContent;
+  const hasPhoto = !!photoDataBackup;
+
+  console.log('🗑️ performMessageDeletion:', {
+    messageId,
+    deleteFromDrive,
+    hasPhoto,
+    photoBackup: photoDataBackup
+  });
+
   dataManager.setLoadingOperation(true, 'Suppression du message...', 'Enregistrement sur Google Drive', 'monkey');
 
   try {
     const updatedSession = { ...app.currentChatSession };
-    const hasLinkedContent = messageToDelete?.linkedContent;
-    const hasPhoto = messageToDelete?.photoData;
 
-    // Supprimer le message
+    // ⭐ Suppression Drive AVANT suppression message (sinon photoData perdu)
+    if (deleteFromDrive && hasPhoto && photoDataBackup.source === 'imported') {
+      console.log('🗑️ Suppression photo du Drive...');
+      const photoId = photoDataBackup.google_drive_id || photoDataBackup.filename;
+
+      // Utiliser dataManager.deletePhoto pour supprimer du Drive
+      const result = await dataManager.deletePhoto(null, photoId, true);
+
+      if (result.success) {
+        console.log('✅ Photo supprimée du Drive');
+      } else {
+        console.error('❌ Erreur suppression Drive:', result.reason);
+        alert(`Erreur suppression Drive: ${result.reason}`);
+      }
+    }
+
+    // Supprimer le message de la session
     updatedSession.notes = updatedSession.notes.filter(note => note.id !== messageId);
     await app.updateSession(updatedSession);
 
     // Nettoyer ContentLinks si nécessaire
     if (window.contentLinks && (hasLinkedContent || hasPhoto)) {
-      if (hasPhoto) {
-        const photo = messageToDelete.photoData;
-        if (photo.google_drive_id) {
-          await window.contentLinks.removeLink(updatedSession.id, 'photo', photo.google_drive_id);
+      if (hasPhoto && photoDataBackup) {
+        if (photoDataBackup.google_drive_id) {
+          await window.contentLinks.removeLink(updatedSession.id, 'photo', photoDataBackup.google_drive_id);
         }
-        if (photo.filename && photo.filename !== photo.google_drive_id) {
-          await window.contentLinks.removeLink(updatedSession.id, 'photo', photo.filename);
+        if (photoDataBackup.filename && photoDataBackup.filename !== photoDataBackup.google_drive_id) {
+          await window.contentLinks.removeLink(updatedSession.id, 'photo', photoDataBackup.filename);
         }
       }
       if (hasLinkedContent) {
@@ -940,21 +971,6 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false) => {
       // Forcer re-render
       const currentSessions = dataManager.getState().sessions;
       dataManager.updateState({ sessions: [...currentSessions] });
-    }
-
-    // ⭐ Suppression Drive si demandée (CAS 1A option 2)
-    if (deleteFromDrive && hasPhoto && messageToDelete.photoData.source === 'imported') {
-      console.log('🗑️ Suppression photo du Drive...');
-      const photoId = messageToDelete.photoData.google_drive_id || messageToDelete.photoData.filename;
-
-      // Utiliser dataManager.deletePhoto pour supprimer du Drive
-      const result = await dataManager.deletePhoto(null, photoId, true);
-
-      if (result.success) {
-        console.log('✅ Photo supprimée du Drive');
-      } else {
-        console.error('❌ Erreur suppression Drive:', result.reason);
-      }
     }
 
     dataManager.setLoadingOperation(false);
@@ -1429,6 +1445,9 @@ function LinkPhotoPreview({ photo }) {
           // ⭐ v2.9s : Déterminer si ce message doit être encadré
           const isTargeted = message.id === targetMessageId;
 
+          // ⭐ Modif 2 : Auto-afficher boutons Éditer/Supprimer si message ciblé
+          const buttonOpacity = isTargeted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100';
+
           if (isTargeted) {
             console.log('🎯 Message CIBLÉ détecté:', message.id, 'hasPhoto:', !!message.photoData);
           }
@@ -1550,7 +1569,7 @@ function LinkPhotoPreview({ photo }) {
 
         {/* ⭐ v2.8f : Boutons édition/suppression DANS le groupe texte si zones séparées */}
         {shouldSeparateHoverZones && app.currentUser && message.author === app.currentUser.id && (
-          <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-700 rounded shadow-lg p-1 -mr-2 -mt-2">
+          <div className={`absolute top-0 right-0 ${buttonOpacity} transition-opacity bg-white dark:bg-gray-700 rounded shadow-lg p-1 -mr-2 -mt-2`}>
             <button
               onClick={() => handleEditMessage(message)}
               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
@@ -1572,7 +1591,7 @@ function LinkPhotoPreview({ photo }) {
 
     {/* ⭐ v2.8f : Boutons HORS du groupe texte si pas de séparation */}
     {!shouldSeparateHoverZones && app.currentUser && message.author === app.currentUser.id && (
-      <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-700 rounded shadow-lg p-1 -mr-2 -mt-2">
+      <div className={`absolute top-0 right-0 ${buttonOpacity} transition-opacity bg-white dark:bg-gray-700 rounded shadow-lg p-1 -mr-2 -mt-2`}>
         <button
           onClick={() => handleEditMessage(message)}
           className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
