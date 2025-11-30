@@ -1,12 +1,14 @@
 /**
- * ConfirmDeleteModal.jsx v2.9s - MODAL 1 : "Effacer le souvenir"
+ * ConfirmDeleteModal.jsx v2.9w - MODAL 1 : "Effacer le souvenir"
  * ✅ Modal simplifié de confirmation première étape
  * ✅ Liste informative des éléments fils (SANS checkboxes)
  * ✅ 3 boutons fixes : Annuler / Effacer de la mémoire / Supprimer du Drive
+ * ✅ Explications dépliables (CollapsibleHelp)
  * ✅ Dark mode support
  */
 import React from 'react';
 import { X, AlertTriangle, FileEdit, Camera, Info } from 'lucide-react';
+import CollapsibleHelp from './CollapsibleHelp.jsx';
 
 export default function ConfirmDeleteModal({
   isOpen,
@@ -123,14 +125,15 @@ export default function ConfirmDeleteModal({
           )}
 
           {/* ⭐ Info box bleue */}
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-xs text-blue-900 dark:text-blue-200 font-medium mb-2">
-              💡 Que souhaitez-vous faire ?
-            </p>
-            <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1 ml-4">
-              <li>• <strong className="text-blue-600 dark:text-blue-400">Effacer de la mémoire</strong> : Supprime du masterIndex, garde les photos sur Drive</li>
-              <li>• <strong className="text-red-600 dark:text-red-400">Supprimer du Drive</strong> : Supprime aussi les fichiers physiques (si possible)</li>
-            </ul>
+          {/* Explications dépliables */}
+          <div className="mt-4">
+            <CollapsibleHelp defaultOpen={false}>
+              <p className="font-medium mb-2">Que souhaitez-vous faire ?</p>
+              <ul className="space-y-1 ml-4">
+                <li>• <strong className="text-blue-600 dark:text-blue-400">Effacer de la mémoire</strong> : Supprime du masterIndex, garde les photos sur Drive</li>
+                <li>• <strong className="text-red-600 dark:text-red-400">Supprimer du Drive</strong> : Supprime aussi les fichiers physiques (si possible)</li>
+              </ul>
+            </CollapsibleHelp>
           </div>
         </div>
 

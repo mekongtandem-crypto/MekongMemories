@@ -1,13 +1,15 @@
 /**
- * CrossRefsWarningModal.jsx v2.9s - MODAL 2 : "Photos utilisées ailleurs"
+ * CrossRefsWarningModal.jsx v2.9w - MODAL 2 : "Photos utilisées ailleurs"
  * ✅ Affiche cross-références cliquables
  * ✅ Navigation mémorisée vers moments/sessions
  * ✅ Actualisation dynamique après retour
  * ✅ Bouton "Supprimer du Drive" grisé si cross-refs, rouge si nettoyé
+ * ✅ Instructions dépliables (CollapsibleHelp)
  * ✅ Dark mode support
  */
 import React from 'react';
 import { X, AlertTriangle, Calendar, MessageCircle, ExternalLink } from 'lucide-react';
+import CollapsibleHelp from './CollapsibleHelp.jsx';
 
 export default function CrossRefsWarningModal({
   isOpen,
@@ -158,16 +160,17 @@ export default function CrossRefsWarningModal({
               </div>
 
               {/* Instructions */}
-              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <p className="text-xs text-blue-900 dark:text-blue-200 font-medium mb-2">
-                  💡 Instructions :
-                </p>
-                <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1 ml-4">
-                  <li>• <strong>Cliquez sur les liens ci-dessus</strong> pour visiter les moments/causeries</li>
-                  <li>• <strong>Supprimez les photos</strong> dans ces autres souvenirs</li>
-                  <li>• <strong>Revenez ici</strong> via le bouton "← Souvenirs" (les liens seront actualisés)</li>
-                  <li>• Quand tous les liens sont supprimés, le bouton rouge sera actif</li>
-                </ul>
+              {/* Instructions dépliables */}
+              <div className="mt-4">
+                <CollapsibleHelp defaultOpen={true}>
+                  <p className="font-medium mb-2">Instructions :</p>
+                  <ul className="space-y-1 ml-4">
+                    <li>• <strong>Cliquez sur les liens ci-dessus</strong> pour visiter les moments/causeries</li>
+                    <li>• <strong>Supprimez les photos</strong> dans ces autres souvenirs</li>
+                    <li>• <strong>Revenez ici</strong> via le bouton "← Souvenirs" (les liens seront actualisés)</li>
+                    <li>• Quand tous les liens sont supprimés, le bouton rouge sera actif</li>
+                  </ul>
+                </CollapsibleHelp>
               </div>
             </>
           ) : (
