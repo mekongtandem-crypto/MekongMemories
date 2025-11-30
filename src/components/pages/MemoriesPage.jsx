@@ -63,6 +63,7 @@ function MemoriesPage({
   onContentSelected,
   onOpenSessionFromMemories,
   editionMode,
+  onToggleEditionMode,  // ⭐ v2.9t : Ajouté pour restauration mode édition
   onCancelEditionMode
 }, ref) {
 
@@ -1299,10 +1300,10 @@ setTimeout(() => {
         setSelectedMoments(momentsData.filter(m => m.id === savedMomentId));
       }
 
-      // ⭐ v2.9s : Restaurer mode édition
-      if (savedEditionMode?.active) {
+      // ⭐ v2.9t : Restaurer mode édition si nécessaire
+      if (savedEditionMode?.active && !editionMode.active) {
         console.log('✏️ Restauration mode édition');
-        setEditionMode({ active: true });
+        onToggleEditionMode?.();
       }
 
       // Actualiser cross-refs
