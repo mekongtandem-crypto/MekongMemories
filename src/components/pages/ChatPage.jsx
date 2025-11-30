@@ -78,23 +78,30 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   // ⭐ v2.9s : Détecter et scroller vers message cible depuis cross-refs modal
   useEffect(() => {
     const messageId = navigationContext?.returnContext?.targetMessageId;
+    console.log('🎯 Detection targetMessageId:', messageId);
+
     if (messageId) {
       setTargetMessageId(messageId);
+      console.log('✅ targetMessageId set:', messageId);
 
       // Scroller vers le message après un court délai (attendre render)
       setTimeout(() => {
         const messageElement = messageRefs.current[messageId];
         if (messageElement) {
+          console.log('📜 Scroll vers message:', messageId);
           messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          console.warn('⚠️ Message element non trouvé:', messageId);
         }
       }, 300);
 
-      // Retirer l'encadrement après 5 secondes
+      // Retirer l'encadrement après 10 secondes (augmenté pour visibilité)
       setTimeout(() => {
+        console.log('⏱️ Retrait cadre noir');
         setTargetMessageId(null);
-      }, 5000);
+      }, 10000);
     }
-  }, [navigationContext?.returnContext?.targetMessageId]);
+  }, [navigationContext?.returnContext?.targetMessageId, app.currentChatSession?.id]);
 
 // ⭐ NOUVEAU : Nettoyer liens/photos en changeant de session
 useEffect(() => {
@@ -1180,6 +1187,10 @@ function LinkPhotoPreview({ photo }) {
           // ⭐ v2.9s : Déterminer si ce message doit être encadré
           const isTargeted = message.id === targetMessageId;
 
+          if (isTargeted) {
+            console.log('🎯 Message CIBLÉ détecté:', message.id, 'hasPhoto:', !!message.photoData);
+          }
+
           return (
           <div
             key={message.id}
@@ -1246,9 +1257,9 @@ function LinkPhotoPreview({ photo }) {
 
   return hasInteractivePhoto ? (
     // ⭐ v2.8f : Photo interactive (origin/linkée/importée) = LinkedContent avec Zoom/Localiser
-    // ⭐ v2.9s : Cadre NOIR si message ciblé depuis cross-refs modal
-    <div className={`w-full max-w-full overflow-hidden mb-2 ${
-      isTargeted ? 'ring-4 ring-black dark:ring-white rounded-lg shadow-xl' : ''
+    // ⭐ v2.9t : Cadre NOIR épais + animation si message ciblé depuis cross-refs modal
+    <div className={`w-full max-w-full overflow-hidden mb-2 transition-all duration-300 ${
+      isTargeted ? 'ring-8 ring-black dark:ring-white rounded-xl shadow-2xl animate-pulse' : ''
     }`}>
       <LinkedContent
         linkedContent={{
@@ -1271,8 +1282,10 @@ function LinkPhotoPreview({ photo }) {
     </div>
   ) : (
     // Photo normale sans interaction
-    // ⭐ v2.9s : Cadre NOIR si message ciblé
-    <div className={isTargeted ? 'ring-4 ring-black dark:ring-white rounded-lg shadow-xl' : ''}>
+    // ⭐ v2.9t : Cadre NOIR épais + animation si message ciblé
+    <div className={`transition-all duration-300 ${
+      isTargeted ? 'ring-8 ring-black dark:ring-white rounded-xl shadow-2xl animate-pulse' : ''
+    }`}>
       <PhotoMessage
         photo={enrichedPhotoData}
         onPhotoClick={openPhotoViewer}
