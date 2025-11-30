@@ -1,7 +1,7 @@
 /**
  * PhotoToMemoryModal.jsx v2.9j - Conversion photo → souvenir (2 sections)
  * ✅ Section 1 : Association moment (titre, date, jnnn)
- * ✅ Section 2 : Texte optionnel (titre + descriptif) → Photo Note
+ * ✅ Section 2 : Texte optionnel (titre + descriptif) → Note de photo
  * ✅ Support création nouveau moment
  * ✅ Support dark mode
  * ⭐ v2.9j : Support fichier brut (file) OU photoData (compatibilité)
@@ -24,7 +24,7 @@ export default function PhotoToMemoryModal({
   const [newMomentJnnn, setNewMomentJnnn] = useState('IMP');
   const [isCreatingNewMoment, setIsCreatingNewMoment] = useState(false);
 
-  // Section 2 : Texte (optionnel pour Photo Note)
+  // Section 2 : Texte (optionnel pour Note de photo)
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
 
@@ -88,7 +88,7 @@ export default function PhotoToMemoryModal({
         jnnn: newMomentJnnn.trim() || 'IMP'  // ⭐ v2.8e : "IMP" au lieu de "undefined"
       } : null,
 
-      // Section 2 : Texte (Photo Note)
+      // Section 2 : Texte (Note de photo)
       noteTitle: noteTitle.trim() || null,
       noteContent: noteContent.trim() || null
     });
@@ -118,7 +118,7 @@ export default function PhotoToMemoryModal({
     setNewMomentJnnn('IMP');
   };
 
-  // Déterminer si c'est une Photo Note (texte présent)
+  // Déterminer si c'est une Note de photo (texte présent)
   const isPhotoNote = noteTitle.trim() || noteContent.trim();
 
   return (
@@ -306,7 +306,7 @@ export default function PhotoToMemoryModal({
                 <div className="flex items-center space-x-2 text-amber-700 dark:text-amber-300">
                   <span className="text-base">📷✍️</span>
                   <span className="font-medium">
-                    Ce sera une <strong>Photo Note</strong> (photo avec texte)
+                    Ce sera une <strong>Note de photo</strong> (photo avec texte)
                   </span>
                 </div>
               ) : (

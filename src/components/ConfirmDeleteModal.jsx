@@ -14,7 +14,7 @@ export default function ConfirmDeleteModal({
   onConfirmMemoryOnly,  // ⭐ Nouveau : Effacer de la mémoire seulement
   onConfirmWithDrive,   // ⭐ Nouveau : Demande suppression Drive (peut ouvrir Modal 2)
   itemName,
-  itemType = 'élément',  // 'Moment' | 'Photo Note' | 'Photo'
+  itemType = 'élément',  // 'Moment' | 'Note de photo' | 'Photo'
   itemIcon = null,
   childrenDetails = null  // Liste informative seulement
 }) {
@@ -106,9 +106,11 @@ export default function ConfirmDeleteModal({
                     <Camera className="w-3 h-3 mr-1.5" />
                     PHOTOS ({childrenDetails.photos} total)
                   </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 ml-5">
-                    • {childrenDetails.photosMoment || 0} photo{(childrenDetails.photosMoment || 0) > 1 ? 's' : ''} du moment seul
-                  </p>
+                  {childrenDetails.photosMoment > 0 && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400 ml-5">
+                      • {childrenDetails.photosMoment} photo{childrenDetails.photosMoment > 1 ? 's' : ''} du moment seul
+                    </p>
+                  )}
                   {childrenDetails.photosNotes > 0 && (
                     <p className="text-xs text-gray-600 dark:text-gray-400 ml-5">
                       • {childrenDetails.photosNotes} photo{childrenDetails.photosNotes > 1 ? 's' : ''} dans les notes

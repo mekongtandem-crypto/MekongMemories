@@ -488,7 +488,7 @@ const handleDeletePost = useCallback((momentId, postId, postTitle) => {
   setConfirmDeleteModal({
     isOpen: true,
     itemName: postTitle,
-    itemType: 'Photo Note',
+    itemType: 'Note de photo',
     itemIcon: '📝',
     childrenDetails: impact.nestedElements,
 
@@ -520,7 +520,7 @@ const handleDeletePost = useCallback((momentId, postId, postTitle) => {
       setCrossRefsModal({
         isOpen: true,
         itemName: postTitle,
-        itemType: 'Photo Note',
+        itemType: 'Note de photo',
         crossRefsWarnings,
         deleteContext: { type: 'post', momentId, postId },
         onConfirmMemoryOnly: async () => {

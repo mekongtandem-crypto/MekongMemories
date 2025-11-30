@@ -4,9 +4,9 @@
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
  * ✅ Upload avec conversion : modal 2 sections (moment + texte optionnel)
- * ✅ PhotoToMemoryModal : Section 1 (moment) + Section 2 (Photo Note)
+ * ✅ PhotoToMemoryModal : Section 1 (moment) + Section 2 (Note de photo)
  * ✅ Support champ jnnn pour nouveaux moments (valeur par défaut: "undefined")
- * ✅ Photo Note : titre + descriptif (max 500 chars) → posts avec category: 'user_added'
+ * ✅ Note de photo : titre + descriptif (max 500 chars) → posts avec category: 'user_added'
  * ✅ Photo simple (sans texte) → dayPhotos[]
  * ✅ Ajout réel au masterIndex avec nouvelle structure
  * ✅ Insertion automatique de la photo dans le chat après conversion
@@ -409,13 +409,13 @@ useEffect(() => {
             contentType: result.contentType,  // 'post' ou 'photo'
             contentId: result.contentId,
             contentTitle: result.contentType === 'post'
-              ? (conversionData.noteTitle || 'Photo Note')
+              ? (conversionData.noteTitle || 'Note de photo')
               : finalPhotoData.filename,
             linkedBy: app.currentUser
           });
           logger.success(`🔗 Lien ContentLinks créé: ${result.contentType} → session ${app.currentChatSession.id}`);
 
-          // ⭐ v2.8f : Si c'est un post (Photo Note), créer AUSSI un lien pour la photo
+          // ⭐ v2.8f : Si c'est un post (Note de photo), créer AUSSI un lien pour la photo
           if (result.contentType === 'post' && finalPhotoData.google_drive_id) {
             await window.contentLinks.addLink({
               sessionId: app.currentChatSession.id,

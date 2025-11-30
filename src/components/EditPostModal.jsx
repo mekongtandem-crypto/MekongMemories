@@ -1,7 +1,7 @@
 /**
- * EditPostModal.jsx v2.9 - Modal d'édition de post (Photo Note)
+ * EditPostModal.jsx v2.9 - Modal d'édition de post (Note de photo)
  * ✅ Édition titre et contenu
- * ✅ Seulement pour posts user_added (Photo Notes)
+ * ✅ Seulement pour posts user_added (Note de photos)
  * ✅ Dark mode support
  * ✅ Validation formulaire
  * ✅ Compteur de caractères (max 500)
@@ -78,7 +78,7 @@ export default function EditPostModal({
           <div className="flex items-center space-x-2">
             <Edit className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-              Modifier la Photo Note
+              Modifier la Note de photo
             </h3>
           </div>
           <button

@@ -848,14 +848,14 @@ class DataManager {
         mime_type: photoData.type || 'image/jpeg'
       };
 
-      // 4. Déterminer si c'est une Photo Note (texte présent)
+      // 4. Déterminer si c'est une Note de photo (texte présent)
       const isPhotoNote = conversionData.noteTitle || conversionData.noteContent;
 
       // ⭐ v2.8e : Garder contentId et contentType pour ContentLinks
       let contentId;
       let contentType;
 
-      // 4a. Si texte → créer un post avec photo (Photo Note)
+      // 4a. Si texte → créer un post avec photo (Note de photo)
       if (isPhotoNote) {
         const newPost = {
           id: `post_imported_${Date.now()}`,
@@ -879,7 +879,7 @@ class DataManager {
         contentId = newPost.id;
         contentType = 'post';
 
-        logger.info(`✅ Photo Note créée: ${newPost.id} (titre: "${conversionData.noteTitle || 'sans titre'}")`);
+        logger.info(`✅ Note de photo créée: ${newPost.id} (titre: "${conversionData.noteTitle || 'sans titre'}")`);
       }
       // 4b. Sinon → ajouter photo standalone dans dayPhotos
       else {
@@ -970,7 +970,11 @@ class DataManager {
   deleteMoment = async (momentId, cascadeOptions = null) => {
     logger.info('Suppression moment:', momentId, 'cascade:', cascadeOptions);
 
-    this.setLoadingOperation(true, 'Suppression du moment...', 'Enregistrement sur Google Drive', 'monkey');
+    // ⭐ v2.9s : Message adapté selon action (effacement mémoire vs suppression Drive)
+    const spinnerMessage = cascadeOptions?.deleteFiles
+      ? 'Suppression du souvenir et fichiers...'
+      : 'Effacement du souvenir...';
+    this.setLoadingOperation(true, spinnerMessage, 'Enregistrement sur Google Drive', 'monkey');
 
     try {
       const masterIndex = this.appState.masterIndex;
@@ -1018,7 +1022,7 @@ class DataManager {
 
       // ⭐ v2.9j : Suppression en cascade des enfants
       if (cascadeOptions) {
-        // 1. Supprimer les Photo Notes (category='user_added')
+        // 1. Supprimer les Note de photos (category='user_added')
         if (cascadeOptions.deleteNotes && moment.posts) {
           const notesToDelete = moment.posts.filter(post => post.category === 'user_added');
           logger.info(`🗑️ Suppression de ${notesToDelete.length} note(s)...`);
@@ -1086,7 +1090,7 @@ class DataManager {
   updatePost = async (momentId, updatedPost) => {
     logger.info('Mise à jour post:', updatedPost.id);
 
-    this.setLoadingOperation(true, 'Modification de la Photo Note...', 'Enregistrement sur Google Drive', 'spin');
+    this.setLoadingOperation(true, 'Modification de la Note de photo...', 'Enregistrement sur Google Drive', 'spin');
 
     try {
       // Vérifier que c'est un post user_added
@@ -1141,7 +1145,11 @@ class DataManager {
     }
 
     if (showSpinner) {
-      this.setLoadingOperation(true, 'Suppression de la Photo Note...', 'Enregistrement sur Google Drive', 'monkey');
+      // ⭐ v2.9s : Message adapté selon action
+      const spinnerMessage = cascadeOptions?.deleteFiles
+        ? 'Suppression de la note et fichiers...'
+        : 'Effacement de la note...';
+      this.setLoadingOperation(true, spinnerMessage, 'Enregistrement sur Google Drive', 'monkey');
     }
 
     try {
@@ -1641,7 +1649,7 @@ class DataManager {
     }
 
     else if (type === 'post') {
-      // Analyse pour post (Photo Note)
+      // Analyse pour post (Note de photo)
       const moment = this.appState.masterIndex?.moments.find(m => m.id === momentId);
       if (!moment) return result;
 
