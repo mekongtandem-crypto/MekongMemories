@@ -1304,7 +1304,6 @@ const findPhotoMomentId = (photoData, masterIndex) => {
     }
   }
 
-  console.log(`⚠️ Photo ${photoId} non trouvée dans masterIndex`);
   return null;
 };
 
@@ -2129,14 +2128,11 @@ function PhotoMessage({ photo, onPhotoClick }) {
     if (hasAssociation) {
       // PhotoSouvenir (associée) : cadre JAUNE/AMBER vif
       borderClass = 'border-4 border-amber-500 dark:border-amber-400';
-      console.log('✅ Bordure: PhotoSouvenir (JAUNE/AMBER VIF border-4)');
     } else {
       // PhotoENVrac (non associée) : cadre ROUGE vif
       borderClass = 'border-4 border-red-500 dark:border-red-400';
-      console.log('✅ Bordure: PhotoENVrac (ROUGE VIF border-4)');
     }
   } else {
-    console.log('⚠️ Pas de bordure - source:', photo.source, 'isImported:', isImported);
   }
 
   return (

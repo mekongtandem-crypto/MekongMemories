@@ -98,29 +98,16 @@ function LinkedPhoto({ linkedContent, onOpenLocal, onNavigate }) {
   const isImported = linkedContent.source === 'imported';
   const hasAssociation = linkedContent.momentId;
 
-  // 🔍 Debug: Log pour vérifier les valeurs
-  console.log('🖼️ LinkedPhoto - Debug bordure:', {
-    filename: linkedContent.title,
-    source: linkedContent.source,
-    momentId: linkedContent.momentId,
-    isImported,
-    hasAssociation
-  });
-
   // Déterminer la bordure appropriée
   let borderClass = '';
   if (isImported) {
     if (hasAssociation) {
       // PhotoSouvenir (associée) : cadre JAUNE/AMBER vif ⭐ v2.9t
       borderClass = 'border-4 border-amber-500 dark:border-amber-400';
-      console.log('✅ Bordure: PhotoSouvenir (JAUNE/AMBER VIF border-4)');
     } else {
       // PhotoENVrac (non associée) : cadre ROUGE vif
       borderClass = 'border-4 border-red-500 dark:border-red-400';
-      console.log('✅ Bordure: PhotoENVrac (ROUGE VIF border-4)');
     }
-  } else {
-    console.log('⚠️ Pas de bordure - source:', linkedContent.source, 'isImported:', isImported);
   }
 
   return (
