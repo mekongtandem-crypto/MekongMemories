@@ -913,7 +913,7 @@ useEffect(() => {
       dataManager.setLoadingOperation(false);
 
       // ⭐ Modif 1 : Afficher feedback avant retour auto
-      setFeedbackMessage('🐒 Retour à la page Souvenirs...');
+      setFeedbackMessage('Retour à la page Souvenirs...');
 
       // Attendre 800ms pour que l'utilisateur voie le message
       setTimeout(() => {
@@ -970,19 +970,28 @@ const handleDeleteMessageAndDrive = async () => {
 
 // ⭐ v2.9u : Fonction commune de suppression (appelée par les handlers)
 const performMessageDeletion = async (messageId, deleteFromDrive = false, cameFromModal = false) => {
+  console.log('═══════════════════════════════════════════════════');
+  console.log('🔥 performMessageDeletion DÉBUT');
+  console.log('═══════════════════════════════════════════════════');
+
   const messageToDelete = app.currentChatSession.notes.find(m => m.id === messageId);
-  if (!messageToDelete) return;
+  if (!messageToDelete) {
+    console.log('❌ Message introuvable:', messageId);
+    return;
+  }
 
   // ⭐ v2.9u FIX : Sauvegarder photoData AVANT suppression message
   const photoDataBackup = messageToDelete.photoData ? { ...messageToDelete.photoData } : null;
   const hasLinkedContent = messageToDelete?.linkedContent;
   const hasPhoto = !!photoDataBackup;
 
-  console.log('🗑️ performMessageDeletion:', {
+  console.log('📋 PARAMÈTRES:', {
     messageId,
     deleteFromDrive,
     hasPhoto,
     cameFromModal,
+    photoSource: photoDataBackup?.source,
+    photoId: photoDataBackup?.google_drive_id || photoDataBackup?.filename,
     photoBackup: photoDataBackup
   });
 
@@ -993,12 +1002,15 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false, cameFr
 
     // ⭐ v2.9w FIX : Nettoyer ContentLinks AVANT deletePhoto pour éviter faux positif cross-ref
     if (window.contentLinks && (hasLinkedContent || hasPhoto)) {
+      console.log('🧹 Nettoyage ContentLinks...');
       if (hasPhoto && photoDataBackup) {
         if (photoDataBackup.google_drive_id) {
           await window.contentLinks.removeLink(updatedSession.id, 'photo', photoDataBackup.google_drive_id);
+          console.log('  ✅ Lien supprimé (google_drive_id):', photoDataBackup.google_drive_id);
         }
         if (photoDataBackup.filename && photoDataBackup.filename !== photoDataBackup.google_drive_id) {
           await window.contentLinks.removeLink(updatedSession.id, 'photo', photoDataBackup.filename);
+          console.log('  ✅ Lien supprimé (filename):', photoDataBackup.filename);
         }
       }
       if (hasLinkedContent) {
@@ -1007,26 +1019,37 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false, cameFr
           messageToDelete.linkedContent.type,
           messageToDelete.linkedContent.id
         );
+        console.log('  ✅ Lien supprimé (linkedContent)');
       }
       console.log('✅ ContentLinks nettoyés AVANT suppression Drive');
     }
 
     // ⭐ v2.9w2 FIX CRITIQUE : Supprimer message de la session EN MÉMOIRE avant deletePhoto
-    // Sinon checkPhotoInSessions trouve encore le message et retourne cross_references
+    console.log('🗑️ Suppression message EN MÉMOIRE...');
     updatedSession.notes = updatedSession.notes.filter(note => note.id !== messageId);
+    console.log('  ✅ Message supprimé de updatedSession.notes');
 
     // ⭐ v2.9w2 : Mettre à jour appState temporairement pour que checkPhotoInSessions ne voie plus le message
+    console.log('🔄 Mise à jour appState temporaire...');
     dataManager.updateState({
       sessions: app.sessions.map(s => s.id === updatedSession.id ? updatedSession : s)
     });
+    console.log('  ✅ appState mis à jour (message invisible pour checkPhotoInSessions)');
 
     // ⭐ Suppression Drive APRÈS nettoyage (checkPhotoInSessions ne verra plus le message)
+    console.log('🔍 Vérification conditions suppression Drive:');
+    console.log('  deleteFromDrive:', deleteFromDrive);
+    console.log('  hasPhoto:', hasPhoto);
+    console.log('  photoDataBackup.source:', photoDataBackup?.source);
+    console.log('  Condition complète:', deleteFromDrive && hasPhoto && photoDataBackup?.source === 'imported');
+
     if (deleteFromDrive && hasPhoto && photoDataBackup.source === 'imported') {
-      console.log('🗑️ Suppression photo du Drive...');
+      console.log('💣 SUPPRESSION DRIVE ACTIVÉE');
       const photoId = photoDataBackup.google_drive_id || photoDataBackup.filename;
+      console.log('  📸 photoId:', photoId);
 
       // ⭐ v2.9v FIX : Paramètres corrects pour deletePhoto
-      // deletePhoto(momentId, photoId, filename, deleteFromDrive, showSpinner)
+      console.log('  🚀 Appel dataManager.deletePhoto...');
       const result = await dataManager.deletePhoto(
         null,                        // momentId (null car photo de chat)
         photoId,                     // photoId (google_drive_id ou filename)
@@ -1035,37 +1058,52 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false, cameFr
         false                        // showSpinner = false (déjà affiché)
       );
 
+      console.log('  📊 Résultat deletePhoto:', result);
+
       if (result && result.success) {
-        console.log('✅ Photo supprimée du Drive');
+        console.log('  ✅ Photo supprimée du Drive');
       } else if (result && !result.success) {
-        console.error('❌ Erreur suppression Drive:', result.reason);
+        console.error('  ❌ Erreur suppression Drive:', result.reason);
+        console.error('  📋 Détails:', result);
         dataManager.setLoadingOperation(false);
         alert(`Erreur suppression Drive: ${result.reason}`);
         return; // Annuler la suppression du message
       }
+    } else {
+      console.log('⏭️ SUPPRESSION DRIVE IGNORÉE (conditions non remplies)');
     }
 
     // Sauvegarder la session mise à jour sur Drive
+    console.log('💾 Sauvegarde session sur Drive...');
     await app.updateSession(updatedSession);
+    console.log('  ✅ Session sauvegardée');
 
     // Forcer re-render
     if (window.contentLinks) {
       const currentSessions = dataManager.getState().sessions;
       dataManager.updateState({ sessions: [...currentSessions] });
+      console.log('  ✅ Re-render forcé');
     }
 
     // ⭐ v2.9w CAS 2 : Auto-retour + ré-ouverture Modal 2 si venu de MemoriesPage
+    console.log('🔍 Vérification retour auto:');
+    console.log('  cameFromModal:', cameFromModal);
+
     if (cameFromModal) {
-      console.log('🔙 CAS 2 : Auto-retour vers MemoriesPage + ré-ouverture Modal 2');
+      console.log('🔙 CAS 2 DÉTECTÉ : Auto-retour vers MemoriesPage');
 
       // Désactiver spinner avant navigation
       dataManager.setLoadingOperation(false);
+      console.log('  ✅ Spinner désactivé');
 
       // ⭐ Afficher feedback avant retour auto
-      setFeedbackMessage('🐒 Retour à la page Souvenirs...');
+      setFeedbackMessage('Retour à la page Souvenirs...');
+      console.log('  ✅ Feedback affiché');
 
       // Attendre 800ms pour que l'utilisateur voie le message
+      console.log('  ⏳ setTimeout 800ms avant navigation...');
       setTimeout(() => {
+        console.log('  🚀 NAVIGATION vers MemoriesPage');
         // Retourner à MemoriesPage avec flag pour ré-ouvrir Modal 2
         app.navigateTo('memories', {
           previousPage: 'chat',
@@ -1754,30 +1792,6 @@ function LinkPhotoPreview({ photo }) {
   </div>
 )}
   
-  {/* ⭐ v2.9w2 : Preview photo compacte et intégrée */}
-  {attachedPhoto && (
-    <div className="mb-2 flex items-center space-x-2 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg border border-amber-200 dark:border-amber-800">
-      <div className="relative flex-shrink-0">
-        <PhotoPreview photo={attachedPhoto} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-amber-900 dark:text-amber-200 font-medium truncate">
-          📸 {attachedPhoto.filename || 'Photo'}
-        </p>
-        <p className="text-xs text-amber-700 dark:text-amber-300">
-          Prête à envoyer
-        </p>
-      </div>
-      <button
-        onClick={() => setAttachedPhoto(null)}
-        className="flex-shrink-0 p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
-        title="Retirer photo"
-      >
-        <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-      </button>
-    </div>
-  )}
-
   {/* ⭐ v3.0a : LAYOUT avec menu [+] Input [✉️] */}
   <div className="flex items-end space-x-2">
 
@@ -1859,26 +1873,54 @@ function LinkPhotoPreview({ photo }) {
     
     
     
-    {/* Input message au CENTRE */}
-    <textarea
-            ref={textareaRef}
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => {
-              // ✨ Entrée = Envoyer, Shift+Entrée = Retour à la ligne
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            placeholder={
-              pendingLink || attachedPhoto
-                ? "Ajouter un message (optionnel)..."
-                : "tapez votre message... (Entrée pour envoyer, Shift+Entrée pour retour à la ligne)"
-            }
-            className="flex-1 dark:text-gray-50  bg-gray-800 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-            rows="2"
-          />
+    {/* ⭐ v2.9w3 : Conteneur unifié preview + input */}
+    <div className="flex-1 flex flex-col border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-amber-500 focus-within:border-amber-500 overflow-hidden">
+      {/* Preview photo intégrée (si présente) */}
+      {attachedPhoto && (
+        <div className="flex items-center space-x-2 bg-amber-50 dark:bg-amber-900/20 p-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="relative flex-shrink-0">
+            <PhotoPreview photo={attachedPhoto} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-amber-900 dark:text-amber-200 font-medium truncate flex items-center space-x-1">
+              <ImageIcon className="w-3 h-3" />
+              <span>{attachedPhoto.filename || 'Photo'}</span>
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              Prête à envoyer
+            </p>
+          </div>
+          <button
+            onClick={() => setAttachedPhoto(null)}
+            className="flex-shrink-0 p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+            title="Retirer photo"
+          >
+            <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+          </button>
+        </div>
+      )}
+
+      {/* Input message */}
+      <textarea
+        ref={textareaRef}
+        value={newMessage}
+        onChange={(e) => setNewMessage(e.target.value)}
+        onKeyDown={(e) => {
+          // ✨ Entrée = Envoyer, Shift+Entrée = Retour à la ligne
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
+          }
+        }}
+        placeholder={
+          pendingLink || attachedPhoto
+            ? "Ajouter un message (optionnel)..."
+            : "tapez votre message... (Entrée pour envoyer, Shift+Entrée pour retour à la ligne)"
+        }
+        className="w-full dark:text-gray-50 bg-transparent p-3 resize-none focus:outline-none"
+        rows="2"
+      />
+    </div>
     
     {/* Bouton Envoyer à DROITE */}
 <button

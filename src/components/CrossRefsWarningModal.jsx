@@ -43,7 +43,7 @@ export default function CrossRefsWarningModal({
           <div className="flex items-center space-x-2">
             <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
             <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-              {hasCrossRefs ? '⚠️ Photos utilisées ailleurs' : '✅ Nettoyage terminé'}
+              {hasCrossRefs ? 'Photos utilisées ailleurs' : 'Nettoyage terminé'}
             </h3>
           </div>
           <button
@@ -61,7 +61,7 @@ export default function CrossRefsWarningModal({
               {/* Message d'avertissement */}
               <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-lg mb-4">
                 <p className="text-sm font-bold text-orange-900 dark:text-orange-200 mb-2">
-                  🚫 Impossible de supprimer les fichiers du cloud
+                  Impossible de supprimer les fichiers du cloud
                 </p>
                 <p className="text-xs text-orange-800 dark:text-orange-300 leading-relaxed">
                   Les photos de <strong>"{itemName}"</strong> sont encore utilisées dans d'autres moments ou causeries.
@@ -76,13 +76,13 @@ export default function CrossRefsWarningModal({
                   <div className="p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg">
                     <p className="text-sm font-bold text-red-900 dark:text-red-200 mb-2 flex items-center">
                       <Calendar className="w-4 h-4 mr-2" />
-                      📅 UTILISÉ DANS D'AUTRES MOMENTS
+                      UTILISÉ DANS D'AUTRES MOMENTS
                     </p>
                     <div className="space-y-2 ml-4">
                       {crossRefsWarnings.filter(w => w.crossRefs && w.crossRefs.length > 0).map((warning, idx) => (
                         <div key={idx} className="text-xs">
                           <p className="font-semibold text-red-900 dark:text-red-200">
-                            📸 {warning.filename || warning.photoId?.substring(0, 30) + '...'}
+                            {warning.filename || warning.photoId?.substring(0, 30) + '...'}
                           </p>
                           <div className="ml-3 mt-1 space-y-0.5">
                             {warning.crossRefs.map((ref, refIdx) => (
@@ -112,13 +112,13 @@ export default function CrossRefsWarningModal({
                   <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-lg">
                     <p className="text-sm font-bold text-orange-900 dark:text-orange-200 mb-2 flex items-center">
                       <MessageCircle className="w-4 h-4 mr-2" />
-                      💬 UTILISÉ DANS DES CAUSERIES
+                      UTILISÉ DANS DES CAUSERIES
                     </p>
                     <div className="space-y-2 ml-4">
                       {crossRefsWarnings.filter(w => w.sessionRefs && w.sessionRefs.length > 0).map((warning, idx) => (
                         <div key={idx} className="text-xs">
                           <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">
-                            📸 {warning.filename || warning.photoId?.substring(0, 30) + '...'}
+                            {warning.filename || warning.photoId?.substring(0, 30) + '...'}
                           </p>
                           <div className="ml-3 space-y-1">
                             {warning.sessionRefs.map((ref, refIdx) => {
@@ -178,7 +178,7 @@ export default function CrossRefsWarningModal({
               {/* Message succès - Plus de cross-refs */}
               <div className="p-3 bg-green-50 dark:bg-green-900/20 border-2 border-green-300 dark:border-green-700 rounded-lg mb-4">
                 <p className="text-sm font-bold text-green-900 dark:text-green-200 mb-2">
-                  ✅ Toutes les références ont été supprimées
+                  Toutes les références ont été supprimées
                 </p>
                 <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">
                   Vous pouvez maintenant supprimer les fichiers physiques du cloud en toute sécurité.
