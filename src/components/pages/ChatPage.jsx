@@ -743,8 +743,10 @@ useEffect(() => {
     // Simple confirmation
     if (!confirm('Supprimer ce message ?')) return;
 
-    // La suppression continue normalement
-    // Le retour auto + ré-ouverture Modal 2 sera géré après la suppression
+    // ⭐ v2.9w : Appeler performMessageDeletion avec flag cameFromModal
+    // (pas de suppression Drive pour messages depuis Modal 2)
+    await performMessageDeletion(messageId, false, true);  // deleteFromDrive=false, cameFromModal=true
+    return;  // Sortir immédiatement
   }
 
   // ═══════════════════════════════════════════════════
@@ -961,7 +963,7 @@ const handleDeleteMessageAndDrive = async () => {
 };
 
 // ⭐ v2.9u : Fonction commune de suppression (appelée par les handlers)
-const performMessageDeletion = async (messageId, deleteFromDrive = false) => {
+const performMessageDeletion = async (messageId, deleteFromDrive = false, cameFromModal = false) => {
   const messageToDelete = app.currentChatSession.notes.find(m => m.id === messageId);
   if (!messageToDelete) return;
 
@@ -974,6 +976,7 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false) => {
     messageId,
     deleteFromDrive,
     hasPhoto,
+    cameFromModal,
     photoBackup: photoDataBackup
   });
 
@@ -982,7 +985,27 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false) => {
   try {
     const updatedSession = { ...app.currentChatSession };
 
-    // ⭐ Suppression Drive AVANT suppression message (sinon photoData perdu)
+    // ⭐ v2.9w FIX : Nettoyer ContentLinks AVANT deletePhoto pour éviter faux positif cross-ref
+    if (window.contentLinks && (hasLinkedContent || hasPhoto)) {
+      if (hasPhoto && photoDataBackup) {
+        if (photoDataBackup.google_drive_id) {
+          await window.contentLinks.removeLink(updatedSession.id, 'photo', photoDataBackup.google_drive_id);
+        }
+        if (photoDataBackup.filename && photoDataBackup.filename !== photoDataBackup.google_drive_id) {
+          await window.contentLinks.removeLink(updatedSession.id, 'photo', photoDataBackup.filename);
+        }
+      }
+      if (hasLinkedContent) {
+        await window.contentLinks.removeLink(
+          updatedSession.id,
+          messageToDelete.linkedContent.type,
+          messageToDelete.linkedContent.id
+        );
+      }
+      console.log('✅ ContentLinks nettoyés AVANT suppression Drive');
+    }
+
+    // ⭐ Suppression Drive APRÈS nettoyage ContentLinks (évite faux positif)
     if (deleteFromDrive && hasPhoto && photoDataBackup.source === 'imported') {
       console.log('🗑️ Suppression photo du Drive...');
       const photoId = photoDataBackup.google_drive_id || photoDataBackup.filename;
@@ -1011,27 +1034,34 @@ const performMessageDeletion = async (messageId, deleteFromDrive = false) => {
     updatedSession.notes = updatedSession.notes.filter(note => note.id !== messageId);
     await app.updateSession(updatedSession);
 
-    // Nettoyer ContentLinks si nécessaire
-    if (window.contentLinks && (hasLinkedContent || hasPhoto)) {
-      if (hasPhoto && photoDataBackup) {
-        if (photoDataBackup.google_drive_id) {
-          await window.contentLinks.removeLink(updatedSession.id, 'photo', photoDataBackup.google_drive_id);
-        }
-        if (photoDataBackup.filename && photoDataBackup.filename !== photoDataBackup.google_drive_id) {
-          await window.contentLinks.removeLink(updatedSession.id, 'photo', photoDataBackup.filename);
-        }
-      }
-      if (hasLinkedContent) {
-        await window.contentLinks.removeLink(
-          updatedSession.id,
-          messageToDelete.linkedContent.type,
-          messageToDelete.linkedContent.id
-        );
-      }
-
-      // Forcer re-render
+    // Forcer re-render
+    if (window.contentLinks) {
       const currentSessions = dataManager.getState().sessions;
       dataManager.updateState({ sessions: [...currentSessions] });
+    }
+
+    // ⭐ v2.9w CAS 2 : Auto-retour + ré-ouverture Modal 2 si venu de MemoriesPage
+    if (cameFromModal) {
+      console.log('🔙 CAS 2 : Auto-retour vers MemoriesPage + ré-ouverture Modal 2');
+
+      // Désactiver spinner avant navigation
+      dataManager.setLoadingOperation(false);
+
+      // ⭐ Afficher feedback avant retour auto
+      setFeedbackMessage('🐒 Retour à la page Souvenirs...');
+
+      // Attendre 800ms pour que l'utilisateur voie le message
+      setTimeout(() => {
+        // Retourner à MemoriesPage avec flag pour ré-ouvrir Modal 2
+        app.navigateTo('memories', {
+          previousPage: 'chat',
+          returnContext: {
+            ...navigationContext.returnContext,
+            reopenModal2: true  // ⭐ Flag pour ré-ouvrir Modal 2 avec cross-refs actualisées
+          }
+        });
+      }, 800);
+      return;  // Sortir immédiatement
     }
 
     dataManager.setLoadingOperation(false);
@@ -2136,12 +2166,12 @@ function PhotoPreview({ photo }) {
   const isImported = photo.source === 'imported';
 
   return (
-    <div className="relative">
+    <div className="mb-2">
       <img
         src={imageUrl}
         alt={photo.filename}
-        className={`w-full max-h-96 object-contain bg-gray-100 rounded-lg ${
-          isImported ? 'border-2 border-amber-500 dark:border-amber-400' : ''
+        className={`max-w-[200px] rounded-lg shadow-md ${
+          isImported ? 'border-4 border-amber-500 dark:border-amber-400' : ''
         }`}
       />
 

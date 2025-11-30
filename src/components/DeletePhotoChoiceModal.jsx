@@ -1,12 +1,14 @@
 /**
- * DeletePhotoChoiceModal.jsx v2.9v - Modal suppression message avec photo
+ * DeletePhotoChoiceModal.jsx v2.9w - Modal suppression message avec photo
  * ✅ Design amélioré : titre + info + question + 💡 explications
  * ✅ 3 boutons : Annuler / Message seul (bleu) / Message + fichier (rouge)
+ * ✅ Explications dépliables (CollapsibleHelp)
  * ✅ Pour photos importées NON utilisées ailleurs
  * ✅ Utilisé dans ChatPage cas 1A
  */
 import React from 'react';
-import { X, Trash2, MessageCircle, AlertCircle, Lightbulb } from 'lucide-react';
+import { X, Trash2, MessageCircle, AlertCircle } from 'lucide-react';
+import CollapsibleHelp from './CollapsibleHelp.jsx';
 
 export default function DeletePhotoChoiceModal({
   isOpen,
@@ -58,19 +60,13 @@ export default function DeletePhotoChoiceModal({
             </p>
           </div>
 
-          {/* Explications */}
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
-            <div className="flex items-start space-x-2">
-              <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <div className="text-xs text-blue-900 dark:text-blue-200 space-y-1">
-                <p className="font-medium">💡 Explications :</p>
-                <ul className="ml-4 space-y-1 text-blue-800 dark:text-blue-300">
-                  <li>• <strong>Message seulement</strong> : Le message disparaît de la causerie, mais la photo reste disponible sur Google Drive pour d'autres usages</li>
-                  <li>• <strong>Message + fichier photo</strong> : Le message ET le fichier physique sont supprimés définitivement du cloud (⚠️ action irréversible)</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          {/* Explications dépliables */}
+          <CollapsibleHelp defaultOpen={false}>
+            <ul className="ml-4 space-y-1 text-blue-800 dark:text-blue-300">
+              <li>• <strong>Message seulement</strong> : Le message disparaît de la causerie, mais la photo reste disponible sur Google Drive pour d'autres usages</li>
+              <li>• <strong>Message + fichier photo</strong> : Le message ET le fichier physique sont supprimés définitivement du cloud (⚠️ action irréversible)</li>
+            </ul>
+          </CollapsibleHelp>
         </div>
 
         {/* Footer - 3 boutons */}
