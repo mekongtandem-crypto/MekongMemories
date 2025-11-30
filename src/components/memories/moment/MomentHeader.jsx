@@ -135,7 +135,7 @@ export const MomentHeader = memo(({
       {/* Compteurs + Badges */}
       <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm mt-2 pt-0 border-t border-gray-100 dark:border-gray-700">
 
-        {/* Compteurs cliquables - ⭐ v2.8e : Séparation posts Mastodon / Photo Notes */}
+        {/* Compteurs cliquables - ⭐ v2.8e : Séparation posts Mastodon / Note de photos */}
 
         {/* 🗒️ Posts Mastodon (bleu) */}
         {moment.mastodonPostCount > 0 && (
@@ -148,7 +148,7 @@ export const MomentHeader = memo(({
           </button>
         )}
 
-        {/* 📝 Photo Notes (jaune/amber) */}
+        {/* 📝 Note de photos (jaune/amber) */}
         {moment.noteCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'posts')}

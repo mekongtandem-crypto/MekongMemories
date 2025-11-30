@@ -175,7 +175,7 @@ export default function SessionInfoPanel({
                   );
                 })}
 
-                {/* Posts - ⭐ v2.8e : Distinguer posts Mastodon vs Photo Notes */}
+                {/* Posts - ⭐ v2.8e : Distinguer posts Mastodon vs Note de photos */}
                 {linkedContent.posts.map((post, idx) => {
                   // Chercher le post dans masterIndex pour vérifier category
                   let isPhotoNote = false;

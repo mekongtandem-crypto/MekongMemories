@@ -44,12 +44,12 @@ export const PostArticle = memo(({
 
   const contentParts = post.content ? post.content.trim().split('\n') : [];
 
-  // ⭐ v2.8e : Pour Photo Notes (user_added), utiliser post.title si présent
+  // ⭐ v2.8e : Pour Note de photos (user_added), utiliser post.title si présent
   const title = post.title
     ? post.title
     : (contentParts.shift() || `Article du jour ${post.dayNumber}`);
 
-  // ⭐ v2.8e : Pour Photo Notes, afficher tout le content (pas de split)
+  // ⭐ v2.8e : Pour Note de photos, afficher tout le content (pas de split)
   const body = post.title
     ? post.content
     : contentParts.filter(part => part.trim() !== '').join('<br />');
@@ -83,7 +83,7 @@ export const PostArticle = memo(({
   const hasPhotos = post.photos && post.photos.length > 0;
   const photosAreVisible = showThisPostPhotos && hasPhotos;
 
-  // ⭐ v2.8e : Distinction visuelle Photo Note (jaune) vs Post Mastodon (gris/bleu)
+  // ⭐ v2.8e : Distinction visuelle Note de photo (jaune) vs Post Mastodon (gris/bleu)
   const isPhotoNote = post.category === 'user_added';
 
   return (
@@ -182,7 +182,7 @@ export const PostArticle = memo(({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    window.memoriesPageActions?.deletePost(moment.id, post.id, post.title || 'Photo Note');
+                    window.memoriesPageActions?.deletePost(moment.id, post.id, post.title || 'Note de photo');
                   }}
                   className="p-1.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-800 rounded transition-colors"
                   title="Effacer cette note de la mémoire"

@@ -20,7 +20,7 @@ export function enrichMomentsWithData(rawMoments) {
       photos: post.photos?.map(photo => normalizePhoto(photo)) || []
     })) || [];
 
-    // ⭐ v2.8e : Séparer comptage posts Mastodon vs Photo Notes (category: user_added)
+    // ⭐ v2.8e : Séparer comptage posts Mastodon vs Note de photos (category: user_added)
     const mastodonPosts = enrichedPosts.filter(p => p.category !== 'user_added');
     const photoNotes = enrichedPosts.filter(p => p.category === 'user_added');
 
@@ -37,7 +37,7 @@ export function enrichMomentsWithData(rawMoments) {
       posts: enrichedPosts,
       postCount: enrichedPosts.length,  // Total (rétrocompatibilité)
       mastodonPostCount: mastodonPosts.length,  // ⭐ Posts Mastodon uniquement
-      noteCount: photoNotes.length,  // ⭐ Photo Notes uniquement
+      noteCount: photoNotes.length,  // ⭐ Note de photos uniquement
       dayPhotoCount: moment.dayPhotos?.length || 0,
       postPhotoCount: moment.postPhotos?.length || 0,
       photoCount: (moment.dayPhotos?.length || 0) + (moment.postPhotos?.length || 0),

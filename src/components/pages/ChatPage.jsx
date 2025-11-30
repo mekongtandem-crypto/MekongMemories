@@ -4,9 +4,9 @@
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
  * ✅ Upload avec conversion : modal 2 sections (moment + texte optionnel)
- * ✅ PhotoToMemoryModal : Section 1 (moment) + Section 2 (Photo Note)
+ * ✅ PhotoToMemoryModal : Section 1 (moment) + Section 2 (Note de photo)
  * ✅ Support champ jnnn pour nouveaux moments (valeur par défaut: "undefined")
- * ✅ Photo Note : titre + descriptif (max 500 chars) → posts avec category: 'user_added'
+ * ✅ Note de photo : titre + descriptif (max 500 chars) → posts avec category: 'user_added'
  * ✅ Photo simple (sans texte) → dayPhotos[]
  * ✅ Ajout réel au masterIndex avec nouvelle structure
  * ✅ Insertion automatique de la photo dans le chat après conversion
@@ -59,17 +59,42 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
 
   // ✨ PHASE 19C : État panel infos
   const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
-  
+
+  // ⭐ v2.9s : Encadrement message lié depuis cross-refs modal
+  const [targetMessageId, setTargetMessageId] = useState(null);
+
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const textareaRef = useRef(null);
+  const messageRefs = useRef({});  // ⭐ v2.9s : Refs pour messages individuels
 
   // Scroll vers dernier message
   useEffect(() => {
-    if (messagesEndRef.current) {
+    if (messagesEndRef.current && !targetMessageId) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [app.currentChatSession?.notes]);
+  }, [app.currentChatSession?.notes, targetMessageId]);
+
+  // ⭐ v2.9s : Détecter et scroller vers message cible depuis cross-refs modal
+  useEffect(() => {
+    const messageId = navigationContext?.returnContext?.targetMessageId;
+    if (messageId) {
+      setTargetMessageId(messageId);
+
+      // Scroller vers le message après un court délai (attendre render)
+      setTimeout(() => {
+        const messageElement = messageRefs.current[messageId];
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+
+      // Retirer l'encadrement après 5 secondes
+      setTimeout(() => {
+        setTargetMessageId(null);
+      }, 5000);
+    }
+  }, [navigationContext?.returnContext?.targetMessageId]);
 
 // ⭐ NOUVEAU : Nettoyer liens/photos en changeant de session
 useEffect(() => {
@@ -409,13 +434,13 @@ useEffect(() => {
             contentType: result.contentType,  // 'post' ou 'photo'
             contentId: result.contentId,
             contentTitle: result.contentType === 'post'
-              ? (conversionData.noteTitle || 'Photo Note')
+              ? (conversionData.noteTitle || 'Note de photo')
               : finalPhotoData.filename,
             linkedBy: app.currentUser
           });
           logger.success(`🔗 Lien ContentLinks créé: ${result.contentType} → session ${app.currentChatSession.id}`);
 
-          // ⭐ v2.8f : Si c'est un post (Photo Note), créer AUSSI un lien pour la photo
+          // ⭐ v2.8f : Si c'est un post (Note de photo), créer AUSSI un lien pour la photo
           if (result.contentType === 'post' && finalPhotoData.google_drive_id) {
             await window.contentLinks.addLink({
               sessionId: app.currentChatSession.id,
@@ -1152,14 +1177,23 @@ function LinkPhotoPreview({ photo }) {
           // ⭐ v2.8f : Séparer zones hover pour TOUS messages avec photo+texte
           const shouldSeparateHoverZones = message.photoData && message.content;
 
+          // ⭐ v2.9s : Déterminer si ce message doit être encadré
+          const isTargeted = message.id === targetMessageId;
+
           return (
           <div
             key={message.id}
+            ref={(el) => {
+              if (el) messageRefs.current[message.id] = el;
+              else delete messageRefs.current[message.id];
+            }}
             className={`flex ${getCurrentUserStyle(message.author)} max-w-xs sm:max-w-md lg:max-w-lg`}
           >
             <div className={shouldSeparateHoverZones ? "relative" : "group relative"}>
 
-              <div className={`px-4 py-3 ${getUserBubbleStyle(message.author)} transition-all duration-200`}>
+              <div className={`px-4 py-3 ${getUserBubbleStyle(message.author)} transition-all duration-200 ${
+                isTargeted ? 'ring-4 ring-yellow-400 dark:ring-yellow-500 shadow-lg' : ''
+              }`}>
                 
                 {editingMessage === message.id ? (
                   <div className="space-y-2">

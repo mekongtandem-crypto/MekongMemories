@@ -488,7 +488,7 @@ const handleDeletePost = useCallback((momentId, postId, postTitle) => {
   setConfirmDeleteModal({
     isOpen: true,
     itemName: postTitle,
-    itemType: 'Photo Note',
+    itemType: 'Note de photo',
     itemIcon: '📝',
     childrenDetails: impact.nestedElements,
 
@@ -520,7 +520,7 @@ const handleDeletePost = useCallback((momentId, postId, postTitle) => {
       setCrossRefsModal({
         isOpen: true,
         itemName: postTitle,
-        itemType: 'Photo Note',
+        itemType: 'Note de photo',
         crossRefsWarnings,
         deleteContext: { type: 'post', momentId, postId },
         onConfirmMemoryOnly: async () => {
@@ -1335,7 +1335,7 @@ setTimeout(() => {
       setTimeout(() => {
         window.scrollTo(0, scrollPosition || 0);
         // ⭐ v2.9s : Nettoyer UNIQUEMENT le returnContext (ne pas naviguer ailleurs !)
-        app.updateState({
+        dataManager.updateState({
           navigationContext: null
         });
       }, 300);
@@ -1690,7 +1690,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           app.navigateToMoment(momentId, returnContext);
           setCrossRefsModal({ isOpen: false });
         }}
-        onNavigateToSession={(sessionId) => {
+        onNavigateToSession={(sessionId, messageId) => {
           // ⭐ v2.9s : Mémoriser état complet et naviguer
           const returnContext = {
             type: 'cross_refs_modal',
@@ -1698,7 +1698,8 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
             openMomentId,
             editionMode,
             crossRefsModal: { ...crossRefsModal, isOpen: true },
-            returnPage: 'memories'
+            returnPage: 'memories',
+            targetMessageId: messageId  // ⭐ v2.9s : Pour encadrement visuel dans ChatPage
           };
           app.navigateToSession(sessionId, returnContext);
           setCrossRefsModal({ isOpen: false });
