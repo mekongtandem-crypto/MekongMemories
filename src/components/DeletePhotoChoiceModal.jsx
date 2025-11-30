@@ -1,11 +1,12 @@
 /**
- * DeletePhotoChoiceModal.jsx v2.9u - Modal simple suppression photo
- * ✅ Choix : Supprimer message seul OU message + photo Drive
+ * DeletePhotoChoiceModal.jsx v2.9v - Modal suppression message avec photo
+ * ✅ Design amélioré : titre + info + question + 💡 explications
+ * ✅ 3 boutons : Annuler / Message seul (bleu) / Message + fichier (rouge)
  * ✅ Pour photos importées NON utilisées ailleurs
  * ✅ Utilisé dans ChatPage cas 1A
  */
 import React from 'react';
-import { X, Trash2, Archive } from 'lucide-react';
+import { X, Trash2, MessageCircle, AlertCircle, Lightbulb } from 'lucide-react';
 
 export default function DeletePhotoChoiceModal({
   isOpen,
@@ -22,85 +23,94 @@ export default function DeletePhotoChoiceModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-            Supprimer le message avec photo
-          </h3>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+              Supprimer le message avec photo
+            </h3>
+          </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors duration-150"
           >
             <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-4">
-          <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-            Cette photo importée <strong>"{photoFilename}"</strong> n'est utilisée nulle part d'autre.
-          </p>
+        {/* Body - Scrollable */}
+        <div className="p-4 overflow-y-auto flex-1">
+          {/* Information */}
+          <div className="mb-4">
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              Cette photo importée <strong className="text-gray-900 dark:text-gray-100">"{photoFilename}"</strong> n'est utilisée nulle part ailleurs.
+            </p>
+          </div>
 
-          <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-            Que voulez-vous faire ?
-          </p>
+          {/* Question */}
+          <div className="mb-4">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Que voulez-vous supprimer ?
+            </p>
+          </div>
 
-          <div className="space-y-3">
-            {/* Option 1 : Message seulement */}
+          {/* Explications */}
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
+            <div className="flex items-start space-x-2">
+              <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-blue-900 dark:text-blue-200 space-y-1">
+                <p className="font-medium">💡 Explications :</p>
+                <ul className="ml-4 space-y-1 text-blue-800 dark:text-blue-300">
+                  <li>• <strong>Message seulement</strong> : Le message disparaît de la causerie, mais la photo reste disponible sur Google Drive pour d'autres usages</li>
+                  <li>• <strong>Message + fichier photo</strong> : Le message ET le fichier physique sont supprimés définitivement du cloud (⚠️ action irréversible)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer - 3 boutons */}
+        <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+          {/* Bouton Annuler */}
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors duration-150"
+            title="Fermer sans supprimer"
+          >
+            Annuler
+          </button>
+
+          <div className="flex items-center space-x-3">
+            {/* Bouton Message seulement (bleu) */}
             <button
               onClick={() => {
                 onDeleteMessageOnly();
                 onClose();
               }}
-              className="w-full flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-left"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-150 flex items-center space-x-1.5"
+              title="Supprimer le message uniquement, garder la photo sur Drive"
             >
-              <div className="flex items-center space-x-3">
-                <Archive className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-blue-900 dark:text-blue-200 text-sm">
-                    Supprimer le message seulement
-                  </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                    La photo reste sur Google Drive
-                  </p>
-                </div>
-              </div>
+              <MessageCircle className="w-4 h-4" />
+              <span>💬 Supprimer message seulement</span>
             </button>
 
-            {/* Option 2 : Message + Drive */}
+            {/* Bouton Message + fichier (rouge) */}
             <button
               onClick={() => {
                 onDeleteMessageAndDrive();
                 onClose();
               }}
-              className="w-full flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-left"
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-150 flex items-center space-x-1.5"
+              title="Supprimer le message ET le fichier physique du cloud (irréversible)"
             >
-              <div className="flex items-center space-x-3">
-                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-red-900 dark:text-red-200 text-sm">
-                    Supprimer message + photo du Drive
-                  </p>
-                  <p className="text-xs text-red-700 dark:text-red-300 mt-1">
-                    ⚠️ Suppression définitive du cloud
-                  </p>
-                </div>
-              </div>
+              <Trash2 className="w-4 h-4" />
+              <span>🗑️ Supprimer aussi le fichier photo</span>
             </button>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end p-4 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors"
-          >
-            Annuler
-          </button>
         </div>
       </div>
     </div>
