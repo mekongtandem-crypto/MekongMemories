@@ -1379,7 +1379,8 @@ class DataManager {
             sessionTitle: session.gameTitle || 'Sans titre',
             messageId: note.id,
             messageAuthor: note.author,
-            messageDate: note.timestamp
+            messageDate: note.timestamp,
+            messageContent: note.content || ''  // ⭐ v2.9t : Début du message pour affichage
           });
           break; // Pas besoin de chercher dans les autres messages de cette session
         }
