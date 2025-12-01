@@ -40,7 +40,11 @@ export default function SessionsPage() {
   const [groupFilter, setGroupFilter] = useState(null);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [unreadFilter, setUnreadFilter] = useState(null); // null | 'notified' | 'new' | 'unread' | 'pending'
-  
+
+  // ⭐ v2.9x : États recherche
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
   // ✅ Synchroniser avec TopBar quand unreadFilter change
   useEffect(() => {
     if (window.sessionTopBarActions?.updateActiveFilter) {
@@ -134,12 +138,38 @@ export default function SessionsPage() {
   // Enrichir sessions avec statuts
   const enrichedSessions = useMemo(() => {
     if (!app.sessions || !app.currentUser?.id) return [];
-    
-    return app.sessions.map(s => 
+
+    return app.sessions.map(s =>
       enrichSessionWithStatus(s, app.currentUser.id)
     );
   }, [app.sessions, app.currentUser]);
-  
+
+  // ⭐ v2.9x : Filtrer par recherche (titre prioritaire, puis messages)
+  const searchFilteredSessions = useMemo(() => {
+    if (!searchQuery.trim()) return enrichedSessions;
+
+    const query = searchQuery.toLowerCase().trim();
+
+    return enrichedSessions
+      .map(session => {
+        // Recherche dans titre
+        const titleMatch = session.gameTitle?.toLowerCase().includes(query);
+
+        // Recherche dans messages
+        const messageMatches = session.notes?.filter(note =>
+          note.content?.toLowerCase().includes(query)
+        ) || [];
+
+        // Score de pertinence : titre = 100, message = 10
+        const score = titleMatch ? 100 : messageMatches.length * 10;
+
+        return { session, score, titleMatch, messageMatchCount: messageMatches.length };
+      })
+      .filter(item => item.score > 0)  // Garder seulement correspondances
+      .sort((a, b) => b.score - a.score)  // Trier par pertinence
+      .map(item => item.session);
+  }, [enrichedSessions, searchQuery]);
+
   // ✅ Calculer état lecture pour chaque session
   const getReadState = (session) => {
     const tracking = sessionReadStatus[session.id];
@@ -182,7 +212,7 @@ export default function SessionsPage() {
     return 'read';
   };
 
-  // Grouper sessions par statut
+  // Grouper sessions par statut (avec filtrage recherche)
   const groupedSessions = useMemo(() => {
     const groups = {
       pending_you: [], // ✅ Contient maintenant NOTIFIED + PENDING_YOU
@@ -190,7 +220,7 @@ export default function SessionsPage() {
       archived: [] // ✨ Renommé de "completed" à "archived"
     };
 
-    enrichedSessions.forEach(s => {
+    searchFilteredSessions.forEach(s => {
       // ✨ Vérifier seulement archived (pas completed)
       if (s.archived) {
         groups.archived.push(s);
@@ -211,7 +241,7 @@ export default function SessionsPage() {
     });
 
     return groups;
-  }, [enrichedSessions, sortBy]);
+  }, [searchFilteredSessions, sortBy]);  // ⭐ v2.9x : Utilise sessions filtrées par recherche
 
   // ✅ Filtrer selon badge TopBar (4 options : null, 'notified', 'new', 'pending')
   const filteredGroups = useMemo(() => {
@@ -411,7 +441,26 @@ export default function SessionsPage() {
           </button>
         </div>
       )}
-      
+
+      {/* ⭐ v2.9x : Champ de recherche */}
+      {isSearchOpen && (
+        <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700 rounded-lg">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Rechercher dans les titres et messages..."
+            className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+            autoFocus
+          />
+          {searchQuery && (
+            <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+              {searchFilteredSessions.length} résultat{searchFilteredSessions.length > 1 ? 's' : ''} trouvé{searchFilteredSessions.length > 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Sections */}
       <div className="p-3 space-y-4">
         
