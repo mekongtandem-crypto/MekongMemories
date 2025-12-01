@@ -3,16 +3,19 @@
  * ✅ Affiche demande d'archivage avec boutons Accept/Reject
  * ✅ Visible uniquement pour l'autre user (pas le demandeur)
  * ✅ Design avec fond bleu/amber pour distinction
+ * ✅ Toast feedback sur refus
  */
 import React, { useState } from 'react';
 import { Archive, Check, X } from 'lucide-react';
 import { useAppState } from '../hooks/useAppState.js';
 import { userManager } from '../core/UserManager.js';
 import { dataManager } from '../core/dataManager.js';
+import Toast from './Toast.jsx';
 
 export default function ArchiveRequestMessage({ archiveRequest, sessionId }) {
   const app = useAppState();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const requester = userManager.getUser(archiveRequest.requestedBy);
   const requesterStyle = userManager.getUserStyle(archiveRequest.requestedBy);
@@ -44,13 +47,25 @@ export default function ArchiveRequestMessage({ archiveRequest, sessionId }) {
     dataManager.setLoadingOperation(true, 'Refus de la demande...', 'Enregistrement sur Google Drive', 'monkey');
 
     try {
-      await app.rejectArchiveRequest(sessionId);
+      const result = await app.rejectArchiveRequest(sessionId);
       dataManager.setLoadingOperation(false);
       setIsProcessing(false);
+
+      if (result.success) {
+        const requesterName = requester?.name || archiveRequest.requestedBy;
+        setToast({
+          message: `Demande de ${requesterName} refusée`,
+          variant: 'info'
+        });
+      }
     } catch (error) {
       console.error('❌ Erreur refus archivage:', error);
       dataManager.setLoadingOperation(false);
       setIsProcessing(false);
+      setToast({
+        message: 'Erreur lors du refus',
+        variant: 'error'
+      });
     }
   };
 
@@ -111,6 +126,16 @@ export default function ArchiveRequestMessage({ archiveRequest, sessionId }) {
           </button>
         </div>
       </div>
+
+      {/* Toast feedback */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onClose={() => setToast(null)}
+          duration={3000}
+        />
+      )}
     </div>
   );
 }
