@@ -1656,12 +1656,12 @@ function LinkPhotoPreview({ photo }) {
 )}
 
   {/* ⭐ v2.9w6+ : LAYOUT iMessage-style avec menu [+] Input [✉️] */}
-  <div className="flex items-end gap-2">
+  <div className="flex items-end gap-1">
     {/* Bouton + (petit et discret) avec menu contextuel */}
     <div className="relative flex-shrink-0">
       <button
         onClick={handleToggleAttachmentMenu}
-        className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+        className="flex-shrink-0 p-1.5 mb-1 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
         title="Ajouter contenu"
       >
         <Plus className="w-5 h-5" />
