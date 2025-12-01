@@ -57,7 +57,9 @@ class DataManager {
         message: 'Chargement...',
         subMessage: 'Enregistrement sur Google Drive',
         variant: 'spin' // 'spin' | 'bounce' | 'monkey'
-      }
+      },
+      // ⭐ v2.9x : Compteur pour forcer recalcul useMemo (badges, etc.)
+      updateCount: 0
     };
     
     // Pub/Sub listeners
@@ -1849,10 +1851,13 @@ class DataManager {
     return () => this.listeners.delete(callback);
   }
   
-  notify = () => { 
-    for (const listener of this.listeners) { 
-      listener(this.getState()); 
-    } 
+  notify = () => {
+    // ⭐ v2.9x : Incrémenter compteur pour forcer recalcul useMemo
+    this.appState.updateCount = (this.appState.updateCount || 0) + 1;
+
+    for (const listener of this.listeners) {
+      listener(this.getState());
+    }
   }
 }
 
