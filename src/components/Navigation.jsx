@@ -58,7 +58,7 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
     });
 
     return notifiedCount + newCount + unreadCount;
-  }, [app.sessions, app.currentUser]);
+  }, [app.sessions, app.currentUser, app.updateCount]); // ⭐ v2.9x : updateCount force recalcul badge
 
   // ⭐ PHASE 19D : Détection contexte de navigation
   const isInChat = currentPage === 'chat';

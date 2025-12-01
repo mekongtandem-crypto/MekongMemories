@@ -28,11 +28,29 @@
     --color-text-primary: #111827;
     --color-text-secondary: #4b5563;
   }
-  
+
   .dark {
     --color-bg-primary: #111827;
     --color-bg-secondary: #1f2937;
     --color-text-primary: #f3f4f6;
     --color-text-secondary: #9ca3af;
   }
+}
+
+/* ========================================
+   ANIMATIONS TOAST (v2.10)
+   ======================================== */
+@keyframes slide-up {
+  from {
+    transform: translate(-50%, 100px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
 }

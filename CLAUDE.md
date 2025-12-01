@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mémoire du Mékong
 
-> **Version:** 2.9x "Sessions UX Complete" | **Last Updated:** December 1, 2025
+> **Version:** 2.10 "Archivage par Consensus" | **Last Updated:** December 1, 2025
 > **Purpose:** Comprehensive guide for development teams and AI assistants working on this codebase
 
 ---
@@ -9,7 +9,7 @@
 
 **Mémoire du Mékong** is a Progressive Web App that transforms a travel diary into an interactive, conversation-based memory exploration platform. Users can discuss and organize travel experiences through themed "sessions" (chats), explore a timeline of "moments" (thematic units), and manage photos and Mastodon posts.
 
-**Current Version:** 2.9x - Sessions UX Complete
+**Current Version:** 2.10 - Archivage par Consensus
 **Release Date:** December 1, 2025
 **Total LOC:** ~9,400 lines
 **Language:** JavaScript (ES6+), no TypeScript
@@ -42,6 +42,92 @@
 ---
 
 ## 📝 Recent Changelog
+
+### Version 2.10 (December 1, 2025) - Archivage par Consensus ✅
+
+**🎯 Nouvelle Règle: Archivage Collaboratif**
+- L'archivage d'une session nécessite maintenant l'accord des **DEUX** utilisateurs
+- Empêche l'archivage unilatéral d'une conversation active
+- Workflow transparent avec message système et feedback
+
+**✅ Infrastructure Archivage Consensus:**
+
+**dataManager.js** - 4 nouvelles méthodes:
+- `requestArchive(sessionId)` : User A demande l'archivage
+- `acceptArchiveRequest(sessionId)` : User B accepte → session archivée
+- `rejectArchiveRequest(sessionId)` : User B refuse → demande supprimée
+- `cancelArchiveRequest(sessionId)` : User A annule sa propre demande
+
+**Structure session** - Nouveau champ `archiveRequest`:
+```javascript
+{
+  archiveRequest: {
+    requestedBy: 'alice',           // User qui demande
+    requestedAt: '2025-12-01...',   // Timestamp demande
+    status: 'pending',              // 'pending' | 'accepted' | 'rejected'
+    acceptedBy: 'bob',              // User qui accepte (si accepted)
+    acceptedAt: '2025-12-01...'     // Timestamp acceptation
+  },
+  archived: true,                    // true seulement si accepté
+  archivedBy: 'consensus'            // Indique archivage par consensus
+}
+```
+
+**✅ UI Composants:**
+
+**ChatTopBar** - Menu dynamique:
+- **Sans demande** : "Demander archivage"
+- **Avec demande (par moi)** : "Annuler ma demande d'archivage"
+- Pas d'option "Désarchiver" (archivage définitif par consensus)
+
+**ArchiveRequestMessage** - Message système:
+- Design bleu/amber distinctif avec icône Archive
+- Affiché uniquement pour l'autre user (pas le demandeur)
+- Message: "X a demandé à clore cette session"
+- Boutons : **Accepter** (vert) | **Refuser** (rouge)
+- Accepter → Archive session + retour automatique SessionsPage
+- Refuser → Toast feedback + demande supprimée
+
+**Toast** - Système de notifications:
+- Composant Toast.jsx réutilisable
+- Variants: success, error, info
+- Animation slide-up depuis le bas
+- Auto-fermeture après 3 secondes
+- Position: `bottom-20` centrée (au-dessus bottom nav)
+
+**✅ Workflow Complet:**
+
+**Scénario 1 : Acceptation**
+1. Alice clique "Demander archivage" dans menu TopBar
+2. Bob voit message système "Alice a demandé à clore cette session"
+3. Bob clique **Accepter**
+4. Session archivée pour tous
+5. Bob redirigé vers SessionsPage
+6. Alice voit la session dans section "Archivées" lors de sa prochaine visite
+
+**Scénario 2 : Refus**
+1. Alice clique "Demander archivage"
+2. Bob voit message système
+3. Bob clique **Refuser**
+4. Toast affiché : "Demande de Alice refusée"
+5. Message système disparaît
+6. Conversation continue normalement
+
+**Scénario 3 : Annulation**
+1. Alice clique "Demander archivage"
+2. Avant que Bob réponde, Alice change d'avis
+3. Alice clique "Annuler ma demande d'archivage"
+4. Demande supprimée
+5. Bob ne voit plus le message système
+
+**🔧 Détails Techniques:**
+- Persistance: `archiveRequest` sauvegardé dans `session_XXX.json` sur Drive
+- Visibilité conditionnelle : Message système filtré par `requestedBy !== currentUser`
+- Spinners: Monkey variant pour toutes opérations archivage
+- Toast CSS: Keyframe `@keyframes slide-up` dans `index.css`
+- Boutons désactivés pendant traitement (`isProcessing` state)
+
+---
 
 ### Version 2.9x (December 1, 2025) - Sessions UX Complete ✅
 

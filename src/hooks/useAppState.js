@@ -77,6 +77,12 @@ export function useAppState() {
   const navigateToMoment = useCallback((momentId, returnContext) => dataManager.navigateToMoment(momentId, returnContext), []);
   const navigateToSession = useCallback((sessionId, returnContext) => dataManager.navigateToSession(sessionId, returnContext), []);
 
+  // ⭐ v2.10 : Actions archivage par consensus
+  const requestArchive = useCallback((sessionId) => dataManager.requestArchive(sessionId), []);
+  const acceptArchiveRequest = useCallback((sessionId) => dataManager.acceptArchiveRequest(sessionId), []);
+  const rejectArchiveRequest = useCallback((sessionId) => dataManager.rejectArchiveRequest(sessionId), []);
+  const cancelArchiveRequest = useCallback((sessionId) => dataManager.cancelArchiveRequest(sessionId), []);
+
   // Actions notifications (Phase 15a)
   const sendNotification = useCallback((toUserId, sessionId, sessionTitle) => 
     dataManager.sendNotification(toUserId, sessionId, sessionTitle), []);
@@ -165,6 +171,12 @@ export function useAppState() {
     analyzeDeleteImpact,
     navigateToMoment,
     navigateToSession,
+
+    // ⭐ v2.10 : Actions archivage par consensus
+    requestArchive,
+    acceptArchiveRequest,
+    rejectArchiveRequest,
+    cancelArchiveRequest,
 
     // ⭐ CORRECTION BUG 2 - Phase 18/19 : Exposition contentLinks pour pastilles 💬
     // AVANT : contentLinks non exposé → getSessionsForContent() retournait toujours []

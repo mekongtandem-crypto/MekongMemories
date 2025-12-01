@@ -57,7 +57,9 @@ class DataManager {
         message: 'Chargement...',
         subMessage: 'Enregistrement sur Google Drive',
         variant: 'spin' // 'spin' | 'bounce' | 'monkey'
-      }
+      },
+      // ⭐ v2.9x : Compteur pour forcer recalcul useMemo (badges, etc.)
+      updateCount: 0
     };
     
     // Pub/Sub listeners
@@ -691,14 +693,143 @@ class DataManager {
         sessionId,
         sessionTitle
       });
-      
+
       if (result.success) {
         logger.success('Notification envoyée', { to: toUserId });
       }
-      
+
       return result;
     } catch (error) {
       logger.error('Erreur envoi notification', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ========================================
+  // ARCHIVAGE PAR CONSENSUS (v2.10)
+  // ========================================
+
+  /**
+   * Demander l'archivage d'une session (par User A)
+   * Crée une demande qui doit être acceptée par l'autre user
+   */
+  requestArchive = async (sessionId) => {
+    const session = this.appState.sessions.find(s => s.id === sessionId);
+    if (!session) {
+      logger.error('Session introuvable', sessionId);
+      return { success: false, error: 'Session introuvable' };
+    }
+
+    try {
+      const updatedSession = {
+        ...session,
+        archiveRequest: {
+          requestedBy: this.appState.currentUser,
+          requestedAt: new Date().toISOString(),
+          status: 'pending'
+        }
+      };
+
+      await this.updateSession(updatedSession);
+      logger.success('Demande archivage créée', { sessionId, by: this.appState.currentUser });
+
+      return { success: true };
+    } catch (error) {
+      logger.error('Erreur demande archivage', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Accepter une demande d'archivage (par User B)
+   * Archive la session pour tous les users
+   */
+  acceptArchiveRequest = async (sessionId) => {
+    const session = this.appState.sessions.find(s => s.id === sessionId);
+    if (!session || !session.archiveRequest) {
+      logger.error('Demande archivage introuvable', sessionId);
+      return { success: false, error: 'Demande introuvable' };
+    }
+
+    try {
+      const updatedSession = {
+        ...session,
+        archived: true,
+        archivedAt: new Date().toISOString(),
+        archivedBy: 'consensus', // Indique archivage par consensus
+        archiveRequest: {
+          ...session.archiveRequest,
+          status: 'accepted',
+          acceptedBy: this.appState.currentUser,
+          acceptedAt: new Date().toISOString()
+        }
+      };
+
+      await this.updateSession(updatedSession);
+      logger.success('Session archivée par consensus', { sessionId });
+
+      return { success: true, requester: session.archiveRequest.requestedBy };
+    } catch (error) {
+      logger.error('Erreur acceptation archivage', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Refuser une demande d'archivage (par User B)
+   * Supprime la demande
+   */
+  rejectArchiveRequest = async (sessionId) => {
+    const session = this.appState.sessions.find(s => s.id === sessionId);
+    if (!session || !session.archiveRequest) {
+      logger.error('Demande archivage introuvable', sessionId);
+      return { success: false, error: 'Demande introuvable' };
+    }
+
+    try {
+      const updatedSession = {
+        ...session,
+        archiveRequest: null // Supprime la demande
+      };
+
+      await this.updateSession(updatedSession);
+      logger.success('Demande archivage refusée', { sessionId });
+
+      return { success: true, requester: session.archiveRequest.requestedBy };
+    } catch (error) {
+      logger.error('Erreur refus archivage', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Annuler une demande d'archivage (par User A qui a créé la demande)
+   */
+  cancelArchiveRequest = async (sessionId) => {
+    const session = this.appState.sessions.find(s => s.id === sessionId);
+    if (!session || !session.archiveRequest) {
+      logger.error('Demande archivage introuvable', sessionId);
+      return { success: false, error: 'Demande introuvable' };
+    }
+
+    // Vérifier que c'est bien le demandeur qui annule
+    if (session.archiveRequest.requestedBy !== this.appState.currentUser) {
+      logger.error('Seul le demandeur peut annuler', sessionId);
+      return { success: false, error: 'Non autorisé' };
+    }
+
+    try {
+      const updatedSession = {
+        ...session,
+        archiveRequest: null
+      };
+
+      await this.updateSession(updatedSession);
+      logger.success('Demande archivage annulée', { sessionId });
+
+      return { success: true };
+    } catch (error) {
+      logger.error('Erreur annulation demande', error);
       return { success: false, error: error.message };
     }
   }
@@ -1849,10 +1980,13 @@ class DataManager {
     return () => this.listeners.delete(callback);
   }
   
-  notify = () => { 
-    for (const listener of this.listeners) { 
-      listener(this.getState()); 
-    } 
+  notify = () => {
+    // ⭐ v2.9x : Incrémenter compteur pour forcer recalcul useMemo
+    this.appState.updateCount = (this.appState.updateCount || 0) + 1;
+
+    for (const listener of this.listeners) {
+      listener(this.getState());
+    }
   }
 }
 
