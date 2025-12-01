@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mémoire du Mékong
 
-> **Version:** 2.9w6 "Fix Retour Auto MemoriesPage v2" | **Last Updated:** November 30, 2025
+> **Version:** 2.9x "Sessions UX Complete" | **Last Updated:** December 1, 2025
 > **Purpose:** Comprehensive guide for development teams and AI assistants working on this codebase
 
 ---
@@ -9,8 +9,8 @@
 
 **Mémoire du Mékong** is a Progressive Web App that transforms a travel diary into an interactive, conversation-based memory exploration platform. Users can discuss and organize travel experiences through themed "sessions" (chats), explore a timeline of "moments" (thematic units), and manage photos and Mastodon posts.
 
-**Current Version:** 2.9w6 - Fix Retour Auto MemoriesPage v2
-**Release Date:** November 30, 2025
+**Current Version:** 2.9x - Sessions UX Complete
+**Release Date:** December 1, 2025
 **Total LOC:** ~9,400 lines
 **Language:** JavaScript (ES6+), no TypeScript
 **Code Language:** French comments/documentation with English variable names

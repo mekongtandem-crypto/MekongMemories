@@ -487,7 +487,12 @@ export default function App() {
         );
       
       case 'sessions':
-        return <SessionsPage />;
+        return (
+          <SessionsPage
+            isSearchOpen={isSearchOpen}
+            setIsSearchOpen={setIsSearchOpen}
+          />
+        );
       
       case 'chat':
         return (

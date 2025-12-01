@@ -26,9 +26,9 @@ import {
   Archive, ChevronDown, X, Eye, EyeOff, Check
 } from 'lucide-react';
 
-export default function SessionsPage() {
+export default function SessionsPage({ isSearchOpen, setIsSearchOpen }) {
   const app = useAppState();
-  
+
   // États UI
   const [openMenuId, setOpenMenuId] = useState(null);
   const [editingSession, setEditingSession] = useState(null);
@@ -41,8 +41,7 @@ export default function SessionsPage() {
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [unreadFilter, setUnreadFilter] = useState(null); // null | 'notified' | 'new' | 'unread' | 'pending'
 
-  // ⭐ v2.9x : États recherche
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  // ⭐ v2.9x : État recherche (isSearchOpen vient des props depuis App.jsx)
   const [searchQuery, setSearchQuery] = useState('');
 
   // ✅ Synchroniser avec TopBar quand unreadFilter change
