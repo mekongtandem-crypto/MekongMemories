@@ -56,7 +56,17 @@ export default function SessionsPage({ isSearchOpen, setIsSearchOpen }) {
     const saved = localStorage.getItem(`mekong_sessionReadStatus_${app.currentUser?.id}`);
     return saved ? JSON.parse(saved) : {};
   });
-  
+
+  // ⭐ v2.9x : Re-lire tracking depuis localStorage quand sessions changent
+  // (pour détecter mises à jour depuis ChatPage)
+  useEffect(() => {
+    if (app.currentUser?.id) {
+      const saved = localStorage.getItem(`mekong_sessionReadStatus_${app.currentUser.id}`);
+      const tracking = saved ? JSON.parse(saved) : {};
+      setSessionReadStatus(tracking);
+    }
+  }, [app.sessions, app.currentUser?.id]); // Re-sync quand sessions ou user changent
+
   // États sections repliables
   const [openSections, setOpenSections] = useState(() => {
     return safeStorage.get(
