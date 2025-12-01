@@ -1796,9 +1796,6 @@ function LinkPhotoPreview({ photo }) {
     </div>
   </div>
 
-
-</div>
-
 {/* ✨ PHASE B : ThemeModal */}
       {themeModal.isOpen && (
         <ThemeModal
