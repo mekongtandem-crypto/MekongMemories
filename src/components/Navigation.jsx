@@ -23,27 +23,41 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
     
     // ✨ Filter seulement archived (completed supprimé)
     const activeSessions = app.sessions.filter(s => !s.archived);
-    
+
     let notifiedCount = 0;
     let newCount = 0;
-    
+    let unreadCount = 0;
+
     activeSessions.forEach(session => {
       // 1. Compter notifiées (via enrichissement)
       const enriched = enrichSessionWithStatus(session, app.currentUser.id);
-      
+
       if (enriched.status === SESSION_STATUS.NOTIFIED) {
         notifiedCount++;
-        return; // Pas besoin de vérifier "new" si déjà notifiée
+        return; // Pas besoin de vérifier "new"/"unread" si déjà notifiée
       }
-      
+
       // 2. Compter nouvelles (jamais ouvertes + créées par quelqu'un d'autre)
       const tracking = sessionReadStatus[session.id];
       if (!tracking?.hasBeenOpened && session.user !== app.currentUser.id) {
         newCount++;
+        return; // Pas besoin de vérifier "unread" si "new"
+      }
+
+      // 3. ⭐ v2.9x : Compter unread (nouveau message depuis dernière ouverture)
+      const lastMessage = session.notes?.[session.notes.length - 1];
+      const lastMessageTime = lastMessage?.timestamp || session.createdAt;
+      const lastMessageAuthor = lastMessage?.author || session.user;
+
+      if (tracking?.hasBeenOpened &&
+          tracking.lastOpenedAt &&
+          new Date(lastMessageTime) > new Date(tracking.lastOpenedAt) &&
+          lastMessageAuthor !== app.currentUser.id) {
+        unreadCount++;
       }
     });
-    
-    return notifiedCount + newCount;
+
+    return notifiedCount + newCount + unreadCount;
   }, [app.sessions, app.currentUser]);
 
   // ⭐ PHASE 19D : Détection contexte de navigation

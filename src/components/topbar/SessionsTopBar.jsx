@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { MoreVertical, ArrowUpDown } from 'lucide-react';
+import { MoreVertical, ArrowUpDown, Search, XCircle } from 'lucide-react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { SORT_OPTIONS, SESSION_STATUS, enrichSessionWithStatus } from '../../utils/sessionUtils.js';
 import OverflowMenu from './OverflowMenu.jsx';
 
-export default function SessionsTopBar() {
+export default function SessionsTopBar({ isSearchOpen, setIsSearchOpen }) {
   
   const app = useAppState();
   const [showMenu, setShowMenu] = useState(false);
@@ -34,15 +34,12 @@ export default function SessionsTopBar() {
     setActiveFilter(initialFilter);
   }, []);
   
-  // Tracking lecture
-  const sessionReadStatus = useMemo(() => {
-    const saved = localStorage.getItem(`mekong_sessionReadStatus_${app.currentUser?.id}`);
-    return saved ? JSON.parse(saved) : {};
-  }, [app.currentUser?.id]);
-  
-  // Calculer état lecture
+  // ⭐ v2.9x FIX : Lire directement depuis localStorage (pas de cache stale)
   const getReadState = (session) => {
-    const tracking = sessionReadStatus[session.id];
+    // Lire à chaque fois pour éviter cache stale
+    const storageKey = `mekong_sessionReadStatus_${app.currentUser?.id}`;
+    const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    const tracking = allTracking[session.id];
     const lastMessage = session.notes?.[session.notes.length - 1];
     const lastMessageTime = lastMessage?.timestamp || session.createdAt;
     const lastMessageAuthor = lastMessage?.author || session.user;
@@ -93,13 +90,13 @@ export default function SessionsTopBar() {
       }
     });
     
-    return { 
-      total: enrichedSessions.length, 
+    return {
+      total: enrichedSessions.length,
       notified,
       new: newCount,
       pending
     };
-  }, [app.sessions, app.currentUser?.id, sessionReadStatus]);
+  }, [app.sessions, app.currentUser?.id]);  // ⭐ v2.9x : Supprimé sessionReadStatus (n'existe plus)
   
   // ✅ Handler toggle avec mise à jour locale ET SessionsPage
   const handleFilterToggle = (filterType) => {
@@ -143,22 +140,24 @@ export default function SessionsTopBar() {
   
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-150">
-      
-      {/* GAUCHE : Badge "Toutes" */}
+
+      {/* ⭐ v2.9x GAUCHE : Bouton Recherche */}
       <button
-        onClick={handleResetFilters}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${
-          activeFilter === null
-            ? 'bg-blue-600 text-white shadow-lg scale-105'
-            : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 hover:bg-blue-100'
+        onClick={() => setIsSearchOpen?.(!isSearchOpen)}
+        className={`p-2 rounded-lg transition-colors duration-150 ${
+          isSearchOpen
+            ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
         }`}
-        title={activeFilter === null ? '✓ Toutes affichées' : 'Afficher toutes'}
+        title={isSearchOpen ? "Fermer la recherche" : "Rechercher"}
       >
-        <span>💬</span>
-        <span>{sessionStats.total}</span>
+        {isSearchOpen ? <XCircle className="w-5 h-5" /> : <Search className="w-5 h-5" />}
       </button>
-    
-      <span className="p-2 text-amber-600 dark:text-amber-400 font-semibold">Causeries</span>
+
+      {/* ⭐ v2.9x Titre avec nombre total */}
+      <span className="p-2 text-amber-600 dark:text-amber-400 font-semibold">
+        Causeries ({sessionStats.total})
+      </span>
       
       {/* CENTRE : Badges filtres (3 badges) */}
       <div className="flex items-center gap-1.5">
