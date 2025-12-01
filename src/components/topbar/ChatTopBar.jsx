@@ -116,22 +116,31 @@ export default function ChatTopBar({
 
     setShowMenu(false);
 
-    // ✨ Activer le spinner
-    dataManager.setLoadingOperation(true, 'Archivage de la session...', 'Enregistrement sur Google Drive', 'monkey');
+    const session = app.currentChatSession;
+    const isRequester = session.archiveRequest?.requestedBy === app.currentUser?.id;
+
+    // ⭐ v2.10 : Si demande existe et je suis le demandeur → Annuler
+    if (session.archiveRequest && isRequester) {
+      dataManager.setLoadingOperation(true, 'Annulation de la demande...', 'Enregistrement sur Google Drive', 'monkey');
+
+      try {
+        await app.cancelArchiveRequest(session.id);
+        dataManager.setLoadingOperation(false);
+      } catch (error) {
+        console.error('❌ Erreur annulation demande:', error);
+        dataManager.setLoadingOperation(false);
+      }
+      return;
+    }
+
+    // ⭐ v2.10 : Sinon → Créer demande d'archivage
+    dataManager.setLoadingOperation(true, 'Demande d\'archivage...', 'Enregistrement sur Google Drive', 'monkey');
 
     try {
-      const updatedSession = {
-        ...app.currentChatSession,
-        archived: !app.currentChatSession.archived
-      };
-
-      await app.updateSession(updatedSession);
-
-      // ✨ Désactiver le spinner
+      await app.requestArchive(session.id);
       dataManager.setLoadingOperation(false);
     } catch (error) {
-      console.error('❌ Erreur archivage session:', error);
-      // ✨ Désactiver le spinner en cas d'erreur
+      console.error('❌ Erreur demande archivage:', error);
       dataManager.setLoadingOperation(false);
     }
   };
@@ -400,14 +409,16 @@ export default function ChatTopBar({
               <span className="text-gray-900 dark:text-gray-100">Marquer comme non lue</span>
             </button>
 
-            {/* Archiver session */}
+            {/* ⭐ v2.10 : Archivage par consensus */}
             <button
               onClick={handleArchiveCurrentSession}
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
             >
               <Archive className="w-4 h-4 text-gray-600 dark:text-gray-400" />
               <span className="text-gray-900 dark:text-gray-100">
-                {app.currentChatSession?.archived ? 'Désarchiver la session' : 'Archiver la session'}
+                {app.currentChatSession?.archiveRequest?.requestedBy === app.currentUser?.id
+                  ? 'Annuler ma demande d\'archivage'
+                  : 'Demander archivage'}
               </span>
             </button>
 

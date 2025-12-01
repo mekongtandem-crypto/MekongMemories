@@ -26,6 +26,7 @@ import ThemeModal from '../ThemeModal.jsx';
 import PhotoToMemoryModal from '../PhotoToMemoryModal.jsx';
 import CrossRefsWarningModal from '../CrossRefsWarningModal.jsx';  // ⭐ v2.9u : Modal 2 cross-refs
 import DeletePhotoChoiceModal from '../DeletePhotoChoiceModal.jsx';  // ⭐ v2.9u : Modal choix Drive
+import ArchiveRequestMessage from '../ArchiveRequestMessage.jsx';  // ⭐ v2.10 : Message demande archivage
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';
 import { logger } from '../../utils/logger.js';
 
@@ -1644,6 +1645,16 @@ function LinkPhotoPreview({ photo }) {
           </div>
           );
         })}
+
+        {/* ⭐ v2.10 : Message système demande archivage (visible seulement par l'autre user) */}
+        {app.currentChatSession.archiveRequest &&
+         app.currentChatSession.archiveRequest.requestedBy !== app.currentUser?.id && (
+          <ArchiveRequestMessage
+            archiveRequest={app.currentChatSession.archiveRequest}
+            sessionId={app.currentChatSession.id}
+          />
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
