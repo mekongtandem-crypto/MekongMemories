@@ -1654,18 +1654,17 @@ function LinkPhotoPreview({ photo }) {
     </div>
   </div>
 )}
-  
-  {/* ⭐ v3.0a : LAYOUT avec menu [+] Input [✉️] */}
-  <div className="flex items-end space-x-2">
 
-    {/* Bouton [+] avec menu contextuel à GAUCHE */}
+  {/* ⭐ v2.9w6+ : LAYOUT iMessage-style avec menu [+] Input [✉️] */}
+  <div className="flex items-end gap-2">
+    {/* Bouton + (petit et discret) avec menu contextuel */}
     <div className="relative flex-shrink-0">
       <button
         onClick={handleToggleAttachmentMenu}
-        className="p-3 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+        className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
         title="Ajouter contenu"
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-5 h-5" />
       </button>
 
       {/* Menu contextuel */}
@@ -1733,19 +1732,6 @@ function LinkPhotoPreview({ photo }) {
         </>
       )}
     </div>
-    
-    
-    
-    {/* ⭐ Input area iMessage-style : + petit à gauche, textarea au milieu, send intégré à droite */}
-    <div className="flex items-end gap-2">
-      {/* Bouton + (plus petit et discret) */}
-      <button
-        onClick={() => setShowPhotoMenu(!showPhotoMenu)}
-        className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-        title="Ajouter photo"
-      >
-        <Plus className="w-5 h-5" />
-      </button>
 
       {/* Conteneur textarea + bouton send intégré */}
       <div className="flex-1 flex flex-col border border-gray-300 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-800 focus-within:border-amber-500 dark:focus-within:border-amber-400 transition-colors overflow-hidden">
