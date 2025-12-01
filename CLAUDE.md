@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mémoire du Mékong
 
-> **Version:** 2.9w6 "Fix Retour Auto MemoriesPage v2" | **Last Updated:** November 30, 2025
+> **Version:** 2.9x "Sessions UX Complete" | **Last Updated:** December 1, 2025
 > **Purpose:** Comprehensive guide for development teams and AI assistants working on this codebase
 
 ---
@@ -9,8 +9,8 @@
 
 **Mémoire du Mékong** is a Progressive Web App that transforms a travel diary into an interactive, conversation-based memory exploration platform. Users can discuss and organize travel experiences through themed "sessions" (chats), explore a timeline of "moments" (thematic units), and manage photos and Mastodon posts.
 
-**Current Version:** 2.9w6 - Fix Retour Auto MemoriesPage v2
-**Release Date:** November 30, 2025
+**Current Version:** 2.9x - Sessions UX Complete
+**Release Date:** December 1, 2025
 **Total LOC:** ~9,400 lines
 **Language:** JavaScript (ES6+), no TypeScript
 **Code Language:** French comments/documentation with English variable names
@@ -42,6 +42,54 @@
 ---
 
 ## 📝 Recent Changelog
+
+### Version 2.9x (December 1, 2025) - Sessions UX Complete ✅
+
+**🐛 CRITICAL FIX: "new" vs "unread" status tracking**
+- **Root Cause**: Tracking was NEVER written to localStorage (only read!)
+- `hasBeenOpened` and `lastOpenedAt` were never saved
+- All sessions appeared as "new" regardless of actual state
+
+**✅ Solution Implemented:**
+
+**ChatPage.jsx**: Session tracking on open
+- New useEffect when session opens → writes tracking to localStorage
+- Sets `hasBeenOpened = true` and `lastOpenedAt = current timestamp`
+- Calls `dataManager.notify()` to refresh badges in all components
+
+**SessionsPage.jsx**: Auto-sync from localStorage
+- New useEffect re-reads tracking when `app.sessions` changes
+- Local state syncs automatically with localStorage updates
+- Detects changes from ChatPage navigation
+
+**📊 Status Logic (Correctly Implemented):**
+- **NEW**: Session created by other user, NEVER opened by current user (`!hasBeenOpened`)
+- **UNREAD**: Session previously opened, has new message since last open (`lastMessageTime > lastOpenedAt`)
+- **READ**: Up to date with all messages
+
+**✨ UX Improvements: Search in Sessions**
+- Replaced 💬 "Toutes" button with 🔎 search button in SessionsTopBar
+- Added total count display: "Causeries (42)"
+- Search input opens below TopBar (like MemoriesPage)
+- Intelligent scoring: title match = 100 points, message match = 10 points each
+- Real-time results counter: "X résultat(s) trouvé(s)"
+- Search filters by title OR message content
+- Results sorted by relevance score
+
+**✨ Badge on Bottom Navigation**
+- Session icon now shows badge with total: `notified + new + unread`
+- Badge formula matches SessionsTopBar logic
+- Updates in real-time when sessions are read
+- Red badge with count (9+ max display)
+
+**🔧 Technical Details:**
+- Storage key: `mekong_sessionReadStatus_${userId}`
+- Structure: `{[sessionId]: {hasBeenOpened: boolean, lastOpenedAt: ISO timestamp}}`
+- SessionsTopBar reads directly from localStorage (no stale cache)
+- Navigation.jsx reads directly from localStorage in useMemo
+- All components re-render when sessions change via `dataManager.notify()`
+
+---
 
 ### Version 2.9w6 (November 30, 2025) - Fix Retour Auto MemoriesPage v2 ✅
 

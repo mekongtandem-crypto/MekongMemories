@@ -130,7 +130,30 @@ useEffect(() => {
   setNewMessage('');
   setEditingMessage(null);
   setAttachmentMenuOpen(false); // ⭐ v3.0a : Fermer le menu aussi
-}, [app.currentChatSession?.id]); // Dépendance : l'ID de la session actuelle
+
+  // ⭐ v2.9x : Marquer session comme ouverte pour tracking new/unread
+  if (app.currentChatSession?.id && app.currentUser?.id) {
+    const sessionId = app.currentChatSession.id;
+    const userId = app.currentUser.id;
+    const storageKey = `mekong_sessionReadStatus_${userId}`;
+
+    // Lire tracking actuel
+    const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+    // Mettre à jour tracking pour cette session
+    allTracking[sessionId] = {
+      hasBeenOpened: true,
+      lastOpenedAt: new Date().toISOString()
+    };
+
+    // Sauvegarder
+    localStorage.setItem(storageKey, JSON.stringify(allTracking));
+    console.log(`✅ v2.9x: Session ${sessionId} marquée comme ouverte`);
+
+    // Notifier les composants pour refresh badges (SessionsTopBar, Navigation)
+    dataManager.notify();
+  }
+}, [app.currentChatSession?.id, app.currentUser?.id]); // Dépendance : l'ID de la session actuelle
 
   // Détecter photo attachée ou lien depuis Memories
   useEffect(() => {

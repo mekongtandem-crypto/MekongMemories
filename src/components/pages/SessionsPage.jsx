@@ -26,9 +26,9 @@ import {
   Archive, ChevronDown, X, Eye, EyeOff, Check
 } from 'lucide-react';
 
-export default function SessionsPage() {
+export default function SessionsPage({ isSearchOpen, setIsSearchOpen }) {
   const app = useAppState();
-  
+
   // États UI
   const [openMenuId, setOpenMenuId] = useState(null);
   const [editingSession, setEditingSession] = useState(null);
@@ -41,8 +41,7 @@ export default function SessionsPage() {
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [unreadFilter, setUnreadFilter] = useState(null); // null | 'notified' | 'new' | 'unread' | 'pending'
 
-  // ⭐ v2.9x : États recherche
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  // ⭐ v2.9x : État recherche (isSearchOpen vient des props depuis App.jsx)
   const [searchQuery, setSearchQuery] = useState('');
 
   // ✅ Synchroniser avec TopBar quand unreadFilter change
@@ -57,7 +56,17 @@ export default function SessionsPage() {
     const saved = localStorage.getItem(`mekong_sessionReadStatus_${app.currentUser?.id}`);
     return saved ? JSON.parse(saved) : {};
   });
-  
+
+  // ⭐ v2.9x : Re-lire tracking depuis localStorage quand sessions changent
+  // (pour détecter mises à jour depuis ChatPage)
+  useEffect(() => {
+    if (app.currentUser?.id) {
+      const saved = localStorage.getItem(`mekong_sessionReadStatus_${app.currentUser.id}`);
+      const tracking = saved ? JSON.parse(saved) : {};
+      setSessionReadStatus(tracking);
+    }
+  }, [app.sessions, app.currentUser?.id]); // Re-sync quand sessions ou user changent
+
   // États sections repliables
   const [openSections, setOpenSections] = useState(() => {
     return safeStorage.get(
