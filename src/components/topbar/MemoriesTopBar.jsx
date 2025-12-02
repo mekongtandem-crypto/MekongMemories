@@ -32,28 +32,47 @@ export default function MemoriesTopBar({
 }) {
 
   // ⭐ v2.11 : Accès aux filtres via window (pattern existant)
-  const contentFilters = window.memoriesPageFilters?.contentFilters || {
+  // ⭐ v2.11 : Lire l'état depuis window (mis à jour par MemoriesPage)
+  const [contentFilters, setContentFilters] = useState({
     moments: true,
     photos: true,
     textes: true,
     images: true
-  };
-  const onToggleContentFilter = window.memoriesPageFilters?.toggleContentFilter;
+  });
+
+  // Synchroniser avec window.memoriesPageFilters à chaque render
+  useEffect(() => {
+    const checkFilters = () => {
+      if (window.memoriesPageFilters?.contentFilters) {
+        setContentFilters(window.memoriesPageFilters.contentFilters);
+      }
+    };
+
+    checkFilters();
+
+    // Vérifier périodiquement (pour détecter changements)
+    const interval = setInterval(checkFilters, 100);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // 🔍 DEBUG: Logger l'état des filtres
   useEffect(() => {
     console.log('🎨 [MemoriesTopBar] contentFilters state:', contentFilters);
-    console.log('🎨 [MemoriesTopBar] toggleContentFilter available:', !!onToggleContentFilter);
-  }, [contentFilters, onToggleContentFilter]);
+    console.log('🎨 [MemoriesTopBar] toggleContentFilter available:', !!window.memoriesPageFilters?.toggleContentFilter);
+  }, [contentFilters]);
 
   // Handler avec logs pour toggle filtre
   const handleToggleFilter = (filterKey) => {
     console.log('👆 [MemoriesTopBar] Button clicked for filter:', filterKey);
     console.log('👆 [MemoriesTopBar] Current contentFilters:', contentFilters);
-    console.log('👆 [MemoriesTopBar] onToggleContentFilter function:', onToggleContentFilter);
 
-    if (onToggleContentFilter) {
-      onToggleContentFilter(filterKey);
+    // ⭐ Lire la fonction directement depuis window à chaque appel
+    const toggleFn = window.memoriesPageFilters?.toggleContentFilter;
+    console.log('👆 [MemoriesTopBar] toggleContentFilter function:', toggleFn);
+
+    if (toggleFn) {
+      toggleFn(filterKey);
     } else {
       console.error('❌ [MemoriesTopBar] toggleContentFilter is not available!');
     }
