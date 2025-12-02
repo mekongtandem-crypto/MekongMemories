@@ -40,18 +40,23 @@ export function useMemoriesFilters(momentsData, sessions = []) {
 
   // Sauvegarder dans localStorage à chaque changement
   useEffect(() => {
+    console.log('🔧 [useMemoriesFilters] contentFilters changed:', contentFilters);
     localStorage.setItem('mekong_content_filters', JSON.stringify(contentFilters));
   }, [contentFilters]);
 
   // Toggle un filtre (avec protection minimum 1)
   const toggleContentFilter = useCallback((filterKey) => {
+    console.log('🎯 [useMemoriesFilters] toggleContentFilter called:', filterKey);
     setContentFilters(prev => {
+      console.log('📊 [useMemoriesFilters] Previous state:', prev);
       const newState = { ...prev, [filterKey]: !prev[filterKey] };
+      console.log('📊 [useMemoriesFilters] New state (before validation):', newState);
 
       // ⚠️ Empêcher de tout désactiver
       const hasAtLeastOne = Object.values(newState).some(v => v === true);
 
       if (!hasAtLeastOne) {
+        console.warn('⚠️ [useMemoriesFilters] Cannot disable all filters - keeping previous state');
         // Compter les clics rapides
         lastFilterClickCount.current += 1;
 
@@ -72,6 +77,7 @@ export function useMemoriesFilters(momentsData, sessions = []) {
 
       // Reset compteur si changement réussi
       lastFilterClickCount.current = 0;
+      console.log('✅ [useMemoriesFilters] Filter toggled successfully:', newState);
       return newState;
     });
   }, []);
