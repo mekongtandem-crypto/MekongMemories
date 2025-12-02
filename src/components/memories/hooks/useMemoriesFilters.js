@@ -1,32 +1,148 @@
 /**
- * useMemoriesFilters.js v7.0
+ * useMemoriesFilters.js v7.1 - Filtres de contenu additifs
  * Hook pour gérer le filtrage et le tri des moments
- * 
+ *
  * Gère :
+ * - ⭐ v2.11 : Filtres de contenu additifs (✨📷🗒️🖼️)
  * - Filtres globaux TopBar (types, contexte)
  * - Recherche textuelle
  * - Filtre par thème
  * - Tri (chronologique, aléatoire, richesse)
  */
 
-import { useState, useCallback, useMemo } from 'react';
-import { 
-  generatePostKey, 
-  generatePhotoMomentKey, 
-  generatePhotoMastodonKey 
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import {
+  generatePostKey,
+  generatePhotoMomentKey,
+  generatePhotoMastodonKey
 } from '../../../utils/themeUtils.js';
 
 export function useMemoriesFilters(momentsData, sessions = []) {
-  
+
   // ========================================
-  // ÉTATS FILTRES
+  // ⭐ v2.11 : FILTRES DE CONTENU ADDITIFS
   // ========================================
-  
-  // Filtres par type (TopBar)
-  const [showMoments, setShowMoments] = useState(true);
-  const [showPosts, setShowPosts] = useState(true);
-  const [showPhotos, setShowPhotos] = useState(true);
-  
+
+  // Charger depuis localStorage ou utiliser défauts
+  const [contentFilters, setContentFilters] = useState(() => {
+    const saved = localStorage.getItem('mekong_content_filters');
+    return saved ? JSON.parse(saved) : {
+      moments: true,   // ✨ En-têtes moments
+      photos: true,    // 📷 Photos d'album (dayPhotos)
+      textes: true,    // 🗒️ Textes posts
+      images: true     // 🖼️ Images de posts
+    };
+  });
+
+  // Compteur de clics sur dernier filtre (pour message humoristique)
+  const lastFilterClickCount = useRef(0);
+  const lastFilterClickTimer = useRef(null);
+
+  // Sauvegarder dans localStorage à chaque changement
+  useEffect(() => {
+    localStorage.setItem('mekong_content_filters', JSON.stringify(contentFilters));
+  }, [contentFilters]);
+
+  // Toggle un filtre (avec protection minimum 1)
+  const toggleContentFilter = useCallback((filterKey) => {
+    setContentFilters(prev => {
+      const newState = { ...prev, [filterKey]: !prev[filterKey] };
+
+      // ⚠️ Empêcher de tout désactiver
+      const hasAtLeastOne = Object.values(newState).some(v => v === true);
+
+      if (!hasAtLeastOne) {
+        // Compter les clics rapides
+        lastFilterClickCount.current += 1;
+
+        // Reset après 2 secondes
+        clearTimeout(lastFilterClickTimer.current);
+        lastFilterClickTimer.current = setTimeout(() => {
+          lastFilterClickCount.current = 0;
+        }, 2000);
+
+        // Message après 3 clics
+        if (lastFilterClickCount.current >= 3) {
+          console.log('😊 Au moins un filtre doit rester actif pour afficher les souvenirs !');
+          lastFilterClickCount.current = 0;
+        }
+
+        return prev; // Annuler le changement
+      }
+
+      // Reset compteur si changement réussi
+      lastFilterClickCount.current = 0;
+      return newState;
+    });
+  }, []);
+
+  // Déterminer si un élément est visible selon filtres
+  const isElementVisible = useCallback((elementType) => {
+    switch (elementType) {
+
+      case 'moment_header':
+        // Q1 Option A : En-têtes masqués si ✨ désactivé
+        return contentFilters.moments;
+
+      case 'moment_expandable':
+        // Moment expandable seulement si ✨ actif
+        return contentFilters.moments;
+
+      case 'post_text':
+        return contentFilters.textes;
+
+      case 'post_images':
+        return contentFilters.images;
+
+      case 'day_photos':
+        return contentFilters.photos;
+
+      default:
+        return true;
+    }
+  }, [contentFilters]);
+
+  // Calculer stats visibles pour un moment selon filtres actifs
+  const getVisibleStats = useCallback((moment) => {
+    if (!moment) return { postsWithText: 0, postsWithImages: 0, dayPhotos: 0, totalVisible: 0 };
+
+    const stats = {
+      postsWithText: 0,
+      postsWithImages: 0,
+      dayPhotos: 0,
+      totalVisible: 0
+    };
+
+    // Textes posts
+    if (contentFilters.textes && moment.posts) {
+      stats.postsWithText = moment.posts.filter(p => p.content?.trim()).length;
+    }
+
+    // Images posts
+    if (contentFilters.images && moment.posts) {
+      stats.postsWithImages = moment.posts.filter(p => p.photos?.length > 0).length;
+    }
+
+    // Photos d'album
+    if (contentFilters.photos) {
+      stats.dayPhotos = moment.dayPhotoCount || 0;
+    }
+
+    stats.totalVisible = stats.postsWithText + stats.postsWithImages + stats.dayPhotos;
+
+    return stats;
+  }, [contentFilters]);
+
+  // Vérifier si un moment a du contenu visible
+  const hasVisibleContent = useCallback((moment) => {
+    const stats = getVisibleStats(moment);
+    return stats.totalVisible > 0;
+  }, [getVisibleStats]);
+
+  // ========================================
+  // ÉTATS FILTRES (existants)
+  // ========================================
+
   // Filtres contextuels
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTheme, setSelectedTheme] = useState(null);
@@ -49,22 +165,31 @@ export function useMemoriesFilters(momentsData, sessions = []) {
   
   const filteredMoments = useMemo(() => {
     if (!momentsData || momentsData.length === 0) return [];
-    
+
     let filtered = [...momentsData];
-    
+
+    // ⭐ v2.11 : 0. Filtre par contenu visible
+    // Si ✨ désactivé, masquer tous les moments (Option A)
+    if (!contentFilters.moments) {
+      return []; // Galerie plate = aucun moment affiché
+    }
+
+    // Filtrer les moments qui n'ont pas de contenu visible selon filtres actifs
+    filtered = filtered.filter(m => hasVisibleContent(m));
+
     // 1. Recherche textuelle
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(m => 
+      filtered = filtered.filter(m =>
         m.displayTitle.toLowerCase().includes(query) ||
         m.posts?.some(p => p.content && p.content.toLowerCase().includes(query))
       );
     }
-    
+
     // 2. Filtre par type de moment
     if (momentFilter !== 'all') {
       const exploredIds = new Set(sessions?.map(s => s.gameId) || []);
-      
+
       switch (momentFilter) {
         case 'unexplored':
           filtered = filtered.filter(m => !exploredIds.has(m.id));
@@ -128,11 +253,13 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     
     return filtered;
   }, [
-    momentsData, 
-    searchQuery, 
-    momentFilter, 
-    selectedTheme, 
-    hasLinksFilter, 
+    momentsData,
+    contentFilters.moments,
+    hasVisibleContent,
+    searchQuery,
+    momentFilter,
+    selectedTheme,
+    hasLinksFilter,
     hasSessionsFilter,
     sessions
   ]);
@@ -182,25 +309,24 @@ export function useMemoriesFilters(momentsData, sessions = []) {
   // ========================================
   // HELPERS POUR COMPOSANTS
   // ========================================
-  
-  const shouldShowElement = useCallback((type, momentId = null, hasOverride = false) => {
+
+  // ⭐ v2.11 : Fonction legacy maintenue pour compatibilité
+  // Redirige vers isElementVisible avec mapping des types
+  const shouldShowElement = useCallback((type) => {
     // type: 'moment' | 'post' | 'photo'
-    
-    // Si override local actif, toujours afficher
-    if (hasOverride) return true;
-    
-    // Sinon vérifier filtre global
+
+    // Mapping ancien système → nouveau
     switch (type) {
       case 'moment':
-        return showMoments;
+        return contentFilters.moments;
       case 'post':
-        return showPosts;
+        return contentFilters.textes || contentFilters.images;
       case 'photo':
-        return showPhotos;
+        return contentFilters.photos || contentFilters.images;
       default:
         return true;
     }
-  }, [showMoments, showPosts, showPhotos]);
+  }, [contentFilters]);
   
   const isFilterActive = useCallback(() => {
     return (
@@ -209,67 +335,70 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       momentFilter !== 'all' ||
       hasLinksFilter !== null ||
       hasSessionsFilter !== null ||
-      !showMoments ||
-      !showPosts ||
-      !showPhotos
+      !contentFilters.moments ||
+      !contentFilters.photos ||
+      !contentFilters.textes ||
+      !contentFilters.images
     );
   }, [
-    searchQuery, 
-    selectedTheme, 
-    momentFilter, 
-    hasLinksFilter, 
+    searchQuery,
+    selectedTheme,
+    momentFilter,
+    hasLinksFilter,
     hasSessionsFilter,
-    showMoments,
-    showPosts,
-    showPhotos
+    contentFilters
   ]);
-  
+
   const clearAllFilters = useCallback(() => {
     setSearchQuery('');
     setSelectedTheme(null);
     setMomentFilter('all');
     setHasLinksFilter(null);
     setHasSessionsFilter(null);
-    setShowMoments(true);
-    setShowPosts(true);
-    setShowPhotos(true);
+    setContentFilters({
+      moments: true,
+      photos: true,
+      textes: true,
+      images: true
+    });
   }, []);
-  
+
   // ========================================
   // RETURN
   // ========================================
-  
+
   return {
     // Moments filtrés et triés
     moments: sortedMoments,
-    
-    // États filtres
-    showMoments,
-    showPosts,
-    showPhotos,
+
+    // ⭐ v2.11 : Filtres de contenu additifs
+    contentFilters,
+    toggleContentFilter,
+    isElementVisible,
+    getVisibleStats,
+    hasVisibleContent,
+
+    // États filtres (legacy, conservés pour compatibilité)
     searchQuery,
     selectedTheme,
     momentFilter,
     hasLinksFilter,
     hasSessionsFilter,
     sortOrder,
-    
+
     // Setters
-    setShowMoments,
-    setShowPosts,
-    setShowPhotos,
     setSearchQuery,
     setSelectedTheme,
     setMomentFilter,
     setHasLinksFilter,
     setHasSessionsFilter,
     setSortOrder,
-    
+
     // Helpers
     shouldShowElement,
     isFilterActive,
     clearAllFilters,
-    
+
     // Stats
     totalMoments: momentsData?.length || 0,
     filteredCount: sortedMoments.length

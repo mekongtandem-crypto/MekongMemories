@@ -1,16 +1,21 @@
 /**
- * MomentContent.jsx v7.1 DarkMode
+ * MomentContent.jsx v7.2 - Filtres de contenu additifs
  * Contenu du moment (affiché si isSelected)
- * 
+ *
+ * ⭐ v2.11 : Filtres de contenu
+ * - Posts affichés selon leurs propres filtres (textes/images)
+ * - Photos d'album affichées seulement si filtre 📷 actif
+ *
  * Contient :
- * - Liste des posts (si localDisplay.showPosts)
- * - Section photos moment avec header (si photos présentes)
+ * - Liste des posts (filtrés par PostArticle)
+ * - Section photos moment avec header (si filtre photos actif)
  */
 
 import React, { memo } from 'react';
 import PostArticle from '../post/PostArticle.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import PhotoGridHeader from '../photo/PhotoGridHeader.jsx';
+import { useMemoriesFilters } from '../hooks/useMemoriesFilters.js';
 
 export const MomentContent = memo(({
   moment,
@@ -37,11 +42,17 @@ export const MomentContent = memo(({
   onCreateSessionFromContent,
   editionMode  // ⭐ v2.9o : Recevoir editionMode pour posts et photos
 }) => {
-  
+
+  // ⭐ v2.11 : Hook pour vérifier visibilité selon filtres
+  const { isElementVisible } = useMemoriesFilters();
+
+  // ⭐ v2.11 : Vérifier si photos d'album doivent être affichées
+  const shouldShowDayPhotos = isElementVisible('day_photos');
+
   return (
     <div className="px-3 pb-3">
-      
-      {/* Posts */}
+
+      {/* Posts (filtrés individuellement dans PostArticle) */}
       {localDisplay.showPosts && moment.posts && moment.posts.length > 0 && (
         <div className="space-y-2 mt-2">
           {moment.posts.map((post, index) => (
@@ -70,9 +81,9 @@ export const MomentContent = memo(({
           ))}
         </div>
       )}
-      
-      {/* Photos moment */}
-      {moment.dayPhotoCount > 0 && (
+
+      {/* ⭐ v2.11 : Photos moment (seulement si filtre 📷 actif) */}
+      {shouldShowDayPhotos && moment.dayPhotoCount > 0 && (
         <div className="mt-3">
           <PhotoGridHeader
             moment={moment}
@@ -84,7 +95,7 @@ export const MomentContent = memo(({
             selectionMode={selectionMode}
             onContentSelected={onContentSelected}
           />
-          
+
           {localDisplay.showDayPhotos && (
             <>
               <PhotoGrid
