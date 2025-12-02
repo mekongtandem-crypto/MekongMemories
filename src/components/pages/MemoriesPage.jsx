@@ -57,7 +57,7 @@ function MemoriesPage({
   setCurrentDay,
   displayOptions,
   isThemeBarVisible,
-  navigationContext,
+  navigationContext = { previousPage: null, pendingAttachment: null, sessionMomentId: null, pendingLink: null },
   onNavigateBack,
   onAttachToChat,
   selectionMode,
