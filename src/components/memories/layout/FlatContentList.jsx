@@ -33,7 +33,7 @@ export const FlatContentList = memo(({
 }) => {
 
   // ⭐ v2.11 : Hook pour vérifier visibilité selon filtres
-  const { isElementVisible } = useMemoriesFilters();
+  const { isElementVisible } = useMemoriesFilters(moments, sessions);
 
   const shouldShowDayPhotos = isElementVisible('day_photos');
 
