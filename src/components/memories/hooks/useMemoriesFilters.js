@@ -169,12 +169,10 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     let filtered = [...momentsData];
 
     // ⭐ v2.11 : 0. Filtre par contenu visible
-    // Si ✨ désactivé, masquer tous les moments (Option A)
-    if (!contentFilters.moments) {
-      return []; // Galerie plate = aucun moment affiché
-    }
-
-    // Filtrer les moments qui n'ont pas de contenu visible selon filtres actifs
+    // NOTE: On ne filtre JAMAIS complètement les moments selon le toggle ✨
+    // Le toggle ✨ contrôle uniquement l'affichage des HEADERS dans MomentsList
+    // Quand ✨ désactivé → FlatContentList affiche le contenu en vrac
+    // La vérification hasVisibleContent() reste nécessaire pour éliminer moments vides
     filtered = filtered.filter(m => hasVisibleContent(m));
 
     // 1. Recherche textuelle
@@ -254,7 +252,6 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     return filtered;
   }, [
     momentsData,
-    contentFilters.moments,
     hasVisibleContent,
     searchQuery,
     momentFilter,
