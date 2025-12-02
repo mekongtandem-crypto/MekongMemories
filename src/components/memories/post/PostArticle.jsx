@@ -19,12 +19,12 @@ import { Tag, Link, Image as ImageIcon, Edit, Trash2 } from 'lucide-react';
 import { SessionBadgePost } from '../shared/SessionBadges.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import { generatePostKey } from '../../../utils/themeUtils.js';
-import { useMemoriesFilters } from '../hooks/useMemoriesFilters.js';
 
 export const PostArticle = memo(({
   post,
   moment,
   displayOptions,
+  isElementVisible,  // ⭐ v2.11 : Fonction de visibilité des filtres
   onPhotoClick,
   onCreateSession,
   activePhotoGrid,
@@ -42,9 +42,6 @@ export const PostArticle = memo(({
   onCreateSessionFromContent,
   editionMode  // ⭐ v2.9o : Recevoir editionMode
 }) => {
-
-  // ⭐ v2.11 : Hook pour vérifier visibilité selon filtres
-  const { isElementVisible } = useMemoriesFilters();
 
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
@@ -68,8 +65,8 @@ export const PostArticle = memo(({
   const hasText = post.content?.trim();
   const hasImages = post.photos?.length > 0;
 
-  const shouldShowText = hasText && isElementVisible('post_text');
-  const shouldShowImages = hasImages && isElementVisible('post_images');
+  const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
+  const shouldShowImages = hasImages && (isElementVisible?.('post_images') ?? true);
 
   // Si rien à afficher, masquer complètement (Q2 : filtre strict)
   if (!shouldShowText && !shouldShowImages) {

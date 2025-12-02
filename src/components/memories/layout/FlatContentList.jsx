@@ -9,12 +9,12 @@
 import React, { memo } from 'react';
 import PostArticle from '../post/PostArticle.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
-import { useMemoriesFilters } from '../hooks/useMemoriesFilters.js';
 
 export const FlatContentList = memo(({
   moments,
   displayOptions,
   sessions,
+  isElementVisible,  // ⭐ v2.11 : Fonction de visibilité des filtres
   onPhotoClick,
   onCreateSession,
   activePhotoGrid,
@@ -32,10 +32,7 @@ export const FlatContentList = memo(({
   editionMode
 }) => {
 
-  // ⭐ v2.11 : Hook pour vérifier visibilité selon filtres
-  const { isElementVisible } = useMemoriesFilters(moments, sessions);
-
-  const shouldShowDayPhotos = isElementVisible('day_photos');
+  const shouldShowDayPhotos = isElementVisible?.('day_photos') ?? true;
 
   // Collecter tout le contenu de tous les moments
   const allContent = [];
@@ -53,6 +50,7 @@ export const FlatContentList = memo(({
               post={post}
               moment={moment}
               displayOptions={displayOptions}
+              isElementVisible={isElementVisible}
               onPhotoClick={onPhotoClick}
               onCreateSession={onCreateSession}
               activePhotoGrid={activePhotoGrid}
