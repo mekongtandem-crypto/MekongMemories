@@ -13,6 +13,7 @@ import SessionListModal from '../SessionListModal.jsx';
 import { getSessionsForContent } from '../../utils/sessionUtils.js';
 import { useAppState } from '../../hooks/useAppState.js';
 import MomentsList from '../memories/layout/MomentsList.jsx';
+import FlatContentList from '../memories/layout/FlatContentList.jsx';  // ⭐ v2.11
 import PhotoContextMenu from '../memories/shared/PhotoContextMenu.jsx';
 import PhotoViewer from '../PhotoViewer.jsx';
 import SessionCreationModal from '../SessionCreationModal.jsx';
@@ -22,7 +23,6 @@ import EditMomentModal from '../EditMomentModal.jsx';  // ⭐ v2.9
 import EditPostModal from '../EditPostModal.jsx';  // ⭐ v2.9
 import ConfirmDeleteModal from '../ConfirmDeleteModal.jsx';  // ⭐ v2.9s - Modal 1 "Effacer le souvenir"
 import CrossRefsWarningModal from '../CrossRefsWarningModal.jsx';  // ⭐ v2.9s - Modal 2 "Photos utilisées ailleurs"
-import ContentFilterBar from '../memories/shared/ContentFilterBar.jsx';  // ⭐ v2.11 - Filtres de contenu
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';  // ⭐ v2.8f
 import { dataManager } from '../../core/dataManager.js';  // ⭐ v2.8f
 import { logger } from '../../utils/logger.js';  // ⭐ v2.8f
@@ -957,7 +957,10 @@ const navigationProcessedRef = useRef(null);
             firstFiltered.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         }, 100);
-      }
+      },
+      // ⭐ v2.11 : Exposer contentFilters pour MemoriesTopBar
+      contentFilters: memoryFilters.contentFilters,
+      toggleContentFilter: memoryFilters.toggleContentFilter
     };
 
     window.memoriesPageActions = {
@@ -983,7 +986,21 @@ const navigationProcessedRef = useRef(null);
       delete window.memoriesPageActions;
       delete window.memoriesPageState;
     };
-  }, [handleOpenThemeModal, togglePhotoSelection, activatePhotoSelection, activePhotoGrid, selectedPhotos, handleAddPhotoSouvenir, handleEditMoment, handleDeleteMoment, handleEditPost, handleDeletePost, handleDeletePhoto]);
+  }, [
+    handleOpenThemeModal,
+    togglePhotoSelection,
+    activatePhotoSelection,
+    activePhotoGrid,
+    selectedPhotos,
+    handleAddPhotoSouvenir,
+    handleEditMoment,
+    handleDeleteMoment,
+    handleEditPost,
+    handleDeletePost,
+    handleDeletePhoto,
+    memoryFilters.contentFilters,
+    memoryFilters.toggleContentFilter
+  ]);
   
   useEffect(() => {
     if (!isSearchOpen) {
@@ -1424,12 +1441,6 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         </div>
       )}
 
-      {/* ⭐ v2.11 : Barre de filtres de contenu */}
-      <ContentFilterBar
-        contentFilters={contentFilters}
-        onToggle={toggleContentFilter}
-      />
-
       {/* ⭐ v2.9w6+ : Barre Mode Édition (optimisé mobile) */}
       {editionMode?.active && (
         <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 px-3 py-2 transition-colors duration-200">
@@ -1516,32 +1527,59 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
             </div>
           )}
 
-          {/* Liste moments */}
+          {/* ⭐ v2.11 : Basculer entre MomentsList (structuré) et FlatContentList (en vrac) */}
           {filteredMoments.length > 0 && (
-            <MomentsList 
-            moments={filteredMoments}
-            selectedMoments={selectedMoments}
-            displayOptions={displayOptions}
-            momentFilter={momentFilter}
-            sessions={app.sessions}
-            onMomentSelect={handleSelectMoment}
-            onPhotoClick={openPhotoViewer}
-            onCreateSession={handleOpenSessionModal}
-			onShowSessions={handleShowSessions}  
-            momentRefs={momentRefs}
-            activePhotoGrid={activePhotoGrid}
-            selectedPhotos={selectedPhotos}
-            onActivateSelection={activatePhotoSelection}
-            onTogglePhotoSelection={togglePhotoSelection}
-            onBulkTagPhotos={handleBulkTagPhotos}
-            onCancelSelection={cancelSelection}
-            isFromChat={navigationContext?.previousPage === 'chat'}
-            onOpenPhotoContextMenu={handleOpenPhotoContextMenu}
-            selectionMode={selectionMode}
-  			onContentSelected={handleLongPressForSelection}
-  			onCreateSessionFromContent={handleCreateSessionFromContent}
-			editionMode={editionMode}
-			/>
+            <>
+              {memoryFilters.contentFilters.moments ? (
+                /* Mode structuré : Afficher les moments avec leurs en-têtes */
+                <MomentsList
+                  moments={filteredMoments}
+                  selectedMoments={selectedMoments}
+                  displayOptions={displayOptions}
+                  momentFilter={momentFilter}
+                  sessions={app.sessions}
+                  onMomentSelect={handleSelectMoment}
+                  onPhotoClick={openPhotoViewer}
+                  onCreateSession={handleOpenSessionModal}
+                  onShowSessions={handleShowSessions}
+                  momentRefs={momentRefs}
+                  activePhotoGrid={activePhotoGrid}
+                  selectedPhotos={selectedPhotos}
+                  onActivateSelection={activatePhotoSelection}
+                  onTogglePhotoSelection={togglePhotoSelection}
+                  onBulkTagPhotos={handleBulkTagPhotos}
+                  onCancelSelection={cancelSelection}
+                  isFromChat={navigationContext?.previousPage === 'chat'}
+                  onOpenPhotoContextMenu={handleOpenPhotoContextMenu}
+                  selectionMode={selectionMode}
+                  onContentSelected={handleLongPressForSelection}
+                  onCreateSessionFromContent={handleCreateSessionFromContent}
+                  editionMode={editionMode}
+                />
+              ) : (
+                /* Mode en vrac : Afficher le contenu sans en-têtes */
+                <FlatContentList
+                  moments={filteredMoments}
+                  displayOptions={displayOptions}
+                  sessions={app.sessions}
+                  onPhotoClick={openPhotoViewer}
+                  onCreateSession={handleOpenSessionModal}
+                  activePhotoGrid={activePhotoGrid}
+                  selectedPhotos={selectedPhotos}
+                  onActivateSelection={activatePhotoSelection}
+                  onTogglePhotoSelection={togglePhotoSelection}
+                  onBulkTagPhotos={handleBulkTagPhotos}
+                  onCancelSelection={cancelSelection}
+                  isFromChat={navigationContext?.previousPage === 'chat'}
+                  onOpenPhotoContextMenu={handleOpenPhotoContextMenu}
+                  selectionMode={selectionMode}
+                  onContentSelected={handleLongPressForSelection}
+                  onShowSessions={handleShowSessions}
+                  onCreateSessionFromContent={handleCreateSessionFromContent}
+                  editionMode={editionMode}
+                />
+              )}
+            </>
           )}
         </div>
       </main>
