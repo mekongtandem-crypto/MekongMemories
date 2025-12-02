@@ -14,7 +14,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Search, X, XCircle, MoreVertical,
   FileText, Image as ImageIcon, Camera, Sparkles as SparklesIcon,
-  Tag, Dices, ArrowUpDown, Plus, Sparkles, Edit2
+  Tag, Dices, ArrowUpDown, Plus, Sparkles, Edit2,
+  Layers, ChevronDown  // ⭐ v2.11 : Pour toggle accordion
 } from 'lucide-react';
 import OverflowMenu from './OverflowMenu.jsx';
 
@@ -38,11 +39,33 @@ export default function MemoriesTopBar({
     images: true
   };
   const onToggleContentFilter = window.memoriesPageFilters?.toggleContentFilter;
-  
+
+  // 🔍 DEBUG: Logger l'état des filtres
+  useEffect(() => {
+    console.log('🎨 [MemoriesTopBar] contentFilters state:', contentFilters);
+    console.log('🎨 [MemoriesTopBar] toggleContentFilter available:', !!onToggleContentFilter);
+  }, [contentFilters, onToggleContentFilter]);
+
+  // Handler avec logs pour toggle filtre
+  const handleToggleFilter = (filterKey) => {
+    console.log('👆 [MemoriesTopBar] Button clicked for filter:', filterKey);
+    console.log('👆 [MemoriesTopBar] Current contentFilters:', contentFilters);
+    console.log('👆 [MemoriesTopBar] onToggleContentFilter function:', onToggleContentFilter);
+
+    if (onToggleContentFilter) {
+      onToggleContentFilter(filterKey);
+    } else {
+      console.error('❌ [MemoriesTopBar] toggleContentFilter is not available!');
+    }
+  };
+
   const [showMenu, setShowMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showMomentFilterMenu, setShowMomentFilterMenu] = useState(false);
   const [currentMomentFilter, setCurrentMomentFilter] = useState('all');
+
+  // ⭐ v2.11 : État local pour suivre displayMode (pour forcer re-render)
+  const [accordionMode, setAccordionMode] = useState(window.memoriesPageState?.displayMode || 'focus');
   
   const sortMenuRef = useRef(null);
   const momentFilterMenuRef = useRef(null);
@@ -114,20 +137,42 @@ export default function MemoriesTopBar({
           onClick={() => {
             const newVisibility = !isThemeBarVisible;
             setIsThemeBarVisible(newVisibility);
-            
+
             // Si on ferme la barre, reset le filtre à "Tous"
             if (!newVisibility && selectedTheme !== null) {
               setSelectedTheme(null);
             }
           }}
           className={`p-2 rounded-lg transition-colors duration-150 ${
-            isThemeBarVisible 
-              ? 'bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400' 
+            isThemeBarVisible
+              ? 'bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400'
               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
           title={isThemeBarVisible ? "Masquer thèmes" : "Afficher thèmes"}
         >
           <Tag className="w-5 h-5" />
+        </button>
+
+        {/* ⭐ v2.11 DEBUG : Toggle mode accordion */}
+        <button
+          onClick={() => {
+            const newMode = accordionMode === 'focus' ? 'multiple' : 'focus';
+            console.log('🔀 [MemoriesTopBar] Toggle accordion mode:', accordionMode, '→', newMode);
+            setAccordionMode(newMode);
+            if (window.memoriesPageState?.setDisplayMode) {
+              window.memoriesPageState.setDisplayMode(newMode);
+            } else {
+              console.error('❌ [MemoriesTopBar] setDisplayMode not available!');
+            }
+          }}
+          className={`p-2 rounded-lg transition-colors duration-150 ${
+            accordionMode === 'focus'
+              ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+          }`}
+          title={accordionMode === 'focus' ? "Un moment à la fois (accordion)" : "Plusieurs moments ouverts"}
+        >
+          {accordionMode === 'focus' ? <ChevronDown className="w-5 h-5" /> : <Layers className="w-5 h-5" />}
         </button>
 
       </div>
@@ -142,7 +187,7 @@ export default function MemoriesTopBar({
 
           {/* ✨ Moments (en-têtes) */}
           <button
-            onClick={() => onToggleContentFilter?.('moments')}
+            onClick={() => handleToggleFilter('moments')}
             className={`p-1.5 rounded transition-colors duration-150 ${
               contentFilters.moments
                 ? 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400'
@@ -155,7 +200,7 @@ export default function MemoriesTopBar({
 
           {/* 📷 Photos d'album */}
           <button
-            onClick={() => onToggleContentFilter?.('photos')}
+            onClick={() => handleToggleFilter('photos')}
             className={`p-1.5 rounded transition-colors duration-150 ${
               contentFilters.photos
                 ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
@@ -168,7 +213,7 @@ export default function MemoriesTopBar({
 
           {/* 🗒️ Textes posts */}
           <button
-            onClick={() => onToggleContentFilter?.('textes')}
+            onClick={() => handleToggleFilter('textes')}
             className={`p-1.5 rounded transition-colors duration-150 ${
               contentFilters.textes
                 ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
@@ -181,7 +226,7 @@ export default function MemoriesTopBar({
 
           {/* 🖼️ Images posts */}
           <button
-            onClick={() => onToggleContentFilter?.('images')}
+            onClick={() => handleToggleFilter('images')}
             className={`p-1.5 rounded transition-colors duration-150 ${
               contentFilters.images
                 ? 'bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400'

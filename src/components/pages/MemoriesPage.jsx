@@ -948,6 +948,10 @@ const navigationProcessedRef = useRef(null);
   }, [photoContextMenu.isOpen, handleClosePhotoContextMenu]);
   
   useEffect(() => {
+    console.log('🌐 [MemoriesPage] Exposing to window.memoriesPageFilters');
+    console.log('🌐 [MemoriesPage] contentFilters:', memoryFilters.contentFilters);
+    console.log('🌐 [MemoriesPage] toggleContentFilter:', memoryFilters.toggleContentFilter);
+
     window.memoriesPageFilters = {
       setMomentFilter: (filter) => {
         setMomentFilter(filter);
@@ -962,6 +966,8 @@ const navigationProcessedRef = useRef(null);
       contentFilters: memoryFilters.contentFilters,
       toggleContentFilter: memoryFilters.toggleContentFilter
     };
+
+    console.log('✅ [MemoriesPage] window.memoriesPageFilters set:', window.memoriesPageFilters);
 
     window.memoriesPageActions = {
       openThemeModal: handleOpenThemeModal,
@@ -978,7 +984,9 @@ const navigationProcessedRef = useRef(null);
 
     window.memoriesPageState = {
       activePhotoGrid,
-      selectedPhotos
+      selectedPhotos,
+      displayMode,  // ⭐ v2.11 : Mode d'affichage moments (focus = accordion, multiple = tous ouverts)
+      setDisplayMode  // ⭐ v2.11 : Fonction pour changer le mode
     };
 
     return () => {
@@ -999,7 +1007,8 @@ const navigationProcessedRef = useRef(null);
     handleDeletePost,
     handleDeletePhoto,
     memoryFilters.contentFilters,
-    memoryFilters.toggleContentFilter
+    memoryFilters.toggleContentFilter,
+    displayMode
   ]);
   
   useEffect(() => {
