@@ -108,7 +108,11 @@ export const FlatContentList = memo(({
 
   return (
     <div className="space-y-3 px-3">
-      {allContent.map(item => item.component)}
+      {allContent.map(item => (
+        <React.Fragment key={item.key}>
+          {item.component}
+        </React.Fragment>
+      ))}
 
       {allContent.length === 0 && (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
