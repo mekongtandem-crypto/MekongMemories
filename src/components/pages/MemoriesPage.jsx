@@ -22,6 +22,7 @@ import EditMomentModal from '../EditMomentModal.jsx';  // ⭐ v2.9
 import EditPostModal from '../EditPostModal.jsx';  // ⭐ v2.9
 import ConfirmDeleteModal from '../ConfirmDeleteModal.jsx';  // ⭐ v2.9s - Modal 1 "Effacer le souvenir"
 import CrossRefsWarningModal from '../CrossRefsWarningModal.jsx';  // ⭐ v2.9s - Modal 2 "Photos utilisées ailleurs"
+import ContentFilterBar from '../memories/shared/ContentFilterBar.jsx';  // ⭐ v2.11 - Filtres de contenu
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';  // ⭐ v2.8f
 import { dataManager } from '../../core/dataManager.js';  // ⭐ v2.8f
 import { logger } from '../../utils/logger.js';  // ⭐ v2.8f
@@ -161,16 +162,18 @@ const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
 
 const {
   moments: filteredMoments,
-  showMoments,
-  showPosts,
-  showPhotos,
+  contentFilters,
+  toggleContentFilter,
+  isElementVisible,
+  getVisibleStats,
+  hasVisibleContent,
   searchQuery,
   selectedTheme,
   momentFilter,
   sortOrder,
   setSearchQuery,
   setSelectedTheme,
-  setMomentfilter,
+  setMomentFilter,
   shouldShowElement
 } = memoryFilters;
 
@@ -1421,6 +1424,12 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
         </div>
       )}
 
+      {/* ⭐ v2.11 : Barre de filtres de contenu */}
+      <ContentFilterBar
+        contentFilters={contentFilters}
+        onToggle={toggleContentFilter}
+      />
+
       {/* ⭐ v2.9w6+ : Barre Mode Édition (optimisé mobile) */}
       {editionMode?.active && (
         <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 px-3 py-2 transition-colors duration-200">
@@ -1488,12 +1497,28 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
       )}
       
       {/* Contenu principal */}
-      <main 
+      <main
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto scroll-pt-32"
       >
         <div className="container mx-auto px-4 py-4">
-          <MomentsList 
+
+          {/* ⭐ v2.11 : Message si aucun contenu visible */}
+          {filteredMoments.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Aucun souvenir à afficher
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                Ajustez les filtres de contenu pour explorer vos souvenirs différemment.
+              </p>
+            </div>
+          )}
+
+          {/* Liste moments */}
+          {filteredMoments.length > 0 && (
+            <MomentsList 
             moments={filteredMoments}
             selectedMoments={selectedMoments}
             displayOptions={displayOptions}
@@ -1517,6 +1542,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
   			onCreateSessionFromContent={handleCreateSessionFromContent}
 			editionMode={editionMode}
 			/>
+          )}
         </div>
       </main>
 

@@ -1,11 +1,17 @@
 /**
- * PostArticle.jsx v7.1 Dark Mode
+ * PostArticle.jsx v7.2 - Filtres de contenu additifs
  * Article Mastodon complet
- * 
+ *
+ * ⭐ v2.11 : Filtres strictes
+ * - 🗒️ Textes : Affiche seulement le texte (masque photos)
+ * - 🖼️ Images : Affiche seulement les photos (masque texte)
+ * - Les deux : Affiche tout
+ * - Aucun : Masque complètement le post
+ *
  * Structure :
  * - Header (titre, toggle photos, badges)
- * - Texte (si displayOptions.showPostText)
- * - Photos (si toggle ON et photos présentes)
+ * - Texte (si filtre textes actif)
+ * - Photos (si filtre images actif ET toggle ON)
  */
 
 import React, { useState, useEffect, memo, useCallback } from 'react';
@@ -13,6 +19,7 @@ import { Tag, Link, Image as ImageIcon, Edit, Trash2 } from 'lucide-react';
 import { SessionBadgePost } from '../shared/SessionBadges.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import { generatePostKey } from '../../../utils/themeUtils.js';
+import { useMemoriesFilters } from '../hooks/useMemoriesFilters.js';
 
 export const PostArticle = memo(({
   post,
@@ -35,7 +42,10 @@ export const PostArticle = memo(({
   onCreateSessionFromContent,
   editionMode  // ⭐ v2.9o : Recevoir editionMode
 }) => {
-  
+
+  // ⭐ v2.11 : Hook pour vérifier visibilité selon filtres
+  const { isElementVisible } = useMemoriesFilters();
+
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
   useEffect(() => {
@@ -53,6 +63,18 @@ export const PostArticle = memo(({
   const body = post.title
     ? post.content
     : contentParts.filter(part => part.trim() !== '').join('<br />');
+
+  // ⭐ v2.11 : Vérifier visibilité selon filtres
+  const hasText = post.content?.trim();
+  const hasImages = post.photos?.length > 0;
+
+  const shouldShowText = hasText && isElementVisible('post_text');
+  const shouldShowImages = hasImages && isElementVisible('post_images');
+
+  // Si rien à afficher, masquer complètement (Q2 : filtre strict)
+  if (!shouldShowText && !shouldShowImages) {
+    return null;
+  }
 
   const handleTagPost = useCallback((e) => {
     e.stopPropagation();
@@ -106,10 +128,11 @@ export const PostArticle = memo(({
             <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm truncate flex-1">
               {title}
             </h4>
-            
-            {hasPhotos && (
-              <button 
-                onClick={() => setShowThisPostPhotos(!showThisPostPhotos)} 
+
+            {/* ⭐ v2.11 : Toggle photos seulement si filtre images actif */}
+            {hasImages && shouldShowImages && (
+              <button
+                onClick={() => setShowThisPostPhotos(!showThisPostPhotos)}
                 className="p-1 flex-shrink-0"
                 title="Afficher/Masquer les photos"
               >
@@ -193,17 +216,17 @@ export const PostArticle = memo(({
             )}
           </div>
         </div>
-        
-        {/* Texte */}
-        {displayOptions.showPostText && (
+
+        {/* ⭐ v2.11 : Texte (si filtre textes actif) */}
+        {shouldShowText && (
           <div
             className="prose prose-sm max-w-none bg-white dark:bg-gray-800 p-3 dark:text-gray-100"
             dangerouslySetInnerHTML={{ __html: body }}
           />
         )}
 
-        {/* Photos - ⭐ v2.9p : Déplacées À L'INTÉRIEUR du cadre de la note */}
-        {photosAreVisible && (
+        {/* ⭐ v2.11 : Photos (si filtre images actif ET toggle ON) */}
+        {shouldShowImages && showThisPostPhotos && (
           <div className="p-2">
             <PhotoGrid
               photos={post.photos}
