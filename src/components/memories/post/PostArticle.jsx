@@ -122,9 +122,12 @@ export const PostArticle = memo(({
           
           {/* Gauche : Titre + indicateur photos inline */}
           <div className="flex items-center gap-x-3 flex-1 min-w-0">
-            <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm truncate flex-1">
-              {title}
-            </h4>
+            {/* ⭐ v2.11 : Titre visible seulement si filtre textes actif */}
+            {shouldShowText && (
+              <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm truncate flex-1">
+                {title}
+              </h4>
+            )}
 
             {/* ⭐ v2.11 : Toggle photos seulement si filtre images actif */}
             {hasImages && shouldShowImages && (

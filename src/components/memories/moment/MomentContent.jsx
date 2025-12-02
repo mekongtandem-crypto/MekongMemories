@@ -54,7 +54,7 @@ export const MomentContent = memo(({
         <div className="space-y-2 mt-2">
           {moment.posts.map((post, index) => (
             <PostArticle
-              key={post.id || index}
+              key={`${moment.id}_${post.id || index}`}
               post={post}
               moment={moment}
               displayOptions={displayOptions}
