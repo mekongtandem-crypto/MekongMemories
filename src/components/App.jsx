@@ -474,7 +474,7 @@ export default function App() {
             setCurrentDay={setCurrentDay}
             displayOptions={displayOptions}
             isThemeBarVisible={isThemeBarVisible}
-            navigationContext={app.navigationContext || navigationContext}
+            navigationContext={app.navigationContext || navigationContext || { previousPage: null, pendingAttachment: null, sessionMomentId: null, pendingLink: null }}
             onNavigateBack={handleNavigateBack}
             onAttachToChat={handleAttachToChat}
             selectionMode={selectionMode}
