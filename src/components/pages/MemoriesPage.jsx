@@ -68,15 +68,15 @@ function MemoriesPage({
   onCancelEditionMode
 }, ref) {
 
-const app = useAppState();
-const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
-  
+  const app = useAppState();
+  const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
+
   // ========================================
   // Hooks
   // ========================================
-    const memoryState = useMemoriesState();
-    const memoryFilters = useMemoriesFilters(momentsData, app.sessions);
-    const memoryScroll = useMemoriesScroll(navigationContext, onNavigateBack);
+  const memoryState = useMemoriesState();
+  const memoryFilters = useMemoriesFilters(momentsData, app.sessions);
+  const memoryScroll = useMemoriesScroll(navigationContext, onNavigateBack);
   
   // États legacy à conserver temporairement (compatibilité TopBar)
   const [selectedMoments, setSelectedMoments] = useState([]);
