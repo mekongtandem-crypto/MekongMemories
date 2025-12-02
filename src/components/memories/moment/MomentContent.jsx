@@ -15,7 +15,6 @@ import React, { memo } from 'react';
 import PostArticle from '../post/PostArticle.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import PhotoGridHeader from '../photo/PhotoGridHeader.jsx';
-import { useMemoriesFilters } from '../hooks/useMemoriesFilters.js';
 
 export const MomentContent = memo(({
   moment,
@@ -23,6 +22,7 @@ export const MomentContent = memo(({
   localDisplay,
   visibleDayPhotos,
   photosPerLoad,
+  isElementVisible,  // ⭐ v2.11 : Fonction de visibilité des filtres
   onPhotoClick,
   onCreateSession,
   onLoadMorePhotos,
@@ -43,11 +43,8 @@ export const MomentContent = memo(({
   editionMode  // ⭐ v2.9o : Recevoir editionMode pour posts et photos
 }) => {
 
-  // ⭐ v2.11 : Hook pour vérifier visibilité selon filtres
-  const { isElementVisible } = useMemoriesFilters();
-
   // ⭐ v2.11 : Vérifier si photos d'album doivent être affichées
-  const shouldShowDayPhotos = isElementVisible('day_photos');
+  const shouldShowDayPhotos = isElementVisible?.('day_photos') ?? true;
 
   return (
     <div className="px-3 pb-3">
@@ -61,6 +58,7 @@ export const MomentContent = memo(({
               post={post}
               moment={moment}
               displayOptions={displayOptions}
+              isElementVisible={isElementVisible}
               onPhotoClick={onPhotoClick}
               onCreateSession={onCreateSession}
               activePhotoGrid={activePhotoGrid}

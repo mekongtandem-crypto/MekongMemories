@@ -14,6 +14,7 @@ export const MomentsList = memo(({
   displayOptions,
   momentFilter,
   sessions,
+  isElementVisible,  // ⭐ v2.11 : Fonction de visibilité des filtres
   onMomentSelect,
   onPhotoClick,
   onCreateSession,
@@ -44,12 +45,13 @@ export const MomentsList = memo(({
         
         return (
           <MomentCard
-            key={moment.id} 
-            moment={moment} 
+            key={moment.id}
+            moment={moment}
             isSelected={selectedMoments.some(m => m.id === moment.id)}
             isExplored={isExplored}
             matchesFilter={matchesFilter}
             displayOptions={displayOptions}
+            isElementVisible={isElementVisible}
             onSelect={onMomentSelect}
             onPhotoClick={onPhotoClick}
             onCreateSession={onCreateSession}

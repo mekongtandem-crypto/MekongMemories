@@ -18,6 +18,7 @@ export const MomentCard = memo(forwardRef(({
   isExplored,
   matchesFilter,
   displayOptions,
+  isElementVisible,  // ⭐ v2.11 : Fonction de visibilité des filtres
   onSelect,
   onPhotoClick,
   onCreateSession,
@@ -111,6 +112,7 @@ export const MomentCard = memo(forwardRef(({
           localDisplay={localDisplay}
           visibleDayPhotos={visibleDayPhotos}
           photosPerLoad={photosPerLoad}
+          isElementVisible={isElementVisible}
           onPhotoClick={onPhotoClick}
           onCreateSession={onCreateSession}
           onLoadMorePhotos={() => setVisibleDayPhotos(prev => prev + photosPerLoad)}
