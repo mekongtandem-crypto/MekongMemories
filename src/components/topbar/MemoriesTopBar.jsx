@@ -76,10 +76,7 @@ export default function MemoriesTopBar({
       window.memoriesPageFilters.setMomentFilter(filter);
     }
   };
-  
-  // Détection mode exploration (depuis Chat)
-  const isFromChat = navigationContext?.previousPage === 'chat';
-  
+
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-150">
       
