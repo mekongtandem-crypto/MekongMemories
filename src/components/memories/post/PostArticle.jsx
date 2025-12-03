@@ -15,7 +15,7 @@
  */
 
 import React, { useState, useEffect, memo, useCallback } from 'react';
-import { Tag, Link, Image as ImageIcon, Edit, Trash2 } from 'lucide-react';
+import { Tag, Link, Image as ImageIcon, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { SessionBadgePost } from '../shared/SessionBadges.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import { generatePostKey } from '../../../utils/themeUtils.js';
@@ -45,9 +45,37 @@ export const PostArticle = memo(({
 
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
+  // ⭐ v2.11 : État pour volet post (synchronisé avec état global)
+  const [isPostExpanded, setIsPostExpanded] = useState(() => {
+    // Initialiser depuis window.memoriesPageState.expandedPosts si disponible
+    const expandedPosts = window.memoriesPageState?.expandedPosts;
+    return expandedPosts ? expandedPosts.has(post.id) : true;
+  });
+
   useEffect(() => {
     setShowThisPostPhotos(displayOptions.showPostPhotos);
   }, [displayOptions.showPostPhotos]);
+
+  // ⭐ v2.11 : Synchroniser avec état global expandedPosts
+  useEffect(() => {
+    const expandedPosts = window.memoriesPageState?.expandedPosts;
+    if (expandedPosts) {
+      setIsPostExpanded(expandedPosts.has(post.id));
+    }
+  }, [post.id]);  // Re-check périodiquement via polling (comme TopBar)
+
+  // ⭐ v2.11 : Polling pour sync avec état global (changements expand/collapse all)
+  useEffect(() => {
+    const checkExpanded = () => {
+      const expandedPosts = window.memoriesPageState?.expandedPosts;
+      if (expandedPosts) {
+        setIsPostExpanded(expandedPosts.has(post.id));
+      }
+    };
+
+    const interval = setInterval(checkExpanded, 200);
+    return () => clearInterval(interval);
+  }, [post.id]);
 
   const contentParts = post.content ? post.content.trim().split('\n') : [];
 
@@ -75,7 +103,7 @@ export const PostArticle = memo(({
   }
 
   const handleTagPost = useCallback((e) => {
-    e.stopPropagation();
+    e?.stopPropagation();  // ⭐ v2.11 : Empêcher toggle du volet
     const postKey = generatePostKey(post);
     const currentThemes = window.themeAssignments?.getThemesForContent(postKey) || [];
     
@@ -103,10 +131,13 @@ export const PostArticle = memo(({
   // ⭐ v2.8e : Distinction visuelle Note de photo (jaune) vs Post Mastodon (gris/bleu)
   const isPhotoNote = post.category === 'user_added';
 
+  // ⭐ v2.11 : Mode photos seules (sans header ni texte)
+  const photosOnlyMode = !shouldShowHeader && !shouldShowText && shouldShowPhotos;
+
   return (
     <div className="mt-2" data-post-id={post.id}>
-      {/* ⭐ v2.11 : Si seulement photos (pas de header/texte), afficher photos sans cadre */}
-      {!shouldShowHeader && !shouldShowText && shouldShowPhotos ? (
+      {/* ⭐ v2.11 : Si seulement photos, afficher sans cadre */}
+      {photosOnlyMode && (
         <div className="p-2">
           <PhotoGrid
             photos={post.photos}
@@ -129,7 +160,10 @@ export const PostArticle = memo(({
             editionMode={editionMode}
           />
         </div>
-      ) : (
+      )}
+
+      {/* ⭐ v2.11 : Mode normal avec cadre (header et/ou texte) */}
+      {!photosOnlyMode && (
         /* ⭐ v2.11 : Avec texte, afficher le cadre normal */
         <div className={`border rounded-lg overflow-hidden ${
           isPhotoNote
@@ -137,16 +171,43 @@ export const PostArticle = memo(({
             : 'border-gray-200 dark:border-gray-700'
         }`}>
 
-        {/* ⭐ v2.11 : Header visible si filtre posts actif */}
+        {/* ⭐ v2.11 : Header visible si filtre posts actif (cliquable comme volet) */}
         {shouldShowHeader && (
-          <div className={`flex justify-between items-center p-2 border-b ${
+          <div
+            onClick={() => {
+              const newExpanded = !isPostExpanded;
+              setIsPostExpanded(newExpanded);
+
+              // ⭐ v2.11 : Synchroniser avec état global
+              const expandedPosts = window.memoriesPageState?.expandedPosts;
+              if (expandedPosts) {
+                const newSet = new Set(expandedPosts);
+                if (newExpanded) {
+                  newSet.add(post.id);
+                } else {
+                  newSet.delete(post.id);
+                }
+                // Mettre à jour via MemoriesPage (simule un callback)
+                if (window.memoriesPageState) {
+                  window.memoriesPageState.expandedPosts = newSet;
+                }
+              }
+            }}
+            className={`flex justify-between items-center p-2 border-b cursor-pointer hover:opacity-80 transition-opacity ${
             isPhotoNote
               ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
               : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
           }`}>
-          
-          {/* Gauche : Titre + indicateur photos inline */}
-          <div className="flex items-center gap-x-3 flex-1 min-w-0">
+
+          {/* Gauche : Chevron + Titre + indicateur photos inline */}
+          <div className="flex items-center gap-x-2 flex-1 min-w-0">
+            {/* Chevron expansion */}
+            {isPostExpanded ? (
+              <ChevronUp className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+            )}
+
             <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm truncate flex-1">
               {title}
             </h4>
@@ -154,7 +215,10 @@ export const PostArticle = memo(({
             {/* ⭐ v2.11 : Toggle photos seulement si photos visibles */}
             {hasPhotos && shouldShowPhotos && (
               <button
-                onClick={() => setShowThisPostPhotos(!showThisPostPhotos)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowThisPostPhotos(!showThisPostPhotos);
+                }}
                 className="p-1 flex-shrink-0"
                 title="Afficher/Masquer les photos"
               >
@@ -240,16 +304,19 @@ export const PostArticle = memo(({
         </div>
         )}
 
-        {/* ⭐ v2.11 : Texte (si filtre textes actif) */}
-        {shouldShowText && (
-          <div
-            className="prose prose-sm max-w-none bg-white dark:bg-gray-800 p-3 dark:text-gray-100"
-            dangerouslySetInnerHTML={{ __html: body }}
-          />
-        )}
+        {/* ⭐ v2.11 : Contenu du post (texte + photos) - visible seulement si volet déplié */}
+        {isPostExpanded && (
+          <>
+            {/* Texte (si filtre textes actif) */}
+            {shouldShowText && (
+              <div
+                className="prose prose-sm max-w-none bg-white dark:bg-gray-800 p-3 dark:text-gray-100"
+                dangerouslySetInnerHTML={{ __html: body }}
+              />
+            )}
 
-        {/* ⭐ v2.11 : Photos (si header affiché + photos visibles + toggle ON) */}
-        {shouldShowHeader && shouldShowPhotos && showThisPostPhotos && (
+            {/* Photos (si header affiché + photos visibles + toggle ON) */}
+            {shouldShowHeader && shouldShowPhotos && showThisPostPhotos && (
           <div className="p-2">
             <PhotoGrid
               photos={post.photos}
@@ -272,6 +339,8 @@ export const PostArticle = memo(({
               editionMode={editionMode}
             />
           </div>
+        )}
+          </>
         )}
         </div>
       )}

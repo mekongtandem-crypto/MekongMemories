@@ -83,18 +83,28 @@ export default function MemoriesTopBar({
   const [showMomentFilterMenu, setShowMomentFilterMenu] = useState(false);
   const [currentMomentFilter, setCurrentMomentFilter] = useState('all');
 
-  // ⭐ v2.11 : État local pour savoir si tous les moments sont dépliés
+  // ⭐ v2.11 : État local pour savoir si tous les volets sont dépliés (context-aware)
   const [allExpanded, setAllExpanded] = useState(false);
 
-  // Synchroniser avec le nombre de moments sélectionnés
+  // ⭐ v2.11 : Synchroniser avec le nombre de moments/posts sélectionnés (context-aware)
   useEffect(() => {
     const checkExpanded = () => {
       const state = window.memoriesPageState;
-      if (state) {
-        // Tous expanded si nombre de moments sélectionnés === nombre total
-        const expanded = state.selectedMoments?.length > 0 &&
-                        state.selectedMoments?.length === state.filteredMomentsCount;
-        setAllExpanded(expanded);
+      const filters = window.memoriesPageFilters?.contentFilters;
+
+      if (state && filters) {
+        // Si moments ON → vérifier moments dépliés
+        if (filters.moments) {
+          const expanded = state.selectedMoments?.length > 0 &&
+                          state.selectedMoments?.length === state.filteredMomentsCount;
+          setAllExpanded(expanded);
+        }
+        // Sinon si moments OFF + (posts OU photos) → vérifier posts dépliés
+        else if (filters.posts || filters.photos) {
+          const expanded = state.expandedPosts?.size > 0 &&
+                          state.expandedPosts?.size === state.totalPostsCount;
+          setAllExpanded(expanded);
+        }
       }
     };
 
@@ -190,31 +200,49 @@ export default function MemoriesTopBar({
           <Tag className="w-5 h-5" />
         </button>
 
-        {/* ⭐ v2.11 : Toggle Déplier/Replier tous */}
-        <button
-          onClick={() => {
-            console.log('🔀 [MemoriesTopBar] Toggle accordion:', allExpanded ? 'Replier tous' : 'Déplier tous');
-            if (allExpanded) {
-              // Replier tous
-              window.memoriesPageActions?.collapseAllMoments();
-            } else {
-              // Déplier tous
-              window.memoriesPageActions?.expandAllMoments();
-            }
-          }}
-          className={`p-2 rounded-lg transition-colors duration-150 ${
-            allExpanded
-              ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-          }`}
-          title={allExpanded ? "Replier tous les moments" : "Déplier tous les moments"}
-        >
-          {allExpanded ? <Layers className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-        </button>
-
       </div>
       {/* Séparateur */}
           <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+
+      {/* ⭐ v2.11 : Toggle Déplier/Replier tous (context-aware) */}
+      <button
+        onClick={() => {
+          const filters = window.memoriesPageFilters?.contentFilters;
+
+          // Déterminer le contexte : moments ou posts ?
+          const controlsMoments = filters?.moments;
+          const controlsPosts = !filters?.moments && (filters?.posts || filters?.photos);
+
+          console.log('🔀 [MemoriesTopBar] Toggle accordion:',
+            allExpanded ? 'Replier tous' : 'Déplier tous',
+            controlsMoments ? '(moments)' : controlsPosts ? '(posts)' : ''
+          );
+
+          if (allExpanded) {
+            // Replier tous
+            if (controlsMoments) {
+              window.memoriesPageActions?.collapseAllMoments();
+            } else if (controlsPosts) {
+              window.memoriesPageActions?.collapseAllPosts();
+            }
+          } else {
+            // Déplier tous
+            if (controlsMoments) {
+              window.memoriesPageActions?.expandAllMoments();
+            } else if (controlsPosts) {
+              window.memoriesPageActions?.expandAllPosts();
+            }
+          }
+        }}
+        className={`p-2 rounded-lg transition-colors duration-150 ${
+          allExpanded
+            ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+        }`}
+        title={allExpanded ? "Replier tous les volets" : "Déplier tous les volets"}
+      >
+        {allExpanded ? <Layers className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+      </button>
           
       {/* ========================================
           CENTRE : ⭐ v2.11 Filtres de contenu additifs
