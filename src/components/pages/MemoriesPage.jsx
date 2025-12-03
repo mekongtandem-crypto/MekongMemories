@@ -87,6 +87,9 @@ function MemoriesPage({
   // ⭐ v2.11 : État pour volets posts (Set de post IDs)
   const [expandedPosts, setExpandedPosts] = useState(new Set());
 
+  // ⭐ v2.12 : État pour grilles photos dépliées (Set de moment IDs)
+  const [expandedPhotoGrids, setExpandedPhotoGrids] = useState(new Set());
+
   // ⭐ v2.8f : Modal PhotoToMemoryModal
   // ⭐ v2.9j : Stocke soit photoData (old flow) soit file (new flow)
   const [photoToMemoryModal, setPhotoToMemoryModal] = useState({
@@ -894,6 +897,24 @@ const handleCollapseAllPosts = useCallback(() => {
   setExpandedPosts(new Set());
 }, []);
 
+// ⭐ v2.12 : Handler pour déplier toutes les grilles photos
+const handleExpandAllPhotoGrids = useCallback(() => {
+  const allMomentIds = new Set();
+  filteredMoments.forEach(moment => {
+    if (moment.dayPhotos?.length > 0) {
+      allMomentIds.add(moment.id);
+    }
+  });
+  console.log('📂 [MemoriesPage] Déplier toutes les grilles photos:', allMomentIds.size);
+  setExpandedPhotoGrids(allMomentIds);
+}, [filteredMoments]);
+
+// ⭐ v2.12 : Handler pour replier toutes les grilles photos
+const handleCollapseAllPhotoGrids = useCallback(() => {
+  console.log('📁 [MemoriesPage] Replier toutes les grilles photos');
+  setExpandedPhotoGrids(new Set());
+}, []);
+
 // Handler pour créer et ouvrir une session
 const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
   if (!source) return;
@@ -1013,11 +1034,13 @@ const navigationProcessedRef = useRef(null);
       editPost: handleEditPost,
       deletePost: handleDeletePost,
       deletePhoto: handleDeletePhoto,
-      // ⭐ v2.11 : Accordion toggle (context-aware)
+      // ⭐ v2.12 : Volets indépendants (moments, posts, photos)
       expandAllMoments: handleExpandAllMoments,
       collapseAllMoments: handleCollapseAllMoments,
       expandAllPosts: handleExpandAllPosts,
-      collapseAllPosts: handleCollapseAllPosts
+      collapseAllPosts: handleCollapseAllPosts,
+      expandAllPhotoGrids: handleExpandAllPhotoGrids,
+      collapseAllPhotoGrids: handleCollapseAllPhotoGrids
     };
 
     window.memoriesPageState = {
@@ -1028,7 +1051,8 @@ const navigationProcessedRef = useRef(null);
       selectedMoments,  // ⭐ v2.11 : Moments actuellement dépliés
       filteredMomentsCount: filteredMoments.length,  // ⭐ v2.11 : Nombre de moments visibles
       expandedPosts,  // ⭐ v2.11 : Posts actuellement dépliés (Set)
-      totalPostsCount: filteredMoments.reduce((acc, m) => acc + (m.posts?.length || 0), 0)  // ⭐ v2.11 : Nombre total de posts
+      totalPostsCount: filteredMoments.reduce((acc, m) => acc + (m.posts?.length || 0), 0),  // ⭐ v2.11 : Nombre total de posts
+      expandedPhotoGrids,  // ⭐ v2.12 : Grilles photos dépliées (Set de moment IDs)
     };
 
     return () => {
@@ -1055,8 +1079,11 @@ const navigationProcessedRef = useRef(null);
     handleCollapseAllMoments,
     handleExpandAllPosts,
     handleCollapseAllPosts,
+    handleExpandAllPhotoGrids,
+    handleCollapseAllPhotoGrids,
     selectedMoments,
     expandedPosts,
+    expandedPhotoGrids,
     filteredMoments.length
   ]);
   
