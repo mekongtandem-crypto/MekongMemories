@@ -107,11 +107,37 @@ export const PostArticle = memo(({
 
   return (
     <div className="mt-2" data-post-id={post.id}>
-      <div className={`border rounded-lg overflow-hidden ${
-        isPhotoNote
-          ? 'border-amber-200 dark:border-amber-700'
-          : 'border-gray-200 dark:border-gray-700'
-      }`}>
+      {/* ⭐ v2.11 : Si seulement images (pas de texte), afficher photos sans cadre */}
+      {!shouldShowText && shouldShowImages ? (
+        <div className="p-2">
+          <PhotoGrid
+            photos={post.photos}
+            moment={moment}
+            allPhotos={post.photos}
+            onPhotoClick={(photo) => {
+              onPhotoClick(photo, post.photos, moment);
+            }}
+            gridId={`post_${post.id}`}
+            activePhotoGrid={activePhotoGrid}
+            selectedPhotos={selectedPhotos}
+            onActivateSelection={onActivateSelection}
+            onTogglePhotoSelection={onTogglePhotoSelection}
+            onBulkTagPhotos={onBulkTagPhotos}
+            onCancelSelection={onCancelSelection}
+            selectionMode={selectionMode}
+            onContentSelected={onContentSelected}
+            sessions={sessions}
+            onShowSessions={onShowSessions}
+            editionMode={editionMode}
+          />
+        </div>
+      ) : (
+        /* ⭐ v2.11 : Avec texte, afficher le cadre normal */
+        <div className={`border rounded-lg overflow-hidden ${
+          isPhotoNote
+            ? 'border-amber-200 dark:border-amber-700'
+            : 'border-gray-200 dark:border-gray-700'
+        }`}>
 
         {/* ⭐ v2.11 : Header visible seulement si texte affiché */}
         {shouldShowText && (
@@ -224,17 +250,16 @@ export const PostArticle = memo(({
           />
         )}
 
-        {/* ⭐ v2.11 : Photos (si filtre images actif ET toggle ON) */}
-        {/* Si pas de texte affiché, photos toujours visibles (pas de toggle header) */}
-        {shouldShowImages && (shouldShowText ? showThisPostPhotos : true) && (
+        {/* ⭐ v2.11 : Photos (si texte affiché + filtre images actif + toggle ON) */}
+        {shouldShowText && shouldShowImages && showThisPostPhotos && (
           <div className="p-2">
             <PhotoGrid
               photos={post.photos}
               moment={moment}
               allPhotos={post.photos}
               onPhotoClick={(photo) => {
-  onPhotoClick(photo, post.photos, moment);
-}}
+                onPhotoClick(photo, post.photos, moment);
+              }}
               gridId={`post_${post.id}`}
               activePhotoGrid={activePhotoGrid}
               selectedPhotos={selectedPhotos}
@@ -250,7 +275,8 @@ export const PostArticle = memo(({
             />
           </div>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 });
