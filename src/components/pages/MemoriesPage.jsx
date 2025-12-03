@@ -84,11 +84,77 @@ function MemoriesPage({
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
-  // ⭐ v2.11 : État pour volets posts (Set de post IDs)
-  const [expandedPosts, setExpandedPosts] = useState(new Set());
+  // ⭐ v2.13 : Flag pour éviter restore en boucle
+  const hasRestoredVoletsRef = useRef(false);
 
-  // ⭐ v2.12 : État pour grilles photos dépliées (Set de moment IDs)
-  const [expandedPhotoGrids, setExpandedPhotoGrids] = useState(new Set());
+  // ⭐ v2.13 : Initialiser états volets depuis localStorage
+  const [expandedPosts, setExpandedPosts] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`mekong_volets_state_${app.currentUser}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return new Set(parsed.expandedPostIds || []);
+      }
+    } catch (e) {
+      console.error('Error loading volets state:', e);
+    }
+    return new Set();
+  });
+
+  const [expandedPhotoGrids, setExpandedPhotoGrids] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`mekong_volets_state_${app.currentUser}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return new Set(parsed.expandedPhotoGridIds || []);
+      }
+    } catch (e) {
+      console.error('Error loading volets state:', e);
+    }
+    return new Set();
+  });
+
+  // ⭐ v2.13 : Restaurer selectedMoments depuis localStorage (une fois au chargement)
+  useEffect(() => {
+    if (!hasRestoredVoletsRef.current && filteredMoments.length > 0 && app.currentUser) {
+      try {
+        const stored = localStorage.getItem(`mekong_volets_state_${app.currentUser}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const selectedMomentIds = parsed.selectedMomentIds || [];
+
+          // Restaurer les moments complets depuis filteredMoments
+          const restoredMoments = filteredMoments.filter(m => selectedMomentIds.includes(m.id));
+          if (restoredMoments.length > 0) {
+            setSelectedMoments(restoredMoments);
+          }
+        }
+      } catch (e) {
+        console.error('Error restoring selectedMoments:', e);
+      }
+      hasRestoredVoletsRef.current = true;
+    }
+  }, [filteredMoments, app.currentUser]);
+
+  // ⭐ v2.13 : Sauvegarder états volets dans localStorage
+  useEffect(() => {
+    if (!app.currentUser) return;
+
+    const voletsState = {
+      selectedMomentIds: selectedMoments.map(m => m.id),
+      expandedPostIds: Array.from(expandedPosts),
+      expandedPhotoGridIds: Array.from(expandedPhotoGrids)
+    };
+
+    try {
+      localStorage.setItem(
+        `mekong_volets_state_${app.currentUser}`,
+        JSON.stringify(voletsState)
+      );
+    } catch (e) {
+      console.error('Error saving volets state:', e);
+    }
+  }, [selectedMoments, expandedPosts, expandedPhotoGrids, app.currentUser]);
 
   // ⭐ v2.8f : Modal PhotoToMemoryModal
   // ⭐ v2.9j : Stocke soit photoData (old flow) soit file (new flow)
@@ -1053,6 +1119,7 @@ const navigationProcessedRef = useRef(null);
       expandedPosts,  // ⭐ v2.11 : Posts actuellement dépliés (Set)
       totalPostsCount: filteredMoments.reduce((acc, m) => acc + (m.posts?.length || 0), 0),  // ⭐ v2.11 : Nombre total de posts
       expandedPhotoGrids,  // ⭐ v2.12 : Grilles photos dépliées (Set de moment IDs)
+      momentsWithPhotosCount: filteredMoments.filter(m => m.dayPhotos?.length > 0).length  // ⭐ v2.13 : Nombre de moments avec photos
     };
 
     return () => {
