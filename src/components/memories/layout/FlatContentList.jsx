@@ -46,7 +46,6 @@ export const FlatContentList = memo(({
           key: `post_${moment.id}_${post.id || index}`,
           component: (
             <PostArticle
-              key={`post_${moment.id}_${post.id || index}`}
               post={post}
               moment={moment}
               displayOptions={displayOptions}
@@ -79,7 +78,7 @@ export const FlatContentList = memo(({
         type: 'photos',
         key: `photos_${moment.id}`,
         component: (
-          <div key={`photos_${moment.id}`} className="mt-3">
+          <div className="mt-3">
             <PhotoGrid
               photos={moment.dayPhotos}
               moment={moment}
