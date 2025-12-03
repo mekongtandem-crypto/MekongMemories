@@ -66,16 +66,56 @@ export const MomentCard = memo(forwardRef(({
     }
     wasSelectedRef.current = isSelected;
   }, [isSelected]);
-  
+
+  // ⭐ v2.12 : Synchroniser showDayPhotos avec état global expandedPhotoGrids
+  useEffect(() => {
+    const checkPhotoGridExpanded = () => {
+      const expandedPhotoGrids = window.memoriesPageState?.expandedPhotoGrids;
+      if (expandedPhotoGrids && isSelected) {
+        const isExpanded = expandedPhotoGrids.has(moment.id);
+        setLocalDisplay(prev => {
+          if (prev.showDayPhotos !== isExpanded) {
+            return { ...prev, showDayPhotos: isExpanded };
+          }
+          return prev;
+        });
+      }
+    };
+
+    checkPhotoGridExpanded();
+    const interval = setInterval(checkPhotoGridExpanded, 200);
+    return () => clearInterval(interval);
+  }, [moment.id, isSelected]);
+
   const handleOpenWith = (options) => {
     if (!isSelected) {
       onSelect(moment);
     }
     setLocalDisplay(options);
   };
-  
+
   const handleToggleLocal = (key) => {
-    setLocalDisplay(prev => ({ ...prev, [key]: !prev[key] }));
+    setLocalDisplay(prev => {
+      const newValue = !prev[key];
+
+      // ⭐ v2.12 : Synchroniser avec état global pour showDayPhotos
+      if (key === 'showDayPhotos') {
+        const expandedPhotoGrids = window.memoriesPageState?.expandedPhotoGrids;
+        if (expandedPhotoGrids) {
+          const newSet = new Set(expandedPhotoGrids);
+          if (newValue) {
+            newSet.add(moment.id);
+          } else {
+            newSet.delete(moment.id);
+          }
+          if (window.memoriesPageState) {
+            window.memoriesPageState.expandedPhotoGrids = newSet;
+          }
+        }
+      }
+
+      return { ...prev, [key]: newValue };
+    });
   };
 
   return (

@@ -83,28 +83,31 @@ export default function MemoriesTopBar({
   const [showMomentFilterMenu, setShowMomentFilterMenu] = useState(false);
   const [currentMomentFilter, setCurrentMomentFilter] = useState('all');
 
-  // ⭐ v2.11 : État local pour savoir si tous les volets sont dépliés (context-aware)
-  const [allExpanded, setAllExpanded] = useState(false);
+  // ⭐ v2.12 : États pour volets indépendants (moments, posts, photos)
+  const [momentsExpanded, setMomentsExpanded] = useState(false);
+  const [postsExpanded, setPostsExpanded] = useState(false);
+  const [photosExpanded, setPhotosExpanded] = useState(false);
 
-  // ⭐ v2.11 : Synchroniser avec le nombre de moments/posts sélectionnés (context-aware)
+  // ⭐ v2.12 : Synchroniser états volets avec window.memoriesPageState
   useEffect(() => {
     const checkExpanded = () => {
       const state = window.memoriesPageState;
-      const filters = window.memoriesPageFilters?.contentFilters;
 
-      if (state && filters) {
-        // Si moments ON → vérifier moments dépliés
-        if (filters.moments) {
-          const expanded = state.selectedMoments?.length > 0 &&
-                          state.selectedMoments?.length === state.filteredMomentsCount;
-          setAllExpanded(expanded);
-        }
-        // Sinon si moments OFF + (posts OU photos) → vérifier posts dépliés
-        else if (filters.posts || filters.photos) {
-          const expanded = state.expandedPosts?.size > 0 &&
-                          state.expandedPosts?.size === state.totalPostsCount;
-          setAllExpanded(expanded);
-        }
+      if (state) {
+        // Moments
+        const momentsAllExpanded = state.selectedMoments?.length > 0 &&
+                                   state.selectedMoments?.length === state.filteredMomentsCount;
+        setMomentsExpanded(momentsAllExpanded);
+
+        // Posts
+        const postsAllExpanded = state.expandedPosts?.size > 0 &&
+                                 state.expandedPosts?.size === state.totalPostsCount;
+        setPostsExpanded(postsAllExpanded);
+
+        // Photos (grilles de photos des moments)
+        const photosAllExpanded = state.expandedPhotoGrids?.size > 0 &&
+                                  state.expandedPhotoGrids?.size === state.filteredMomentsCount;
+        setPhotosExpanded(photosAllExpanded);
       }
     };
 
@@ -204,90 +207,122 @@ export default function MemoriesTopBar({
       {/* Séparateur */}
           <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
 
-      {/* ⭐ v2.11 : Toggle Déplier/Replier tous (context-aware) */}
-      <button
-        onClick={() => {
-          const filters = window.memoriesPageFilters?.contentFilters;
-
-          // Déterminer le contexte : moments ou posts ?
-          const controlsMoments = filters?.moments;
-          const controlsPosts = !filters?.moments && (filters?.posts || filters?.photos);
-
-          console.log('🔀 [MemoriesTopBar] Toggle accordion:',
-            allExpanded ? 'Replier tous' : 'Déplier tous',
-            controlsMoments ? '(moments)' : controlsPosts ? '(posts)' : ''
-          );
-
-          if (allExpanded) {
-            // Replier tous
-            if (controlsMoments) {
-              window.memoriesPageActions?.collapseAllMoments();
-            } else if (controlsPosts) {
-              window.memoriesPageActions?.collapseAllPosts();
-            }
-          } else {
-            // Déplier tous
-            if (controlsMoments) {
-              window.memoriesPageActions?.expandAllMoments();
-            } else if (controlsPosts) {
-              window.memoriesPageActions?.expandAllPosts();
-            }
-          }
-        }}
-        className={`p-2 rounded-lg transition-colors duration-150 ${
-          allExpanded
-            ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-        }`}
-        title={allExpanded ? "Replier tous les volets" : "Déplier tous les volets"}
-      >
-        {allExpanded ? <Layers className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-      </button>
-          
       {/* ========================================
-          CENTRE : ⭐ v2.11 Filtres de contenu additifs
+          CENTRE : ⭐ v2.12 Filtres + mini boutons volets
       ======================================== */}
       <div className="flex-1 flex items-center justify-center px-4 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
 
-          {/* ✨ Moments (en-têtes) */}
-          <button
-            onClick={() => handleToggleFilter('moments')}
-            className={`p-1.5 rounded transition-colors duration-150 ${
-              contentFilters.moments
-                ? 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400'
-                : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-            title={contentFilters.moments ? "Masquer en-têtes moments (mode en vrac)" : "Afficher en-têtes moments"}
-          >
-            <SparklesIcon className="w-4 h-4" />
-          </button>
+          {/* ✨ Moments (en-têtes) + mini bouton volet */}
+          <div className="flex flex-col items-center gap-0.5">
+            <button
+              onClick={() => handleToggleFilter('moments')}
+              className={`p-1.5 rounded transition-colors duration-150 ${
+                contentFilters.moments
+                  ? 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400'
+                  : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+              title={contentFilters.moments ? "Masquer en-têtes moments (mode en vrac)" : "Afficher en-têtes moments"}
+            >
+              <SparklesIcon className="w-4 h-4" />
+            </button>
 
-          {/* 🗒️ Posts complets (header + texte + photos) */}
-          <button
-            onClick={() => handleToggleFilter('posts')}
-            className={`p-1.5 rounded transition-colors duration-150 ${
-              contentFilters.posts
-                ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
-                : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-            title="Afficher/masquer les posts complets (texte + photos)"
-          >
-            <FileText className="w-4 h-4" />
-          </button>
+            {/* Mini bouton volet moments */}
+            <button
+              onClick={() => {
+                if (momentsExpanded) {
+                  window.memoriesPageActions?.collapseAllMoments();
+                } else {
+                  window.memoriesPageActions?.expandAllMoments();
+                }
+              }}
+              disabled={!contentFilters.moments}
+              className={`p-0.5 rounded transition-colors duration-150 ${
+                !contentFilters.moments
+                  ? 'opacity-30 cursor-not-allowed'
+                  : momentsExpanded
+                    ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+              title={momentsExpanded ? "Replier tous les moments" : "Déplier tous les moments"}
+            >
+              {momentsExpanded ? <Layers className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          </div>
 
-          {/* 📸 Toutes les photos (moment + post, sans decoration) */}
-          <button
-            onClick={() => handleToggleFilter('photos')}
-            className={`p-1.5 rounded transition-colors duration-150 ${
-              contentFilters.photos
-                ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
-                : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-            title="Afficher/masquer toutes les photos (moment + post)"
-          >
-            <Camera className="w-4 h-4" />
-          </button>
+          {/* 🗒️ Posts complets + mini bouton volet */}
+          <div className="flex flex-col items-center gap-0.5">
+            <button
+              onClick={() => handleToggleFilter('posts')}
+              className={`p-1.5 rounded transition-colors duration-150 ${
+                contentFilters.posts
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+              title="Afficher/masquer les posts complets (texte + photos)"
+            >
+              <FileText className="w-4 h-4" />
+            </button>
+
+            {/* Mini bouton volet posts */}
+            <button
+              onClick={() => {
+                if (postsExpanded) {
+                  window.memoriesPageActions?.collapseAllPosts();
+                } else {
+                  window.memoriesPageActions?.expandAllPosts();
+                }
+              }}
+              disabled={!contentFilters.posts}
+              className={`p-0.5 rounded transition-colors duration-150 ${
+                !contentFilters.posts
+                  ? 'opacity-30 cursor-not-allowed'
+                  : postsExpanded
+                    ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+              title={postsExpanded ? "Replier tous les posts" : "Déplier tous les posts"}
+            >
+              {postsExpanded ? <Layers className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          </div>
+
+          {/* 📸 Photos + mini bouton volet */}
+          <div className="flex flex-col items-center gap-0.5">
+            <button
+              onClick={() => handleToggleFilter('photos')}
+              className={`p-1.5 rounded transition-colors duration-150 ${
+                contentFilters.photos
+                  ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
+                  : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+              title="Afficher/masquer toutes les photos (moment + post)"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+
+            {/* Mini bouton volet photos (grilles de moments) */}
+            <button
+              onClick={() => {
+                if (photosExpanded) {
+                  window.memoriesPageActions?.collapseAllPhotoGrids();
+                } else {
+                  window.memoriesPageActions?.expandAllPhotoGrids();
+                }
+              }}
+              disabled={!contentFilters.photos}
+              className={`p-0.5 rounded transition-colors duration-150 ${
+                !contentFilters.photos
+                  ? 'opacity-30 cursor-not-allowed'
+                  : photosExpanded
+                    ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+              title={photosExpanded ? "Replier toutes les grilles photos" : "Déplier toutes les grilles photos"}
+            >
+              {photosExpanded ? <Layers className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          </div>
 
         </div>
       </div>
