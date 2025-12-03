@@ -113,21 +113,19 @@ export const PostArticle = memo(({
           : 'border-gray-200 dark:border-gray-700'
       }`}>
 
-        {/* Header */}
-        <div className={`flex justify-between items-center p-2 border-b ${
-          isPhotoNote
-            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
-            : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
-        }`}>
+        {/* ⭐ v2.11 : Header visible seulement si texte affiché */}
+        {shouldShowText && (
+          <div className={`flex justify-between items-center p-2 border-b ${
+            isPhotoNote
+              ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
+              : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+          }`}>
           
           {/* Gauche : Titre + indicateur photos inline */}
           <div className="flex items-center gap-x-3 flex-1 min-w-0">
-            {/* ⭐ v2.11 : Titre visible seulement si filtre textes actif */}
-            {shouldShowText && (
-              <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm truncate flex-1">
-                {title}
-              </h4>
-            )}
+            <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm truncate flex-1">
+              {title}
+            </h4>
 
             {/* ⭐ v2.11 : Toggle photos seulement si filtre images actif */}
             {hasImages && shouldShowImages && (
@@ -216,6 +214,7 @@ export const PostArticle = memo(({
             )}
           </div>
         </div>
+        )}
 
         {/* ⭐ v2.11 : Texte (si filtre textes actif) */}
         {shouldShowText && (
@@ -226,7 +225,8 @@ export const PostArticle = memo(({
         )}
 
         {/* ⭐ v2.11 : Photos (si filtre images actif ET toggle ON) */}
-        {shouldShowImages && showThisPostPhotos && (
+        {/* Si pas de texte affiché, photos toujours visibles (pas de toggle header) */}
+        {shouldShowImages && (shouldShowText ? showThisPostPhotos : true) && (
           <div className="p-2">
             <PhotoGrid
               photos={post.photos}
