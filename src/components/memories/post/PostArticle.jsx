@@ -61,15 +61,16 @@ export const PostArticle = memo(({
     ? post.content
     : contentParts.filter(part => part.trim() !== '').join('<br />');
 
-  // ⭐ v2.11 : Vérifier visibilité selon filtres
+  // ⭐ v2.11 : Vérifier visibilité selon filtres (3 boutons)
   const hasText = post.content?.trim();
-  const hasImages = post.photos?.length > 0;
+  const hasPhotos = post.photos?.length > 0;
 
+  const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true);
   const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
-  const shouldShowImages = hasImages && (isElementVisible?.('post_images') ?? true);
+  const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true);
 
-  // Si rien à afficher, masquer complètement (Q2 : filtre strict)
-  if (!shouldShowText && !shouldShowImages) {
+  // Si rien à afficher, masquer complètement
+  if (!shouldShowHeader && !shouldShowText && !shouldShowPhotos) {
     return null;
   }
 
@@ -99,16 +100,13 @@ export const PostArticle = memo(({
   const postThemes = window.themeAssignments?.getThemesForContent(postKey) || [];
   const hasThemes = postThemes.length > 0;
 
-  const hasPhotos = post.photos && post.photos.length > 0;
-  const photosAreVisible = showThisPostPhotos && hasPhotos;
-
   // ⭐ v2.8e : Distinction visuelle Note de photo (jaune) vs Post Mastodon (gris/bleu)
   const isPhotoNote = post.category === 'user_added';
 
   return (
     <div className="mt-2" data-post-id={post.id}>
-      {/* ⭐ v2.11 : Si seulement images (pas de texte), afficher photos sans cadre */}
-      {!shouldShowText && shouldShowImages ? (
+      {/* ⭐ v2.11 : Si seulement photos (pas de header/texte), afficher photos sans cadre */}
+      {!shouldShowHeader && !shouldShowText && shouldShowPhotos ? (
         <div className="p-2">
           <PhotoGrid
             photos={post.photos}
@@ -139,8 +137,8 @@ export const PostArticle = memo(({
             : 'border-gray-200 dark:border-gray-700'
         }`}>
 
-        {/* ⭐ v2.11 : Header visible seulement si texte affiché */}
-        {shouldShowText && (
+        {/* ⭐ v2.11 : Header visible si filtre posts actif */}
+        {shouldShowHeader && (
           <div className={`flex justify-between items-center p-2 border-b ${
             isPhotoNote
               ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
@@ -153,8 +151,8 @@ export const PostArticle = memo(({
               {title}
             </h4>
 
-            {/* ⭐ v2.11 : Toggle photos seulement si filtre images actif */}
-            {hasImages && shouldShowImages && (
+            {/* ⭐ v2.11 : Toggle photos seulement si photos visibles */}
+            {hasPhotos && shouldShowPhotos && (
               <button
                 onClick={() => setShowThisPostPhotos(!showThisPostPhotos)}
                 className="p-1 flex-shrink-0"
@@ -250,8 +248,8 @@ export const PostArticle = memo(({
           />
         )}
 
-        {/* ⭐ v2.11 : Photos (si texte affiché + filtre images actif + toggle ON) */}
-        {shouldShowText && shouldShowImages && showThisPostPhotos && (
+        {/* ⭐ v2.11 : Photos (si header affiché + photos visibles + toggle ON) */}
+        {shouldShowHeader && shouldShowPhotos && showThisPostPhotos && (
           <div className="p-2">
             <PhotoGrid
               photos={post.photos}

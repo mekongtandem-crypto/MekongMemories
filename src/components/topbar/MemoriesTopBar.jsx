@@ -217,7 +217,20 @@ export default function MemoriesTopBar({
             <SparklesIcon className="w-4 h-4" />
           </button>
 
-          {/* 📷 Photos d'album */}
+          {/* 🗒️ Posts complets (header + texte + photos) */}
+          <button
+            onClick={() => handleToggleFilter('posts')}
+            className={`p-1.5 rounded transition-colors duration-150 ${
+              contentFilters.posts
+                ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+            title="Afficher/masquer les posts complets (texte + photos)"
+          >
+            <FileText className="w-4 h-4" />
+          </button>
+
+          {/* 📸 Toutes les photos (moment + post, sans decoration) */}
           <button
             onClick={() => handleToggleFilter('photos')}
             className={`p-1.5 rounded transition-colors duration-150 ${
@@ -225,35 +238,9 @@ export default function MemoriesTopBar({
                 ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
                 : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
-            title="Afficher/masquer les photos d'album"
+            title="Afficher/masquer toutes les photos (moment + post)"
           >
             <Camera className="w-4 h-4" />
-          </button>
-
-          {/* 🗒️ Textes posts */}
-          <button
-            onClick={() => handleToggleFilter('textes')}
-            className={`p-1.5 rounded transition-colors duration-150 ${
-              contentFilters.textes
-                ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
-                : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-            title="Afficher/masquer les textes des posts"
-          >
-            <FileText className="w-4 h-4" />
-          </button>
-
-          {/* 🖼️ Images posts */}
-          <button
-            onClick={() => handleToggleFilter('images')}
-            className={`p-1.5 rounded transition-colors duration-150 ${
-              contentFilters.images
-                ? 'bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400'
-                : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-            title="Afficher/masquer les photos des posts"
-          >
-            <ImageIcon className="w-4 h-4" />
           </button>
 
         </div>

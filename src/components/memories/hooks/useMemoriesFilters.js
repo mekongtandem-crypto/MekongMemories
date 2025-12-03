@@ -20,7 +20,7 @@ import {
 export function useMemoriesFilters(momentsData, sessions = []) {
 
   // ========================================
-  // ⭐ v2.11 : FILTRES DE CONTENU ADDITIFS
+  // ⭐ v2.11 : FILTRES DE CONTENU ADDITIFS (3 boutons)
   // ========================================
 
   // Charger depuis localStorage ou utiliser défauts
@@ -28,9 +28,8 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     const saved = localStorage.getItem('mekong_content_filters');
     return saved ? JSON.parse(saved) : {
       moments: true,   // ✨ En-têtes moments
-      photos: true,    // 📷 Photos d'album (dayPhotos)
-      textes: true,    // 🗒️ Textes posts
-      images: true     // 🖼️ Images de posts
+      posts: true,     // 🗒️ Posts complets (header + texte + photos post)
+      photos: true     // 📸 Toutes photos (moment + post, sans decoration)
     };
   });
 
@@ -87,20 +86,27 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     switch (elementType) {
 
       case 'moment_header':
-        // Q1 Option A : En-têtes masqués si ✨ désactivé
+        // ✨ En-têtes moments
         return contentFilters.moments;
 
       case 'moment_expandable':
         // Moment expandable seulement si ✨ actif
         return contentFilters.moments;
 
-      case 'post_text':
-        return contentFilters.textes;
+      case 'post_header':
+        // 🗒️ Header du post (visible si posts actif)
+        return contentFilters.posts;
 
-      case 'post_images':
-        return contentFilters.images;
+      case 'post_text':
+        // 🗒️ Texte du post (visible si posts actif)
+        return contentFilters.posts;
+
+      case 'post_photos':
+        // Photos de post visibles si 🗒️ posts OU 📸 photos
+        return contentFilters.posts || contentFilters.photos;
 
       case 'day_photos':
+        // 📸 Photos de moment (visible si photos actif)
         return contentFilters.photos;
 
       default:
@@ -110,31 +116,29 @@ export function useMemoriesFilters(momentsData, sessions = []) {
 
   // Calculer stats visibles pour un moment selon filtres actifs
   const getVisibleStats = useCallback((moment) => {
-    if (!moment) return { postsWithText: 0, postsWithImages: 0, dayPhotos: 0, totalVisible: 0 };
+    if (!moment) return { posts: 0, dayPhotos: 0, totalVisible: 0 };
 
     const stats = {
-      postsWithText: 0,
-      postsWithImages: 0,
+      posts: 0,
       dayPhotos: 0,
       totalVisible: 0
     };
 
-    // Textes posts
-    if (contentFilters.textes && moment.posts) {
-      stats.postsWithText = moment.posts.filter(p => p.content?.trim()).length;
+    // 🗒️ Posts complets (si posts actif ET moment a des posts)
+    if (contentFilters.posts && moment.posts) {
+      stats.posts = moment.posts.length;
     }
 
-    // Images posts
-    if (contentFilters.images && moment.posts) {
-      stats.postsWithImages = moment.posts.filter(p => p.photos?.length > 0).length;
-    }
-
-    // Photos d'album
+    // 📸 Photos moment (si photos actif)
     if (contentFilters.photos) {
       stats.dayPhotos = moment.dayPhotoCount || 0;
+      // Ajouter aussi photos de posts si photos actif
+      if (moment.posts) {
+        stats.dayPhotos += moment.posts.reduce((acc, p) => acc + (p.photos?.length || 0), 0);
+      }
     }
 
-    stats.totalVisible = stats.postsWithText + stats.postsWithImages + stats.dayPhotos;
+    stats.totalVisible = stats.posts + stats.dayPhotos;
 
     return stats;
   }, [contentFilters]);
@@ -339,9 +343,8 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       hasLinksFilter !== null ||
       hasSessionsFilter !== null ||
       !contentFilters.moments ||
-      !contentFilters.photos ||
-      !contentFilters.textes ||
-      !contentFilters.images
+      !contentFilters.posts ||
+      !contentFilters.photos
     );
   }, [
     searchQuery,
@@ -360,9 +363,8 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     setHasSessionsFilter(null);
     setContentFilters({
       moments: true,
-      photos: true,
-      textes: true,
-      images: true
+      posts: true,
+      photos: true
     });
   }, []);
 
