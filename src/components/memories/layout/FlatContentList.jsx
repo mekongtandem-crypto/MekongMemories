@@ -38,9 +38,20 @@ export const FlatContentList = memo(({
   const allContent = [];
 
   moments.forEach(moment => {
-    // Ajouter les posts (données uniquement)
+    // Ajouter les posts (données uniquement) - AVEC filtrage selon visibilité
     if (moment.posts && moment.posts.length > 0) {
       moment.posts.forEach((post, index) => {
+        // ⭐ v2.11 : Vérifier si le post a du contenu visible selon filtres
+        const hasText = post.content?.trim();
+        const hasImages = post.photos?.length > 0;
+        const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
+        const shouldShowImages = hasImages && (isElementVisible?.('post_images') ?? true);
+
+        // Ne pas ajouter le post si rien à afficher
+        if (!shouldShowText && !shouldShowImages) {
+          return; // Skip ce post
+        }
+
         allContent.push({
           type: 'post',
           key: `post_${moment.id}_${post.id || index}`,
