@@ -34,18 +34,39 @@ export const FlatContentList = memo(({
 
   const shouldShowDayPhotos = isElementVisible?.('day_photos') ?? true;
 
-  // Collecter tout le contenu de tous les moments
+  // ⭐ v2.11 : Collecter les données (pas le JSX prérendu)
   const allContent = [];
 
   moments.forEach(moment => {
-    // Ajouter les posts (filtrés individuellement dans PostArticle)
+    // Ajouter les posts (données uniquement)
     if (moment.posts && moment.posts.length > 0) {
       moment.posts.forEach((post, index) => {
         allContent.push({
           type: 'post',
           key: `post_${moment.id}_${post.id || index}`,
-          component: (
+          data: { post, moment, index }
+        });
+      });
+    }
+
+    // Ajouter les photos d'album (si filtre 📷 actif)
+    if (shouldShowDayPhotos && moment.dayPhotos && moment.dayPhotos.length > 0) {
+      allContent.push({
+        type: 'photos',
+        key: `photos_${moment.id}`,
+        data: { moment }
+      });
+    }
+  });
+
+  return (
+    <div className="space-y-3 px-3">
+      {allContent.map(item => {
+        if (item.type === 'post') {
+          const { post, moment } = item.data;
+          return (
             <PostArticle
+              key={item.key}
               post={post}
               moment={moment}
               displayOptions={displayOptions}
@@ -67,51 +88,36 @@ export const FlatContentList = memo(({
               onCreateSessionFromContent={onCreateSessionFromContent}
               editionMode={editionMode}
             />
-          )
-        });
-      });
-    }
-
-    // Ajouter les photos d'album (si filtre 📷 actif)
-    if (shouldShowDayPhotos && moment.dayPhotos && moment.dayPhotos.length > 0) {
-      allContent.push({
-        type: 'photos',
-        key: `photos_${moment.id}`,
-        component: (
-          <div className="mt-3">
-            <PhotoGrid
-              photos={moment.dayPhotos}
-              moment={moment}
-              onPhotoClick={onPhotoClick}
-              allPhotos={moment.dayPhotos}
-              gridId={`flat_moment_${moment.id}_day`}
-              activePhotoGrid={activePhotoGrid}
-              selectedPhotos={selectedPhotos}
-              onActivateSelection={onActivateSelection}
-              onTogglePhotoSelection={onTogglePhotoSelection}
-              onBulkTagPhotos={onBulkTagPhotos}
-              onCancelSelection={onCancelSelection}
-              isFromChat={isFromChat}
-              onOpenPhotoContextMenu={onOpenPhotoContextMenu}
-              selectionMode={selectionMode}
-              onContentSelected={onContentSelected}
-              sessions={sessions}
-              onShowSessions={onShowSessions}
-              editionMode={editionMode}
-            />
-          </div>
-        )
-      });
-    }
-  });
-
-  return (
-    <div className="space-y-3 px-3">
-      {allContent.map(item => (
-        <React.Fragment key={item.key}>
-          {item.component}
-        </React.Fragment>
-      ))}
+          );
+        } else if (item.type === 'photos') {
+          const { moment } = item.data;
+          return (
+            <div key={item.key} className="mt-3">
+              <PhotoGrid
+                photos={moment.dayPhotos}
+                moment={moment}
+                onPhotoClick={onPhotoClick}
+                allPhotos={moment.dayPhotos}
+                gridId={`flat_moment_${moment.id}_day`}
+                activePhotoGrid={activePhotoGrid}
+                selectedPhotos={selectedPhotos}
+                onActivateSelection={onActivateSelection}
+                onTogglePhotoSelection={onTogglePhotoSelection}
+                onBulkTagPhotos={onBulkTagPhotos}
+                onCancelSelection={onCancelSelection}
+                isFromChat={isFromChat}
+                onOpenPhotoContextMenu={onOpenPhotoContextMenu}
+                selectionMode={selectionMode}
+                onContentSelected={onContentSelected}
+                sessions={sessions}
+                onShowSessions={onShowSessions}
+                editionMode={editionMode}
+              />
+            </div>
+          );
+        }
+        return null;
+      })}
 
       {allContent.length === 0 && (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
