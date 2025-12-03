@@ -861,6 +861,18 @@ const handleSelectMoment = useCallback((moment, forceOpen = false) => {
   });
 }, [displayMode]);
 
+// ⭐ v2.11 : Handler pour déplier tous les moments
+const handleExpandAllMoments = useCallback(() => {
+  console.log('📂 [MemoriesPage] Déplier tous les moments:', filteredMoments.length);
+  setSelectedMoments(filteredMoments);
+}, [filteredMoments]);
+
+// ⭐ v2.11 : Handler pour replier tous les moments
+const handleCollapseAllMoments = useCallback(() => {
+  console.log('📁 [MemoriesPage] Replier tous les moments');
+  setSelectedMoments([]);
+}, []);
+
 // Handler pour créer et ouvrir une session
 const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
   if (!source) return;
@@ -979,14 +991,19 @@ const navigationProcessedRef = useRef(null);
       deleteMoment: handleDeleteMoment,
       editPost: handleEditPost,
       deletePost: handleDeletePost,
-      deletePhoto: handleDeletePhoto
+      deletePhoto: handleDeletePhoto,
+      // ⭐ v2.11 : Accordion toggle
+      expandAllMoments: handleExpandAllMoments,
+      collapseAllMoments: handleCollapseAllMoments
     };
 
     window.memoriesPageState = {
       activePhotoGrid,
       selectedPhotos,
       displayMode,  // ⭐ v2.11 : Mode d'affichage moments (focus = accordion, multiple = tous ouverts)
-      setDisplayMode  // ⭐ v2.11 : Fonction pour changer le mode
+      setDisplayMode,  // ⭐ v2.11 : Fonction pour changer le mode
+      selectedMoments,  // ⭐ v2.11 : Moments actuellement dépliés
+      filteredMomentsCount: filteredMoments.length  // ⭐ v2.11 : Nombre de moments visibles
     };
 
     return () => {
@@ -1008,7 +1025,11 @@ const navigationProcessedRef = useRef(null);
     handleDeletePhoto,
     memoryFilters.contentFilters,
     memoryFilters.toggleContentFilter,
-    displayMode
+    displayMode,
+    handleExpandAllMoments,
+    handleCollapseAllMoments,
+    selectedMoments,
+    filteredMoments.length
   ]);
   
   useEffect(() => {

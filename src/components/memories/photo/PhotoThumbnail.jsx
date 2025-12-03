@@ -27,12 +27,42 @@ export const PhotoThumbnail = memo(({
 }) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'loaded' | 'error'
+  const [isInView, setIsInView] = useState(false);  // ⭐ v2.11 : Lazy loading
+  const imgContainerRef = React.useRef(null);
+
+  // ⭐ v2.11 : Intersection Observer pour lazy loading
+  useEffect(() => {
+    if (!imgContainerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            setIsInView(true);
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        rootMargin: '200px', // Charger 200px avant que l'image soit visible
+        threshold: 0.01
+      }
+    );
+
+    observer.observe(imgContainerRef.current);
+
+    return () => {
+      if (imgContainerRef.current) {
+        observer.unobserve(imgContainerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
 
     const loadImage = async () => {
-      if (!photo) return;
+      if (!photo || !isInView) return;  // ⭐ v2.11 : Charger seulement si visible
       // console.log('📸 Photo data:', photo); //log temporaire - commenté v2.9w6+
       setStatus('loading');
 
@@ -70,7 +100,7 @@ export const PhotoThumbnail = memo(({
     return () => {
       mounted = false;
     };
-  }, [photo]);
+  }, [photo, isInView]);  // ⭐ v2.11 : Ajouter isInView dans les dépendances
 
   const handleClick = (e) => {
     e.stopPropagation();
@@ -92,6 +122,7 @@ export const PhotoThumbnail = memo(({
 
   return (
     <div
+      ref={imgContainerRef}
       onClick={handleClick}
       data-photo-filename={photo.filename}
       className={`relative aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden cursor-pointer group ${

@@ -83,8 +83,26 @@ export default function MemoriesTopBar({
   const [showMomentFilterMenu, setShowMomentFilterMenu] = useState(false);
   const [currentMomentFilter, setCurrentMomentFilter] = useState('all');
 
-  // ⭐ v2.11 : État local pour suivre displayMode (pour forcer re-render)
-  const [accordionMode, setAccordionMode] = useState(window.memoriesPageState?.displayMode || 'focus');
+  // ⭐ v2.11 : État local pour savoir si tous les moments sont dépliés
+  const [allExpanded, setAllExpanded] = useState(false);
+
+  // Synchroniser avec le nombre de moments sélectionnés
+  useEffect(() => {
+    const checkExpanded = () => {
+      const state = window.memoriesPageState;
+      if (state) {
+        // Tous expanded si nombre de moments sélectionnés === nombre total
+        const expanded = state.selectedMoments?.length > 0 &&
+                        state.selectedMoments?.length === state.filteredMomentsCount;
+        setAllExpanded(expanded);
+      }
+    };
+
+    checkExpanded();
+    const interval = setInterval(checkExpanded, 200);
+
+    return () => clearInterval(interval);
+  }, []);
   
   const sortMenuRef = useRef(null);
   const momentFilterMenuRef = useRef(null);
@@ -172,26 +190,26 @@ export default function MemoriesTopBar({
           <Tag className="w-5 h-5" />
         </button>
 
-        {/* ⭐ v2.11 DEBUG : Toggle mode accordion */}
+        {/* ⭐ v2.11 : Toggle Déplier/Replier tous */}
         <button
           onClick={() => {
-            const newMode = accordionMode === 'focus' ? 'multiple' : 'focus';
-            console.log('🔀 [MemoriesTopBar] Toggle accordion mode:', accordionMode, '→', newMode);
-            setAccordionMode(newMode);
-            if (window.memoriesPageState?.setDisplayMode) {
-              window.memoriesPageState.setDisplayMode(newMode);
+            console.log('🔀 [MemoriesTopBar] Toggle accordion:', allExpanded ? 'Replier tous' : 'Déplier tous');
+            if (allExpanded) {
+              // Replier tous
+              window.memoriesPageActions?.collapseAllMoments();
             } else {
-              console.error('❌ [MemoriesTopBar] setDisplayMode not available!');
+              // Déplier tous
+              window.memoriesPageActions?.expandAllMoments();
             }
           }}
           className={`p-2 rounded-lg transition-colors duration-150 ${
-            accordionMode === 'focus'
+            allExpanded
               ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
-          title={accordionMode === 'focus' ? "Un moment à la fois (accordion)" : "Plusieurs moments ouverts"}
+          title={allExpanded ? "Replier tous les moments" : "Déplier tous les moments"}
         >
-          {accordionMode === 'focus' ? <ChevronDown className="w-5 h-5" /> : <Layers className="w-5 h-5" />}
+          {allExpanded ? <Layers className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
         </button>
 
       </div>
@@ -217,7 +235,20 @@ export default function MemoriesTopBar({
             <SparklesIcon className="w-4 h-4" />
           </button>
 
-          {/* 📷 Photos d'album */}
+          {/* 🗒️ Posts complets (header + texte + photos) */}
+          <button
+            onClick={() => handleToggleFilter('posts')}
+            className={`p-1.5 rounded transition-colors duration-150 ${
+              contentFilters.posts
+                ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+            title="Afficher/masquer les posts complets (texte + photos)"
+          >
+            <FileText className="w-4 h-4" />
+          </button>
+
+          {/* 📸 Toutes les photos (moment + post, sans decoration) */}
           <button
             onClick={() => handleToggleFilter('photos')}
             className={`p-1.5 rounded transition-colors duration-150 ${
@@ -225,35 +256,9 @@ export default function MemoriesTopBar({
                 ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
                 : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
-            title="Afficher/masquer les photos d'album"
+            title="Afficher/masquer toutes les photos (moment + post)"
           >
             <Camera className="w-4 h-4" />
-          </button>
-
-          {/* 🗒️ Textes posts */}
-          <button
-            onClick={() => handleToggleFilter('textes')}
-            className={`p-1.5 rounded transition-colors duration-150 ${
-              contentFilters.textes
-                ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
-                : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-            title="Afficher/masquer les textes des posts"
-          >
-            <FileText className="w-4 h-4" />
-          </button>
-
-          {/* 🖼️ Images posts */}
-          <button
-            onClick={() => handleToggleFilter('images')}
-            className={`p-1.5 rounded transition-colors duration-150 ${
-              contentFilters.images
-                ? 'bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400'
-                : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-            title="Afficher/masquer les photos des posts"
-          >
-            <ImageIcon className="w-4 h-4" />
           </button>
 
         </div>
