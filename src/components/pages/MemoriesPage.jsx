@@ -84,6 +84,9 @@ function MemoriesPage({
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
+  // ⭐ v2.11 : État pour volets posts (Set de post IDs)
+  const [expandedPosts, setExpandedPosts] = useState(new Set());
+
   // ⭐ v2.8f : Modal PhotoToMemoryModal
   // ⭐ v2.9j : Stocke soit photoData (old flow) soit file (new flow)
   const [photoToMemoryModal, setPhotoToMemoryModal] = useState({
@@ -873,6 +876,24 @@ const handleCollapseAllMoments = useCallback(() => {
   setSelectedMoments([]);
 }, []);
 
+// ⭐ v2.11 : Handler pour déplier tous les posts
+const handleExpandAllPosts = useCallback(() => {
+  const allPostIds = new Set();
+  filteredMoments.forEach(moment => {
+    moment.posts?.forEach(post => {
+      allPostIds.add(post.id);
+    });
+  });
+  console.log('📂 [MemoriesPage] Déplier tous les posts:', allPostIds.size);
+  setExpandedPosts(allPostIds);
+}, [filteredMoments]);
+
+// ⭐ v2.11 : Handler pour replier tous les posts
+const handleCollapseAllPosts = useCallback(() => {
+  console.log('📁 [MemoriesPage] Replier tous les posts');
+  setExpandedPosts(new Set());
+}, []);
+
 // Handler pour créer et ouvrir une session
 const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
   if (!source) return;
@@ -992,9 +1013,11 @@ const navigationProcessedRef = useRef(null);
       editPost: handleEditPost,
       deletePost: handleDeletePost,
       deletePhoto: handleDeletePhoto,
-      // ⭐ v2.11 : Accordion toggle
+      // ⭐ v2.11 : Accordion toggle (context-aware)
       expandAllMoments: handleExpandAllMoments,
-      collapseAllMoments: handleCollapseAllMoments
+      collapseAllMoments: handleCollapseAllMoments,
+      expandAllPosts: handleExpandAllPosts,
+      collapseAllPosts: handleCollapseAllPosts
     };
 
     window.memoriesPageState = {
@@ -1003,7 +1026,9 @@ const navigationProcessedRef = useRef(null);
       displayMode,  // ⭐ v2.11 : Mode d'affichage moments (focus = accordion, multiple = tous ouverts)
       setDisplayMode,  // ⭐ v2.11 : Fonction pour changer le mode
       selectedMoments,  // ⭐ v2.11 : Moments actuellement dépliés
-      filteredMomentsCount: filteredMoments.length  // ⭐ v2.11 : Nombre de moments visibles
+      filteredMomentsCount: filteredMoments.length,  // ⭐ v2.11 : Nombre de moments visibles
+      expandedPosts,  // ⭐ v2.11 : Posts actuellement dépliés (Set)
+      totalPostsCount: filteredMoments.reduce((acc, m) => acc + (m.posts?.length || 0), 0)  // ⭐ v2.11 : Nombre total de posts
     };
 
     return () => {
@@ -1028,7 +1053,10 @@ const navigationProcessedRef = useRef(null);
     displayMode,
     handleExpandAllMoments,
     handleCollapseAllMoments,
+    handleExpandAllPosts,
+    handleCollapseAllPosts,
     selectedMoments,
+    expandedPosts,
     filteredMoments.length
   ]);
   
