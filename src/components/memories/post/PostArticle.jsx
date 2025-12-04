@@ -176,21 +176,10 @@ export const PostArticle = memo(({
           <div
             onClick={() => {
               const newExpanded = !isPostExpanded;
-              setIsPostExpanded(newExpanded);
 
-              // ⭐ v2.11 : Synchroniser avec état global
-              const expandedPosts = window.memoriesPageState?.expandedPosts;
-              if (expandedPosts) {
-                const newSet = new Set(expandedPosts);
-                if (newExpanded) {
-                  newSet.add(post.id);
-                } else {
-                  newSet.delete(post.id);
-                }
-                // Mettre à jour via MemoriesPage (simule un callback)
-                if (window.memoriesPageState) {
-                  window.memoriesPageState.expandedPosts = newSet;
-                }
+              // ⭐ v2.13 : Appeler le handler React pour déclencher re-render
+              if (window.memoriesPageActions?.togglePostExpanded) {
+                window.memoriesPageActions.togglePostExpanded(post.id, newExpanded);
               }
             }}
             className={`flex justify-between items-center p-2 border-b cursor-pointer hover:opacity-80 transition-opacity ${
