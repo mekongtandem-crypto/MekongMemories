@@ -97,6 +97,19 @@ export const PostArticle = memo(({
   const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
   const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true);
 
+  // 🔍 DEBUG v2.13 : Log pour diagnostiquer React #310
+  if (!post.id) {
+    console.warn('⚠️ [PostArticle] Post sans ID:', {
+      momentId: moment.id,
+      postIndex: moment.posts?.indexOf(post),
+      hasText,
+      hasPhotos,
+      shouldShowHeader,
+      shouldShowText,
+      shouldShowPhotos
+    });
+  }
+
   // Si rien à afficher, masquer complètement
   if (!shouldShowHeader && !shouldShowText && !shouldShowPhotos) {
     return null;

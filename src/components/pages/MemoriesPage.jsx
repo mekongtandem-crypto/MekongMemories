@@ -1137,9 +1137,9 @@ const navigationProcessedRef = useRef(null);
       setDisplayMode,  // ⭐ v2.11 : Fonction pour changer le mode
       selectedMoments,  // ⭐ v2.11 : Moments actuellement dépliés
       filteredMomentsCount: filteredMoments.length,  // ⭐ v2.11 : Nombre de moments visibles
-      expandedPosts,  // ⭐ v2.11 : Posts actuellement dépliés (Set)
+      expandedPosts: expandedPosts,  // ⭐ v2.13 : FIX - Toujours exposer le Set actuel
       totalPostsCount: filteredMoments.reduce((acc, m) => acc + (m.posts?.length || 0), 0),  // ⭐ v2.11 : Nombre total de posts
-      expandedPhotoGrids,  // ⭐ v2.12 : Grilles photos dépliées (Set de moment IDs)
+      expandedPhotoGrids: expandedPhotoGrids,  // ⭐ v2.13 : FIX - Toujours exposer le Set actuel
       momentsWithPhotosCount: filteredMoments.filter(m => m.dayPhotos?.length > 0).length  // ⭐ v2.13 : Nombre de moments avec photos
     };
 
