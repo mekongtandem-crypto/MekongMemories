@@ -966,6 +966,19 @@ const handleCollapseAllPosts = useCallback(() => {
   setExpandedPosts(new Set());
 }, []);
 
+// ⭐ v2.13 : Handler pour toggle un post individuel
+const handleTogglePostExpanded = useCallback((postId, newExpanded) => {
+  setExpandedPosts(prev => {
+    const newSet = new Set(prev);
+    if (newExpanded) {
+      newSet.add(postId);
+    } else {
+      newSet.delete(postId);
+    }
+    return newSet;
+  });
+}, []);
+
 // ⭐ v2.12 : Handler pour déplier toutes les grilles photos
 const handleExpandAllPhotoGrids = useCallback(() => {
   const allMomentIds = new Set();
@@ -1108,6 +1121,7 @@ const navigationProcessedRef = useRef(null);
       collapseAllMoments: handleCollapseAllMoments,
       expandAllPosts: handleExpandAllPosts,
       collapseAllPosts: handleCollapseAllPosts,
+      togglePostExpanded: handleTogglePostExpanded,  // ⭐ v2.13 : Toggle post individuel
       expandAllPhotoGrids: handleExpandAllPhotoGrids,
       collapseAllPhotoGrids: handleCollapseAllPhotoGrids
     };
@@ -1149,6 +1163,7 @@ const navigationProcessedRef = useRef(null);
     handleCollapseAllMoments,
     handleExpandAllPosts,
     handleCollapseAllPosts,
+    handleTogglePostExpanded,
     handleExpandAllPhotoGrids,
     handleCollapseAllPhotoGrids,
     selectedMoments,
