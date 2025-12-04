@@ -953,10 +953,14 @@ const handleExpandAllPosts = useCallback(() => {
   const allPostIds = new Set();
   filteredMoments.forEach(moment => {
     moment.posts?.forEach(post => {
-      allPostIds.add(post.id);
+      if (post.id) {
+        allPostIds.add(post.id);
+      } else {
+        console.warn('⚠️ Post sans ID:', post);
+      }
     });
   });
-  console.log('📂 [MemoriesPage] Déplier tous les posts:', allPostIds.size);
+  console.log('📂 [MemoriesPage] Déplier tous les posts:', allPostIds.size, 'IDs:', Array.from(allPostIds));
   setExpandedPosts(allPostIds);
 }, [filteredMoments]);
 
