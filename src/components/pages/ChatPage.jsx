@@ -1800,12 +1800,6 @@ function LinkPhotoPreview({ photo }) {
             ref={textareaRef}
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
             placeholder={
               pendingLink || attachedPhoto
                 ? "Ajouter un message (optionnel)..."
