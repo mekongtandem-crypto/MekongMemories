@@ -114,48 +114,6 @@ function MemoriesPage({
     return new Set();
   });
 
-  // ⭐ v2.13 : Restaurer selectedMoments depuis localStorage (une fois au chargement)
-  useEffect(() => {
-    if (!hasRestoredVoletsRef.current && filteredMoments.length > 0 && app.currentUser) {
-      try {
-        const stored = localStorage.getItem(`mekong_volets_state_${app.currentUser}`);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          const selectedMomentIds = parsed.selectedMomentIds || [];
-
-          // Restaurer les moments complets depuis filteredMoments
-          const restoredMoments = filteredMoments.filter(m => selectedMomentIds.includes(m.id));
-          if (restoredMoments.length > 0) {
-            setSelectedMoments(restoredMoments);
-          }
-        }
-      } catch (e) {
-        console.error('Error restoring selectedMoments:', e);
-      }
-      hasRestoredVoletsRef.current = true;
-    }
-  }, [filteredMoments, app.currentUser]);
-
-  // ⭐ v2.13 : Sauvegarder états volets dans localStorage
-  useEffect(() => {
-    if (!app.currentUser) return;
-
-    const voletsState = {
-      selectedMomentIds: selectedMoments.map(m => m.id),
-      expandedPostIds: Array.from(expandedPosts),
-      expandedPhotoGridIds: Array.from(expandedPhotoGrids)
-    };
-
-    try {
-      localStorage.setItem(
-        `mekong_volets_state_${app.currentUser}`,
-        JSON.stringify(voletsState)
-      );
-    } catch (e) {
-      console.error('Error saving volets state:', e);
-    }
-  }, [selectedMoments, expandedPosts, expandedPhotoGrids, app.currentUser]);
-
   // ⭐ v2.8f : Modal PhotoToMemoryModal
   // ⭐ v2.9j : Stocke soit photoData (old flow) soit file (new flow)
   const [photoToMemoryModal, setPhotoToMemoryModal] = useState({
@@ -257,6 +215,51 @@ const {
   executeScrollToElement
 } = memoryScroll;
 
+// ========================================
+// ⭐ v2.13 : EFFECTS pour mémorisation états volets
+// ========================================
+
+// ⭐ v2.13 : Restaurer selectedMoments depuis localStorage (une fois au chargement)
+useEffect(() => {
+  if (!hasRestoredVoletsRef.current && filteredMoments.length > 0 && app.currentUser) {
+    try {
+      const stored = localStorage.getItem(`mekong_volets_state_${app.currentUser}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const selectedMomentIds = parsed.selectedMomentIds || [];
+
+        // Restaurer les moments complets depuis filteredMoments
+        const restoredMoments = filteredMoments.filter(m => selectedMomentIds.includes(m.id));
+        if (restoredMoments.length > 0) {
+          setSelectedMoments(restoredMoments);
+        }
+      }
+    } catch (e) {
+      console.error('Error restoring selectedMoments:', e);
+    }
+    hasRestoredVoletsRef.current = true;
+  }
+}, [filteredMoments, app.currentUser]);
+
+// ⭐ v2.13 : Sauvegarder états volets dans localStorage
+useEffect(() => {
+  if (!app.currentUser) return;
+
+  const voletsState = {
+    selectedMomentIds: selectedMoments.map(m => m.id),
+    expandedPostIds: Array.from(expandedPosts),
+    expandedPhotoGridIds: Array.from(expandedPhotoGrids)
+  };
+
+  try {
+    localStorage.setItem(
+      `mekong_volets_state_${app.currentUser}`,
+      JSON.stringify(voletsState)
+    );
+  } catch (e) {
+    console.error('Error saving volets state:', e);
+  }
+}, [selectedMoments, expandedPosts, expandedPhotoGrids, app.currentUser]);
 
 // ========================================
 // HANDLERS MANQUANTS
