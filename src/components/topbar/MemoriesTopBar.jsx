@@ -99,14 +99,14 @@ export default function MemoriesTopBar({
                                    state.selectedMoments?.length === state.filteredMomentsCount;
         setMomentsExpanded(momentsAllExpanded);
 
-        // Posts
-        const postsAllExpanded = state.expandedPosts?.size > 0 &&
+        // Posts - ⭐ v2.13 : Comptage correct des posts visibles
+        const postsAllExpanded = state.totalPostsCount > 0 &&
                                  state.expandedPosts?.size === state.totalPostsCount;
         setPostsExpanded(postsAllExpanded);
 
-        // Photos (grilles de photos des moments)
-        const photosAllExpanded = state.expandedPhotoGrids?.size > 0 &&
-                                  state.expandedPhotoGrids?.size === state.filteredMomentsCount;
+        // Photos - ⭐ v2.13 : Seulement moments avec dayPhotos
+        const photosAllExpanded = state.momentsWithPhotosCount > 0 &&
+                                  state.expandedPhotoGrids?.size === state.momentsWithPhotosCount;
         setPhotosExpanded(photosAllExpanded);
       }
     };

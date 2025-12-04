@@ -304,8 +304,8 @@ export const PostArticle = memo(({
         </div>
         )}
 
-        {/* ⭐ v2.11 : Contenu du post (texte + photos) - visible seulement si volet déplié */}
-        {isPostExpanded && (
+        {/* ⭐ v2.13 : Contenu du post - Ne rendre que si quelque chose à afficher */}
+        {isPostExpanded && (shouldShowText || (shouldShowHeader && shouldShowPhotos && showThisPostPhotos)) && (
           <>
             {/* Texte (si filtre textes actif) */}
             {shouldShowText && (
