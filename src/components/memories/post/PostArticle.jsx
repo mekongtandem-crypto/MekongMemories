@@ -306,8 +306,8 @@ export const PostArticle = memo(({
         </div>
         )}
 
-        {/* ⭐ v2.13 : Contenu du post - Ne rendre que si quelque chose à afficher */}
-        {isPostExpanded && (shouldShowText || (shouldShowHeader && shouldShowPhotos && showThisPostPhotos)) && (
+        {/* ⭐ v2.13 : Contenu du post - Simplifier condition pour éviter React #300 */}
+        {isPostExpanded && (
           <>
             {/* Texte (si filtre textes actif) */}
             {shouldShowText && (
