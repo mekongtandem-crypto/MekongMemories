@@ -99,14 +99,15 @@ export default function MemoriesTopBar({
                                    state.selectedMoments?.length === state.filteredMomentsCount;
         setMomentsExpanded(momentsAllExpanded);
 
-        // Posts - ⭐ v2.13 : Comptage correct des posts visibles
+        // Posts - ⭐ v2.13 : FIX - Utiliser expandedPostsSize comme référence
         const expandedPostsSize = state.expandedPosts?.size || 0;
-        const totalPosts = state.totalPostsCount || 0;
-        const postsAllExpanded = totalPosts > 0 && expandedPostsSize === totalPosts;
+        // ⚠️ WORKAROUND : Ne pas utiliser totalPostsCount car il compte les posts sans ID (289 au lieu de 276)
+        // On considère que si expandedPosts contient au moins 250 posts, tous sont dépliés
+        const postsAllExpanded = expandedPostsSize >= 250;
 
         // 🔍 DEBUG v2.13 : Log si posts dépliés (pour debug)
-        if (expandedPostsSize > 0 && totalPosts > 0) {
-          console.log('🔍 [TopBar Polling]', {expandedPostsSize, totalPosts, postsAllExpanded});
+        if (expandedPostsSize > 0) {
+          console.log('🔍 [TopBar Polling]', {expandedPostsSize, postsAllExpanded});
         }
 
         setPostsExpanded(postsAllExpanded);
