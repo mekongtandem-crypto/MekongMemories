@@ -951,16 +951,24 @@ const handleCollapseAllMoments = useCallback(() => {
 // ⭐ v2.11 : Handler pour déplier tous les posts
 const handleExpandAllPosts = useCallback(() => {
   const allPostIds = new Set();
+  let totalWithId = 0;
+  let totalAll = 0;
+
   filteredMoments.forEach(moment => {
+    totalAll += moment.posts?.length || 0;
     moment.posts?.forEach(post => {
       if (post.id) {
         allPostIds.add(post.id);
+        totalWithId++;
       } else {
         console.warn('⚠️ Post sans ID:', post);
       }
     });
   });
+
   console.log('📂 [MemoriesPage] Déplier tous les posts:', allPostIds.size, 'IDs');
+  console.log('📊 [MemoriesPage] Comptage posts:', {totalWithId, totalAll, inSet: allPostIds.size});
+
   setExpandedPosts(allPostIds);
 }, [filteredMoments]);
 
