@@ -103,17 +103,6 @@ export default function MemoriesTopBar({
         const expandedPostsSize = state.expandedPosts?.size || 0;
         const totalPosts = state.totalPostsCount || 0;
         const postsAllExpanded = totalPosts > 0 && expandedPostsSize === totalPosts;
-
-        // 🔍 DEBUG v2.13 : Log pour diagnostiquer pourquoi bouton ne devient pas vert
-        if (expandedPostsSize > 0 || totalPosts > 0) {
-          console.log('🔍 [TopBar Polling] Posts:', {
-            expandedSize: expandedPostsSize,
-            total: totalPosts,
-            allExpanded: postsAllExpanded,
-            expandedPostsObj: state.expandedPosts
-          });
-        }
-
         setPostsExpanded(postsAllExpanded);
 
         // Photos - ⭐ v2.13 : Seulement moments avec dayPhotos
