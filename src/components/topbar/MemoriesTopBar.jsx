@@ -103,6 +103,12 @@ export default function MemoriesTopBar({
         const expandedPostsSize = state.expandedPosts?.size || 0;
         const totalPosts = state.totalPostsCount || 0;
         const postsAllExpanded = totalPosts > 0 && expandedPostsSize === totalPosts;
+
+        // 🔍 DEBUG v2.13 : Log si posts dépliés (pour debug)
+        if (expandedPostsSize > 0 && totalPosts > 0) {
+          console.log('🔍 [TopBar Polling]', {expandedPostsSize, totalPosts, postsAllExpanded});
+        }
+
         setPostsExpanded(postsAllExpanded);
 
         // Photos - ⭐ v2.13 : Seulement moments avec dayPhotos

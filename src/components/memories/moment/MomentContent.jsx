@@ -46,11 +46,21 @@ export const MomentContent = memo(({
   // ⭐ v2.11 : Vérifier si photos d'album doivent être affichées
   const shouldShowDayPhotos = isElementVisible?.('day_photos') ?? true;
 
+  // ⭐ v2.13 : FIX React #300 - Vérifier si au moins un post sera visible
+  const hasVisiblePosts = localDisplay.showPosts && moment.posts && moment.posts.length > 0 && moment.posts.some(post => {
+    const hasText = post.content?.trim();
+    const hasPhotos = post.photos?.length > 0;
+    const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true);
+    const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
+    const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true);
+    return shouldShowHeader || shouldShowText || shouldShowPhotos;
+  });
+
   return (
     <div className="px-3 pb-3">
 
       {/* Posts (filtrés individuellement dans PostArticle) */}
-      {localDisplay.showPosts && moment.posts && moment.posts.length > 0 && (
+      {hasVisiblePosts && (
         <div className="space-y-2 mt-2">
           {moment.posts.map((post, index) => (
             <PostArticle
