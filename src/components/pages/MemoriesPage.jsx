@@ -960,7 +960,7 @@ const handleExpandAllPosts = useCallback(() => {
       }
     });
   });
-  console.log('📂 [MemoriesPage] Déplier tous les posts:', allPostIds.size, 'IDs:', Array.from(allPostIds));
+  console.log('📂 [MemoriesPage] Déplier tous les posts:', allPostIds.size, 'IDs');
   setExpandedPosts(allPostIds);
 }, [filteredMoments]);
 
@@ -1130,6 +1130,15 @@ const navigationProcessedRef = useRef(null);
       collapseAllPhotoGrids: handleCollapseAllPhotoGrids
     };
 
+    const totalPostsCount = filteredMoments.reduce((acc, m) => acc + (m.posts?.filter(p => p.id).length || 0), 0);
+
+    // 🔍 DEBUG v2.13 : Vérifier valeurs exposées à window
+    console.log('🔍 [MemoriesPage] window.memoriesPageState:', {
+      expandedPostsSize: expandedPosts.size,
+      totalPostsCount: totalPostsCount,
+      match: expandedPosts.size === totalPostsCount
+    });
+
     window.memoriesPageState = {
       activePhotoGrid,
       selectedPhotos,
@@ -1138,7 +1147,7 @@ const navigationProcessedRef = useRef(null);
       selectedMoments,  // ⭐ v2.11 : Moments actuellement dépliés
       filteredMomentsCount: filteredMoments.length,  // ⭐ v2.11 : Nombre de moments visibles
       expandedPosts: expandedPosts,  // ⭐ v2.13 : FIX - Toujours exposer le Set actuel
-      totalPostsCount: filteredMoments.reduce((acc, m) => acc + (m.posts?.filter(p => p.id).length || 0), 0),  // ⭐ v2.13 : FIX - Ne compter que posts avec ID
+      totalPostsCount: totalPostsCount,  // ⭐ v2.13 : FIX - Ne compter que posts avec ID
       expandedPhotoGrids: expandedPhotoGrids,  // ⭐ v2.13 : FIX - Toujours exposer le Set actuel
       momentsWithPhotosCount: filteredMoments.filter(m => m.dayPhotos?.length > 0).length  // ⭐ v2.13 : Nombre de moments avec photos
     };
