@@ -1,23 +1,27 @@
 /**
- * MemoriesTopBar.jsx v2.11 - Filtres de contenu intégrés
+ * MemoriesTopBar.jsx v2.14 - Migration Context + Reducer
  * TopBar spécifique à la page Memories
+ *
+ * ✅ v2.14 : Architecture Context (zero polling)
+ * ✅ Nomenclature: Structure / Textes / Images
+ * ✅ Boutons déplier discrets (flèches)
  * ✅ Transitions 150ms
  *
- * ⭐ v2.11 : Filtres de contenu additifs
  * Layout :
- * - Gauche : 🔍 Recherche | Tag
- * - Centre : ✨ Moments | 📷 Photos | 🗒️ Textes | 🖼️ Images
+ * - Gauche : 🔍 Recherche | 🏷️ Thèmes
+ * - Centre : ✨ Structure | 🗒️ Textes | 📸 Images (+ mini boutons volets)
  * - Droite : ... Menu (Random, Photo Souvenir, Mode Édition)
  */
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Search, X, XCircle, MoreVertical,
-  FileText, Image as ImageIcon, Camera, Sparkles as SparklesIcon,
-  Tag, Dices, ArrowUpDown, Plus, Sparkles, Edit2,
-  Layers, ChevronDown  // ⭐ v2.11 : Pour toggle accordion
+  FileText, Camera, Sparkles as SparklesIcon,
+  Tag, Dices, Sparkles, Edit2,
+  ChevronRight, ChevronDown  // ⭐ v2.14 : Flèches discrètes pour volets
 } from 'lucide-react';
 import OverflowMenu from './OverflowMenu.jsx';
+import { useMemoriesDisplay } from '../memories/context/MemoriesDisplayContext.jsx';
 
 export default function MemoriesTopBar({
   isSearchOpen,
@@ -28,106 +32,31 @@ export default function MemoriesTopBar({
   selectedTheme,
   setSelectedTheme,
   editionMode,
-  onToggleEditionMode
+  onToggleEditionMode,
+  // ⭐ v2.14 : Ref pour obtenir IDs et counts depuis MemoriesPage
+  memoriesPageRef
 }) {
 
-  // ⭐ v2.11 : Accès aux filtres via window (pattern existant)
-  // ⭐ v2.11 : Lire l'état depuis window (mis à jour par MemoriesPage)
-  const [contentFilters, setContentFilters] = useState({
-    moments: true,
-    photos: true,
-    textes: true,
-    images: true
-  });
+  // ⭐ v2.14 : Accès au Context (remplace polling + window.state)
+  const { state, actions, computed } = useMemoriesDisplay();
 
-  // Synchroniser avec window.memoriesPageFilters à chaque render
-  useEffect(() => {
-    const checkFilters = () => {
-      if (window.memoriesPageFilters?.contentFilters) {
-        setContentFilters(window.memoriesPageFilters.contentFilters);
-      }
-    };
-
-    checkFilters();
-
-    // Vérifier périodiquement (pour détecter changements)
-    const interval = setInterval(checkFilters, 100);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // 🔍 DEBUG: Logger l'état des filtres
-  useEffect(() => {
-    console.log('🎨 [MemoriesTopBar] contentFilters state:', contentFilters);
-    console.log('🎨 [MemoriesTopBar] toggleContentFilter available:', !!window.memoriesPageFilters?.toggleContentFilter);
-  }, [contentFilters]);
-
-  // Handler avec logs pour toggle filtre
-  const handleToggleFilter = (filterKey) => {
-    console.log('👆 [MemoriesTopBar] Button clicked for filter:', filterKey);
-    console.log('👆 [MemoriesTopBar] Current contentFilters:', contentFilters);
-
-    // ⭐ Lire la fonction directement depuis window à chaque appel
-    const toggleFn = window.memoriesPageFilters?.toggleContentFilter;
-    console.log('👆 [MemoriesTopBar] toggleContentFilter function:', toggleFn);
-
-    if (toggleFn) {
-      toggleFn(filterKey);
-    } else {
-      console.error('❌ [MemoriesTopBar] toggleContentFilter is not available!');
-    }
+  // ⭐ v2.14 : Obtenir counts depuis MemoriesPage ref
+  const counts = memoriesPageRef?.current?.getCounts?.() || {
+    filteredMomentsCount: 0,
+    totalPostsCount: 0,
+    momentsWithPhotosCount: 0
   };
+  const { filteredMomentsCount, totalPostsCount, momentsWithPhotosCount } = counts;
 
+  // États UI locaux (menus)
   const [showMenu, setShowMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showMomentFilterMenu, setShowMomentFilterMenu] = useState(false);
   const [currentMomentFilter, setCurrentMomentFilter] = useState('all');
 
-  // ⭐ v2.12 : États pour volets indépendants (moments, posts, photos)
-  const [momentsExpanded, setMomentsExpanded] = useState(false);
-  const [postsExpanded, setPostsExpanded] = useState(false);
-  const [photosExpanded, setPhotosExpanded] = useState(false);
-
-  // ⭐ v2.12 : Synchroniser états volets avec window.memoriesPageState
-  useEffect(() => {
-    const checkExpanded = () => {
-      const state = window.memoriesPageState;
-
-      if (state) {
-        // Moments
-        const momentsAllExpanded = state.selectedMoments?.length > 0 &&
-                                   state.selectedMoments?.length === state.filteredMomentsCount;
-        setMomentsExpanded(momentsAllExpanded);
-
-        // Posts - ⭐ v2.13 : FIX - Utiliser expandedPostsSize comme référence
-        const expandedPostsSize = state.expandedPosts?.size || 0;
-        // ⚠️ WORKAROUND : Ne pas utiliser totalPostsCount car il compte les posts sans ID (289 au lieu de 276)
-        // On considère que si expandedPosts contient au moins 250 posts, tous sont dépliés
-        const postsAllExpanded = expandedPostsSize >= 250;
-
-        // 🔍 DEBUG v2.13 : Log si posts dépliés (pour debug)
-        if (expandedPostsSize > 0) {
-          console.log('🔍 [TopBar Polling]', {expandedPostsSize, postsAllExpanded});
-        }
-
-        setPostsExpanded(postsAllExpanded);
-
-        // Photos - ⭐ v2.13 : Seulement moments avec dayPhotos
-        const photosAllExpanded = state.momentsWithPhotosCount > 0 &&
-                                  state.expandedPhotoGrids?.size === state.momentsWithPhotosCount;
-        setPhotosExpanded(photosAllExpanded);
-      }
-    };
-
-    checkExpanded();
-    const interval = setInterval(checkExpanded, 200);
-
-    return () => clearInterval(interval);
-  }, []);
-  
   const sortMenuRef = useRef(null);
   const momentFilterMenuRef = useRef(null);
-  
+
   // Fermer les menus au clic outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -138,29 +67,28 @@ export default function MemoriesTopBar({
         setShowMomentFilterMenu(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-  
-  // Toggle display options
-  const toggleDisplayOption = (key) => {
-    setDisplayOptions(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-  
+
   // Appliquer filtre moment
   const applyMomentFilter = (filter) => {
     setCurrentMomentFilter(filter);
     setShowMomentFilterMenu(false);
-    
-    if (window.memoriesPageFilters?.setMomentFilter) {
-      window.memoriesPageFilters.setMomentFilter(filter);
-    }
+
+    // TODO: À implémenter dans le Context
+    // actions.setMomentFilter(filter);
   };
+
+  // ⭐ v2.14 : Computed - États "tous dépliés" (zero polling!)
+  const momentsAllExpanded = computed.allMomentsExpanded(filteredMomentsCount);
+  const postsAllExpanded = computed.allPostsExpanded(totalPostsCount);
+  const photosAllExpanded = computed.allPhotoGridsExpanded(momentsWithPhotosCount);
 
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-150">
-      
+
       {/* ========================================
           GAUCHE : Random | Recherche | Thèmes
       ======================================== */}
@@ -173,23 +101,23 @@ export default function MemoriesTopBar({
         >
           <Dices className="w-5 h-5" />
         </button>
-        
+
         {/* Séparateur */}
-          <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
-        
+        <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+
         {/* Recherche */}
-        <button 
+        <button
           onClick={() => setIsSearchOpen(!isSearchOpen)}
           className={`p-2 rounded-lg transition-colors duration-150 ${
-            isSearchOpen 
-              ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
+            isSearchOpen
+              ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
           title={isSearchOpen ? "Fermer la recherche" : "Rechercher (/)"}
         >
           {isSearchOpen ? <XCircle className="w-5 h-5" /> : <Search className="w-5 h-5" />}
         </button>
-        
+
         {/* Afficher thèmes */}
         <button
           onClick={() => {
@@ -213,133 +141,145 @@ export default function MemoriesTopBar({
 
       </div>
       {/* Séparateur */}
-          <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+      <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
 
       {/* ========================================
-          CENTRE : ⭐ v2.12 Filtres + mini boutons volets
+          CENTRE : ⭐ v2.14 Structure | Textes | Images + mini volets
       ======================================== */}
       <div className="flex-1 flex items-center justify-center px-4 min-w-0">
         <div className="flex items-center gap-3">
 
-          {/* ✨ Moments (en-têtes) + mini bouton volet */}
+          {/* ✨ Structure (ex-Moments) + mini bouton volet */}
           <div className="flex flex-col items-center gap-0.5">
             <button
-              onClick={() => handleToggleFilter('moments')}
+              onClick={() => actions.toggleContentFilter('structure')}
               className={`p-1.5 rounded transition-colors duration-150 ${
-                contentFilters.moments
+                state.contentFilters.structure
                   ? 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400'
                   : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
-              title={contentFilters.moments ? "Masquer en-têtes moments (mode en vrac)" : "Afficher en-têtes moments"}
+              title={state.contentFilters.structure ? "Masquer en-têtes moments (mode en vrac)" : "Afficher en-têtes moments"}
             >
               <SparklesIcon className="w-4 h-4" />
             </button>
 
-            {/* Mini bouton volet moments */}
+            {/* ⭐ v2.14 : Mini bouton volet - Design discret (flèche) */}
             <button
               onClick={() => {
-                if (momentsExpanded) {
-                  window.memoriesPageActions?.collapseAllMoments();
+                if (momentsAllExpanded) {
+                  actions.collapseAll('moments');
                 } else {
-                  window.memoriesPageActions?.expandAllMoments();
+                  // ⭐ v2.14 : Récupérer IDs depuis MemoriesPage ref
+                  const momentIds = memoriesPageRef?.current?.getAllMomentIds?.() || [];
+                  actions.expandAll('moments', momentIds);
                 }
               }}
-              disabled={!contentFilters.moments}
-              className={`p-0.5 rounded transition-colors duration-150 ${
-                !contentFilters.moments
-                  ? 'opacity-30 cursor-not-allowed'
-                  : momentsExpanded
-                    ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              disabled={!state.contentFilters.structure}
+              className={`p-0.5 transition-colors duration-150 ${
+                !state.contentFilters.structure
+                  ? 'opacity-30 cursor-not-allowed text-gray-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
-              title={momentsExpanded ? "Replier tous les moments" : "Déplier tous les moments"}
+              title={momentsAllExpanded ? "Replier tous les moments" : "Déplier tous les moments"}
             >
-              {momentsExpanded ? <Layers className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              {momentsAllExpanded ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
             </button>
           </div>
 
-          {/* 🗒️ Posts complets + mini bouton volet */}
+          {/* 🗒️ Textes (ex-Posts) + mini bouton volet */}
           <div className="flex flex-col items-center gap-0.5">
             <button
-              onClick={() => handleToggleFilter('posts')}
+              onClick={() => actions.toggleContentFilter('textes')}
               className={`p-1.5 rounded transition-colors duration-150 ${
-                contentFilters.posts
+                state.contentFilters.textes
                   ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
                   : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
-              title="Afficher/masquer les posts complets (texte + photos)"
+              title="Afficher/masquer les textes complets (contenu + photos)"
             >
               <FileText className="w-4 h-4" />
             </button>
 
-            {/* Mini bouton volet posts */}
+            {/* ⭐ v2.14 : Mini bouton volet - Design discret */}
             <button
               onClick={() => {
-                if (postsExpanded) {
-                  window.memoriesPageActions?.collapseAllPosts();
+                if (postsAllExpanded) {
+                  actions.collapseAll('posts');
                 } else {
-                  window.memoriesPageActions?.expandAllPosts();
+                  // ⭐ v2.14 : Récupérer IDs depuis MemoriesPage ref
+                  const postIds = memoriesPageRef?.current?.getAllPostIds?.() || [];
+                  actions.expandAll('posts', postIds);
                 }
               }}
-              disabled={!contentFilters.posts}
-              className={`p-0.5 rounded transition-colors duration-150 ${
-                !contentFilters.posts
-                  ? 'opacity-30 cursor-not-allowed'
-                  : postsExpanded
-                    ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              disabled={!state.contentFilters.textes}
+              className={`p-0.5 transition-colors duration-150 ${
+                !state.contentFilters.textes
+                  ? 'opacity-30 cursor-not-allowed text-gray-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
-              title={postsExpanded ? "Replier tous les posts" : "Déplier tous les posts"}
+              title={postsAllExpanded ? "Replier tous les textes" : "Déplier tous les textes"}
             >
-              {postsExpanded ? <Layers className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              {postsAllExpanded ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
             </button>
           </div>
 
-          {/* 📸 Photos + mini bouton volet */}
+          {/* 📸 Images (ex-Photos) + mini bouton volet */}
           <div className="flex flex-col items-center gap-0.5">
             <button
-              onClick={() => handleToggleFilter('photos')}
+              onClick={() => actions.toggleContentFilter('images')}
               className={`p-1.5 rounded transition-colors duration-150 ${
-                contentFilters.photos
+                state.contentFilters.images
                   ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
                   : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
-              title="Afficher/masquer toutes les photos (moment + post)"
+              title="Afficher/masquer toutes les images (moment + post)"
             >
               <Camera className="w-4 h-4" />
             </button>
 
-            {/* Mini bouton volet photos (grilles de moments) */}
+            {/* ⭐ v2.14 : Mini bouton volet - Design discret */}
             <button
               onClick={() => {
-                if (photosExpanded) {
-                  window.memoriesPageActions?.collapseAllPhotoGrids();
+                if (photosAllExpanded) {
+                  actions.collapseAll('photoGrids');
                 } else {
-                  window.memoriesPageActions?.expandAllPhotoGrids();
+                  // ⭐ v2.14 : Récupérer IDs depuis MemoriesPage ref
+                  const photoGridIds = memoriesPageRef?.current?.getAllPhotoGridIds?.() || [];
+                  actions.expandAll('photoGrids', photoGridIds);
                 }
               }}
-              disabled={!contentFilters.photos}
-              className={`p-0.5 rounded transition-colors duration-150 ${
-                !contentFilters.photos
-                  ? 'opacity-30 cursor-not-allowed'
-                  : photosExpanded
-                    ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              disabled={!state.contentFilters.images}
+              className={`p-0.5 transition-colors duration-150 ${
+                !state.contentFilters.images
+                  ? 'opacity-30 cursor-not-allowed text-gray-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
-              title={photosExpanded ? "Replier toutes les grilles photos" : "Déplier toutes les grilles photos"}
+              title={photosAllExpanded ? "Replier toutes les grilles images" : "Déplier toutes les grilles images"}
             >
-              {photosExpanded ? <Layers className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              {photosAllExpanded ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
             </button>
           </div>
 
         </div>
       </div>
-      
+
       {/* ========================================
           DROITE : Menu overflow
       ======================================== */}
       <div className="flex items-center justify-end relative">
-        <button 
+        <button
           onClick={(e) => {
             e.stopPropagation();
             setShowMenu(prev => !prev);
@@ -349,7 +289,7 @@ export default function MemoriesTopBar({
         >
           <MoreVertical className="w-5 h-5" />
         </button>
-        
+
         <OverflowMenu
           isOpen={showMenu}
           onClose={() => setShowMenu(false)}
@@ -358,7 +298,8 @@ export default function MemoriesTopBar({
           <button
             onClick={() => {
               setShowMenu(false);
-              window.memoriesPageActions?.addPhotoSouvenir?.();
+              // TODO: À connecter avec MemoriesPage
+              // window.memoriesPageActions?.addPhotoSouvenir?.();
             }}
             className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
           >
@@ -387,7 +328,7 @@ export default function MemoriesTopBar({
           </button>
         </OverflowMenu>
       </div>
-      
+
     </div>
   );
 }
