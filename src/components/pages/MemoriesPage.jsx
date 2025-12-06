@@ -106,6 +106,24 @@ const MemoriesPageInner = React.forwardRef(({
   const memoryFilters = useMemoriesFilters(momentsData, app.sessions);
   const memoryScroll = useMemoriesScroll(navigationContext, onNavigateBack);
 
+  // ⭐ v2.14b : Déstructurer AVANT utilisation (fix ReferenceError)
+  const {
+    moments: filteredMoments,
+    contentFilters,
+    toggleContentFilter,
+    isElementVisible,
+    getVisibleStats,
+    hasVisibleContent,
+    searchQuery,
+    selectedTheme,
+    momentFilter,
+    sortOrder,
+    setSearchQuery,
+    setSelectedTheme,
+    setMomentFilter,
+    shouldShowElement
+  } = memoryFilters;
+
   // États UI locaux (non-expansion)
   const [displayMode, setDisplayMode] = useState('focus');
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -197,22 +215,7 @@ const MemoriesPageInner = React.forwardRef(({
   toggleOverride
 } = memoryState;
 
-const {
-  moments: filteredMoments,
-  contentFilters,
-  toggleContentFilter,
-  isElementVisible,
-  getVisibleStats,
-  hasVisibleContent,
-  searchQuery,
-  selectedTheme,
-  momentFilter,
-  sortOrder,
-  setSearchQuery,
-  setSelectedTheme,
-  setMomentFilter,
-  shouldShowElement
-} = memoryFilters;
+// ⭐ v2.14b : memoryFilters déstructuré plus haut (ligne 110)
 
 const {
   scrollContainerRef,
