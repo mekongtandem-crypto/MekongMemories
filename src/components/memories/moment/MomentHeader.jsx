@@ -89,13 +89,17 @@ export const MomentHeader = memo(({
     }
   }, [isSelected, onOpenWith, onToggleLocal]);
   
+  // ⭐ v2.14 : Auto-open photos SEULEMENT si filtre Images ON
   const handleChevronClick = useCallback(() => {
     if (!isSelected) {
-      onOpenWith({ showPosts: true, showDayPhotos: true });
+      onOpenWith({
+        showPosts: true,
+        showDayPhotos: showImageBadges  // ⭐ v2.14 : Conditionnel selon filtre global
+      });
     } else {
       onSelect(moment);
     }
-  }, [isSelected, onOpenWith, onSelect, moment]);
+  }, [isSelected, onOpenWith, onSelect, moment, showImageBadges]);
 
   const handleShowSessions = useCallback((e) => {
     e.stopPropagation();
