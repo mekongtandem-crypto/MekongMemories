@@ -19,6 +19,7 @@ import { Tag, Link, Image as ImageIcon, Edit, Trash2, ChevronDown, ChevronUp } f
 import { SessionBadgePost } from '../shared/SessionBadges.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import { generatePostKey } from '../../../utils/themeUtils.js';
+import { useMemoriesDisplay } from '../context/MemoriesDisplayContext.jsx';  // ⭐ v2.14
 
 export const PostArticle = memo(({
   post,
@@ -43,39 +44,25 @@ export const PostArticle = memo(({
   editionMode  // ⭐ v2.9o : Recevoir editionMode
 }) => {
 
+  // ⭐ v2.14 : Accès au Context (remplace polling)
+  const { computed, actions } = useMemoriesDisplay();
+
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
-  // ⭐ v2.11 : État pour volet post (synchronisé avec état global)
+  // ⭐ v2.14 : État local post expansion (synchronisé avec Context)
   const [isPostExpanded, setIsPostExpanded] = useState(() => {
-    // Initialiser depuis window.memoriesPageState.expandedPosts si disponible
-    const expandedPosts = window.memoriesPageState?.expandedPosts;
-    return expandedPosts ? expandedPosts.has(post.id) : true;
+    return computed.isPostExpanded(post.id);
   });
 
   useEffect(() => {
     setShowThisPostPhotos(displayOptions.showPostPhotos);
   }, [displayOptions.showPostPhotos]);
 
-  // ⭐ v2.11 : Synchroniser avec état global expandedPosts
+  // ⭐ v2.14 : Synchroniser avec Context (zero polling!)
   useEffect(() => {
-    const expandedPosts = window.memoriesPageState?.expandedPosts;
-    if (expandedPosts) {
-      setIsPostExpanded(expandedPosts.has(post.id));
-    }
-  }, [post.id]);  // Re-check périodiquement via polling (comme TopBar)
-
-  // ⭐ v2.11 : Polling pour sync avec état global (changements expand/collapse all)
-  useEffect(() => {
-    const checkExpanded = () => {
-      const expandedPosts = window.memoriesPageState?.expandedPosts;
-      if (expandedPosts) {
-        setIsPostExpanded(expandedPosts.has(post.id));
-      }
-    };
-
-    const interval = setInterval(checkExpanded, 200);
-    return () => clearInterval(interval);
-  }, [post.id]);
+    const expanded = computed.isPostExpanded(post.id);
+    setIsPostExpanded(expanded);
+  }, [post.id, computed]);
 
   const contentParts = post.content ? post.content.trim().split('\n') : [];
 
@@ -188,12 +175,8 @@ export const PostArticle = memo(({
         {shouldShowHeader && (
           <div
             onClick={() => {
-              const newExpanded = !isPostExpanded;
-
-              // ⭐ v2.13 : Appeler le handler React pour déclencher re-render
-              if (window.memoriesPageActions?.togglePostExpanded) {
-                window.memoriesPageActions.togglePostExpanded(post.id, newExpanded);
-              }
+              // ⭐ v2.14 : Toggle via Context (zero mutation!)
+              actions.toggleExpanded('posts', post.id);
             }}
             className={`flex justify-between items-center p-2 border-b cursor-pointer hover:opacity-80 transition-opacity ${
             isPhotoNote
