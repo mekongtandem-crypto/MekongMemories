@@ -43,29 +43,37 @@ export const MomentContent = memo(({
   editionMode  // ⭐ v2.9o : Recevoir editionMode pour posts et photos
 }) => {
 
-  // ⭐ v2.11 : Vérifier si photos d'album doivent être affichées
-  const shouldShowDayPhotos = isElementVisible?.('day_photos') ?? true;
+  // ⭐ v2.14 : Photos d'album - LOCAL override GLOBAL (dernier qui parle gagne!)
+  // Si localDisplay.showDayPhotos = true, ignorer filtre global Images
+  const shouldShowDayPhotos = localDisplay.showDayPhotos || (isElementVisible?.('day_photos') ?? true);
 
-  // ⭐ v2.13 : FIX React #310 - Mémoïser hasVisiblePosts pour éviter boucle infinie
+  // ⭐ v2.14 : Posts - LOCAL override GLOBAL (dernier qui parle gagne!)
+  // Si localDisplay.showPosts = true, TOUJOURS afficher posts (ignorer filtres globaux)
   const hasVisiblePosts = useMemo(() => {
     if (!localDisplay.showPosts || !moment.posts || moment.posts.length === 0) {
       return false;
     }
 
+    // ⭐ v2.14 : Si showPosts=true, on a AU MOINS des posts à afficher
+    // (PostArticle gérera la visibilité interne selon filtres)
     return moment.posts.some(post => {
       const hasText = post.content?.trim();
       const hasPhotos = post.photos?.length > 0;
-      const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true);
-      const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
-      const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true);
+
+      // ⭐ v2.14 : Override global - si user clicked local badge, toujours afficher
+      const shouldShowHeader = hasText;  // Toujours afficher header si texte existe
+      const shouldShowText = hasText;    // Toujours afficher texte si existe
+      const shouldShowPhotos = hasPhotos; // Toujours afficher photos si existent
+
       return shouldShowHeader || shouldShowText || shouldShowPhotos;
     });
-  }, [localDisplay.showPosts, moment.posts, isElementVisible]);
+  }, [localDisplay.showPosts, moment.posts]);
 
   return (
     <div className="px-3 pb-3">
 
       {/* Posts (filtrés individuellement dans PostArticle) */}
+      {/* ⭐ v2.14 : localOverride signal local override global */}
       {hasVisiblePosts && (
         <div className="space-y-2 mt-2">
           {moment.posts.map((post, index) => (
@@ -75,6 +83,7 @@ export const MomentContent = memo(({
               moment={moment}
               displayOptions={displayOptions}
               isElementVisible={isElementVisible}
+              localOverride={localDisplay.showPosts}
               onPhotoClick={onPhotoClick}
               onCreateSession={onCreateSession}
               activePhotoGrid={activePhotoGrid}

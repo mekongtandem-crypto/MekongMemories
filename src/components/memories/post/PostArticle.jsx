@@ -26,6 +26,7 @@ export const PostArticle = memo(({
   moment,
   displayOptions,
   isElementVisible,  // ⭐ v2.11 : Fonction de visibilité des filtres
+  localOverride,     // ⭐ v2.14 : Local override global (dernier qui parle gagne)
   onPhotoClick,
   onCreateSession,
   activePhotoGrid,
@@ -45,7 +46,8 @@ export const PostArticle = memo(({
 }) => {
 
   // ⭐ v2.14 : Accès au Context (remplace polling)
-  const { computed, actions } = useMemoriesDisplay();
+  const { state, computed, actions } = useMemoriesDisplay();
+  const imagesFilterActive = state.contentFilters.images;  // ⭐ v2.14 : Pour griser badge
 
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
@@ -76,13 +78,14 @@ export const PostArticle = memo(({
     ? post.content
     : contentParts.filter(part => part.trim() !== '').join('<br />');
 
-  // ⭐ v2.11 : Vérifier visibilité selon filtres (3 boutons)
+  // ⭐ v2.14 : Vérifier visibilité - LOCAL override GLOBAL (dernier qui parle gagne!)
   const hasText = post.content?.trim();
   const hasPhotos = post.photos?.length > 0;
 
-  const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true);
-  const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
-  const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true);
+  // Si localOverride=true, TOUJOURS afficher (ignorer filtres globaux)
+  const shouldShowHeader = hasText && (localOverride || (isElementVisible?.('post_header') ?? true));
+  const shouldShowText = hasText && (localOverride || (isElementVisible?.('post_text') ?? true));
+  const shouldShowPhotos = hasPhotos && (localOverride || (isElementVisible?.('post_photos') ?? true));
 
   // 🔍 DEBUG v2.13 : Log pour diagnostiquer React #310
   if (!post.id) {
@@ -197,22 +200,30 @@ export const PostArticle = memo(({
               {title}
             </h4>
 
-            {/* ⭐ v2.11 : Toggle photos seulement si photos visibles */}
-            {hasPhotos && shouldShowPhotos && (
+            {/* ⭐ v2.14 : Badge photos toujours visible, grisé si filtre Images OFF */}
+            {hasPhotos && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowThisPostPhotos(!showThisPostPhotos);
                 }}
-                className="p-1 flex-shrink-0"
-                title="Afficher/Masquer les photos"
+                className={`p-1 flex-shrink-0 ${!imagesFilterActive ? 'opacity-40' : ''}`}
+                title={imagesFilterActive ? "Afficher/Masquer les photos" : "Photos désactivées (filtre Images OFF)"}
               >
-                <div className="flex items-center space-x-1 text-xs text-grey-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
+                <div className={`flex items-center space-x-1 text-xs px-2 py-1 rounded ${
+                  imagesFilterActive
+                    ? 'bg-blue-50 dark:bg-blue-900/30'
+                    : 'bg-gray-100 dark:bg-gray-700'
+                }`}>
                   <ImageIcon className={`w-4 h-4 transition-colors ${
-                    showThisPostPhotos ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
+                    imagesFilterActive && showThisPostPhotos
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-gray-400 dark:text-gray-500'
                   }`} />
                   <span className={`font-medium transition-colors ${
-                    showThisPostPhotos ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
+                    imagesFilterActive && showThisPostPhotos
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-gray-400 dark:text-gray-500'
                   }`}>{post.photos.length}</span>
                 </div>
               </button>

@@ -11,10 +11,10 @@
 import { useMemoriesState } from '../memories/hooks/useMemoriesState.js';
 import { useMemoriesFilters } from '../memories/hooks/useMemoriesFilters.js';
 import { useMemoriesScroll } from '../memories/hooks/useMemoriesScroll.js';
-import React, { useState, useEffect, useRef, forwardRef, memo, useCallback, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, memo, useCallback, useImperativeHandle, useMemo } from 'react';
 
 // ⭐ v2.14 : Nouveau système Context + Reducer
-import { MemoriesDisplayProvider } from '../memories/context/MemoriesDisplayContext.jsx';
+import { MemoriesDisplayProvider, useMemoriesDisplay } from '../memories/context/MemoriesDisplayContext.jsx';
 import { useDisplayPersistence } from '../memories/hooks/useDisplayPersistence.js';
 import SessionListModal from '../SessionListModal.jsx';
 import { getSessionsForContent } from '../../utils/sessionUtils.js';
@@ -96,9 +96,8 @@ const MemoriesPageInner = React.forwardRef(({
   app           // ⭐ v2.14 : Passé depuis wrapper
 }, ref) => {
 
-  // ⭐ v2.14 : Activer persistance localStorage (sera utilisé progressivement)
-  // const { state, actions } = useMemoriesDisplay();
-  // useDisplayPersistence(state, actions, app.currentUser);
+  // ⭐ v2.14 : Context pour gestion centralisée expansion
+  const { state, actions, computed } = useMemoriesDisplay();
 
   // ========================================
   // Hooks
@@ -106,42 +105,20 @@ const MemoriesPageInner = React.forwardRef(({
   const memoryState = useMemoriesState();
   const memoryFilters = useMemoriesFilters(momentsData, app.sessions);
   const memoryScroll = useMemoriesScroll(navigationContext, onNavigateBack);
-  
-  // États legacy à conserver temporairement (compatibilité TopBar)
-  const [selectedMoments, setSelectedMoments] = useState([]);
+
+  // États UI locaux (non-expansion)
   const [displayMode, setDisplayMode] = useState('focus');
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
-  // ⭐ v2.13 : Flag pour éviter restore en boucle
-  const hasRestoredVoletsRef = useRef(false);
+  // ⭐ v2.14 : Calculer selectedMoments depuis Context (compatibilité)
+  const selectedMoments = useMemo(() => {
+    return momentsData.filter(m => state.expanded.moments.has(m.id));
+  }, [momentsData, state.expanded.moments]);
 
-  // ⭐ v2.13 : Initialiser états volets depuis localStorage
-  const [expandedPosts, setExpandedPosts] = useState(() => {
-    try {
-      const stored = localStorage.getItem(`mekong_volets_state_${app.currentUser}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return new Set(parsed.expandedPostIds || []);
-      }
-    } catch (e) {
-      console.error('Error loading volets state:', e);
-    }
-    return new Set();
-  });
-
-  const [expandedPhotoGrids, setExpandedPhotoGrids] = useState(() => {
-    try {
-      const stored = localStorage.getItem(`mekong_volets_state_${app.currentUser}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return new Set(parsed.expandedPhotoGridIds || []);
-      }
-    } catch (e) {
-      console.error('Error loading volets state:', e);
-    }
-    return new Set();
-  });
+  // ⭐ v2.14 : Accès direct aux Sets du Context
+  const expandedPosts = state.expanded.posts;
+  const expandedPhotoGrids = state.expanded.photoGrids;
 
   // ⭐ v2.8f : Modal PhotoToMemoryModal
   // ⭐ v2.9j : Stocke soit photoData (old flow) soit file (new flow)
@@ -245,50 +222,8 @@ const {
 } = memoryScroll;
 
 // ========================================
-// ⭐ v2.13 : EFFECTS pour mémorisation états volets
-// ========================================
-
-// ⭐ v2.13 : Restaurer selectedMoments depuis localStorage (une fois au chargement)
-useEffect(() => {
-  if (!hasRestoredVoletsRef.current && filteredMoments.length > 0 && app.currentUser) {
-    try {
-      const stored = localStorage.getItem(`mekong_volets_state_${app.currentUser}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const selectedMomentIds = parsed.selectedMomentIds || [];
-
-        // Restaurer les moments complets depuis filteredMoments
-        const restoredMoments = filteredMoments.filter(m => selectedMomentIds.includes(m.id));
-        if (restoredMoments.length > 0) {
-          setSelectedMoments(restoredMoments);
-        }
-      }
-    } catch (e) {
-      console.error('Error restoring selectedMoments:', e);
-    }
-    hasRestoredVoletsRef.current = true;
-  }
-}, [filteredMoments, app.currentUser]);
-
-// ⭐ v2.13 : Sauvegarder états volets dans localStorage
-useEffect(() => {
-  if (!app.currentUser) return;
-
-  const voletsState = {
-    selectedMomentIds: selectedMoments.map(m => m.id),
-    expandedPostIds: Array.from(expandedPosts),
-    expandedPhotoGridIds: Array.from(expandedPhotoGrids)
-  };
-
-  try {
-    localStorage.setItem(
-      `mekong_volets_state_${app.currentUser}`,
-      JSON.stringify(voletsState)
-    );
-  } catch (e) {
-    console.error('Error saving volets state:', e);
-  }
-}, [selectedMoments, expandedPosts, expandedPhotoGrids, app.currentUser]);
+// ⭐ v2.14 : Persistence handled by Context via useDisplayPersistence
+// Removed old localStorage save/restore useEffects (see Context provider)
 
 // ========================================
 // HANDLERS MANQUANTS
@@ -946,40 +881,41 @@ const handleSelectSession = useCallback((session) => {
   }
 }, [app, onOpenSessionFromMemories, closeSessionListModal]);
 
-// Handler pour sélectionner un moment
+// ⭐ v2.14 : Handler pour sélectionner un moment (via Context)
 const handleSelectMoment = useCallback((moment, forceOpen = false) => {
-  setSelectedMoments(prev => {
-    const isAlreadySelected = prev.some(m => m.id === moment.id);
-    
-    if (displayMode === 'focus') {
-      if (isAlreadySelected && prev.length === 1) {
-        return [];
-      }
-      return [moment];
-    } else {
-      if (isAlreadySelected) {
-        return prev.filter(m => m.id !== moment.id);
-      }
-      return [...prev, moment];
-    }
-  });
-}, [displayMode]);
+  const isAlreadySelected = state.expanded.moments.has(moment.id);
 
-// ⭐ v2.11 : Handler pour déplier tous les moments
+  if (displayMode === 'focus') {
+    if (isAlreadySelected && state.expanded.moments.size === 1) {
+      // Fermer le seul moment ouvert
+      actions.toggleExpanded('moments', moment.id);
+    } else {
+      // Fermer tous et ouvrir celui-ci
+      actions.collapseAll('moments');
+      actions.toggleExpanded('moments', moment.id);
+    }
+  } else {
+    // Mode multiple: toggle individuel
+    actions.toggleExpanded('moments', moment.id);
+  }
+}, [displayMode, state.expanded.moments, actions]);
+
+// ⭐ v2.14 : Handler pour déplier tous les moments (via Context)
 const handleExpandAllMoments = useCallback(() => {
   console.log('📂 [MemoriesPage] Déplier tous les moments:', filteredMoments.length);
-  setSelectedMoments(filteredMoments);
-}, [filteredMoments]);
+  const momentIds = filteredMoments.map(m => m.id);
+  actions.expandAll('moments', momentIds);
+}, [filteredMoments, actions]);
 
-// ⭐ v2.11 : Handler pour replier tous les moments
+// ⭐ v2.14 : Handler pour replier tous les moments (via Context)
 const handleCollapseAllMoments = useCallback(() => {
   console.log('📁 [MemoriesPage] Replier tous les moments');
-  setSelectedMoments([]);
-}, []);
+  actions.collapseAll('moments');
+}, [actions]);
 
-// ⭐ v2.11 : Handler pour déplier tous les posts
+// ⭐ v2.14 : Handler pour déplier tous les posts (via Context)
 const handleExpandAllPosts = useCallback(() => {
-  const allPostIds = new Set();
+  const allPostIds = [];
   let totalWithId = 0;
   let totalAll = 0;
 
@@ -987,7 +923,7 @@ const handleExpandAllPosts = useCallback(() => {
     totalAll += moment.posts?.length || 0;
     moment.posts?.forEach(post => {
       if (post.id) {
-        allPostIds.add(post.id);
+        allPostIds.push(post.id);
         totalWithId++;
       } else {
         console.warn('⚠️ Post sans ID:', post);
@@ -995,48 +931,41 @@ const handleExpandAllPosts = useCallback(() => {
     });
   });
 
-  console.log('📂 [MemoriesPage] Déplier tous les posts:', allPostIds.size, 'IDs');
-  console.log('📊 [MemoriesPage] Comptage posts:', {totalWithId, totalAll, inSet: allPostIds.size});
+  console.log('📂 [MemoriesPage] Déplier tous les posts:', allPostIds.length, 'IDs');
+  console.log('📊 [MemoriesPage] Comptage posts:', {totalWithId, totalAll, inArray: allPostIds.length});
 
-  setExpandedPosts(allPostIds);
-}, [filteredMoments]);
+  actions.expandAll('posts', allPostIds);
+}, [filteredMoments, actions]);
 
-// ⭐ v2.11 : Handler pour replier tous les posts
+// ⭐ v2.14 : Handler pour replier tous les posts (via Context)
 const handleCollapseAllPosts = useCallback(() => {
   console.log('📁 [MemoriesPage] Replier tous les posts');
-  setExpandedPosts(new Set());
-}, []);
+  actions.collapseAll('posts');
+}, [actions]);
 
-// ⭐ v2.13 : Handler pour toggle un post individuel
+// ⭐ v2.14 : Handler pour toggle un post individuel (via Context)
 const handleTogglePostExpanded = useCallback((postId, newExpanded) => {
-  setExpandedPosts(prev => {
-    const newSet = new Set(prev);
-    if (newExpanded) {
-      newSet.add(postId);
-    } else {
-      newSet.delete(postId);
-    }
-    return newSet;
-  });
-}, []);
+  // Context gère déjà le toggle, mais pour compatibilité on peut appeler directement
+  actions.toggleExpanded('posts', postId);
+}, [actions]);
 
-// ⭐ v2.12 : Handler pour déplier toutes les grilles photos
+// ⭐ v2.14 : Handler pour déplier toutes les grilles photos (via Context)
 const handleExpandAllPhotoGrids = useCallback(() => {
-  const allMomentIds = new Set();
+  const allMomentIds = [];
   filteredMoments.forEach(moment => {
     if (moment.dayPhotos?.length > 0) {
-      allMomentIds.add(moment.id);
+      allMomentIds.push(moment.id);
     }
   });
-  console.log('📂 [MemoriesPage] Déplier toutes les grilles photos:', allMomentIds.size);
-  setExpandedPhotoGrids(allMomentIds);
-}, [filteredMoments]);
+  console.log('📂 [MemoriesPage] Déplier toutes les grilles photos:', allMomentIds.length);
+  actions.expandAll('photoGrids', allMomentIds);
+}, [filteredMoments, actions]);
 
-// ⭐ v2.12 : Handler pour replier toutes les grilles photos
+// ⭐ v2.14 : Handler pour replier toutes les grilles photos (via Context)
 const handleCollapseAllPhotoGrids = useCallback(() => {
   console.log('📁 [MemoriesPage] Replier toutes les grilles photos');
-  setExpandedPhotoGrids(new Set());
-}, []);
+  actions.collapseAll('photoGrids');
+}, [actions]);
 
 // Handler pour créer et ouvrir une session
 const handleCreateAndOpenSession = useCallback(async (source, contextMoment, options = {}) => {
@@ -1411,9 +1340,10 @@ const navigationProcessedRef = useRef(null);
       );
       
       if (targetMoment) {
-        // Ouvrir le moment
-        setSelectedMoments([targetMoment]);
-        
+        // ⭐ v2.14 : Ouvrir le moment via Context
+        actions.collapseAll('moments');
+        actions.toggleExpanded('moments', targetMoment.id);
+
         // Scroll vers post spécifique
 const postId = targetContent.id;
 setTimeout(() => {
@@ -1435,9 +1365,10 @@ setTimeout(() => {
       targetMoment = momentsData.find(m => m.id === searchId);
       
       if (targetMoment) {
-        // Ouvrir le moment
-        setSelectedMoments([targetMoment]);
-        
+        // ⭐ v2.14 : Ouvrir le moment via Context
+        actions.collapseAll('moments');
+        actions.toggleExpanded('moments', targetMoment.id);
+
         // Scroll vers moment
 const momentId = targetMoment.id;
 setTimeout(() => {
@@ -1464,9 +1395,10 @@ setTimeout(() => {
         if (dayPhoto) {
           targetMoment = moment;
 
-          // Ouvrir le moment
-          setSelectedMoments([moment]);
-          
+          // ⭐ v2.14 : Ouvrir le moment via Context
+          actions.collapseAll('moments');
+          actions.toggleExpanded('moments', moment.id);
+
           // Construire galerie complète
           const gallery = [
             ...(moment.dayPhotos || []),
@@ -1495,9 +1427,10 @@ setTimeout(() => {
             if (postPhoto) {
               targetMoment = moment;
 
-              // Ouvrir le moment
-              setSelectedMoments([moment]);
-              
+              // ⭐ v2.14 : Ouvrir le moment via Context
+              actions.collapseAll('moments');
+              actions.toggleExpanded('moments', moment.id);
+
               // Construire galerie complète
               const gallery = [
                 ...(moment.dayPhotos || []),
@@ -1542,9 +1475,10 @@ setTimeout(() => {
 
       const { scrollPosition, openMomentId: savedMomentId, editionMode: savedEditionMode, crossRefsModal: savedModal } = navigationContext.returnContext;
 
-      // Restaurer état page
+      // ⭐ v2.14 : Restaurer état page via Context
       if (savedMomentId) {
-        setSelectedMoments(momentsData.filter(m => m.id === savedMomentId));
+        actions.collapseAll('moments');
+        actions.toggleExpanded('moments', savedMomentId);
       }
 
       // ⭐ v2.9t : Restaurer mode édition si nécessaire
