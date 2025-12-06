@@ -26,6 +26,7 @@ export const PostArticle = memo(({
   moment,
   displayOptions,
   isElementVisible,  // ⭐ v2.11 : Fonction de visibilité des filtres
+  localOverride,     // ⭐ v2.14 : Local override global (dernier qui parle gagne)
   onPhotoClick,
   onCreateSession,
   activePhotoGrid,
@@ -77,13 +78,14 @@ export const PostArticle = memo(({
     ? post.content
     : contentParts.filter(part => part.trim() !== '').join('<br />');
 
-  // ⭐ v2.11 : Vérifier visibilité selon filtres (3 boutons)
+  // ⭐ v2.14 : Vérifier visibilité - LOCAL override GLOBAL (dernier qui parle gagne!)
   const hasText = post.content?.trim();
   const hasPhotos = post.photos?.length > 0;
 
-  const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true);
-  const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
-  const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true);
+  // Si localOverride=true, TOUJOURS afficher (ignorer filtres globaux)
+  const shouldShowHeader = hasText && (localOverride || (isElementVisible?.('post_header') ?? true));
+  const shouldShowText = hasText && (localOverride || (isElementVisible?.('post_text') ?? true));
+  const shouldShowPhotos = hasPhotos && (localOverride || (isElementVisible?.('post_photos') ?? true));
 
   // 🔍 DEBUG v2.13 : Log pour diagnostiquer React #310
   if (!post.id) {
