@@ -87,23 +87,23 @@ export default function MemoriesTopBar({
   const photosAllExpanded = computed.allPhotoGridsExpanded(momentsWithPhotosCount);
 
   // 🔍 DEBUG v2.14b : Logs pour diagnostiquer le problème de dépliement
-  console.log('🔍 [TopBar] État dépliement:', {
-    moments: {
-      allExpanded: momentsAllExpanded,
-      count: filteredMomentsCount,
-      expandedSize: state.expanded.moments.size,
-      expandedIds: Array.from(state.expanded.moments)
-    },
-    posts: {
-      allExpanded: postsAllExpanded,
-      count: totalPostsCount,
-      expandedSize: state.expanded.posts.size
-    },
-    photos: {
-      allExpanded: photosAllExpanded,
-      count: momentsWithPhotosCount,
-      expandedSize: state.expanded.photoGrids.size
-    }
+  console.log('🔍 [TopBar] État dépliement au render:');
+  console.log('  Moments:', {
+    allExpanded: momentsAllExpanded,
+    filteredCount: filteredMomentsCount,
+    expandedSize: state.expanded.moments.size,
+    match: state.expanded.moments.size === filteredMomentsCount,
+    expandedIds: Array.from(state.expanded.moments).slice(0, 5) + (state.expanded.moments.size > 5 ? '...' : '')
+  });
+  console.log('  Posts:', {
+    allExpanded: postsAllExpanded,
+    totalCount: totalPostsCount,
+    expandedSize: state.expanded.posts.size
+  });
+  console.log('  Photos:', {
+    allExpanded: photosAllExpanded,
+    withPhotosCount: momentsWithPhotosCount,
+    expandedSize: state.expanded.photoGrids.size
   });
 
   return (
@@ -173,7 +173,17 @@ export default function MemoriesTopBar({
           <div className="flex flex-col items-center">
             {/* Bouton Affichage */}
             <button
-              onClick={() => actions.toggleContentFilter('structure')}
+              onClick={() => {
+                const wasOff = !state.contentFilters.structure;
+                actions.toggleContentFilter('structure');
+
+                // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
+                if (wasOff) {
+                  const momentIds = memoriesPageRef?.current?.getAllMomentIds?.() || [];
+                  console.log('🔍 [TopBar] Auto-activation dépliement moments:', momentIds);
+                  actions.expandAll('moments', momentIds);
+                }
+              }}
               className={`p-1.5 rounded-t transition-colors duration-150 ${
                 state.contentFilters.structure
                   ? 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400'
@@ -187,13 +197,19 @@ export default function MemoriesTopBar({
             {/* ⭐ v2.14 : Bouton Dépliement - Collé + même couleur */}
             <button
               onClick={() => {
-                console.log('🔍 [TopBar] Clic bouton dépliement moments, allExpanded:', momentsAllExpanded);
+                const momentIds = memoriesPageRef?.current?.getAllMomentIds?.() || [];
+                console.log('🔍 [TopBar] Clic bouton dépliement moments');
+                console.log('  - allExpanded:', momentsAllExpanded);
+                console.log('  - filteredCount:', filteredMomentsCount);
+                console.log('  - expandedSize:', state.expanded.moments.size);
+                console.log('  - momentIds:', momentIds);
+                console.log('  - momentIds.length:', momentIds.length);
+
                 if (momentsAllExpanded) {
-                  console.log('🔍 [TopBar] → collapseAll moments');
+                  console.log('  → collapseAll moments');
                   actions.collapseAll('moments');
                 } else {
-                  const momentIds = memoriesPageRef?.current?.getAllMomentIds?.() || [];
-                  console.log('🔍 [TopBar] → expandAll moments, IDs:', momentIds);
+                  console.log('  → expandAll moments');
                   actions.expandAll('moments', momentIds);
                 }
               }}
