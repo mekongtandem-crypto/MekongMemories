@@ -425,8 +425,8 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
           return state.contentFilters.textes;
 
         case 'post_photos':
-          // Q1: Photos posts visibles si Textes OU Images
-          return state.contentFilters.textes || state.contentFilters.images;
+          // ⭐ v2.14 : Photos posts visibles UNIQUEMENT si Images ON
+          return state.contentFilters.images;
 
         case 'day_photos':
           return state.contentFilters.images;
