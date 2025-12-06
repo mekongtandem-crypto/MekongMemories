@@ -48,6 +48,7 @@ export default function TopBar({
           editionMode={props.editionMode}
           onToggleEditionMode={props.onToggleEditionMode}
           onCancelEditionMode={props.onCancelEditionMode}
+          memoriesPageRef={props.memoriesPageRef}
         />
       );
     

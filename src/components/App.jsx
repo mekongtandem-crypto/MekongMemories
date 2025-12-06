@@ -546,7 +546,8 @@ export default function App() {
               setSelectedTheme={setSelectedTheme}
               editionMode={editionMode}
               onToggleEditionMode={handleToggleEditionMode}
-              onCancelEditionMode={handleCancelEditionMode} 
+              onCancelEditionMode={handleCancelEditionMode}
+              memoriesPageRef={memoriesPageRef}
             />
           </div>
 

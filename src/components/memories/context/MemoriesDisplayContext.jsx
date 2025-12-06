@@ -53,7 +53,7 @@ export const getInitialState = (momentsData = []) => {
   });
 
   return {
-    // Filtres de contenu
+    // ⭐ v2.14 : Filtres de contenu (nomenclature validée)
     contentFilters: {
       structure: true,  // ✨ En-têtes moments (ex "Moments")
       textes: true,     // 🗒️ Posts complets (ex "Posts")
@@ -414,7 +414,7 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
     isPostExpanded: (id) => state.expanded.posts.has(id),
     isPhotoGridExpanded: (id) => state.expanded.photoGrids.has(id),
 
-    // Visibilité éléments (selon filtres)
+    // Visibilité éléments (selon filtres) - v2.14 nomenclature
     isElementVisible: (elementType) => {
       switch (elementType) {
         case 'moment_header':
@@ -436,7 +436,7 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
       }
     },
 
-    // Filtres actifs
+    // Filtres actifs - v2.14
     hasActiveFilters: () => {
       return (
         state.searchQuery.trim() !== '' ||

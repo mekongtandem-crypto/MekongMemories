@@ -1239,7 +1239,7 @@ const navigationProcessedRef = useRef(null);
       const randomMoment = momentsData[randomIndex];
       handleSelectMoment(randomMoment);
       setCurrentDay(randomMoment.dayStart);
-      
+
       // Scroll vers le moment sélectionné
       setTimeout(() => {
         scrollToMoment(randomMoment.id);
@@ -1251,14 +1251,40 @@ const navigationProcessedRef = useRef(null);
     if (targetMoment) {
       handleSelectMoment(targetMoment);
       setCurrentDay(day);
-      
+
       // Scroll vers le moment
       setTimeout(() => {
         scrollToMoment(targetMoment.id);
       }, 100);
     }
-  }
-}), [momentsData, setCurrentDay, scrollToMoment, handleSelectMoment]);
+  },
+  // ⭐ v2.14 : Méthodes pour obtenir les IDs (pour boutons expandAll TopBar)
+  getAllMomentIds: () => {
+    return filteredMoments.map(m => m.id);
+  },
+  getAllPostIds: () => {
+    const postIds = [];
+    filteredMoments.forEach(moment => {
+      if (moment.posts) {
+        moment.posts.forEach(post => {
+          if (post.id) postIds.push(post.id);
+        });
+      }
+    });
+    return postIds;
+  },
+  getAllPhotoGridIds: () => {
+    return filteredMoments
+      .filter(m => m.dayPhotos && m.dayPhotos.length > 0)
+      .map(m => m.id);
+  },
+  // ⭐ v2.14 : Counts pour TopBar
+  getCounts: () => ({
+    filteredMomentsCount: filteredMoments.length,
+    totalPostsCount: filteredMoments.reduce((acc, m) => acc + (m.posts?.filter(p => p.id).length || 0), 0),
+    momentsWithPhotosCount: filteredMoments.filter(m => m.dayPhotos?.length > 0).length
+  })
+}), [momentsData, filteredMoments, setCurrentDay, scrollToMoment, handleSelectMoment]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
