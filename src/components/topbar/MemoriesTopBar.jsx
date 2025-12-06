@@ -193,7 +193,16 @@ export default function MemoriesTopBar({
           {/* 🗒️ Textes (ex-Posts) + mini bouton volet */}
           <div className="flex flex-col items-center gap-0.5">
             <button
-              onClick={() => actions.toggleContentFilter('textes')}
+              onClick={() => {
+                const wasOff = !state.contentFilters.textes;
+                actions.toggleContentFilter('textes');
+
+                // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
+                if (wasOff) {
+                  const postIds = memoriesPageRef?.current?.getAllPostIds?.() || [];
+                  actions.expandAll('posts', postIds);
+                }
+              }}
               className={`p-1.5 rounded transition-colors duration-150 ${
                 state.contentFilters.textes
                   ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
@@ -234,7 +243,16 @@ export default function MemoriesTopBar({
           {/* 📸 Images (ex-Photos) + mini bouton volet */}
           <div className="flex flex-col items-center gap-0.5">
             <button
-              onClick={() => actions.toggleContentFilter('images')}
+              onClick={() => {
+                const wasOff = !state.contentFilters.images;
+                actions.toggleContentFilter('images');
+
+                // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
+                if (wasOff) {
+                  const photoGridIds = memoriesPageRef?.current?.getAllPhotoGridIds?.() || [];
+                  actions.expandAll('photoGrids', photoGridIds);
+                }
+              }}
               className={`p-1.5 rounded transition-colors duration-150 ${
                 state.contentFilters.images
                   ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
