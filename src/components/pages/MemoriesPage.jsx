@@ -56,18 +56,14 @@ import {
 // ========================================
 
 /**
- * MemoriesPage - Wrapper avec MemoriesDisplayProvider
- * Entoure le contenu interne avec le Context pour gérer l'affichage
+ * MemoriesPage - Wrapper simplifié
+ * ⭐ v2.14 : Provider déplacé dans App.jsx pour englober TopBar + MemoriesPage
  */
 function MemoriesPage(props, ref) {
   const app = useAppState();
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
 
-  return (
-    <MemoriesDisplayProvider momentsData={momentsData}>
-      <MemoriesPageInner {...props} ref={ref} momentsData={momentsData} app={app} />
-    </MemoriesDisplayProvider>
-  );
+  return <MemoriesPageInner {...props} ref={ref} momentsData={momentsData} app={app} />;
 }
 
 // ========================================

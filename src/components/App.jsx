@@ -19,6 +19,9 @@ import SessionsPage from './pages/SessionsPage.jsx';
 import ChatPage from './pages/ChatPage.jsx';
 import StartupPage from './pages/StartupPage.jsx';
 import LoadingSpinner from './LoadingSpinner.jsx';
+// ⭐ v2.14 : Context pour MemoriesPage
+import { MemoriesDisplayProvider } from './memories/context/MemoriesDisplayContext.jsx';
+import { enrichMomentsWithData } from './memories/layout/helpers.js';
 
 // ============================================
 // ERROR BOUNDARY
@@ -515,14 +518,32 @@ export default function App() {
   // 8. RENDER PRINCIPAL
   // ============================================
 
+  // ⭐ v2.14 : Préparer momentsData pour MemoriesDisplayProvider
+  const momentsData = app.currentPage === 'memories'
+    ? enrichMomentsWithData(app.masterIndex?.moments)
+    : null;
+
+  // ⭐ v2.14 : Wrapper conditionnel pour Provider
+  const ContentWrapper = ({ children }) => {
+    if (app.currentPage === 'memories' && momentsData) {
+      return (
+        <MemoriesDisplayProvider momentsData={momentsData}>
+          {children}
+        </MemoriesDisplayProvider>
+      );
+    }
+    return <>{children}</>;
+  };
+
   return (
     <ThemeProvider>
       <ErrorBoundary>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col transition-colors duration-200">
-          
-          {/* TopBar fixe */}
-          <div className="fixed top-0 left-0 right-0 z-40">
-            <TopBar
+        <ContentWrapper>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col transition-colors duration-200">
+
+            {/* TopBar fixe */}
+            <div className="fixed top-0 left-0 right-0 z-40">
+              <TopBar
               currentPage={app.currentPage}
               onCloseChatSession={app.closeChatSession}
               isTimelineVisible={isTimelineVisible}
@@ -574,7 +595,8 @@ export default function App() {
               variant={app.loadingOperation.variant}
             />
           )}
-        </div>
+          </div>
+        </ContentWrapper>
       </ErrorBoundary>
     </ThemeProvider>
   );
