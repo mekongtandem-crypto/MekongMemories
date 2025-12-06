@@ -110,8 +110,9 @@ export const MomentContent = memo(({
             onContentSelected={onContentSelected}
           />
 
+          {/* ⭐ v2.14 : Fond subtil pour distinguer grille photos du texte */}
           {localDisplay.showDayPhotos && (
-            <>
+            <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
               <PhotoGrid
                 photos={moment.dayPhotos.slice(0, visibleDayPhotos)}
                 moment={moment}
@@ -132,10 +133,10 @@ export const MomentContent = memo(({
                 onShowSessions={onShowSessions}
                 editionMode={editionMode}
               />
-              
+
               {visibleDayPhotos < moment.dayPhotoCount && (
                 <div className="text-center mt-3">
-                  <button 
+                  <button
                     onClick={onLoadMorePhotos}
                     className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 text-sm font-medium transition-colors"
                   >
@@ -143,7 +144,7 @@ export const MomentContent = memo(({
                   </button>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       )}
