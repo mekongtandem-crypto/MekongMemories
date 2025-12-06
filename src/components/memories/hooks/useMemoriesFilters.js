@@ -10,76 +10,45 @@
  * - Tri (chronologique, aléatoire, richesse)
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import {
   generatePostKey,
   generatePhotoMomentKey,
   generatePhotoMastodonKey
 } from '../../../utils/themeUtils.js';
+import { useMemoriesDisplay } from '../context/MemoriesDisplayContext.jsx';  // ⭐ v2.14
 
 export function useMemoriesFilters(momentsData, sessions = []) {
 
   // ========================================
-  // ⭐ v2.11 : FILTRES DE CONTENU ADDITIFS (3 boutons)
+  // ⭐ v2.14 : FILTRES DEPUIS CONTEXT (plus de useState local)
   // ========================================
 
-  // Charger depuis localStorage ou utiliser défauts
-  const [contentFilters, setContentFilters] = useState(() => {
-    const saved = localStorage.getItem('mekong_content_filters');
-    return saved ? JSON.parse(saved) : {
-      moments: true,   // ✨ En-têtes moments
-      posts: true,     // 🗒️ Posts complets (header + texte + photos post)
-      photos: true     // 📸 Toutes photos (moment + post, sans decoration)
-    };
-  });
+  const { state, actions } = useMemoriesDisplay();
+
+  // ⭐ v2.14 : Mapper nouvelles clés Context → anciennes clés pour compatibilité
+  const contentFilters = {
+    moments: state.contentFilters.structure,  // Structure → moments
+    posts: state.contentFilters.textes,       // Textes → posts
+    photos: state.contentFilters.images       // Images → photos
+  };
+
+  // ⭐ v2.14 : Wrapper pour compatibilité (appelle Context actions)
+  const toggleContentFilter = useCallback((filterKey) => {
+    const contextKey = {
+      moments: 'structure',
+      posts: 'textes',
+      photos: 'images'
+    }[filterKey];
+
+    if (contextKey) {
+      actions.toggleContentFilter(contextKey);
+    }
+  }, [actions]);
 
   // Compteur de clics sur dernier filtre (pour message humoristique)
   const lastFilterClickCount = useRef(0);
   const lastFilterClickTimer = useRef(null);
-
-  // Sauvegarder dans localStorage à chaque changement
-  useEffect(() => {
-    console.log('🔧 [useMemoriesFilters] contentFilters changed:', contentFilters);
-    localStorage.setItem('mekong_content_filters', JSON.stringify(contentFilters));
-  }, [contentFilters]);
-
-  // Toggle un filtre (avec protection minimum 1)
-  const toggleContentFilter = useCallback((filterKey) => {
-    console.log('🎯 [useMemoriesFilters] toggleContentFilter called:', filterKey);
-    setContentFilters(prev => {
-      console.log('📊 [useMemoriesFilters] Previous state:', prev);
-      const newState = { ...prev, [filterKey]: !prev[filterKey] };
-      console.log('📊 [useMemoriesFilters] New state (before validation):', newState);
-
-      // ⚠️ Empêcher de tout désactiver
-      const hasAtLeastOne = Object.values(newState).some(v => v === true);
-
-      if (!hasAtLeastOne) {
-        console.warn('⚠️ [useMemoriesFilters] Cannot disable all filters - keeping previous state');
-        // Compter les clics rapides
-        lastFilterClickCount.current += 1;
-
-        // Reset après 2 secondes
-        clearTimeout(lastFilterClickTimer.current);
-        lastFilterClickTimer.current = setTimeout(() => {
-          lastFilterClickCount.current = 0;
-        }, 2000);
-
-        // Message après 3 clics
-        if (lastFilterClickCount.current >= 3) {
-          console.log('😊 Au moins un filtre doit rester actif pour afficher les souvenirs !');
-          lastFilterClickCount.current = 0;
-        }
-
-        return prev; // Annuler le changement
-      }
-
-      // Reset compteur si changement réussi
-      lastFilterClickCount.current = 0;
-      console.log('✅ [useMemoriesFilters] Filter toggled successfully:', newState);
-      return newState;
-    });
-  }, []);
 
   // Déterminer si un élément est visible selon filtres
   const isElementVisible = useCallback((elementType) => {
