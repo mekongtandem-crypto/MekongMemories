@@ -1,14 +1,21 @@
 /**
- * MemoriesPage.jsx v7 -Phase 2
+ * MemoriesPage.jsx v2.14 - Refactoring Context + Reducer
+ * ✅ MemoriesDisplayProvider intégré
+ * ✅ Persistance localStorage automatique
+ * ⏳ Migration progressive vers useMemoriesDisplay()
  */
 
 // ========================================
-// 1. IMPORTS (ajouter en haut)
+// 1. IMPORTS
 // ========================================
 import { useMemoriesState } from '../memories/hooks/useMemoriesState.js';
 import { useMemoriesFilters } from '../memories/hooks/useMemoriesFilters.js';
 import { useMemoriesScroll } from '../memories/hooks/useMemoriesScroll.js';
 import React, { useState, useEffect, useRef, forwardRef, memo, useCallback, useImperativeHandle } from 'react';
+
+// ⭐ v2.14 : Nouveau système Context + Reducer
+import { MemoriesDisplayProvider } from '../memories/context/MemoriesDisplayContext.jsx';
+import { useDisplayPersistence } from '../memories/hooks/useDisplayPersistence.js';
 import SessionListModal from '../SessionListModal.jsx';
 import { getSessionsForContent } from '../../utils/sessionUtils.js';
 import { useAppState } from '../../hooks/useAppState.js';
@@ -45,10 +52,33 @@ import {
 
 
 // ========================================
-// COMPOSANT PRINCIPAL
+// WRAPPER EXTERNE (Provider)
 // ========================================
 
-function MemoriesPage({
+/**
+ * MemoriesPage - Wrapper avec MemoriesDisplayProvider
+ * Entoure le contenu interne avec le Context pour gérer l'affichage
+ */
+function MemoriesPage(props, ref) {
+  const app = useAppState();
+  const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
+
+  return (
+    <MemoriesDisplayProvider momentsData={momentsData}>
+      <MemoriesPageInner {...props} ref={ref} momentsData={momentsData} app={app} />
+    </MemoriesDisplayProvider>
+  );
+}
+
+// ========================================
+// COMPOSANT INTERNE (Contenu)
+// ========================================
+
+/**
+ * MemoriesPageInner - Contenu principal de la page
+ * ⏳ Migration progressive vers useMemoriesDisplay()
+ */
+const MemoriesPageInner = React.forwardRef(({
   isTimelineVisible,
   setIsTimelineVisible,
   isSearchOpen,
@@ -64,12 +94,15 @@ function MemoriesPage({
   onContentSelected,
   onOpenSessionFromMemories,
   editionMode,
-  onToggleEditionMode,  // ⭐ v2.9t : Ajouté pour restauration mode édition
-  onCancelEditionMode
-}, ref) {
+  onToggleEditionMode,
+  onCancelEditionMode,
+  momentsData,  // ⭐ v2.14 : Passé depuis wrapper
+  app           // ⭐ v2.14 : Passé depuis wrapper
+}, ref) => {
 
-  const app = useAppState();
-  const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
+  // ⭐ v2.14 : Activer persistance localStorage (sera utilisé progressivement)
+  // const { state, actions } = useMemoriesDisplay();
+  // useDisplayPersistence(state, actions, app.currentUser);
 
   // ========================================
   // Hooks
@@ -1953,7 +1986,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
 
     </div>
   );
-}
+});  // Fin MemoriesPageInner (forwardRef)
 
 // ====================================================================
 // COMPOSANTS
@@ -2069,5 +2102,5 @@ function getFilteredMoments(momentsData, searchQuery, momentFilter, sessions, se
   return filtered;
 }
 
-
-export default React.forwardRef(MemoriesPage);
+// ⭐ v2.14 : Export wrapper principal (gère déjà forwardRef dans MemoriesPageInner)
+export default MemoriesPage;
