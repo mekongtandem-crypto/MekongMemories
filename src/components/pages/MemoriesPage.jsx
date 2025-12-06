@@ -1208,11 +1208,15 @@ const navigationProcessedRef = useRef(null);
       .map(m => m.id);
   },
   // ⭐ v2.14 : Counts pour TopBar
-  getCounts: () => ({
-    filteredMomentsCount: filteredMoments.length,
-    totalPostsCount: filteredMoments.reduce((acc, m) => acc + (m.posts?.filter(p => p.id).length || 0), 0),
-    momentsWithPhotosCount: filteredMoments.filter(m => m.dayPhotos?.length > 0).length
-  })
+  getCounts: () => {
+    const counts = {
+      filteredMomentsCount: filteredMoments.length,
+      totalPostsCount: filteredMoments.reduce((acc, m) => acc + (m.posts?.filter(p => p.id).length || 0), 0),
+      momentsWithPhotosCount: filteredMoments.filter(m => m.dayPhotos?.length > 0).length
+    };
+    console.log('📊 [MemoriesPage] getCounts appelé:', counts);
+    return counts;
+  }
 }), [momentsData, filteredMoments, setCurrentDay, scrollToMoment, handleSelectMoment]);
 
   useEffect(() => {
