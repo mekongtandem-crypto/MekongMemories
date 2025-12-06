@@ -85,13 +85,20 @@ export function useMemoriesFilters(momentsData, sessions = []) {
 
   // Calculer stats visibles pour un moment selon filtres actifs
   const getVisibleStats = useCallback((moment) => {
-    if (!moment) return { posts: 0, dayPhotos: 0, totalVisible: 0 };
+    if (!moment) return { posts: 0, dayPhotos: 0, momentHeader: 0, totalVisible: 0 };
 
     const stats = {
       posts: 0,
       dayPhotos: 0,
+      momentHeader: 0,
       totalVisible: 0
     };
+
+    // ✨ Headers moments (si structure actif)
+    // ⚠️ v2.14c : FIX - Le header compte comme contenu visible!
+    if (contentFilters.moments) {
+      stats.momentHeader = 1;
+    }
 
     // 🗒️ Posts complets (si posts actif ET moment a des posts)
     if (contentFilters.posts && moment.posts) {
@@ -107,7 +114,7 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       }
     }
 
-    stats.totalVisible = stats.posts + stats.dayPhotos;
+    stats.totalVisible = stats.momentHeader + stats.posts + stats.dayPhotos;
 
     return stats;
   }, [contentFilters]);
