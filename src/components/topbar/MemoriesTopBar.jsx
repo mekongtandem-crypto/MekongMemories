@@ -150,10 +150,11 @@ export default function MemoriesTopBar({
         <div className="flex items-center gap-3">
 
           {/* ✨ Structure (ex-Moments) + mini bouton volet */}
-          <div className="flex flex-col items-center gap-0.5">
+          <div className="flex flex-col items-center">
+            {/* Bouton Affichage */}
             <button
               onClick={() => actions.toggleContentFilter('structure')}
-              className={`p-1.5 rounded transition-colors duration-150 ${
+              className={`p-1.5 rounded-t transition-colors duration-150 ${
                 state.contentFilters.structure
                   ? 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400'
                   : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -163,22 +164,23 @@ export default function MemoriesTopBar({
               <SparklesIcon className="w-4 h-4" />
             </button>
 
-            {/* ⭐ v2.14 : Mini bouton volet - Design discret (flèche) */}
+            {/* ⭐ v2.14 : Bouton Dépliement - Collé + même couleur */}
             <button
               onClick={() => {
                 if (momentsAllExpanded) {
                   actions.collapseAll('moments');
                 } else {
-                  // ⭐ v2.14 : Récupérer IDs depuis MemoriesPage ref
                   const momentIds = memoriesPageRef?.current?.getAllMomentIds?.() || [];
                   actions.expandAll('moments', momentIds);
                 }
               }}
               disabled={!state.contentFilters.structure}
-              className={`p-0.5 transition-colors duration-150 ${
+              className={`p-0.5 rounded-b transition-colors duration-150 ${
                 !state.contentFilters.structure
-                  ? 'opacity-30 cursor-not-allowed text-gray-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  ? 'opacity-30 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400'
+                  : state.contentFilters.structure
+                    ? 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
               title={momentsAllExpanded ? "Replier tous les moments" : "Déplier tous les moments"}
             >
@@ -191,10 +193,20 @@ export default function MemoriesTopBar({
           </div>
 
           {/* 🗒️ Textes (ex-Posts) + mini bouton volet */}
-          <div className="flex flex-col items-center gap-0.5">
+          <div className="flex flex-col items-center">
+            {/* Bouton Affichage */}
             <button
-              onClick={() => actions.toggleContentFilter('textes')}
-              className={`p-1.5 rounded transition-colors duration-150 ${
+              onClick={() => {
+                const wasOff = !state.contentFilters.textes;
+                actions.toggleContentFilter('textes');
+
+                // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
+                if (wasOff) {
+                  const postIds = memoriesPageRef?.current?.getAllPostIds?.() || [];
+                  actions.expandAll('posts', postIds);
+                }
+              }}
+              className={`p-1.5 rounded-t transition-colors duration-150 ${
                 state.contentFilters.textes
                   ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
                   : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -204,22 +216,23 @@ export default function MemoriesTopBar({
               <FileText className="w-4 h-4" />
             </button>
 
-            {/* ⭐ v2.14 : Mini bouton volet - Design discret */}
+            {/* ⭐ v2.14 : Bouton Dépliement - Collé + même couleur */}
             <button
               onClick={() => {
                 if (postsAllExpanded) {
                   actions.collapseAll('posts');
                 } else {
-                  // ⭐ v2.14 : Récupérer IDs depuis MemoriesPage ref
                   const postIds = memoriesPageRef?.current?.getAllPostIds?.() || [];
                   actions.expandAll('posts', postIds);
                 }
               }}
               disabled={!state.contentFilters.textes}
-              className={`p-0.5 transition-colors duration-150 ${
+              className={`p-0.5 rounded-b transition-colors duration-150 ${
                 !state.contentFilters.textes
-                  ? 'opacity-30 cursor-not-allowed text-gray-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  ? 'opacity-30 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400'
+                  : state.contentFilters.textes
+                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
               title={postsAllExpanded ? "Replier tous les textes" : "Déplier tous les textes"}
             >
@@ -232,10 +245,20 @@ export default function MemoriesTopBar({
           </div>
 
           {/* 📸 Images (ex-Photos) + mini bouton volet */}
-          <div className="flex flex-col items-center gap-0.5">
+          <div className="flex flex-col items-center">
+            {/* Bouton Affichage */}
             <button
-              onClick={() => actions.toggleContentFilter('images')}
-              className={`p-1.5 rounded transition-colors duration-150 ${
+              onClick={() => {
+                const wasOff = !state.contentFilters.images;
+                actions.toggleContentFilter('images');
+
+                // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
+                if (wasOff) {
+                  const photoGridIds = memoriesPageRef?.current?.getAllPhotoGridIds?.() || [];
+                  actions.expandAll('photoGrids', photoGridIds);
+                }
+              }}
+              className={`p-1.5 rounded-t transition-colors duration-150 ${
                 state.contentFilters.images
                   ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
                   : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -245,22 +268,23 @@ export default function MemoriesTopBar({
               <Camera className="w-4 h-4" />
             </button>
 
-            {/* ⭐ v2.14 : Mini bouton volet - Design discret */}
+            {/* ⭐ v2.14 : Bouton Dépliement - Collé + même couleur */}
             <button
               onClick={() => {
                 if (photosAllExpanded) {
                   actions.collapseAll('photoGrids');
                 } else {
-                  // ⭐ v2.14 : Récupérer IDs depuis MemoriesPage ref
                   const photoGridIds = memoriesPageRef?.current?.getAllPhotoGridIds?.() || [];
                   actions.expandAll('photoGrids', photoGridIds);
                 }
               }}
               disabled={!state.contentFilters.images}
-              className={`p-0.5 transition-colors duration-150 ${
+              className={`p-0.5 rounded-b transition-colors duration-150 ${
                 !state.contentFilters.images
-                  ? 'opacity-30 cursor-not-allowed text-gray-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  ? 'opacity-30 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400'
+                  : state.contentFilters.images
+                    ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
               title={photosAllExpanded ? "Replier toutes les grilles images" : "Déplier toutes les grilles images"}
             >
