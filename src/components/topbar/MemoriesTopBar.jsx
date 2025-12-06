@@ -174,14 +174,23 @@ export default function MemoriesTopBar({
             {/* Bouton Affichage */}
             <button
               onClick={() => {
-                const wasOff = !state.contentFilters.structure;
+                const wasOn = state.contentFilters.structure;
                 actions.toggleContentFilter('structure');
 
                 // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
-                if (wasOff) {
+                if (!wasOn) {
                   const momentIds = memoriesPageRef?.current?.getAllMomentIds?.() || [];
-                  console.log('🔍 [TopBar] Auto-activation dépliement moments:', momentIds);
+                  console.log('🔍 [TopBar] Auto-activation dépliement moments (OFF→ON):', momentIds);
                   actions.expandAll('moments', momentIds);
+                }
+
+                // ⭐ v2.14d : Si passage ON → OFF (mode Vrac), tout déplier
+                if (wasOn) {
+                  console.log('🔍 [TopBar] Mode Vrac activé: auto-dépliement tout le contenu');
+                  const postIds = memoriesPageRef?.current?.getAllPostIds?.() || [];
+                  const photoGridIds = memoriesPageRef?.current?.getAllPhotoGridIds?.() || [];
+                  actions.expandAll('posts', postIds);
+                  actions.expandAll('photoGrids', photoGridIds);
                 }
               }}
               className={`p-1.5 rounded-t transition-colors duration-150 ${
@@ -265,13 +274,12 @@ export default function MemoriesTopBar({
                   actions.expandAll('posts', postIds);
                 }
               }}
-              disabled={!state.contentFilters.textes}
+              // ⭐ v2.14d : Désactivé si Texte OFF OU Structure OFF (mode Vrac)
+              disabled={!state.contentFilters.textes || !state.contentFilters.structure}
               className={`p-0.5 rounded-b transition-colors duration-150 ${
-                !state.contentFilters.textes
+                !state.contentFilters.textes || !state.contentFilters.structure
                   ? 'opacity-30 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400'
-                  : state.contentFilters.textes
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  : 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800'
               }`}
               title={postsAllExpanded ? "Replier tous les textes" : "Déplier tous les textes"}
             >
@@ -317,13 +325,12 @@ export default function MemoriesTopBar({
                   actions.expandAll('photoGrids', photoGridIds);
                 }
               }}
-              disabled={!state.contentFilters.images}
+              // ⭐ v2.14d : Désactivé si Image OFF OU Structure OFF (mode Vrac)
+              disabled={!state.contentFilters.images || !state.contentFilters.structure}
               className={`p-0.5 rounded-b transition-colors duration-150 ${
-                !state.contentFilters.images
+                !state.contentFilters.images || !state.contentFilters.structure
                   ? 'opacity-30 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400'
-                  : state.contentFilters.images
-                    ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  : 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800'
               }`}
               title={photosAllExpanded ? "Replier toutes les grilles images" : "Déplier toutes les grilles images"}
             >
