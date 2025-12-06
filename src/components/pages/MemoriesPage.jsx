@@ -111,10 +111,11 @@ const MemoriesPageInner = React.forwardRef(({
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
-  // ⭐ v2.14 : Calculer selectedMoments depuis Context (compatibilité)
+  // ⭐ v2.14 : Calculer selectedMoments depuis Context + filtres (FIX dépliement)
+  // IMPORTANT: Utiliser filteredMoments (pas momentsData) pour que les IDs matchent!
   const selectedMoments = useMemo(() => {
-    return momentsData.filter(m => state.expanded.moments.has(m.id));
-  }, [momentsData, state.expanded.moments]);
+    return filteredMoments.filter(m => state.expanded.moments.has(m.id));
+  }, [filteredMoments, state.expanded.moments]);
 
   // ⭐ v2.14 : Accès direct aux Sets du Context
   const expandedPosts = state.expanded.posts;
