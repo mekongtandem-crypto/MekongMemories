@@ -10,7 +10,7 @@
  * - Tri (chronologique, aléatoire, richesse)
  */
 
-import { useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   generatePostKey,
   generatePhotoMomentKey,
