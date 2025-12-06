@@ -11,7 +11,7 @@
  * - Section photos moment avec header (si filtre photos actif)
  */
 
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import PostArticle from '../post/PostArticle.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import PhotoGridHeader from '../photo/PhotoGridHeader.jsx';
@@ -46,15 +46,21 @@ export const MomentContent = memo(({
   // ⭐ v2.11 : Vérifier si photos d'album doivent être affichées
   const shouldShowDayPhotos = isElementVisible?.('day_photos') ?? true;
 
-  // ⭐ v2.13 : FIX React #300 - Vérifier si au moins un post sera visible
-  const hasVisiblePosts = localDisplay.showPosts && moment.posts && moment.posts.length > 0 && moment.posts.some(post => {
-    const hasText = post.content?.trim();
-    const hasPhotos = post.photos?.length > 0;
-    const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true);
-    const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
-    const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true);
-    return shouldShowHeader || shouldShowText || shouldShowPhotos;
-  });
+  // ⭐ v2.13 : FIX React #310 - Mémoïser hasVisiblePosts pour éviter boucle infinie
+  const hasVisiblePosts = useMemo(() => {
+    if (!localDisplay.showPosts || !moment.posts || moment.posts.length === 0) {
+      return false;
+    }
+
+    return moment.posts.some(post => {
+      const hasText = post.content?.trim();
+      const hasPhotos = post.photos?.length > 0;
+      const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true);
+      const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
+      const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true);
+      return shouldShowHeader || shouldShowText || shouldShowPhotos;
+    });
+  }, [localDisplay.showPosts, moment.posts, isElementVisible]);
 
   return (
     <div className="px-3 pb-3">
