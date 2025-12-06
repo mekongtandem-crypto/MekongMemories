@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { generateMomentKey, getMomentChildrenKeys } from '../../../utils/themeUtils.js';
 import { getSessionsForContent } from '../../../utils/sessionUtils.js';
+import { useMemoriesDisplay } from '../context/MemoriesDisplayContext.jsx';  // ⭐ v2.14
 
 export const MomentHeader = memo(({
   moment,
@@ -29,12 +30,17 @@ export const MomentHeader = memo(({
   onShowSessions,
   editionMode  // ⭐ v2.9n3 : Recevoir editionMode comme prop
 }) => {
-  
+
+  // ⭐ v2.14 : Context pour filtres globaux (masquer badges selon filtres)
+  const { state } = useMemoriesDisplay();
+  const showTextBadges = state.contentFilters.textes;   // Filtre "Textes" ON → afficher badges posts
+  const showImageBadges = state.contentFilters.images;  // Filtre "Images" ON → afficher badges photos
+
   // Badge moment : UNIQUEMENT le moment lui-même
   const momentKey = generateMomentKey(moment);
   const momentThemes = window.themeAssignments?.getThemesForContent(momentKey) || [];
   const hasMomentThemes = momentThemes.length > 0;
-  
+
   // Sessions liées au moment
   const linkedSessions = getSessionsForContent(sessions, 'moment', moment.id);
   const sessionCount = linkedSessions.length;
@@ -137,8 +143,9 @@ export const MomentHeader = memo(({
 
         {/* Compteurs cliquables - ⭐ v2.8e : Séparation posts Mastodon / Note de photos */}
 
+        {/* ⭐ v2.14 : Badges posts affichés seulement si filtre "Textes" actif */}
         {/* 🗒️ Posts Mastodon (bleu) */}
-        {moment.mastodonPostCount > 0 && (
+        {showTextBadges && moment.mastodonPostCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'posts')}
             className="flex items-center font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all"
@@ -149,7 +156,7 @@ export const MomentHeader = memo(({
         )}
 
         {/* 📝 Note de photos (jaune/amber) */}
-        {moment.noteCount > 0 && (
+        {showTextBadges && moment.noteCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'posts')}
             className="flex items-center font-medium text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 transition-all"
@@ -159,8 +166,9 @@ export const MomentHeader = memo(({
           </button>
         )}
 
+        {/* ⭐ v2.14 : Badge photos affiché seulement si filtre "Images" actif */}
         {/* 📸 Photos (vert) */}
-        {moment.dayPhotoCount > 0 && (
+        {showImageBadges && moment.dayPhotoCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'photos')}
             className="flex items-center font-medium text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400 transition-all"
