@@ -11,6 +11,7 @@
 import React, { useState, useEffect, useRef, memo, forwardRef } from 'react';
 import MomentHeader from './MomentHeader.jsx';
 import MomentContent from './MomentContent.jsx';
+import { useMemoriesDisplay } from '../context/MemoriesDisplayContext.jsx';  // ⭐ v2.14
 
 export const MomentCard = memo(forwardRef(({
   moment,
@@ -37,10 +38,13 @@ export const MomentCard = memo(forwardRef(({
   onCreateSessionFromContent,
   editionMode  // ⭐ v2.9n3 : Recevoir editionMode
 }, ref) => {
-  
+
+  // ⭐ v2.14 : Accès au Context (remplace polling)
+  const { computed, actions } = useMemoriesDisplay();
+
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
-  
+
   const [localDisplay, setLocalDisplay] = useState({
     showPosts: displayOptions.showPostText,
     showDayPhotos: displayOptions.showMomentPhotos
@@ -67,25 +71,18 @@ export const MomentCard = memo(forwardRef(({
     wasSelectedRef.current = isSelected;
   }, [isSelected]);
 
-  // ⭐ v2.12 : Synchroniser showDayPhotos avec état global expandedPhotoGrids
+  // ⭐ v2.14 : Synchroniser showDayPhotos avec Context (zero polling!)
   useEffect(() => {
-    const checkPhotoGridExpanded = () => {
-      const expandedPhotoGrids = window.memoriesPageState?.expandedPhotoGrids;
-      if (expandedPhotoGrids && isSelected) {
-        const isExpanded = expandedPhotoGrids.has(moment.id);
-        setLocalDisplay(prev => {
-          if (prev.showDayPhotos !== isExpanded) {
-            return { ...prev, showDayPhotos: isExpanded };
-          }
-          return prev;
-        });
-      }
-    };
-
-    checkPhotoGridExpanded();
-    const interval = setInterval(checkPhotoGridExpanded, 200);
-    return () => clearInterval(interval);
-  }, [moment.id, isSelected]);
+    if (isSelected) {
+      const isExpanded = computed.isPhotoGridExpanded(moment.id);
+      setLocalDisplay(prev => {
+        if (prev.showDayPhotos !== isExpanded) {
+          return { ...prev, showDayPhotos: isExpanded };
+        }
+        return prev;
+      });
+    }
+  }, [moment.id, isSelected, computed]);
 
   const handleOpenWith = (options) => {
     if (!isSelected) {
@@ -98,20 +95,9 @@ export const MomentCard = memo(forwardRef(({
     setLocalDisplay(prev => {
       const newValue = !prev[key];
 
-      // ⭐ v2.12 : Synchroniser avec état global pour showDayPhotos
+      // ⭐ v2.14 : Synchroniser avec Context (zero mutation!)
       if (key === 'showDayPhotos') {
-        const expandedPhotoGrids = window.memoriesPageState?.expandedPhotoGrids;
-        if (expandedPhotoGrids) {
-          const newSet = new Set(expandedPhotoGrids);
-          if (newValue) {
-            newSet.add(moment.id);
-          } else {
-            newSet.delete(moment.id);
-          }
-          if (window.memoriesPageState) {
-            window.memoriesPageState.expandedPhotoGrids = newSet;
-          }
-        }
+        actions.toggleExpanded('photoGrids', moment.id);
       }
 
       return { ...prev, [key]: newValue };
