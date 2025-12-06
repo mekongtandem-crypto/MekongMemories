@@ -143,37 +143,49 @@ export const MomentHeader = memo(({
 
         {/* Compteurs cliquables - ⭐ v2.8e : Séparation posts Mastodon / Note de photos */}
 
-        {/* ⭐ v2.14 : Badges posts affichés seulement si filtre "Textes" actif */}
+        {/* ⭐ v2.14 : Badges posts grisés si filtre "Textes" OFF (mais visibles + actifs) */}
         {/* 🗒️ Posts Mastodon (bleu) */}
-        {showTextBadges && moment.mastodonPostCount > 0 && (
+        {moment.mastodonPostCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'posts')}
-            className="flex items-center font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all"
+            className={`flex items-center font-medium transition-all ${
+              showTextBadges
+                ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
+                : 'opacity-40 text-gray-400 dark:text-gray-500'
+            }`}
           >
-            <FileText className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+            <FileText className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts && showTextBadges ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
             {moment.mastodonPostCount} post{moment.mastodonPostCount > 1 ? 's' : ''}
           </button>
         )}
 
         {/* 📝 Note de photos (jaune/amber) */}
-        {showTextBadges && moment.noteCount > 0 && (
+        {moment.noteCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'posts')}
-            className="flex items-center font-medium text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 transition-all"
+            className={`flex items-center font-medium transition-all ${
+              showTextBadges
+                ? 'text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400'
+                : 'opacity-40 text-gray-400 dark:text-gray-500'
+            }`}
           >
-            <FileEdit className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts ? 'text-amber-600 dark:text-amber-500' : 'text-gray-400 dark:text-gray-500'}`} />
+            <FileEdit className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts && showTextBadges ? 'text-amber-600 dark:text-amber-500' : 'text-gray-400 dark:text-gray-500'}`} />
             {moment.noteCount} note{moment.noteCount > 1 ? 's' : ''}
           </button>
         )}
 
-        {/* ⭐ v2.14 : Badge photos affiché seulement si filtre "Images" actif */}
+        {/* ⭐ v2.14 : Badge photos grisé si filtre "Images" OFF (mais visible + actif) */}
         {/* 📸 Photos (vert) */}
-        {showImageBadges && moment.dayPhotoCount > 0 && (
+        {moment.dayPhotoCount > 0 && (
           <button
             onClick={(e) => handleLinkClick(e, 'photos')}
-            className="flex items-center font-medium text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400 transition-all"
+            className={`flex items-center font-medium transition-all ${
+              showImageBadges
+                ? 'text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400'
+                : 'opacity-40 text-gray-400 dark:text-gray-500'
+            }`}
           >
-            <Camera className={`w-4 h-4 mr-1.5 ${localDisplay.showDayPhotos ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-500'}`} />
+            <Camera className={`w-4 h-4 mr-1.5 ${localDisplay.showDayPhotos && showImageBadges ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-500'}`} />
             {moment.dayPhotoCount} photo{moment.dayPhotoCount > 1 ? 's' : ''}
           </button>
         )}
