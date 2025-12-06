@@ -86,14 +86,15 @@ export default function MemoriesTopBar({
   const postsAllExpanded = computed.allPostsExpanded(totalPostsCount);
   const photosAllExpanded = computed.allPhotoGridsExpanded(momentsWithPhotosCount);
 
-  // 🔍 DEBUG v2.14b : Logs pour diagnostiquer le problème de dépliement
-  console.log('🔍 [TopBar] État dépliement au render:');
+  // 🔍 DEBUG v2.14d : Logs détaillés pour diagnostiquer
+  console.log('🔍 [TopBar] RENDER - État dépliement:');
   console.log('  Moments:', {
     allExpanded: momentsAllExpanded,
     filteredCount: filteredMomentsCount,
     expandedSize: state.expanded.moments.size,
     match: state.expanded.moments.size === filteredMomentsCount,
-    expandedIds: Array.from(state.expanded.moments).slice(0, 5) + (state.expanded.moments.size > 5 ? '...' : '')
+    formula: `${state.expanded.moments.size} === ${filteredMomentsCount} && ${filteredMomentsCount} > 0`,
+    result: `${state.expanded.moments.size === filteredMomentsCount} && ${filteredMomentsCount > 0} = ${momentsAllExpanded}`
   });
   console.log('  Posts:', {
     allExpanded: postsAllExpanded,

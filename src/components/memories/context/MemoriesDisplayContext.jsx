@@ -195,6 +195,8 @@ function displayReducer(state, action) {
     case ACTIONS.EXPAND_ALL: {
       const { type, ids } = action.payload; // ids: Array<string>
 
+      console.log('🔧 [Context] EXPAND_ALL:', type, 'IDs count:', ids?.length || 0);
+
       return {
         ...state,
         expanded: {
@@ -206,6 +208,8 @@ function displayReducer(state, action) {
 
     case ACTIONS.COLLAPSE_ALL: {
       const { type } = action.payload;
+
+      console.log('🔧 [Context] COLLAPSE_ALL:', type);
 
       return {
         ...state,
