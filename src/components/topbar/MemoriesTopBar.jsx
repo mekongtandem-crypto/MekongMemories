@@ -86,6 +86,26 @@ export default function MemoriesTopBar({
   const postsAllExpanded = computed.allPostsExpanded(totalPostsCount);
   const photosAllExpanded = computed.allPhotoGridsExpanded(momentsWithPhotosCount);
 
+  // 🔍 DEBUG v2.14b : Logs pour diagnostiquer le problème de dépliement
+  console.log('🔍 [TopBar] État dépliement:', {
+    moments: {
+      allExpanded: momentsAllExpanded,
+      count: filteredMomentsCount,
+      expandedSize: state.expanded.moments.size,
+      expandedIds: Array.from(state.expanded.moments)
+    },
+    posts: {
+      allExpanded: postsAllExpanded,
+      count: totalPostsCount,
+      expandedSize: state.expanded.posts.size
+    },
+    photos: {
+      allExpanded: photosAllExpanded,
+      count: momentsWithPhotosCount,
+      expandedSize: state.expanded.photoGrids.size
+    }
+  });
+
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-150">
 
@@ -167,10 +187,13 @@ export default function MemoriesTopBar({
             {/* ⭐ v2.14 : Bouton Dépliement - Collé + même couleur */}
             <button
               onClick={() => {
+                console.log('🔍 [TopBar] Clic bouton dépliement moments, allExpanded:', momentsAllExpanded);
                 if (momentsAllExpanded) {
+                  console.log('🔍 [TopBar] → collapseAll moments');
                   actions.collapseAll('moments');
                 } else {
                   const momentIds = memoriesPageRef?.current?.getAllMomentIds?.() || [];
+                  console.log('🔍 [TopBar] → expandAll moments, IDs:', momentIds);
                   actions.expandAll('moments', momentIds);
                 }
               }}
