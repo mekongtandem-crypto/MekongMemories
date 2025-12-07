@@ -94,16 +94,10 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       totalVisible: 0
     };
 
-    // 🔍 DEBUG v2.14e : Log pour voir l'état des filtres
-    console.log('🔍 [getVisibleStats] contentFilters:', contentFilters, 'moment:', moment.id);
-
     // ✨ Headers moments (si structure actif)
     // ⚠️ v2.14c : FIX - Le header compte comme contenu visible!
     if (contentFilters.moments) {
       stats.momentHeader = 1;
-      console.log('  → momentHeader = 1 (structure ON)');
-    } else {
-      console.log('  → momentHeader = 0 (structure OFF)');
     }
 
     // 🗒️ Posts complets (si posts actif ET moment a des posts)
@@ -121,8 +115,6 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     }
 
     stats.totalVisible = stats.momentHeader + stats.posts + stats.dayPhotos;
-
-    console.log('  → totalVisible:', stats.totalVisible, '(header:', stats.momentHeader, '+ posts:', stats.posts, '+ photos:', stats.dayPhotos, ')');
 
     return stats;
   }, [contentFilters]);
@@ -158,12 +150,9 @@ export function useMemoriesFilters(momentsData, sessions = []) {
   // ========================================
   
   const filteredMoments = useMemo(() => {
-    console.log('🔍 [filteredMoments] Début filtrage, momentsData.length:', momentsData?.length || 0);
-
     if (!momentsData || momentsData.length === 0) return [];
 
     let filtered = [...momentsData];
-    console.log('  → Étape 0 (avant filtres):', filtered.length, 'moments');
 
     // ⭐ v2.11 : 0. Filtre par contenu visible
     // NOTE: On ne filtre JAMAIS complètement les moments selon le toggle ✨
@@ -171,7 +160,6 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     // Quand ✨ désactivé → FlatContentList affiche le contenu en vrac
     // La vérification hasVisibleContent() reste nécessaire pour éliminer moments vides
     filtered = filtered.filter(m => hasVisibleContent(m));
-    console.log('  → Étape 1 (après hasVisibleContent):', filtered.length, 'moments');
 
     // 1. Recherche textuelle
     if (searchQuery.trim()) {
@@ -180,7 +168,6 @@ export function useMemoriesFilters(momentsData, sessions = []) {
         m.displayTitle.toLowerCase().includes(query) ||
         m.posts?.some(p => p.content && p.content.toLowerCase().includes(query))
       );
-      console.log('  → Étape 2 (après recherche "' + searchQuery + '"):', filtered.length, 'moments');
     }
 
     // 2. Filtre par type de moment
@@ -198,12 +185,10 @@ export function useMemoriesFilters(momentsData, sessions = []) {
           filtered = filtered.filter(m => m.dayPhotoCount > 0);
           break;
       }
-      console.log('  → Étape 3 (après filtre type "' + momentFilter + '"):', filtered.length, 'moments');
     }
 
     // 3. Filtre par thème (radical = masquage complet)
     if (selectedTheme) {
-      console.log('  → Filtre thème actif:', selectedTheme);
       filtered = filtered.filter(moment => {
         // Vérifier posts
         const hasTaggedPost = moment.posts?.some(post => {
@@ -248,10 +233,7 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       filtered = filtered.filter(m =>
         momentIdsWithSessions.has(m.id) === hasSessionsFilter
       );
-      console.log('  → Étape 5 (après filtre sessions):', filtered.length, 'moments');
     }
-
-    console.log('🔍 [filteredMoments] RÉSULTAT FINAL:', filtered.length, 'moments');
 
     return filtered;
   }, [

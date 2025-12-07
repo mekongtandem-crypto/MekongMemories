@@ -81,27 +81,6 @@ export default function MemoriesTopBar({
   const postsAllExpanded = computed.allPostsExpanded(totalPostsCount);
   const photosAllExpanded = computed.allPhotoGridsExpanded(momentsWithPhotosCount);
 
-  // 🔍 DEBUG v2.14d : Logs détaillés pour diagnostiquer
-  console.log('🔍 [TopBar] RENDER - État dépliement:');
-  console.log('  Moments:', {
-    allExpanded: momentsAllExpanded,
-    filteredCount: filteredMomentsCount,
-    expandedSize: state.expanded.moments.size,
-    match: state.expanded.moments.size === filteredMomentsCount,
-    formula: `${state.expanded.moments.size} === ${filteredMomentsCount} && ${filteredMomentsCount} > 0`,
-    result: `${state.expanded.moments.size === filteredMomentsCount} && ${filteredMomentsCount > 0} = ${momentsAllExpanded}`
-  });
-  console.log('  Posts:', {
-    allExpanded: postsAllExpanded,
-    totalCount: totalPostsCount,
-    expandedSize: state.expanded.posts.size
-  });
-  console.log('  Photos:', {
-    allExpanded: photosAllExpanded,
-    withPhotosCount: momentsWithPhotosCount,
-    expandedSize: state.expanded.photoGrids.size
-  });
-
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-150">
 
@@ -176,13 +155,11 @@ export default function MemoriesTopBar({
                 // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
                 if (!wasOn) {
                   const momentIds = state.counts.allMomentIds;
-                  console.log('🔍 [TopBar] Auto-activation dépliement moments (OFF→ON):', momentIds);
                   actions.expandAll('moments', momentIds);
                 }
 
                 // ⭐ v2.14d : Si passage ON → OFF (mode Vrac), tout déplier
                 if (wasOn) {
-                  console.log('🔍 [TopBar] Mode Vrac activé: auto-dépliement tout le contenu');
                   const postIds = state.counts.allPostIds;
                   const photoGridIds = state.counts.allPhotoGridIds;
                   actions.expandAll('posts', postIds);
@@ -203,18 +180,9 @@ export default function MemoriesTopBar({
             <button
               onClick={() => {
                 const momentIds = state.counts.allMomentIds;
-                console.log('🔍 [TopBar] Clic bouton dépliement moments');
-                console.log('  - allExpanded:', momentsAllExpanded);
-                console.log('  - filteredCount:', filteredMomentsCount);
-                console.log('  - expandedSize:', state.expanded.moments.size);
-                console.log('  - momentIds:', momentIds);
-                console.log('  - momentIds.length:', momentIds.length);
-
                 if (momentsAllExpanded) {
-                  console.log('  → collapseAll moments');
                   actions.collapseAll('moments');
                 } else {
-                  console.log('  → expandAll moments');
                   actions.expandAll('moments', momentIds);
                 }
               }}
