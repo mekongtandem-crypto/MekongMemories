@@ -296,12 +296,14 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       });
 
       // Photo grid IDs (grilles de photos, pas photos individuelles)
+      // ⭐ v2.14s : Format unifié - moment.id pour photos de moment
       if (moment.dayPhotos?.length > 0) {
-        allPhotoGridIds.push(`moment_photos:${moment.id}`);  // ✅ FIX: ID de grille, pas de photo
+        allPhotoGridIds.push(moment.id);  // ✅ Même format que MomentCard (pas de préfixe)
       }
+      // ⭐ v2.14s : post_${post.id} pour photos de post (match gridId dans PostArticle)
       moment.posts?.forEach(post => {
         if (post.photos?.length > 0) {
-          allPhotoGridIds.push(`post_photos:${post.id}`);  // ✅ FIX: ID de grille post
+          allPhotoGridIds.push(`post_${post.id}`);  // ✅ Match gridId PostArticle
         }
       });
     });

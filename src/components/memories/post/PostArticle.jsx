@@ -51,20 +51,31 @@ export const PostArticle = memo(({
 
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
-  // ⭐ v2.14 : État local post expansion (synchronisé avec Context)
+  // ⭐ v2.14s : État local post expansion (synchronisé avec Context)
   const [isPostExpanded, setIsPostExpanded] = useState(() => {
-    return computed.isPostExpanded(post.id);
+    const postKey = generatePostKey(post);
+    return computed.isPostExpanded(postKey);
   });
 
   useEffect(() => {
     setShowThisPostPhotos(displayOptions.showPostPhotos);
   }, [displayOptions.showPostPhotos]);
 
-  // ⭐ v2.14 : Synchroniser avec Context (zero polling!)
+  // ⭐ v2.14s : Synchroniser post expansion avec Context (zero polling!)
   useEffect(() => {
-    const expanded = computed.isPostExpanded(post);  // ✅ FIX: Passer post object
+    const postKey = generatePostKey(post);
+    const expanded = computed.isPostExpanded(postKey);  // ✅ FIX v2.14s: Utiliser generatePostKey pour cohérence
     setIsPostExpanded(expanded);
-  }, [post, computed]);
+  }, [post.id, computed]);
+
+  // ⭐ v2.14s : Synchroniser photos posts avec Context (comme MomentCard)
+  useEffect(() => {
+    if (isPostExpanded && post.photos?.length > 0) {
+      const photoGridId = `post_${post.id}`;
+      const isExpanded = computed.isPhotoGridExpanded(photoGridId);
+      setShowThisPostPhotos(isExpanded);
+    }
+  }, [post.id, post.photos?.length, isPostExpanded, computed]);
 
   const contentParts = post.content ? post.content.trim().split('\n') : [];
 
@@ -178,8 +189,9 @@ export const PostArticle = memo(({
         {shouldShowHeader && (
           <div
             onClick={() => {
-              // ⭐ v2.14 : Toggle via Context (zero mutation!)
-              actions.toggleExpanded('posts', post.id);
+              // ⭐ v2.14s : Toggle via Context avec generatePostKey pour cohérence
+              const postKey = generatePostKey(post);
+              actions.toggleExpanded('posts', postKey);
             }}
             className={`flex justify-between items-center p-2 border-b cursor-pointer hover:opacity-80 transition-opacity ${
             isPhotoNote
@@ -205,7 +217,9 @@ export const PostArticle = memo(({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowThisPostPhotos(!showThisPostPhotos);
+                  // ⭐ v2.14s : Synchroniser avec Context (comme MomentCard)
+                  const photoGridId = `post_${post.id}`;
+                  actions.toggleExpanded('photoGrids', photoGridId);
                 }}
                 className={`p-1 flex-shrink-0 ${!imagesFilterActive ? 'opacity-40' : ''}`}
                 title={imagesFilterActive ? "Afficher/Masquer les photos" : "Photos désactivées (filtre Images OFF)"}
