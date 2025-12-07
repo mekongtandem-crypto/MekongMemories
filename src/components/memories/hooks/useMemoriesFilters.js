@@ -257,6 +257,7 @@ export function useMemoriesFilters(momentsData, sessions = []) {
   }, [
     momentsData,
     hasVisibleContent,
+    contentFilters,  // ⭐ v2.14g : FIX - Ajout dépendance manquante!
     searchQuery,
     momentFilter,
     selectedTheme,
