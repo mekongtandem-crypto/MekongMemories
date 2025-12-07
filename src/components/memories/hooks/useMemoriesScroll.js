@@ -32,10 +32,11 @@ export function useMemoriesScroll(navigationContext, onNavigateBack) {
     if (element && topBarElement && scrollContainer) {
       const topBarHeight = topBarElement.offsetHeight;
       const offsetPosition = element.offsetTop - topBarHeight - 64;
-      
+
+      // ⭐ v2.14s : Scroll sans smooth pour éviter conflits
       scrollContainer.scrollTo({
         top: offsetPosition,
-        behavior: 'smooth',
+        behavior: 'auto',  // Changé de 'smooth' à 'auto'
       });
     }
   }, []);
