@@ -208,13 +208,14 @@ function displayReducer(state, action) {
     case ACTIONS.EXPAND_ALL: {
       const { type, ids } = action.payload; // ids: Array<string>
 
-      console.log('🔧 [Context] EXPAND_ALL:', type, 'IDs count:', ids?.length || 0);
+      const newSet = new Set(ids);
+      console.log('🔧 [Context] EXPAND_ALL:', type, 'IDs count:', ids?.length || 0, '→ Set size:', newSet.size);
 
       return {
         ...state,
         expanded: {
           ...state.expanded,
-          [type]: new Set(ids)
+          [type]: newSet
         }
       };
     }
