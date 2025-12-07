@@ -67,11 +67,14 @@ export const getInitialState = (momentsData = []) => {
       photoGrids: new Set(allPhotoGridIds)   // TOUTES grilles dépliées par défaut
     },
 
-    // ⭐ v2.14h : Counts depuis filtrage
+    // ⭐ v2.14i : Counts ET IDs depuis filtrage
     counts: {
       filteredMomentsCount: 0,
       totalPostsCount: 0,
-      momentsWithPhotosCount: 0
+      momentsWithPhotosCount: 0,
+      allMomentIds: [],
+      allPostIds: [],
+      allPhotoGridIds: []
     },
 
     // Filtres contextuels
