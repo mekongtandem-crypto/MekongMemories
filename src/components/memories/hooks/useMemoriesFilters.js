@@ -96,19 +96,19 @@ export function useMemoriesFilters(momentsData, sessions = []) {
 
     // ✨ Headers moments (si structure actif)
     // ⚠️ v2.14c : FIX - Le header compte comme contenu visible!
-    if (contentFilters.moments) {
+    if (contentFilters.structure) {
       stats.momentHeader = 1;
     }
 
-    // 🗒️ Posts complets (si posts actif ET moment a des posts)
-    if (contentFilters.posts && moment.posts) {
+    // 🗒️ Posts complets (si textes actif ET moment a des posts)
+    if (contentFilters.textes && moment.posts) {
       stats.posts = moment.posts.length;
     }
 
-    // 📸 Photos moment (si photos actif)
-    if (contentFilters.photos) {
+    // 📸 Photos moment (si images actif)
+    if (contentFilters.images) {
       stats.dayPhotos = moment.dayPhotoCount || 0;
-      // Ajouter aussi photos de posts si photos actif
+      // Ajouter aussi photos de posts si images actif
       if (moment.posts) {
         stats.dayPhotos += moment.posts.reduce((acc, p) => acc + (p.photos?.length || 0), 0);
       }
