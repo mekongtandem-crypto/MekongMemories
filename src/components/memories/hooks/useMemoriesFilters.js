@@ -94,10 +94,16 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       totalVisible: 0
     };
 
+    // 🔍 DEBUG v2.14e : Log pour voir l'état des filtres
+    console.log('🔍 [getVisibleStats] contentFilters:', contentFilters, 'moment:', moment.id);
+
     // ✨ Headers moments (si structure actif)
     // ⚠️ v2.14c : FIX - Le header compte comme contenu visible!
     if (contentFilters.moments) {
       stats.momentHeader = 1;
+      console.log('  → momentHeader = 1 (structure ON)');
+    } else {
+      console.log('  → momentHeader = 0 (structure OFF)');
     }
 
     // 🗒️ Posts complets (si posts actif ET moment a des posts)
@@ -115,6 +121,8 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     }
 
     stats.totalVisible = stats.momentHeader + stats.posts + stats.dayPhotos;
+
+    console.log('  → totalVisible:', stats.totalVisible, '(header:', stats.momentHeader, '+ posts:', stats.posts, '+ photos:', stats.dayPhotos, ')');
 
     return stats;
   }, [contentFilters]);
