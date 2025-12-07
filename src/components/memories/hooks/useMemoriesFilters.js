@@ -87,9 +87,6 @@ export function useMemoriesFilters(momentsData, sessions = []) {
   const getVisibleStats = useCallback((moment) => {
     if (!moment) return { posts: 0, dayPhotos: 0, momentHeader: 0, totalVisible: 0 };
 
-    // 🔍 DEBUG v2.14o : Vérifier contentFilters
-    console.log('🔍 [getVisibleStats] contentFilters:', contentFilters, 'moment:', moment.id);
-
     const stats = {
       posts: 0,
       dayPhotos: 0,
@@ -97,19 +94,24 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       totalVisible: 0
     };
 
+    // ⭐ v2.14o : Compatibilité nomenclature ancienne (moments/posts/photos) ET nouvelle (structure/textes/images)
+    const structureOn = contentFilters.structure || contentFilters.moments;
+    const textesOn = contentFilters.textes || contentFilters.posts;
+    const imagesOn = contentFilters.images || contentFilters.photos;
+
     // ✨ Headers moments (si structure actif)
     // ⚠️ v2.14c : FIX - Le header compte comme contenu visible!
-    if (contentFilters.structure) {
+    if (structureOn) {
       stats.momentHeader = 1;
     }
 
     // 🗒️ Posts complets (si textes actif ET moment a des posts)
-    if (contentFilters.textes && moment.posts) {
+    if (textesOn && moment.posts) {
       stats.posts = moment.posts.length;
     }
 
     // 📸 Photos moment (si images actif)
-    if (contentFilters.images) {
+    if (imagesOn) {
       stats.dayPhotos = moment.dayPhotoCount || 0;
       // Ajouter aussi photos de posts si images actif
       if (moment.posts) {
