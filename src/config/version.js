@@ -1,7 +1,7 @@
 /**
  * Configuration version - MémoireDuMékong
  */
-export const APP_VERSION = "2.14h";
+export const APP_VERSION = "2.14i";
 export const APP_NAME = "Mémoire du Mékong";
 export const BUILD_DATE = "6 décembre 2025";
 export const PHASE = "Filtres affichage - Context sans polling";
