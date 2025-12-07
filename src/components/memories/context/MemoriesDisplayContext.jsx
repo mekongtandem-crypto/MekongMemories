@@ -283,12 +283,31 @@ function displayReducer(state, action) {
     // COUNTS
     // ========================================
 
-    case ACTIONS.UPDATE_COUNTS:
+    case ACTIONS.UPDATE_COUNTS: {
+      const newCounts = action.payload;
       console.log('🔧 [Context] UPDATE_COUNTS:', {
-        allPostIds: action.payload.allPostIds?.length || 0,
+        allPostIds: newCounts.allPostIds?.length || 0,
         currentExpandedPosts: state.expanded.posts.size
       });
-      return { ...state, counts: action.payload };
+
+      // ⭐ v2.14m : Si première initialisation (passage 0 → N), initialiser expanded Sets
+      const isFirstInit = state.counts.allPostIds.length === 0 && newCounts.allPostIds.length > 0;
+
+      if (isFirstInit) {
+        console.log('🔧 [Context] Première init → auto-expand posts + photoGrids');
+        return {
+          ...state,
+          counts: newCounts,
+          expanded: {
+            ...state.expanded,
+            posts: new Set(newCounts.allPostIds),
+            photoGrids: new Set(newCounts.allPhotoGridIds)
+          }
+        };
+      }
+
+      return { ...state, counts: newCounts };
+    }
 
     // ========================================
     // UI

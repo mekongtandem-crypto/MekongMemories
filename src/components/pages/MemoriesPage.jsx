@@ -906,14 +906,12 @@ const handleSelectMoment = useCallback((moment, forceOpen = false) => {
 
 // ⭐ v2.14 : Handler pour déplier tous les moments (via Context)
 const handleExpandAllMoments = useCallback(() => {
-  console.log('📂 [MemoriesPage] Déplier tous les moments:', filteredMoments.length);
   const momentIds = filteredMoments.map(m => m.id);
   actions.expandAll('moments', momentIds);
 }, [filteredMoments, actions]);
 
 // ⭐ v2.14 : Handler pour replier tous les moments (via Context)
 const handleCollapseAllMoments = useCallback(() => {
-  console.log('📁 [MemoriesPage] Replier tous les moments');
   actions.collapseAll('moments');
 }, [actions]);
 
@@ -935,15 +933,12 @@ const handleExpandAllPosts = useCallback(() => {
     });
   });
 
-  console.log('📂 [MemoriesPage] Déplier tous les posts:', allPostIds.length, 'IDs');
-  console.log('📊 [MemoriesPage] Comptage posts:', {totalWithId, totalAll, inArray: allPostIds.length});
 
   actions.expandAll('posts', allPostIds);
 }, [filteredMoments, actions]);
 
 // ⭐ v2.14 : Handler pour replier tous les posts (via Context)
 const handleCollapseAllPosts = useCallback(() => {
-  console.log('📁 [MemoriesPage] Replier tous les posts');
   actions.collapseAll('posts');
 }, [actions]);
 
@@ -961,13 +956,11 @@ const handleExpandAllPhotoGrids = useCallback(() => {
       allMomentIds.push(moment.id);
     }
   });
-  console.log('📂 [MemoriesPage] Déplier toutes les grilles photos:', allMomentIds.length);
   actions.expandAll('photoGrids', allMomentIds);
 }, [filteredMoments, actions]);
 
 // ⭐ v2.14 : Handler pour replier toutes les grilles photos (via Context)
 const handleCollapseAllPhotoGrids = useCallback(() => {
-  console.log('📁 [MemoriesPage] Replier toutes les grilles photos');
   actions.collapseAll('photoGrids');
 }, [actions]);
 
@@ -1056,12 +1049,8 @@ const navigationProcessedRef = useRef(null);
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [photoContextMenu.isOpen, handleClosePhotoContextMenu]);
-  
-  useEffect(() => {
-    console.log('🌐 [MemoriesPage] Exposing to window.memoriesPageFilters');
-    console.log('🌐 [MemoriesPage] contentFilters:', memoryFilters.contentFilters);
-    console.log('🌐 [MemoriesPage] toggleContentFilter:', memoryFilters.toggleContentFilter);
 
+  useEffect(() => {
     window.memoriesPageFilters = {
       setMomentFilter: (filter) => {
         setMomentFilter(filter);
@@ -1076,8 +1065,6 @@ const navigationProcessedRef = useRef(null);
       contentFilters: memoryFilters.contentFilters,
       toggleContentFilter: memoryFilters.toggleContentFilter
     };
-
-    console.log('✅ [MemoriesPage] window.memoriesPageFilters set:', window.memoriesPageFilters);
 
     window.memoriesPageActions = {
       openThemeModal: handleOpenThemeModal,
@@ -1103,12 +1090,6 @@ const navigationProcessedRef = useRef(null);
     const totalPostsCount = filteredMoments.reduce((acc, m) => acc + (m.posts?.filter(p => p.id).length || 0), 0);
 
     // 🔍 DEBUG v2.13 : Vérifier valeurs exposées à window
-    console.log('🔍 [MemoriesPage] window.memoriesPageState:', {
-      expandedPostsSize: expandedPosts.size,
-      totalPostsCount: totalPostsCount,
-      match: expandedPosts.size === totalPostsCount
-    });
-
     window.memoriesPageState = {
       activePhotoGrid,
       selectedPhotos,
@@ -1214,7 +1195,6 @@ const navigationProcessedRef = useRef(null);
       totalPostsCount: filteredMoments.reduce((acc, m) => acc + (m.posts?.filter(p => p.id).length || 0), 0),
       momentsWithPhotosCount: filteredMoments.filter(m => m.dayPhotos?.length > 0).length
     };
-    console.log('📊 [MemoriesPage] getCounts appelé:', counts);
     return counts;
   }
 }), [momentsData, filteredMoments, setCurrentDay, scrollToMoment, handleSelectMoment]);
