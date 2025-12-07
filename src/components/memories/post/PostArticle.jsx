@@ -62,9 +62,9 @@ export const PostArticle = memo(({
 
   // ⭐ v2.14 : Synchroniser avec Context (zero polling!)
   useEffect(() => {
-    const expanded = computed.isPostExpanded(post.id);
+    const expanded = computed.isPostExpanded(post);  // ✅ FIX: Passer post object
     setIsPostExpanded(expanded);
-  }, [post.id, computed]);
+  }, [post, computed]);
 
   const contentParts = post.content ? post.content.trim().split('\n') : [];
 
