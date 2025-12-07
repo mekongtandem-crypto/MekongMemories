@@ -313,9 +313,33 @@ export function useMemoriesFilters(momentsData, sessions = []) {
   }, [sortedMoments]);
 
   // Mettre à jour les counts dans le Context
+  // ⚠️ v2.14m : Utiliser dépendances primitives pour éviter boucle infinie
+  const {
+    filteredMomentsCount,
+    totalPostsCount,
+    momentsWithPhotosCount,
+    allMomentIds,
+    allPostIds,
+    allPhotoGridIds
+  } = counts;
+
   useEffect(() => {
-    actions.updateCounts(counts);
-  }, [counts]); // ⚠️ Ne pas inclure actions pour éviter boucle infinie
+    actions.updateCounts({
+      filteredMomentsCount,
+      totalPostsCount,
+      momentsWithPhotosCount,
+      allMomentIds,
+      allPostIds,
+      allPhotoGridIds
+    });
+  }, [
+    filteredMomentsCount,
+    totalPostsCount,
+    momentsWithPhotosCount,
+    allMomentIds.length,
+    allPostIds.length,
+    allPhotoGridIds.length
+  ]);
 
   // ========================================
   // HELPERS
