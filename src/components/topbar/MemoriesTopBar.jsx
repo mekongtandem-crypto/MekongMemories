@@ -249,10 +249,10 @@ export default function MemoriesTopBar({
                   actions.expandAll('posts', postIds);
                 }
               }}
-              // ⭐ v2.14d : Désactivé si Texte OFF OU Structure OFF (mode Vrac)
-              disabled={!state.contentFilters.textes || !state.contentFilters.structure}
+              // ⭐ v2.14s : Désactivé SEULEMENT si Texte OFF (actif même en mode Vrac)
+              disabled={!state.contentFilters.textes}
               className={`p-0.5 rounded-b transition-colors duration-150 ${
-                !state.contentFilters.textes || !state.contentFilters.structure
+                !state.contentFilters.textes
                   ? 'opacity-30 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400'
                   : 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800'
               }`}
@@ -300,10 +300,10 @@ export default function MemoriesTopBar({
                   actions.expandAll('photoGrids', photoGridIds);
                 }
               }}
-              // ⭐ v2.14d : Désactivé si Image OFF OU Structure OFF (mode Vrac)
-              disabled={!state.contentFilters.images || !state.contentFilters.structure}
+              // ⭐ v2.14s : Désactivé SEULEMENT si Images OFF (actif même en mode Vrac)
+              disabled={!state.contentFilters.images}
               className={`p-0.5 rounded-b transition-colors duration-150 ${
-                !state.contentFilters.images || !state.contentFilters.structure
+                !state.contentFilters.images
                   ? 'opacity-30 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400'
                   : 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800'
               }`}
