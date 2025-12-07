@@ -89,17 +89,18 @@ export const PostArticle = memo(({
     ? post.content
     : contentParts.filter(part => part.trim() !== '').join('<br />');
 
-  // ⭐ v2.14s : Vérifier visibilité - LOCAL override GLOBAL + mode Vrac
+  // ⭐ v2.14t : Vérifier visibilité - Filtres globaux ET condition locale
   const hasText = post.content?.trim();
   const hasPhotos = post.photos?.length > 0;
 
-  // ⭐ v2.14s : En mode Vrac (Structure OFF), photos toujours "visibles" (contrôlées par dépliement)
   const isVracMode = !computed.isStructureMode;
 
-  // Si localOverride=true OU mode Vrac, TOUJOURS afficher (ignorer filtres globaux)
-  const shouldShowHeader = hasText && (isVracMode || localOverride || (isElementVisible?.('post_header') ?? true));
-  const shouldShowText = hasText && (isVracMode || localOverride || (isElementVisible?.('post_text') ?? true));
-  const shouldShowPhotos = hasPhotos && (isVracMode || localOverride || (isElementVisible?.('post_photos') ?? true));
+  // ⭐ v2.14t : Logique correcte - Filtres globaux s'appliquent TOUJOURS
+  // Mode Vrac (AM=0): visible si filtre ON
+  // Mode Structure (AM=1): visible si filtre ON ET moment ouvert (localOverride)
+  const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true) && (isVracMode || localOverride);
+  const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true) && (isVracMode || localOverride);
+  const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true) && (isVracMode || localOverride);
 
   // 🔍 DEBUG v2.13 : Log pour diagnostiquer React #310
   if (!post.id) {
