@@ -87,6 +87,9 @@ export function useMemoriesFilters(momentsData, sessions = []) {
   const getVisibleStats = useCallback((moment) => {
     if (!moment) return { posts: 0, dayPhotos: 0, momentHeader: 0, totalVisible: 0 };
 
+    // 🔍 DEBUG v2.14o : Vérifier contentFilters
+    console.log('🔍 [getVisibleStats] contentFilters:', contentFilters, 'moment:', moment.id);
+
     const stats = {
       posts: 0,
       dayPhotos: 0,
