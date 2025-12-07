@@ -40,13 +40,8 @@ export default function MemoriesTopBar({
   // ⭐ v2.14 : Accès au Context (remplace polling + window.state)
   const { state, actions, computed } = useMemoriesDisplay();
 
-  // ⭐ v2.14 : Obtenir counts depuis MemoriesPage ref
-  const counts = memoriesPageRef?.current?.getCounts?.() || {
-    filteredMomentsCount: 0,
-    totalPostsCount: 0,
-    momentsWithPhotosCount: 0
-  };
-  const { filteredMomentsCount, totalPostsCount, momentsWithPhotosCount } = counts;
+  // ⭐ v2.14h : Lire counts depuis Context (plus depuis ref!)
+  const { filteredMomentsCount, totalPostsCount, momentsWithPhotosCount } = state.counts;
 
   // États UI locaux (menus)
   const [showMenu, setShowMenu] = useState(false);

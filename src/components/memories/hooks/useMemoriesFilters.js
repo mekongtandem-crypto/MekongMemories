@@ -10,7 +10,7 @@
  * - Tri (chronologique, aléatoire, richesse)
  */
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   generatePostKey,
   generatePhotoMomentKey,
@@ -265,11 +265,11 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     hasSessionsFilter,
     sessions
   ]);
-  
+
   // ========================================
   // LOGIQUE TRI
   // ========================================
-  
+
   const sortedMoments = useMemo(() => {
     const moments = [...filteredMoments];
     
@@ -294,7 +294,19 @@ export function useMemoriesFilters(momentsData, sessions = []) {
         return moments;
     }
   }, [filteredMoments, sortOrder, sessions]);
-  
+
+  // ⭐ v2.14i : Calculer counts et les mettre à jour dans Context
+  const counts = useMemo(() => ({
+    filteredMomentsCount: sortedMoments.length,
+    totalPostsCount: sortedMoments.reduce((acc, m) => acc + (m.posts?.filter(p => p.id).length || 0), 0),
+    momentsWithPhotosCount: sortedMoments.filter(m => m.dayPhotos?.length > 0).length
+  }), [sortedMoments]);
+
+  // Mettre à jour les counts dans le Context
+  useEffect(() => {
+    actions.updateCounts(counts);
+  }, [counts, actions]);
+
   // ========================================
   // HELPERS
   // ========================================

@@ -67,6 +67,13 @@ export const getInitialState = (momentsData = []) => {
       photoGrids: new Set(allPhotoGridIds)   // TOUTES grilles dépliées par défaut
     },
 
+    // ⭐ v2.14h : Counts depuis filtrage
+    counts: {
+      filteredMomentsCount: 0,
+      totalPostsCount: 0,
+      momentsWithPhotosCount: 0
+    },
+
     // Filtres contextuels
     searchQuery: '',
     selectedTheme: null,
@@ -106,6 +113,9 @@ export const ACTIONS = {
 
   // Tri
   SET_SORT_ORDER: 'SET_SORT_ORDER',
+
+  // Counts
+  UPDATE_COUNTS: 'UPDATE_COUNTS',
 
   // UI
   TRIGGER_SHAKE: 'TRIGGER_SHAKE',
@@ -267,6 +277,13 @@ function displayReducer(state, action) {
       return { ...state, sortOrder: action.payload };
 
     // ========================================
+    // COUNTS
+    // ========================================
+
+    case ACTIONS.UPDATE_COUNTS:
+      return { ...state, counts: action.payload };
+
+    // ========================================
     // UI
     // ========================================
 
@@ -325,6 +342,10 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
     // Filtres de contenu
     toggleContentFilter: (filterKey) => {
       dispatch({ type: ACTIONS.TOGGLE_CONTENT_FILTER, payload: { filterKey } });
+    },
+
+    updateCounts: (counts) => {
+      dispatch({ type: ACTIONS.UPDATE_COUNTS, payload: counts });
     },
 
     // Expansion
