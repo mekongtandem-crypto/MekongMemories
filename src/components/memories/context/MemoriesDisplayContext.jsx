@@ -14,6 +14,7 @@
  */
 
 import React, { createContext, useContext, useReducer, useMemo, useCallback } from 'react';
+import { generatePostKey } from '../../../utils/themeUtils.js';
 
 // ========================================
 // CONTEXT
@@ -39,16 +40,25 @@ export const getInitialState = (momentsData = []) => {
   const allPhotoGridIds = [];
 
   momentsData.forEach(moment => {
-    // Posts avec ID
+    // ⭐ v2.14s : Posts avec generatePostKey pour cohérence
     if (moment.posts) {
       moment.posts.forEach(post => {
-        if (post.id) allPostIds.push(post.id);
+        if (post.id) allPostIds.push(generatePostKey(post));  // ✅ Format: post:${post.id}
       });
     }
 
-    // Grilles photos (identifiées par moment.id)
+    // ⭐ v2.14s : Grilles photos - format unifié
+    // Photos de moment: moment.id (sans préfixe)
     if (moment.dayPhotos && moment.dayPhotos.length > 0) {
       allPhotoGridIds.push(moment.id);
+    }
+    // Photos de posts: post_${post.id}
+    if (moment.posts) {
+      moment.posts.forEach(post => {
+        if (post.photos && post.photos.length > 0) {
+          allPhotoGridIds.push(`post_${post.id}`);
+        }
+      });
     }
   });
 
