@@ -244,6 +244,8 @@ export default function MemoriesTopBar({
                 } else {
                   const postIds = state.counts.allPostIds;
                   console.log('  → Action: expandAll avec', postIds?.length || 0, 'IDs');
+                  console.log('  → Premiers 5 IDs:', postIds?.slice(0, 5));
+                  console.log('  → IDs uniques:', new Set(postIds).size, '/', postIds?.length);
                   actions.expandAll('posts', postIds);
                 }
               }}
