@@ -292,16 +292,16 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     sortedMoments.forEach(moment => {
       // Posts IDs
       moment.posts?.forEach(post => {
-        if (post.id) allPostIds.push(generatePostKey(moment.id, post.id));
+        if (post.id) allPostIds.push(generatePostKey(post));  // ✅ FIX: Passer post object, pas (moment.id, post.id)
       });
 
-      // Photo grid IDs
+      // Photo grid IDs (grilles de photos, pas photos individuelles)
       if (moment.dayPhotos?.length > 0) {
-        allPhotoGridIds.push(generatePhotoMomentKey(moment.id));
+        allPhotoGridIds.push(`moment_photos:${moment.id}`);  // ✅ FIX: ID de grille, pas de photo
       }
       moment.posts?.forEach(post => {
         if (post.photos?.length > 0) {
-          allPhotoGridIds.push(generatePhotoMastodonKey(moment.id, post.id));
+          allPhotoGridIds.push(`post_photos:${post.id}`);  // ✅ FIX: ID de grille post
         }
       });
     });
