@@ -43,9 +43,9 @@ export const MomentContent = memo(({
   editionMode  // ⭐ v2.9o : Recevoir editionMode pour posts et photos
 }) => {
 
-  // ⭐ v2.14 : Photos d'album - LOCAL override GLOBAL (dernier qui parle gagne!)
-  // Si localDisplay.showDayPhotos = true, ignorer filtre global Images
-  const shouldShowDayPhotos = localDisplay.showDayPhotos || (isElementVisible?.('day_photos') ?? true);
+  // ⭐ v2.14u : Photos d'album - Filtres globaux s'appliquent TOUJOURS
+  // Logique correcte: isElementVisible(day_photos) ET localDisplay.showDayPhotos
+  const shouldShowDayPhotos = (isElementVisible?.('day_photos') ?? true) && localDisplay.showDayPhotos;
 
   // ⭐ v2.14 : Posts - LOCAL override GLOBAL (dernier qui parle gagne!)
   // Si localDisplay.showPosts = true, TOUJOURS afficher posts (ignorer filtres globaux)
