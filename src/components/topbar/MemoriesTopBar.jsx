@@ -231,10 +231,19 @@ export default function MemoriesTopBar({
             {/* ⭐ v2.14 : Bouton Dépliement - Collé + même couleur */}
             <button
               onClick={() => {
+                console.log('🔍 [TopBar] Clic DeploiementPost:', {
+                  postsAllExpanded,
+                  expandedSize: state.expanded.posts.size,
+                  totalCount: totalPostsCount,
+                  allPostIdsLength: state.counts.allPostIds?.length || 0
+                });
+
                 if (postsAllExpanded) {
+                  console.log('  → Action: collapseAll');
                   actions.collapseAll('posts');
                 } else {
                   const postIds = state.counts.allPostIds;
+                  console.log('  → Action: expandAll avec', postIds?.length || 0, 'IDs');
                   actions.expandAll('posts', postIds);
                 }
               }}
