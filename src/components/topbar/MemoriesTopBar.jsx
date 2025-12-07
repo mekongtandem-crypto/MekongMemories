@@ -175,7 +175,7 @@ export default function MemoriesTopBar({
 
                 // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
                 if (!wasOn) {
-                  const momentIds = memoriesPageRef?.current?.getAllMomentIds?.() || [];
+                  const momentIds = state.counts.allMomentIds;
                   console.log('🔍 [TopBar] Auto-activation dépliement moments (OFF→ON):', momentIds);
                   actions.expandAll('moments', momentIds);
                 }
@@ -183,8 +183,8 @@ export default function MemoriesTopBar({
                 // ⭐ v2.14d : Si passage ON → OFF (mode Vrac), tout déplier
                 if (wasOn) {
                   console.log('🔍 [TopBar] Mode Vrac activé: auto-dépliement tout le contenu');
-                  const postIds = memoriesPageRef?.current?.getAllPostIds?.() || [];
-                  const photoGridIds = memoriesPageRef?.current?.getAllPhotoGridIds?.() || [];
+                  const postIds = state.counts.allPostIds;
+                  const photoGridIds = state.counts.allPhotoGridIds;
                   actions.expandAll('posts', postIds);
                   actions.expandAll('photoGrids', photoGridIds);
                 }
@@ -202,7 +202,7 @@ export default function MemoriesTopBar({
             {/* ⭐ v2.14 : Bouton Dépliement - Collé + même couleur */}
             <button
               onClick={() => {
-                const momentIds = memoriesPageRef?.current?.getAllMomentIds?.() || [];
+                const momentIds = state.counts.allMomentIds;
                 console.log('🔍 [TopBar] Clic bouton dépliement moments');
                 console.log('  - allExpanded:', momentsAllExpanded);
                 console.log('  - filteredCount:', filteredMomentsCount);
@@ -246,7 +246,7 @@ export default function MemoriesTopBar({
 
                 // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
                 if (wasOff) {
-                  const postIds = memoriesPageRef?.current?.getAllPostIds?.() || [];
+                  const postIds = state.counts.allPostIds;
                   actions.expandAll('posts', postIds);
                 }
               }}
@@ -266,7 +266,7 @@ export default function MemoriesTopBar({
                 if (postsAllExpanded) {
                   actions.collapseAll('posts');
                 } else {
-                  const postIds = memoriesPageRef?.current?.getAllPostIds?.() || [];
+                  const postIds = state.counts.allPostIds;
                   actions.expandAll('posts', postIds);
                 }
               }}
@@ -297,7 +297,7 @@ export default function MemoriesTopBar({
 
                 // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
                 if (wasOff) {
-                  const photoGridIds = memoriesPageRef?.current?.getAllPhotoGridIds?.() || [];
+                  const photoGridIds = state.counts.allPhotoGridIds;
                   actions.expandAll('photoGrids', photoGridIds);
                 }
               }}
@@ -317,7 +317,7 @@ export default function MemoriesTopBar({
                 if (photosAllExpanded) {
                   actions.collapseAll('photoGrids');
                 } else {
-                  const photoGridIds = memoriesPageRef?.current?.getAllPhotoGridIds?.() || [];
+                  const photoGridIds = state.counts.allPhotoGridIds;
                   actions.expandAll('photoGrids', photoGridIds);
                 }
               }}

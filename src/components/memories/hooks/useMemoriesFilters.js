@@ -295,17 +295,45 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     }
   }, [filteredMoments, sortOrder, sessions]);
 
-  // ⭐ v2.14i : Calculer counts et les mettre à jour dans Context
-  const counts = useMemo(() => ({
-    filteredMomentsCount: sortedMoments.length,
-    totalPostsCount: sortedMoments.reduce((acc, m) => acc + (m.posts?.filter(p => p.id).length || 0), 0),
-    momentsWithPhotosCount: sortedMoments.filter(m => m.dayPhotos?.length > 0).length
-  }), [sortedMoments]);
+  // ⭐ v2.14i : Calculer counts ET IDs, les mettre à jour dans Context
+  const counts = useMemo(() => {
+    // Collecter tous les IDs depuis sortedMoments
+    const allMomentIds = sortedMoments.map(m => m.id);
+    const allPostIds = [];
+    const allPhotoGridIds = [];
+
+    sortedMoments.forEach(moment => {
+      // Posts IDs
+      moment.posts?.forEach(post => {
+        if (post.id) allPostIds.push(generatePostKey(moment.id, post.id));
+      });
+
+      // Photo grid IDs
+      if (moment.dayPhotos?.length > 0) {
+        allPhotoGridIds.push(generatePhotoMomentKey(moment.id));
+      }
+      moment.posts?.forEach(post => {
+        if (post.photos?.length > 0) {
+          allPhotoGridIds.push(generatePhotoMastodonKey(moment.id, post.id));
+        }
+      });
+    });
+
+    return {
+      filteredMomentsCount: sortedMoments.length,
+      totalPostsCount: allPostIds.length,
+      momentsWithPhotosCount: sortedMoments.filter(m => m.dayPhotos?.length > 0).length,
+      // ⭐ Ajout des IDs pour expandAll/collapseAll
+      allMomentIds,
+      allPostIds,
+      allPhotoGridIds
+    };
+  }, [sortedMoments]);
 
   // Mettre à jour les counts dans le Context
   useEffect(() => {
     actions.updateCounts(counts);
-  }, [counts, actions]);
+  }, [counts]); // ⚠️ Ne pas inclure actions pour éviter boucle infinie
 
   // ========================================
   // HELPERS
