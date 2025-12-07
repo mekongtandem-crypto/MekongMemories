@@ -284,6 +284,10 @@ function displayReducer(state, action) {
     // ========================================
 
     case ACTIONS.UPDATE_COUNTS:
+      console.log('🔧 [Context] UPDATE_COUNTS:', {
+        allPostIds: action.payload.allPostIds?.length || 0,
+        currentExpandedPosts: state.expanded.posts.size
+      });
       return { ...state, counts: action.payload };
 
     // ========================================
