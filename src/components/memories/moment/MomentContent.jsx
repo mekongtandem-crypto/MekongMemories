@@ -47,27 +47,25 @@ export const MomentContent = memo(({
   // Logique correcte: isElementVisible(day_photos) ET localDisplay.showDayPhotos
   const shouldShowDayPhotos = (isElementVisible?.('day_photos') ?? true) && localDisplay.showDayPhotos;
 
-  // ⭐ v2.14 : Posts - LOCAL override GLOBAL (dernier qui parle gagne!)
-  // Si localDisplay.showPosts = true, TOUJOURS afficher posts (ignorer filtres globaux)
+  // ⭐ v2.14u : Posts - Filtres globaux s'appliquent TOUJOURS
   const hasVisiblePosts = useMemo(() => {
     if (!localDisplay.showPosts || !moment.posts || moment.posts.length === 0) {
       return false;
     }
 
-    // ⭐ v2.14 : Si showPosts=true, on a AU MOINS des posts à afficher
-    // (PostArticle gérera la visibilité interne selon filtres)
+    // ⭐ v2.14u : Vérifier si AU MOINS un post a du contenu visible selon filtres globaux
     return moment.posts.some(post => {
       const hasText = post.content?.trim();
       const hasPhotos = post.photos?.length > 0;
 
-      // ⭐ v2.14 : Override global - si user clicked local badge, toujours afficher
-      const shouldShowHeader = hasText;  // Toujours afficher header si texte existe
-      const shouldShowText = hasText;    // Toujours afficher texte si existe
-      const shouldShowPhotos = hasPhotos; // Toujours afficher photos si existent
+      // ⭐ v2.14u : Appliquer filtres globaux (comme dans PostArticle)
+      const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true);
+      const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
+      const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true);
 
       return shouldShowHeader || shouldShowText || shouldShowPhotos;
     });
-  }, [localDisplay.showPosts, moment.posts]);
+  }, [localDisplay.showPosts, moment.posts, isElementVisible]);
 
   return (
     <div className="px-3 pb-3">
