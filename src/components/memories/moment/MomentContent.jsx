@@ -43,9 +43,12 @@ export const MomentContent = memo(({
   editionMode  // ⭐ v2.9o : Recevoir editionMode pour posts et photos
 }) => {
 
-  // ⭐ v2.14u : Photos d'album - Filtres globaux s'appliquent TOUJOURS
-  // Logique correcte: isElementVisible(day_photos) ET localDisplay.showDayPhotos
-  const shouldShowDayPhotos = (isElementVisible?.('day_photos') ?? true) && localDisplay.showDayPhotos;
+  // ⭐ v2.15 : Photos d'album - Séparer logique volet et grille
+  // Le VOLET (header) doit toujours être visible (grisé si filtre OFF)
+  // La GRILLE photos visible seulement si filtre ON ET volet ouvert
+  const imagesFilterActive = isElementVisible?.('day_photos') ?? true;
+  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0;  // Toujours visible si photos existent
+  const shouldShowDayPhotosGrid = imagesFilterActive && localDisplay.showDayPhotos;
 
   // ⭐ v2.14u : Posts - Filtres globaux s'appliquent TOUJOURS
   const hasVisiblePosts = useMemo(() => {
@@ -103,9 +106,9 @@ export const MomentContent = memo(({
         </div>
       )}
 
-      {/* ⭐ v2.11 : Photos moment (seulement si filtre 📷 actif) */}
-      {shouldShowDayPhotos && moment.dayPhotoCount > 0 && (
-        <div className="mt-3">
+      {/* ⭐ v2.15 : Photos moment - Volet toujours visible, grille conditionnelle */}
+      {shouldShowDayPhotosHeader && (
+        <div className={`mt-3 ${!imagesFilterActive ? 'opacity-50' : ''}`}>
           <PhotoGridHeader
             moment={moment}
             isOpen={localDisplay.showDayPhotos}
@@ -115,10 +118,11 @@ export const MomentContent = memo(({
             onCancelSelection={onCancelSelection}
             selectionMode={selectionMode}
             onContentSelected={onContentSelected}
+            disabled={!imagesFilterActive}
           />
 
-          {/* ⭐ v2.14 : Fond subtil pour distinguer grille photos du texte */}
-          {localDisplay.showDayPhotos && (
+          {/* ⭐ v2.15 : Grille visible seulement si filtre Images ON ET volet ouvert */}
+          {shouldShowDayPhotosGrid && (
             <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
               <PhotoGrid
                 photos={moment.dayPhotos.slice(0, visibleDayPhotos)}

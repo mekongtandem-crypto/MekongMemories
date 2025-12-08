@@ -308,14 +308,19 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       });
     });
 
+    // ⭐ v2.15 : DÉDUPLIQUER les IDs pour éviter comptage erroné
+    // (certains posts peuvent avoir des IDs dupliqués dans les données)
+    const uniquePostIds = [...new Set(allPostIds)];
+    const uniquePhotoGridIds = [...new Set(allPhotoGridIds)];
+
     return {
       filteredMomentsCount: sortedMoments.length,
-      totalPostsCount: allPostIds.length,
+      totalPostsCount: uniquePostIds.length,  // ✅ Compter seulement les IDs uniques
       momentsWithPhotosCount: sortedMoments.filter(m => m.dayPhotos?.length > 0).length,
       // ⭐ Ajout des IDs pour expandAll/collapseAll
       allMomentIds,
-      allPostIds,
-      allPhotoGridIds
+      allPostIds: uniquePostIds,  // ✅ Tableau dédupliqué
+      allPhotoGridIds: uniquePhotoGridIds  // ✅ Tableau dédupliqué
     };
   }, [sortedMoments]);
 
