@@ -1265,13 +1265,14 @@ const navigationProcessedRef = useRef(null);
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
-  useEffect(() => {
-    if (selectedMoments.length > 0) {
-      const lastSelected = selectedMoments[selectedMoments.length - 1];
-      scrollToMoment(lastSelected.id, 'start');
-    }
-  }, [selectedMoments]);
-  
+  // ⭐ v2.15 : DÉSACTIVÉ - Scroll automatique obsolète (causait tremblement)
+  // useEffect(() => {
+  //   if (selectedMoments.length > 0) {
+  //     const lastSelected = selectedMoments[selectedMoments.length - 1];
+  //     scrollToMoment(lastSelected.id, 'start');
+  //   }
+  // }, [selectedMoments]);
+
   useEffect(() => {
   window.createSessionFromModal = () => {
     if (sessionListModal) {
