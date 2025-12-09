@@ -49,6 +49,10 @@ export const PostArticle = memo(({
   const { state, computed, actions } = useMemoriesDisplay();
   const imagesFilterActive = state.contentFilters.images;  // ⭐ v2.14 : Pour griser badge
 
+  // ⭐ v2.15c : Détecter état global DP pour logique volet/grille
+  const allPhotoGridIds = state.counts.allPhotoGridIds || [];
+  const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds.length);
+
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
   // ⭐ v2.14s : État local post expansion (synchronisé avec Context)
@@ -216,8 +220,8 @@ export const PostArticle = memo(({
               {title}
             </h4>
 
-            {/* ⭐ v2.14 : Badge photos toujours visible, grisé si filtre Images OFF */}
-            {hasPhotos && (
+            {/* ⭐ v2.15c : Badge photos toggle visible seulement si DP=replié */}
+            {hasPhotos && !photosAllExpanded && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -329,8 +333,8 @@ export const PostArticle = memo(({
               />
             )}
 
-            {/* Photos (si header affiché + photos visibles + toggle ON) */}
-            {shouldShowHeader && shouldShowPhotos && showThisPostPhotos && (
+            {/* ⭐ v2.15c : Photos si DP=déplié OU toggle ON */}
+            {shouldShowHeader && shouldShowPhotos && (photosAllExpanded || showThisPostPhotos) && (
           <div className="p-2">
             <PhotoGrid
               photos={post.photos}
