@@ -43,12 +43,22 @@ export const MomentContent = memo(({
   editionMode  // ⭐ v2.9o : Recevoir editionMode pour posts et photos
 }) => {
 
-  // ⭐ v2.15 : Photos d'album - Séparer logique volet et grille
-  // Le VOLET (header) doit toujours être visible (grisé si filtre OFF)
-  // La GRILLE photos visible seulement si filtre ON ET volet ouvert
-  const imagesFilterActive = isElementVisible?.('day_photos') ?? true;
-  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0;  // Toujours visible si photos existent
-  const shouldShowDayPhotosGrid = imagesFilterActive && localDisplay.showDayPhotos;
+  // ⭐ v2.15 : Photos d'album - Logique volet/grille selon mode Vrac/Structure
+  // Déterminer le mode d'affichage
+  const isVracMode = !(isElementVisible?.('moment_header') ?? true); // AM=OFF → mode Vrac
+  const imagesFilterActive = isElementVisible?.('day_photos') ?? true; // AP
+
+  // Volet PhotoDuMoment visible ?
+  // - Mode Structure (AM=ON) : toujours visible et cliquable
+  // - Mode Vrac (AM=OFF) : visible seulement si AP=OFF (permet override local)
+  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 && (
+    !isVracMode || // Structure : toujours visible
+    !imagesFilterActive // Vrac + AP=OFF : visible pour override local
+  );
+
+  // Grille PhotoDuMoment visible ?
+  // Override local prime : si volet ouvert (localDisplay.showDayPhotos), grille visible
+  const shouldShowDayPhotosGrid = localDisplay.showDayPhotos;
 
   // ⭐ v2.14u : Posts - Filtres globaux s'appliquent TOUJOURS
   const hasVisiblePosts = useMemo(() => {
@@ -106,9 +116,9 @@ export const MomentContent = memo(({
         </div>
       )}
 
-      {/* ⭐ v2.15 : Photos moment - Volet toujours visible, grille conditionnelle */}
+      {/* ⭐ v2.15 : Photos moment - Volet toujours cliquable (override local) */}
       {shouldShowDayPhotosHeader && (
-        <div className={`mt-3 ${!imagesFilterActive ? 'opacity-50' : ''}`}>
+        <div className="mt-3">
           <PhotoGridHeader
             moment={moment}
             isOpen={localDisplay.showDayPhotos}
@@ -118,10 +128,9 @@ export const MomentContent = memo(({
             onCancelSelection={onCancelSelection}
             selectionMode={selectionMode}
             onContentSelected={onContentSelected}
-            disabled={!imagesFilterActive}
           />
 
-          {/* ⭐ v2.15 : Grille visible seulement si filtre Images ON ET volet ouvert */}
+          {/* ⭐ v2.15 : Grille visible si volet ouvert (override local prime) */}
           {shouldShowDayPhotosGrid && (
             <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
               <PhotoGrid
