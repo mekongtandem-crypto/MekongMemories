@@ -49,11 +49,20 @@ export const MomentContent = memo(({
   const allPhotoGridIds = state.counts.allPhotoGridIds || [];
   const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds.length);
 
-  // ⭐ v2.15c : Logique volet/grille selon état global DP
-  // Règle : DP déplié → grille directe (pas de volet)
-  //        DP replié → volet visible (grille conditionnelle)
-  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 && !photosAllExpanded;  // Volet seulement si DP replié
-  const shouldShowDayPhotosGrid = photosAllExpanded || localDisplay.showDayPhotos;  // Grille si DP déplié OU volet ouvert
+  // ⭐ v2.15d : Combiner logique AM (Structure/Vrac) + DP (déplié/replié)
+  const isVracMode = !(isElementVisible?.('moment_header') ?? true); // AM=OFF → mode Vrac
+
+  // Volet PhotoDuMoment visible ?
+  // Mode Structure (AM=ON) : toujours visible (ignore DP)
+  // Mode Vrac (AM=OFF) : visible seulement si DP=replié
+  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 && (
+    !isVracMode ||     // Structure : toujours visible
+    !photosAllExpanded // Vrac : visible seulement si DP=replié
+  );
+
+  // Grille PhotoDuMoment visible ?
+  // Toujours : DP=déplié OU volet ouvert localement
+  const shouldShowDayPhotosGrid = photosAllExpanded || localDisplay.showDayPhotos;
 
   // ⭐ v2.14u : Posts - Filtres globaux s'appliquent TOUJOURS
   const hasVisiblePosts = useMemo(() => {
