@@ -49,16 +49,17 @@ export const MomentContent = memo(({
   const allPhotoGridIds = state.counts.allPhotoGridIds || [];
   const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds.length);
 
-  // ⭐ v2.15d : Combiner logique AM (Structure/Vrac) + DP (déplié/replié)
+  // ⭐ v2.15e : Combiner logique AM (Structure/Vrac) + DP (déplié/replié) + AP (Images ON/OFF)
   const isVracMode = !(isElementVisible?.('moment_header') ?? true); // AM=OFF → mode Vrac
+  const imagesFilterActive = isElementVisible?.('day_photos') ?? true; // AP
 
   // Volet PhotoDuMoment visible ?
-  // Mode Structure (AM=ON) : toujours visible (ignore DP)
-  // Mode Vrac (AM=OFF) : visible seulement si DP=replié
-  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 && (
-    !isVracMode ||     // Structure : toujours visible
-    !photosAllExpanded // Vrac : visible seulement si DP=replié
-  );
+  // Requis : AP=1 (filtre Images ON)
+  // ET (Mode Structure OU (Mode Vrac ET DP=replié))
+  // Invisible si : AP=0 OU (AM=0 ET DP=1)
+  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 &&
+    imagesFilterActive &&                // AP=1 requis
+    (!isVracMode || !photosAllExpanded); // Structure OU (Vrac ET DP=0)
 
   // Grille PhotoDuMoment visible ?
   // Toujours : DP=déplié OU volet ouvert localement
