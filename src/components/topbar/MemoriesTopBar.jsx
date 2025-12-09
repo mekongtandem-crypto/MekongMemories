@@ -41,7 +41,7 @@ export default function MemoriesTopBar({
   const { state, actions, computed } = useMemoriesDisplay();
 
   // ⭐ v2.14h : Lire counts depuis Context (plus depuis ref!)
-  const { filteredMomentsCount, totalPostsCount, momentsWithPhotosCount } = state.counts;
+  const { filteredMomentsCount, totalPostsCount, momentsWithPhotosCount, allPhotoGridIds } = state.counts;
 
   // États UI locaux (menus)
   const [showMenu, setShowMenu] = useState(false);
@@ -76,10 +76,11 @@ export default function MemoriesTopBar({
     // actions.setMomentFilter(filter);
   };
 
-  // ⭐ v2.14 : Computed - États "tous dépliés" (zero polling!)
+  // ⭐ v2.15w : Computed - États "tous dépliés" (CORRIGÉ pour photoGrids!)
   const momentsAllExpanded = computed.allMomentsExpanded(filteredMomentsCount);
   const postsAllExpanded = computed.allPostsExpanded(totalPostsCount);
-  const photosAllExpanded = computed.allPhotoGridsExpanded(momentsWithPhotosCount);
+  // ✅ FIX: Utiliser allPhotoGridIds.length au lieu de momentsWithPhotosCount
+  const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds?.length || 0);
 
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-150">
@@ -290,13 +291,24 @@ export default function MemoriesTopBar({
               <Camera className="w-4 h-4" />
             </button>
 
-            {/* ⭐ v2.14 : Bouton Dépliement - Collé + même couleur */}
+            {/* ⭐ v2.15w : Bouton Dépliement - Collé + même couleur */}
             <button
               onClick={() => {
+                console.log('🔍 [TopBar] Clic DeploiementPhotos:', {
+                  photosAllExpanded,
+                  expandedSize: state.expanded.photoGrids.size,
+                  totalCount: allPhotoGridIds?.length || 0,
+                  allPhotoGridIdsLength: state.counts.allPhotoGridIds?.length || 0
+                });
+
                 if (photosAllExpanded) {
+                  console.log('  → Action: collapseAll');
                   actions.collapseAll('photoGrids');
                 } else {
                   const photoGridIds = state.counts.allPhotoGridIds;
+                  console.log('  → Action: expandAll avec', photoGridIds?.length || 0, 'IDs');
+                  console.log('  → Premiers 5 IDs:', photoGridIds?.slice(0, 5));
+                  console.log('  → IDs uniques:', new Set(photoGridIds).size, '/', photoGridIds?.length);
                   actions.expandAll('photoGrids', photoGridIds);
                 }
               }}
