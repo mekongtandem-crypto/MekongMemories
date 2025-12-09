@@ -280,6 +280,11 @@ export default function MemoriesTopBar({
                   const photoGridIds = state.counts.allPhotoGridIds;
                   actions.expandAll('photoGrids', photoGridIds);
                 }
+
+                // ⭐ v2.15e : Si passage ON → OFF, replier toutes les grilles (DP→0)
+                if (!wasOff) {
+                  actions.collapseAll('photoGrids');
+                }
               }}
               className={`p-1.5 rounded-t transition-colors duration-150 ${
                 state.contentFilters.images
