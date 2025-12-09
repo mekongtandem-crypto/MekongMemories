@@ -15,6 +15,7 @@ import React, { memo, useMemo } from 'react';
 import PostArticle from '../post/PostArticle.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import PhotoGridHeader from '../photo/PhotoGridHeader.jsx';
+import { useMemoriesDisplay } from '../context/MemoriesDisplayContext.jsx';  // ⭐ v2.15c
 
 export const MomentContent = memo(({
   moment,
@@ -43,22 +44,16 @@ export const MomentContent = memo(({
   editionMode  // ⭐ v2.9o : Recevoir editionMode pour posts et photos
 }) => {
 
-  // ⭐ v2.15 : Photos d'album - Logique volet/grille selon mode Vrac/Structure
-  // Déterminer le mode d'affichage
-  const isVracMode = !(isElementVisible?.('moment_header') ?? true); // AM=OFF → mode Vrac
-  const imagesFilterActive = isElementVisible?.('day_photos') ?? true; // AP
+  // ⭐ v2.15c : Accès Context pour détecter état global DP
+  const { state, computed } = useMemoriesDisplay();
+  const allPhotoGridIds = state.counts.allPhotoGridIds || [];
+  const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds.length);
 
-  // Volet PhotoDuMoment visible ?
-  // - Mode Structure (AM=ON) : toujours visible et cliquable
-  // - Mode Vrac (AM=OFF) : visible seulement si AP=OFF (permet override local)
-  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 && (
-    !isVracMode || // Structure : toujours visible
-    !imagesFilterActive // Vrac + AP=OFF : visible pour override local
-  );
-
-  // Grille PhotoDuMoment visible ?
-  // Override local prime : si volet ouvert (localDisplay.showDayPhotos), grille visible
-  const shouldShowDayPhotosGrid = localDisplay.showDayPhotos;
+  // ⭐ v2.15c : Logique volet/grille selon état global DP
+  // Règle : DP déplié → grille directe (pas de volet)
+  //        DP replié → volet visible (grille conditionnelle)
+  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 && !photosAllExpanded;  // Volet seulement si DP replié
+  const shouldShowDayPhotosGrid = photosAllExpanded || localDisplay.showDayPhotos;  // Grille si DP déplié OU volet ouvert
 
   // ⭐ v2.14u : Posts - Filtres globaux s'appliquent TOUJOURS
   const hasVisiblePosts = useMemo(() => {
