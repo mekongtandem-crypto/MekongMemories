@@ -64,59 +64,68 @@ export const MomentContent = memo(({
   // ET (DP=déplié OU volet ouvert localement)
   const shouldShowDayPhotosGrid = imagesFilterActive && (photosAllExpanded || localDisplay.showDayPhotos);
 
-  // ⭐ v2.14u : Posts - Filtres globaux s'appliquent TOUJOURS
+  // ⭐ v2.15i : Posts - Filtres globaux s'appliquent TOUJOURS (FIX React #300)
   const hasVisiblePosts = useMemo(() => {
-    if (!localDisplay.showPosts || !moment.posts || moment.posts.length === 0) {
+    if (!localDisplay.showPosts || !moment?.posts || !Array.isArray(moment.posts) || moment.posts.length === 0) {
       return false;
     }
 
-    // ⭐ v2.14u : Vérifier si AU MOINS un post a du contenu visible selon filtres globaux
-    return moment.posts.some(post => {
-      const hasText = post.content?.trim();
-      const hasPhotos = post.photos?.length > 0;
+    // ⭐ v2.15i : Vérifier si AU MOINS un post a du contenu visible selon filtres globaux
+    // Important : Cette logique DOIT matcher exactement PostArticle.jsx ligne 114-116
+    const isVracMode = !computed.isStructureMode;
+    const localOverride = localDisplay.showPosts;
 
-      // ⭐ v2.14u : Appliquer filtres globaux (comme dans PostArticle)
-      const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true);
-      const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true);
-      const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true);
+    return moment.posts.some(post => {
+      const hasText = post?.content?.trim();
+      const hasPhotos = post?.photos?.length > 0;
+
+      // ⭐ v2.15i : Appliquer EXACTEMENT la même logique que PostArticle (avec localOverride)
+      const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true) && (isVracMode || localOverride);
+      const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true) && (isVracMode || localOverride);
+      const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true) && (isVracMode || localOverride);
 
       return shouldShowHeader || shouldShowText || shouldShowPhotos;
     });
-  }, [localDisplay.showPosts, moment.posts, isElementVisible]);
+  }, [localDisplay.showPosts, moment?.posts, isElementVisible, computed]);
 
   return (
     <div className="px-3 pb-3">
 
       {/* Posts (filtrés individuellement dans PostArticle) */}
-      {/* ⭐ v2.14 : localOverride signal local override global */}
-      {hasVisiblePosts && (
+      {/* ⭐ v2.15i : localOverride signal local override global + Safety check */}
+      {hasVisiblePosts && moment?.posts && Array.isArray(moment.posts) && (
         <div className="space-y-2 mt-2">
-          {moment.posts.map((post, index) => (
-            <PostArticle
-              key={`${moment.id}_${post.id || index}`}
-              post={post}
-              moment={moment}
-              displayOptions={displayOptions}
-              isElementVisible={isElementVisible}
-              localOverride={localDisplay.showPosts}
-              onPhotoClick={onPhotoClick}
-              onCreateSession={onCreateSession}
-              activePhotoGrid={activePhotoGrid}
-              selectedPhotos={selectedPhotos}
-              onActivateSelection={onActivateSelection}
-              onTogglePhotoSelection={onTogglePhotoSelection}
-              onBulkTagPhotos={onBulkTagPhotos}
-              onCancelSelection={onCancelSelection}
-              isFromChat={isFromChat}
-              onOpenPhotoContextMenu={onOpenPhotoContextMenu}
-              selectionMode={selectionMode}
-              onContentSelected={onContentSelected}
-              sessions={sessions}
-              onShowSessions={onShowSessions}
-              onCreateSessionFromContent={onCreateSessionFromContent}
-              editionMode={editionMode}
-            />
-          ))}
+          {moment.posts.map((post, index) => {
+            // ⭐ v2.15i : Safety check - Skip invalid posts
+            if (!post) return null;
+
+            return (
+              <PostArticle
+                key={`${moment.id}_${post.id || index}`}
+                post={post}
+                moment={moment}
+                displayOptions={displayOptions}
+                isElementVisible={isElementVisible}
+                localOverride={localDisplay.showPosts}
+                onPhotoClick={onPhotoClick}
+                onCreateSession={onCreateSession}
+                activePhotoGrid={activePhotoGrid}
+                selectedPhotos={selectedPhotos}
+                onActivateSelection={onActivateSelection}
+                onTogglePhotoSelection={onTogglePhotoSelection}
+                onBulkTagPhotos={onBulkTagPhotos}
+                onCancelSelection={onCancelSelection}
+                isFromChat={isFromChat}
+                onOpenPhotoContextMenu={onOpenPhotoContextMenu}
+                selectionMode={selectionMode}
+                onContentSelected={onContentSelected}
+                sessions={sessions}
+                onShowSessions={onShowSessions}
+                onCreateSessionFromContent={onCreateSessionFromContent}
+                editionMode={editionMode}
+              />
+            );
+          })}
         </div>
       )}
 

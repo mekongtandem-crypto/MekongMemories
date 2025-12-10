@@ -159,12 +159,10 @@ export default function MemoriesTopBar({
                   actions.expandAll('moments', momentIds);
                 }
 
-                // ⭐ v2.14d : Si passage ON → OFF (mode Vrac), tout déplier
+                // ⭐ v2.15h : Si passage ON → OFF (mode Vrac), déplier posts seulement (pas photoGrids)
                 if (wasOn) {
                   const postIds = state.counts.allPostIds;
-                  const photoGridIds = state.counts.allPhotoGridIds;
                   actions.expandAll('posts', postIds);
-                  actions.expandAll('photoGrids', photoGridIds);
                 }
               }}
               className={`p-1.5 rounded-t transition-colors duration-150 ${
