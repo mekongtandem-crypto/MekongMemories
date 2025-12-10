@@ -1,14 +1,18 @@
 /**
- * FlatContentList.jsx v2.11 - Mode "en vrac"
+ * FlatContentList.jsx v2.15h - Mode "en vrac" avec gestion DP
  * Affiche le contenu de tous les moments sans leurs en-têtes
  *
  * Utilisé quand le toggle ✨ Moments est désactivé
  * Affiche posts et photos selon les filtres actifs (📷🗒️🖼️)
+ *
+ * ⭐ v2.15h : Gestion volets PhotoDeMoment selon DP (déplié/replié)
  */
 
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import PostArticle from '../post/PostArticle.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
+import PhotoGridHeader from '../photo/PhotoGridHeader.jsx';
+import { useMemoriesDisplay } from '../context/MemoriesDisplayContext.jsx';  // ⭐ v2.15h
 
 export const FlatContentList = memo(({
   moments,
@@ -32,7 +36,22 @@ export const FlatContentList = memo(({
   editionMode
 }) => {
 
+  // ⭐ v2.15h : Accès Context pour détecter état global DP
+  const { state, computed } = useMemoriesDisplay();
+  const allPhotoGridIds = state.counts.allPhotoGridIds || [];
+  const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds.length);
+
   const shouldShowDayPhotos = isElementVisible?.('day_photos') ?? true;
+
+  // ⭐ v2.15h : État local pour gérer l'ouverture/fermeture des volets photos
+  const [openPhotoGrids, setOpenPhotoGrids] = useState({});
+
+  const handleToggleDayPhotos = (momentId) => {
+    setOpenPhotoGrids(prev => ({
+      ...prev,
+      [momentId]: !prev[momentId]
+    }));
+  };
 
   // ⭐ v2.11 : Collecter les données (pas le JSX prérendu)
   const allContent = [];
@@ -103,28 +122,53 @@ export const FlatContentList = memo(({
           );
         } else if (item.type === 'photos') {
           const { moment } = item.data;
+          const isGridOpen = openPhotoGrids[moment.id] || false;
+
+          // ⭐ v2.15h : Mode Vrac + DP logic
+          // DP=0 (replié) : Afficher volet + grille conditionnelle
+          // DP=1 (déplié) : Afficher grille directement (pas de volet)
+          const shouldShowHeader = !photosAllExpanded;
+          const shouldShowGrid = photosAllExpanded || isGridOpen;
+
           return (
             <div key={item.key} className="mt-3">
-              <PhotoGrid
-                photos={moment.dayPhotos}
-                moment={moment}
-                onPhotoClick={onPhotoClick}
-                allPhotos={moment.dayPhotos}
-                gridId={`flat_moment_${moment.id}_day`}
-                activePhotoGrid={activePhotoGrid}
-                selectedPhotos={selectedPhotos}
-                onActivateSelection={onActivateSelection}
-                onTogglePhotoSelection={onTogglePhotoSelection}
-                onBulkTagPhotos={onBulkTagPhotos}
-                onCancelSelection={onCancelSelection}
-                isFromChat={isFromChat}
-                onOpenPhotoContextMenu={onOpenPhotoContextMenu}
-                selectionMode={selectionMode}
-                onContentSelected={onContentSelected}
-                sessions={sessions}
-                onShowSessions={onShowSessions}
-                editionMode={editionMode}
-              />
+              {/* ⭐ v2.15h : Volet visible seulement si DP=replié */}
+              {shouldShowHeader && (
+                <PhotoGridHeader
+                  moment={moment}
+                  isOpen={isGridOpen}
+                  onToggle={() => handleToggleDayPhotos(moment.id)}
+                  activePhotoGrid={activePhotoGrid}
+                  onActivateSelection={onActivateSelection}
+                  onCancelSelection={onCancelSelection}
+                  selectionMode={selectionMode}
+                  onContentSelected={onContentSelected}
+                />
+              )}
+
+              {/* ⭐ v2.15h : Grille visible si DP=déplié OU volet ouvert */}
+              {shouldShowGrid && (
+                <PhotoGrid
+                  photos={moment.dayPhotos}
+                  moment={moment}
+                  onPhotoClick={onPhotoClick}
+                  allPhotos={moment.dayPhotos}
+                  gridId={`flat_moment_${moment.id}_day`}
+                  activePhotoGrid={activePhotoGrid}
+                  selectedPhotos={selectedPhotos}
+                  onActivateSelection={onActivateSelection}
+                  onTogglePhotoSelection={onTogglePhotoSelection}
+                  onBulkTagPhotos={onBulkTagPhotos}
+                  onCancelSelection={onCancelSelection}
+                  isFromChat={isFromChat}
+                  onOpenPhotoContextMenu={onOpenPhotoContextMenu}
+                  selectionMode={selectionMode}
+                  onContentSelected={onContentSelected}
+                  sessions={sessions}
+                  onShowSessions={onShowSessions}
+                  editionMode={editionMode}
+                />
+              )}
             </div>
           );
         }

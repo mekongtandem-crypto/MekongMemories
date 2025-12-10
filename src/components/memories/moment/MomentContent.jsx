@@ -49,39 +49,15 @@ export const MomentContent = memo(({
   const allPhotoGridIds = state.counts.allPhotoGridIds || [];
   const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds.length);
 
-  // ⭐ v2.15e : Combiner logique AM (Structure/Vrac) + DP (déplié/replié) + AP (Images ON/OFF)
-  const isVracMode = !(isElementVisible?.('moment_header') ?? true); // AM=OFF → mode Vrac
+  // ⭐ v2.15h : Combiner logique AM (Structure/Vrac) + DP (déplié/replié) + AP (Images ON/OFF)
+  // Note : En mode Vrac (AM=0), FlatContentList gère l'affichage des volets
+  // Ce composant (MomentContent) gère UNIQUEMENT le mode Structure (AM=1)
   const imagesFilterActive = isElementVisible?.('day_photos') ?? true; // AP
 
-  // 🔍 DEBUG v2.15f : Log pour diagnostiquer visibilité volets
-  if (moment.dayPhotoCount > 0) {
-    console.log(`🔍 [MomentContent] ${moment.displayTitle}:`, {
-      dayPhotoCount: moment.dayPhotoCount,
-      isVracMode,
-      imagesFilterActive,
-      photosAllExpanded,
-      calculation: {
-        'moment.dayPhotoCount > 0': moment.dayPhotoCount > 0,
-        'imagesFilterActive': imagesFilterActive,
-        '!isVracMode': !isVracMode,
-        '!photosAllExpanded': !photosAllExpanded,
-        '(!isVracMode || !photosAllExpanded)': (!isVracMode || !photosAllExpanded)
-      }
-    });
-  }
-
-  // Volet PhotoDuMoment visible ?
+  // Volet PhotoDuMoment visible en mode Structure ?
   // Requis : AP=1 (filtre Images ON)
-  // ET (Mode Structure OU (Mode Vrac ET DP=replié))
-  // Invisible si : AP=0 OU (AM=0 ET DP=1)
-  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 &&
-    imagesFilterActive &&                // AP=1 requis
-    (!isVracMode || !photosAllExpanded); // Structure OU (Vrac ET DP=0)
-
-  // 🔍 DEBUG
-  if (moment.dayPhotoCount > 0) {
-    console.log(`  → shouldShowDayPhotosHeader: ${shouldShowDayPhotosHeader}`);
-  }
+  // En mode Structure, volets toujours visibles (DP n'affecte pas la visibilité, seulement l'état)
+  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 && imagesFilterActive;
 
   // Grille PhotoDuMoment visible ?
   // Requis : AP=1 (filtre Images ON)
