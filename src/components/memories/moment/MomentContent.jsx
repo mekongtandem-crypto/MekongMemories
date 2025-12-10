@@ -53,6 +53,23 @@ export const MomentContent = memo(({
   const isVracMode = !(isElementVisible?.('moment_header') ?? true); // AM=OFF → mode Vrac
   const imagesFilterActive = isElementVisible?.('day_photos') ?? true; // AP
 
+  // 🔍 DEBUG v2.15f : Log pour diagnostiquer visibilité volets
+  if (moment.dayPhotoCount > 0) {
+    console.log(`🔍 [MomentContent] ${moment.displayTitle}:`, {
+      dayPhotoCount: moment.dayPhotoCount,
+      isVracMode,
+      imagesFilterActive,
+      photosAllExpanded,
+      calculation: {
+        'moment.dayPhotoCount > 0': moment.dayPhotoCount > 0,
+        'imagesFilterActive': imagesFilterActive,
+        '!isVracMode': !isVracMode,
+        '!photosAllExpanded': !photosAllExpanded,
+        '(!isVracMode || !photosAllExpanded)': (!isVracMode || !photosAllExpanded)
+      }
+    });
+  }
+
   // Volet PhotoDuMoment visible ?
   // Requis : AP=1 (filtre Images ON)
   // ET (Mode Structure OU (Mode Vrac ET DP=replié))
@@ -60,6 +77,11 @@ export const MomentContent = memo(({
   const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 &&
     imagesFilterActive &&                // AP=1 requis
     (!isVracMode || !photosAllExpanded); // Structure OU (Vrac ET DP=0)
+
+  // 🔍 DEBUG
+  if (moment.dayPhotoCount > 0) {
+    console.log(`  → shouldShowDayPhotosHeader: ${shouldShowDayPhotosHeader}`);
+  }
 
   // Grille PhotoDuMoment visible ?
   // Requis : AP=1 (filtre Images ON)
