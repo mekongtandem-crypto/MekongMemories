@@ -1,5 +1,5 @@
 /**
- * PostArticle.jsx v7.2 - Filtres de contenu additifs
+ * PostArticle.jsx v7.2i - Filtres de contenu additifs + FIX React #300
  * Article Mastodon complet
  *
  * ⭐ v2.11 : Filtres strictes
@@ -7,6 +7,9 @@
  * - 🖼️ Images : Affiche seulement les photos (masque texte)
  * - Les deux : Affiche tout
  * - Aucun : Masque complètement le post
+ *
+ * ⭐ v2.15h : Décoder entités HTML (emojis)
+ * ⭐ v2.15i : Safety checks pour éviter React #300
  *
  * Structure :
  * - Header (titre, toggle photos, badges)
@@ -44,6 +47,12 @@ export const PostArticle = memo(({
   onCreateSessionFromContent,
   editionMode  // ⭐ v2.9o : Recevoir editionMode
 }) => {
+
+  // ⭐ v2.15i : Safety check - Prevent React #300
+  if (!post || !moment) {
+    console.warn('⚠️ [PostArticle] Missing required props:', { post: !!post, moment: !!moment });
+    return null;
+  }
 
   // ⭐ v2.14 : Accès au Context (remplace polling)
   const { state, computed, actions } = useMemoriesDisplay();
@@ -83,10 +92,19 @@ export const PostArticle = memo(({
 
   const contentParts = post.content ? post.content.trim().split('\n') : [];
 
+  // ⭐ v2.15h : Décoder entités HTML dans le titre (pour emojis et caractères spéciaux)
+  const decodeHTML = (html) => {
+    const txt = document.createElement('textarea');
+    txt.innerHTML = html;
+    return txt.value;
+  };
+
   // ⭐ v2.8e : Pour Note de photos (user_added), utiliser post.title si présent
-  const title = post.title
+  const rawTitle = post.title
     ? post.title
     : (contentParts.shift() || `Article du jour ${post.dayNumber}`);
+
+  const title = decodeHTML(rawTitle);
 
   // ⭐ v2.8e : Pour Note de photos, afficher tout le content (pas de split)
   const body = post.title
