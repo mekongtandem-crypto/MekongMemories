@@ -62,8 +62,9 @@ export const MomentContent = memo(({
     (!isVracMode || !photosAllExpanded); // Structure OU (Vrac ET DP=0)
 
   // Grille PhotoDuMoment visible ?
-  // Toujours : DP=déplié OU volet ouvert localement
-  const shouldShowDayPhotosGrid = photosAllExpanded || localDisplay.showDayPhotos;
+  // Requis : AP=1 (filtre Images ON)
+  // ET (DP=déplié OU volet ouvert localement)
+  const shouldShowDayPhotosGrid = imagesFilterActive && (photosAllExpanded || localDisplay.showDayPhotos);
 
   // ⭐ v2.14u : Posts - Filtres globaux s'appliquent TOUJOURS
   const hasVisiblePosts = useMemo(() => {
