@@ -238,35 +238,60 @@ export const PostArticle = memo(({
               {title}
             </h4>
 
-            {/* ⭐ v2.15c : Badge photos toggle visible seulement si DP=replié */}
-            {hasPhotos && !photosAllExpanded && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // ⭐ v2.14s : Synchroniser avec Context (comme MomentCard)
-                  const photoGridId = `post_${post.id}`;
-                  actions.toggleExpanded('photoGrids', photoGridId);
-                }}
-                className={`p-1 flex-shrink-0 ${!imagesFilterActive ? 'opacity-40' : ''}`}
-                title={imagesFilterActive ? "Afficher/Masquer les photos" : "Photos désactivées (filtre Images OFF)"}
-              >
-                <div className={`flex items-center space-x-1 text-xs px-2 py-1 rounded ${
-                  imagesFilterActive
-                    ? 'bg-blue-50 dark:bg-blue-900/30'
-                    : 'bg-gray-100 dark:bg-gray-700'
-                }`}>
+            {/* ⭐ v2.15j : Badge photos - TOUJOURS visible et cliquable */}
+            {hasPhotos && (
+              <div className="flex items-center space-x-0.5 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/30 flex-shrink-0">
+                {/* Icône = Toggle volet (toujours cliquable) */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const photoGridId = `post_${post.id}`;
+                    // ⭐ v2.15j : Toggle volet + activer filtre Images si nécessaire
+                    if (!imagesFilterActive) {
+                      actions.toggleContentFilter('images');
+                    }
+                    actions.toggleExpanded('photoGrids', photoGridId);
+                  }}
+                  title="Afficher/Masquer les photos"
+                  className="p-0.5 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
+                >
                   <ImageIcon className={`w-4 h-4 transition-colors ${
                     imagesFilterActive && showThisPostPhotos
                       ? 'text-blue-600 dark:text-blue-400'
                       : 'text-gray-400 dark:text-gray-500'
                   }`} />
+                </button>
+
+                {/* Texte = Scroll vers photos (toujours cliquable) */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // ⭐ v2.15j : Activer filtres + ouvrir volet si nécessaire, puis scroll
+                    const photoGridId = `post_${post.id}`;
+                    if (!imagesFilterActive) {
+                      actions.toggleContentFilter('images');
+                    }
+                    if (!showThisPostPhotos) {
+                      actions.toggleExpanded('photoGrids', photoGridId);
+                    }
+                    // Scroll après un court délai pour laisser le DOM se mettre à jour
+                    setTimeout(() => {
+                      const photoElement = document.querySelector(`[data-photo-grid-id="${photoGridId}"]`);
+                      if (photoElement) {
+                        photoElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                      }
+                    }, 100);
+                  }}
+                  title="Aller aux photos"
+                  className="px-1 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
+                >
                   <span className={`font-medium transition-colors ${
                     imagesFilterActive && showThisPostPhotos
                       ? 'text-blue-600 dark:text-blue-400'
                       : 'text-gray-400 dark:text-gray-500'
                   }`}>{post.photos.length}</span>
-                </div>
-              </button>
+                </button>
+              </div>
             )}
           </div>
           

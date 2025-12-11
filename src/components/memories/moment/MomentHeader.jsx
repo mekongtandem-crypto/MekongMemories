@@ -76,8 +76,18 @@ export const MomentHeader = memo(({
     }
   }, [moment, momentKey, momentThemes]);
   
-  const handleLinkClick = useCallback((e, contentType) => {
+  // ⭐ v2.15j : Toggle volet + activer filtre si nécessaire
+  const handleToggleVolet = useCallback((e, contentType) => {
     e.stopPropagation();
+    const filterKey = contentType === 'posts' ? 'textes' : 'images';
+    const filterActive = contentType === 'posts' ? showTextBadges : showImageBadges;
+
+    // Activer le filtre si nécessaire
+    if (!filterActive) {
+      const { actions } = window.memoriesDisplayContext || {};
+      actions?.toggleContentFilter(filterKey);
+    }
+
     if (!isSelected) {
       if (contentType === 'posts') {
         onOpenWith({ showPosts: true, showDayPhotos: false });
@@ -87,7 +97,40 @@ export const MomentHeader = memo(({
     } else {
       onToggleLocal(contentType === 'posts' ? 'showPosts' : 'showDayPhotos');
     }
-  }, [isSelected, onOpenWith, onToggleLocal]);
+  }, [isSelected, onOpenWith, onToggleLocal, showTextBadges, showImageBadges]);
+
+  // ⭐ v2.15j : Scroll vers contenu (ouvre et active si nécessaire)
+  const handleScrollToContent = useCallback((e, contentType) => {
+    e.stopPropagation();
+    const filterKey = contentType === 'posts' ? 'textes' : 'images';
+    const filterActive = contentType === 'posts' ? showTextBadges : showImageBadges;
+    const voletOpen = contentType === 'posts' ? localDisplay.showPosts : localDisplay.showDayPhotos;
+
+    // Activer filtre + ouvrir moment + ouvrir volet si nécessaire
+    if (!filterActive) {
+      const { actions } = window.memoriesDisplayContext || {};
+      actions?.toggleContentFilter(filterKey);
+    }
+
+    if (!isSelected) {
+      if (contentType === 'posts') {
+        onOpenWith({ showPosts: true, showDayPhotos: false });
+      } else {
+        onOpenWith({ showPosts: false, showDayPhotos: true });
+      }
+    } else if (!voletOpen) {
+      onToggleLocal(contentType === 'posts' ? 'showPosts' : 'showDayPhotos');
+    }
+
+    // Scroll après mise à jour DOM
+    setTimeout(() => {
+      const targetSelector = contentType === 'posts' ? '[data-post-id]' : `[data-photo-grid-id="${moment.id}"]`;
+      const element = document.querySelector(`#${moment.id} ${targetSelector}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 150);
+  }, [isSelected, onOpenWith, onToggleLocal, showTextBadges, showImageBadges, localDisplay, moment.id]);
   
   // ⭐ v2.14 : Auto-open photos SEULEMENT si filtre Images ON
   const handleChevronClick = useCallback(() => {
@@ -147,51 +190,95 @@ export const MomentHeader = memo(({
 
         {/* Compteurs cliquables - ⭐ v2.8e : Séparation posts Mastodon / Note de photos */}
 
-        {/* ⭐ v2.14 : Badges posts grisés si filtre "Textes" OFF (mais visibles + actifs) */}
+        {/* ⭐ v2.15j : Badges avec icône (toggle) et texte (scroll) séparés */}
         {/* 🗒️ Posts Mastodon (bleu) */}
         {moment.mastodonPostCount > 0 && (
-          <button
-            onClick={(e) => handleLinkClick(e, 'posts')}
-            className={`flex items-center font-medium transition-all ${
-              showTextBadges
-                ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
-                : 'opacity-40 text-gray-400 dark:text-gray-500'
-            }`}
-          >
-            <FileText className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts && showTextBadges ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
-            {moment.mastodonPostCount} post{moment.mastodonPostCount > 1 ? 's' : ''}
-          </button>
+          <div className="flex items-center gap-0.5 text-sm">
+            {/* Icône = Toggle volet */}
+            <button
+              onClick={(e) => handleToggleVolet(e, 'posts')}
+              title="Afficher/Masquer les posts"
+              className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+            >
+              <FileText className={`w-4 h-4 transition-colors ${
+                localDisplay.showPosts && showTextBadges
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`} />
+            </button>
+            {/* Texte = Scroll */}
+            <button
+              onClick={(e) => handleScrollToContent(e, 'posts')}
+              title="Aller aux posts"
+              className={`font-medium hover:underline transition-colors ${
+                showTextBadges
+                  ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`}
+            >
+              {moment.mastodonPostCount} post{moment.mastodonPostCount > 1 ? 's' : ''}
+            </button>
+          </div>
         )}
 
         {/* 📝 Note de photos (jaune/amber) */}
         {moment.noteCount > 0 && (
-          <button
-            onClick={(e) => handleLinkClick(e, 'posts')}
-            className={`flex items-center font-medium transition-all ${
-              showTextBadges
-                ? 'text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400'
-                : 'opacity-40 text-gray-400 dark:text-gray-500'
-            }`}
-          >
-            <FileEdit className={`w-4 h-4 mr-1.5 ${localDisplay.showPosts && showTextBadges ? 'text-amber-600 dark:text-amber-500' : 'text-gray-400 dark:text-gray-500'}`} />
-            {moment.noteCount} note{moment.noteCount > 1 ? 's' : ''}
-          </button>
+          <div className="flex items-center gap-0.5 text-sm">
+            {/* Icône = Toggle volet */}
+            <button
+              onClick={(e) => handleToggleVolet(e, 'posts')}
+              title="Afficher/Masquer les notes"
+              className="p-1 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded transition-colors"
+            >
+              <FileEdit className={`w-4 h-4 transition-colors ${
+                localDisplay.showPosts && showTextBadges
+                  ? 'text-amber-600 dark:text-amber-500'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`} />
+            </button>
+            {/* Texte = Scroll */}
+            <button
+              onClick={(e) => handleScrollToContent(e, 'posts')}
+              title="Aller aux notes"
+              className={`font-medium hover:underline transition-colors ${
+                showTextBadges
+                  ? 'text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`}
+            >
+              {moment.noteCount} note{moment.noteCount > 1 ? 's' : ''}
+            </button>
+          </div>
         )}
 
-        {/* ⭐ v2.14 : Badge photos grisé si filtre "Images" OFF (mais visible + actif) */}
         {/* 📸 Photos (vert) */}
         {moment.dayPhotoCount > 0 && (
-          <button
-            onClick={(e) => handleLinkClick(e, 'photos')}
-            className={`flex items-center font-medium transition-all ${
-              showImageBadges
-                ? 'text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400'
-                : 'opacity-40 text-gray-400 dark:text-gray-500'
-            }`}
-          >
-            <Camera className={`w-4 h-4 mr-1.5 ${localDisplay.showDayPhotos && showImageBadges ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-500'}`} />
-            {moment.dayPhotoCount} photo{moment.dayPhotoCount > 1 ? 's' : ''}
-          </button>
+          <div className="flex items-center gap-0.5 text-sm">
+            {/* Icône = Toggle volet */}
+            <button
+              onClick={(e) => handleToggleVolet(e, 'photos')}
+              title="Afficher/Masquer les photos"
+              className="p-1 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors"
+            >
+              <Camera className={`w-4 h-4 transition-colors ${
+                localDisplay.showDayPhotos && showImageBadges
+                  ? 'text-green-600 dark:text-green-500'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`} />
+            </button>
+            {/* Texte = Scroll */}
+            <button
+              onClick={(e) => handleScrollToContent(e, 'photos')}
+              title="Aller aux photos"
+              className={`font-medium hover:underline transition-colors ${
+                showImageBadges
+                  ? 'text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`}
+            >
+              {moment.dayPhotoCount} photo{moment.dayPhotoCount > 1 ? 's' : ''}
+            </button>
+          </div>
         )}
         
         {/* Badges à droite */}
