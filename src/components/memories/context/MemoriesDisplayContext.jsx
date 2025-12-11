@@ -13,7 +13,7 @@
  * ✅ Predictable updates (reducer pattern)
  */
 
-import React, { createContext, useContext, useReducer, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { generatePostKey } from '../../../utils/themeUtils.js';
 
 // ========================================
@@ -138,6 +138,36 @@ export const ACTIONS = {
   HYDRATE_FROM_STORAGE: 'HYDRATE_FROM_STORAGE',
   RESET_ALL: 'RESET_ALL'
 };
+
+// ========================================
+// DEBUG LOGGING
+// ========================================
+
+/**
+ * ⭐ v2.15j : Logger l'état d'affichage pour debug
+ * Format : "Etat Affichage : StructureON-TexteON-PhotoON | Déploiement : MomentOFF-TexteON-PhotoON"
+ */
+function logDisplayState(state, action) {
+  if (!localStorage.getItem('debug_mode')) return;
+
+  const { contentFilters, expanded } = state;
+
+  // Affichage (filtres)
+  const structureLabel = contentFilters.structure ? 'StructureON' : 'StructureOFF';
+  const texteLabel = contentFilters.textes ? 'TexteON' : 'TexteOFF';
+  const photoLabel = contentFilters.images ? 'PhotoON' : 'PhotoOFF';
+
+  // Déploiement (expansion)
+  const momentLabel = expanded.moments.size > 0 ? `MomentON(${expanded.moments.size})` : 'MomentOFF';
+  const texteExpandLabel = expanded.posts.size > 0 ? `TexteON(${expanded.posts.size})` : 'TexteOFF';
+  const photoExpandLabel = expanded.photoGrids.size > 0 ? `PhotoON(${expanded.photoGrids.size})` : 'PhotoOFF';
+
+  console.log(
+    `%c🎯 État Affichage : ${structureLabel}-${texteLabel}-${photoLabel} | Déploiement : ${momentLabel}-${texteExpandLabel}-${photoExpandLabel}`,
+    'color: #10b981; font-weight: bold; font-size: 12px;',
+    `[Action: ${action.type}]`
+  );
+}
 
 // ========================================
 // REDUCER
@@ -364,11 +394,26 @@ function displayReducer(state, action) {
 // ========================================
 
 export function MemoriesDisplayProvider({ children, momentsData = [] }) {
-  const [state, dispatch] = useReducer(
+  const lastActionRef = useRef(null);
+
+  // Wrapper du dispatch pour capturer l'action
+  const [state, baseDispatch] = useReducer(
     displayReducer,
     momentsData,
     getInitialState
   );
+
+  const dispatch = useCallback((action) => {
+    lastActionRef.current = action;
+    baseDispatch(action);
+  }, []);
+
+  // ⭐ v2.15j : Logger après chaque changement d'état
+  useEffect(() => {
+    if (lastActionRef.current) {
+      logDisplayState(state, lastActionRef.current);
+    }
+  }, [state]);
 
   // ========================================
   // ACTION CREATORS (wrapped pour éviter re-création)
@@ -520,6 +565,14 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
     actions,
     computed
   }), [state, actions, computed]);
+
+  // ⭐ v2.15j : Exposer context sur window pour accès global (MomentHeader, etc.)
+  useEffect(() => {
+    window.memoriesDisplayContext = { state, actions, computed };
+    return () => {
+      delete window.memoriesDisplayContext;
+    };
+  }, [state, actions, computed]);
 
   return (
     <MemoriesDisplayContext.Provider value={value}>
