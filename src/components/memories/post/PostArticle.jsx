@@ -48,13 +48,7 @@ export const PostArticle = memo(({
   editionMode  // ⭐ v2.9o : Recevoir editionMode
 }) => {
 
-  // ⭐ v2.15i : Safety check - Prevent React #300
-  if (!post || !moment) {
-    console.warn('⚠️ [PostArticle] Missing required props:', { post: !!post, moment: !!moment });
-    return null;
-  }
-
-  // ⭐ v2.14 : Accès au Context (remplace polling)
+  // ⭐ v2.14 : Accès au Context (remplace polling) - DOIT être appelé AVANT tout return
   const { state, computed, actions } = useMemoriesDisplay();
   const imagesFilterActive = state.contentFilters.images;  // ⭐ v2.14 : Pour griser badge
 
@@ -64,8 +58,9 @@ export const PostArticle = memo(({
 
   const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
 
-  // ⭐ v2.14s : État local post expansion (synchronisé avec Context)
+  // ⭐ v2.14s : État local post expansion (synchronisé avec Context) - avec safety check
   const [isPostExpanded, setIsPostExpanded] = useState(() => {
+    if (!post) return false;  // Safety dans initialiseur
     const postKey = generatePostKey(post);
     return computed.isPostExpanded(postKey);
   });
@@ -76,19 +71,25 @@ export const PostArticle = memo(({
 
   // ⭐ v2.14s : Synchroniser post expansion avec Context (zero polling!)
   useEffect(() => {
+    if (!post) return;  // Safety dans effet
     const postKey = generatePostKey(post);
     const expanded = computed.isPostExpanded(postKey);  // ✅ FIX v2.14s: Utiliser generatePostKey pour cohérence
     setIsPostExpanded(expanded);
-  }, [post.id, computed]);
+  }, [post?.id, computed]);
 
   // ⭐ v2.14s : Synchroniser photos posts avec Context (comme MomentCard)
   useEffect(() => {
-    if (isPostExpanded && post.photos?.length > 0) {
-      const photoGridId = `post_${post.id}`;
-      const isExpanded = computed.isPhotoGridExpanded(photoGridId);
-      setShowThisPostPhotos(isExpanded);
-    }
-  }, [post.id, post.photos?.length, isPostExpanded, computed]);
+    if (!post || !isPostExpanded || !post.photos?.length) return;  // Safety dans effet
+    const photoGridId = `post_${post.id}`;
+    const isExpanded = computed.isPhotoGridExpanded(photoGridId);
+    setShowThisPostPhotos(isExpanded);
+  }, [post?.id, post?.photos?.length, isPostExpanded, computed]);
+
+  // ⭐ v2.15k : Safety check APRÈS les hooks - Fix React #310
+  if (!post || !moment) {
+    console.warn('⚠️ [PostArticle] Missing required props:', { post: !!post, moment: !!moment });
+    return null;
+  }
 
   const contentParts = post.content ? post.content.trim().split('\n') : [];
 
@@ -238,17 +239,17 @@ export const PostArticle = memo(({
               {title}
             </h4>
 
-            {/* ⭐ v2.15k : Badge photos - Icône=volet, Texte=contenu (PAS de toggle filtre global !) */}
+            {/* ⭐ v2.15k : Badge photos - Icône=volet, Texte=contenu */}
             {hasPhotos && (
               <div className="flex items-center space-x-0.5 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/30 flex-shrink-0">
-                {/* Icône = Toggle volet LOCAL uniquement */}
+                {/* Icône = Volet ouvert/fermé */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     const photoGridId = `post_${post.id}`;
                     actions.toggleExpanded('photoGrids', photoGridId);
                   }}
-                  title="Afficher/Masquer les photos de ce post"
+                  title="Afficher/Masquer le volet photos"
                   className="p-0.5 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
                 >
                   <ImageIcon className={`w-4 h-4 transition-colors ${
@@ -258,7 +259,7 @@ export const PostArticle = memo(({
                   }`} />
                 </button>
 
-                {/* Texte = Scroll vers photos (ouvre volet si besoin, PAS le filtre global) */}
+                {/* Texte = Contenu visible (volet ouvert/fermé) */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -279,7 +280,7 @@ export const PostArticle = memo(({
                   className="px-1 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
                 >
                   <span className={`font-medium transition-colors ${
-                    imagesFilterActive && showThisPostPhotos
+                    showThisPostPhotos
                       ? 'text-blue-600 dark:text-blue-400'
                       : 'text-gray-400 dark:text-gray-500'
                   }`}>{post.photos.length}</span>
