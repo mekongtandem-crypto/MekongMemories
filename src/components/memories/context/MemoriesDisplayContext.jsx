@@ -326,13 +326,22 @@ function displayReducer(state, action) {
 
     case ACTIONS.UPDATE_COUNTS: {
       const newCounts = action.payload;
+
+      // ⭐ v2.15k : Safety check pour éviter React #310
+      if (!newCounts || typeof newCounts !== 'object') {
+        console.warn('⚠️ [Context] UPDATE_COUNTS avec payload invalide:', newCounts);
+        return state;
+      }
+
       console.log('🔧 [Context] UPDATE_COUNTS:', {
         allPostIds: newCounts.allPostIds?.length || 0,
         currentExpandedPosts: state.expanded.posts.size
       });
 
       // ⭐ v2.14m : Si première initialisation (passage 0 → N), initialiser expanded Sets
-      const isFirstInit = state.counts.allPostIds.length === 0 && newCounts.allPostIds.length > 0;
+      const statePostsLength = state.counts?.allPostIds?.length || 0;
+      const newPostsLength = newCounts.allPostIds?.length || 0;
+      const isFirstInit = statePostsLength === 0 && newPostsLength > 0;
 
       if (isFirstInit) {
         console.log('🔧 [Context] Première init → auto-expand posts + photoGrids');
@@ -341,8 +350,8 @@ function displayReducer(state, action) {
           counts: newCounts,
           expanded: {
             ...state.expanded,
-            posts: new Set(newCounts.allPostIds),
-            photoGrids: new Set(newCounts.allPhotoGridIds)
+            posts: new Set(newCounts.allPostIds || []),
+            photoGrids: new Set(newCounts.allPhotoGridIds || [])
           }
         };
       }
