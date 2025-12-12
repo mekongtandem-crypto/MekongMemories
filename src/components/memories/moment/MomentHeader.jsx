@@ -76,45 +76,59 @@ export const MomentHeader = memo(({
     }
   }, [moment, momentKey, momentThemes]);
   
-  // ⭐ v2.15k : Toggle volet LOCAL uniquement (PAS le filtre global !)
-  const handleToggleVolet = useCallback((e, contentType) => {
+  // ⭐ v2.15m : Icône = AFFICHAGE du volet (comme AM/AT/AP)
+  const handleToggleAffichage = useCallback((e, contentType) => {
     e.stopPropagation();
 
     if (!isSelected) {
+      // Moment fermé → ouvrir moment + ouvrir volet
       if (contentType === 'posts') {
         onOpenWith({ showPosts: true, showDayPhotos: false });
       } else if (contentType === 'photos') {
         onOpenWith({ showPosts: false, showDayPhotos: true });
       }
     } else {
+      // Moment ouvert → toggle affichage volet
       onToggleLocal(contentType === 'posts' ? 'showPosts' : 'showDayPhotos');
     }
   }, [isSelected, onOpenWith, onToggleLocal]);
 
-  // ⭐ v2.15k : Scroll vers contenu (ouvre volet si besoin, PAS le filtre global !)
-  const handleScrollToContent = useCallback((e, contentType) => {
+  // ⭐ v2.15m : Texte = DÉPLOIEMENT du volet (comme DM/DT/DP) + scroll si déplie
+  const handleToggleDeploiement = useCallback((e, contentType) => {
     e.stopPropagation();
-    const voletOpen = contentType === 'posts' ? localDisplay.showPosts : localDisplay.showDayPhotos;
+    const voletKey = contentType === 'posts' ? 'showPosts' : 'showDayPhotos';
+    const wasOpen = isSelected && localDisplay[voletKey];
 
-    // Ouvrir moment + volet si nécessaire
     if (!isSelected) {
+      // Moment fermé → ouvrir moment + ouvrir volet
       if (contentType === 'posts') {
         onOpenWith({ showPosts: true, showDayPhotos: false });
       } else {
         onOpenWith({ showPosts: false, showDayPhotos: true });
       }
-    } else if (!voletOpen) {
-      onToggleLocal(contentType === 'posts' ? 'showPosts' : 'showDayPhotos');
-    }
+      // Scroll après ouverture
+      setTimeout(() => {
+        const targetSelector = contentType === 'posts' ? '[data-post-id]' : `[data-photo-grid-id="${moment.id}"]`;
+        const element = document.querySelector(`#${moment.id} ${targetSelector}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 150);
+    } else {
+      // Moment ouvert → toggle déploiement volet
+      onToggleLocal(voletKey);
 
-    // Scroll après mise à jour DOM
-    setTimeout(() => {
-      const targetSelector = contentType === 'posts' ? '[data-post-id]' : `[data-photo-grid-id="${moment.id}"]`;
-      const element = document.querySelector(`#${moment.id} ${targetSelector}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // Scroll seulement si on vient de déplier (wasOpen=false → devient true)
+      if (!wasOpen) {
+        setTimeout(() => {
+          const targetSelector = contentType === 'posts' ? '[data-post-id]' : `[data-photo-grid-id="${moment.id}"]`;
+          const element = document.querySelector(`#${moment.id} ${targetSelector}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 150);
       }
-    }, 150);
+    }
   }, [isSelected, onOpenWith, onToggleLocal, localDisplay, moment.id]);
   
   // ⭐ v2.14 : Auto-open photos SEULEMENT si filtre Images ON
@@ -175,13 +189,13 @@ export const MomentHeader = memo(({
 
         {/* Compteurs cliquables - ⭐ v2.8e : Séparation posts Mastodon / Note de photos */}
 
-        {/* ⭐ v2.15k : Badges - Icône=volet, Texte=contenu (volet ouvert/fermé) */}
+        {/* ⭐ v2.15m : Badges - Icône=Affichage, Texte=Déploiement+Scroll */}
         {/* 🗒️ Posts Mastodon (bleu) */}
         {moment.mastodonPostCount > 0 && (
           <div className="flex items-center gap-0.5 text-sm">
-            {/* Icône = Volet ouvert/fermé */}
+            {/* Icône = AFFICHAGE volet (comme AM/AT/AP) */}
             <button
-              onClick={(e) => handleToggleVolet(e, 'posts')}
+              onClick={(e) => handleToggleAffichage(e, 'posts')}
               title="Afficher/Masquer le volet posts"
               className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
             >
@@ -191,10 +205,10 @@ export const MomentHeader = memo(({
                   : 'text-gray-400 dark:text-gray-500'
               }`} />
             </button>
-            {/* Texte = Contenu visible (volet ouvert/fermé) */}
+            {/* Texte = DÉPLOIEMENT volet (comme DM/DT/DP) + scroll */}
             <button
-              onClick={(e) => handleScrollToContent(e, 'posts')}
-              title="Aller aux posts"
+              onClick={(e) => handleToggleDeploiement(e, 'posts')}
+              title="Déplier/Plier et aller aux posts"
               className={`font-medium hover:underline transition-colors ${
                 localDisplay.showPosts
                   ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
@@ -209,9 +223,9 @@ export const MomentHeader = memo(({
         {/* 📝 Note de photos (jaune/amber) */}
         {moment.noteCount > 0 && (
           <div className="flex items-center gap-0.5 text-sm">
-            {/* Icône = Volet ouvert/fermé */}
+            {/* Icône = AFFICHAGE volet */}
             <button
-              onClick={(e) => handleToggleVolet(e, 'posts')}
+              onClick={(e) => handleToggleAffichage(e, 'posts')}
               title="Afficher/Masquer le volet notes"
               className="p-1 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded transition-colors"
             >
@@ -221,10 +235,10 @@ export const MomentHeader = memo(({
                   : 'text-gray-400 dark:text-gray-500'
               }`} />
             </button>
-            {/* Texte = Contenu visible (volet ouvert/fermé) */}
+            {/* Texte = DÉPLOIEMENT volet + scroll */}
             <button
-              onClick={(e) => handleScrollToContent(e, 'posts')}
-              title="Aller aux notes"
+              onClick={(e) => handleToggleDeploiement(e, 'posts')}
+              title="Déplier/Plier et aller aux notes"
               className={`font-medium hover:underline transition-colors ${
                 localDisplay.showPosts
                   ? 'text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400'
@@ -239,9 +253,9 @@ export const MomentHeader = memo(({
         {/* 📸 Photos (vert) */}
         {moment.dayPhotoCount > 0 && (
           <div className="flex items-center gap-0.5 text-sm">
-            {/* Icône = Volet ouvert/fermé */}
+            {/* Icône = AFFICHAGE volet */}
             <button
-              onClick={(e) => handleToggleVolet(e, 'photos')}
+              onClick={(e) => handleToggleAffichage(e, 'photos')}
               title="Afficher/Masquer le volet photos"
               className="p-1 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors"
             >
@@ -251,10 +265,10 @@ export const MomentHeader = memo(({
                   : 'text-gray-400 dark:text-gray-500'
               }`} />
             </button>
-            {/* Texte = Contenu visible (volet ouvert/fermé) */}
+            {/* Texte = DÉPLOIEMENT volet + scroll */}
             <button
-              onClick={(e) => handleScrollToContent(e, 'photos')}
-              title="Aller aux photos"
+              onClick={(e) => handleToggleDeploiement(e, 'photos')}
+              title="Déplier/Plier et aller aux photos"
               className={`font-medium hover:underline transition-colors ${
                 localDisplay.showDayPhotos
                   ? 'text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400'

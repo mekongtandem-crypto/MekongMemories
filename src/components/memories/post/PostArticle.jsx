@@ -239,17 +239,17 @@ export const PostArticle = memo(({
               {title}
             </h4>
 
-            {/* ⭐ v2.15k : Badge photos - Icône=volet, Texte=contenu */}
+            {/* ⭐ v2.15m : Badge photos - Icône=Affichage, Texte=Déploiement+Scroll */}
             {hasPhotos && (
               <div className="flex items-center space-x-0.5 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/30 flex-shrink-0">
-                {/* Icône = Volet ouvert/fermé */}
+                {/* Icône = AFFICHAGE grille (comme AM/AT/AP) */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     const photoGridId = `post_${post.id}`;
                     actions.toggleExpanded('photoGrids', photoGridId);
                   }}
-                  title="Afficher/Masquer le volet photos"
+                  title="Afficher/Masquer la grille photos"
                   className="p-0.5 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
                 >
                   <ImageIcon className={`w-4 h-4 transition-colors ${
@@ -259,24 +259,27 @@ export const PostArticle = memo(({
                   }`} />
                 </button>
 
-                {/* Texte = Contenu visible (volet ouvert/fermé) */}
+                {/* Texte = DÉPLOIEMENT grille (comme DM/DT/DP) + scroll si déplie */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     const photoGridId = `post_${post.id}`;
-                    // Ouvrir volet si fermé
-                    if (!showThisPostPhotos) {
-                      actions.toggleExpanded('photoGrids', photoGridId);
+                    const wasOpen = showThisPostPhotos;
+
+                    // Toggle déploiement
+                    actions.toggleExpanded('photoGrids', photoGridId);
+
+                    // Scroll seulement si on vient de déplier (wasOpen=false → devient true)
+                    if (!wasOpen) {
+                      setTimeout(() => {
+                        const photoElement = document.querySelector(`[data-photo-grid-id="${photoGridId}"]`);
+                        if (photoElement) {
+                          photoElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                      }, 100);
                     }
-                    // Scroll après mise à jour DOM
-                    setTimeout(() => {
-                      const photoElement = document.querySelector(`[data-photo-grid-id="${photoGridId}"]`);
-                      if (photoElement) {
-                        photoElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                      }
-                    }, 100);
                   }}
-                  title="Aller aux photos"
+                  title="Déplier/Plier et aller aux photos"
                   className="px-1 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
                 >
                   <span className={`font-medium transition-colors ${
