@@ -238,43 +238,36 @@ export const PostArticle = memo(({
               {title}
             </h4>
 
-            {/* ⭐ v2.15j : Badge photos - TOUJOURS visible et cliquable */}
+            {/* ⭐ v2.15k : Badge photos - Icône=volet, Texte=contenu (PAS de toggle filtre global !) */}
             {hasPhotos && (
               <div className="flex items-center space-x-0.5 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/30 flex-shrink-0">
-                {/* Icône = Toggle volet (toujours cliquable) */}
+                {/* Icône = Toggle volet LOCAL uniquement */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     const photoGridId = `post_${post.id}`;
-                    // ⭐ v2.15j : Toggle volet + activer filtre Images si nécessaire
-                    if (!imagesFilterActive) {
-                      actions.toggleContentFilter('images');
-                    }
                     actions.toggleExpanded('photoGrids', photoGridId);
                   }}
-                  title="Afficher/Masquer les photos"
+                  title="Afficher/Masquer les photos de ce post"
                   className="p-0.5 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
                 >
                   <ImageIcon className={`w-4 h-4 transition-colors ${
-                    imagesFilterActive && showThisPostPhotos
+                    showThisPostPhotos
                       ? 'text-blue-600 dark:text-blue-400'
                       : 'text-gray-400 dark:text-gray-500'
                   }`} />
                 </button>
 
-                {/* Texte = Scroll vers photos (toujours cliquable) */}
+                {/* Texte = Scroll vers photos (ouvre volet si besoin, PAS le filtre global) */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    // ⭐ v2.15j : Activer filtres + ouvrir volet si nécessaire, puis scroll
                     const photoGridId = `post_${post.id}`;
-                    if (!imagesFilterActive) {
-                      actions.toggleContentFilter('images');
-                    }
+                    // Ouvrir volet si fermé
                     if (!showThisPostPhotos) {
                       actions.toggleExpanded('photoGrids', photoGridId);
                     }
-                    // Scroll après un court délai pour laisser le DOM se mettre à jour
+                    // Scroll après mise à jour DOM
                     setTimeout(() => {
                       const photoElement = document.querySelector(`[data-photo-grid-id="${photoGridId}"]`);
                       if (photoElement) {
