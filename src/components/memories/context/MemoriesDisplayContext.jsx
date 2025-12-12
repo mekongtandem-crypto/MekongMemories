@@ -338,24 +338,10 @@ function displayReducer(state, action) {
         currentExpandedPosts: state.expanded.posts.size
       });
 
-      // ⭐ v2.14m : Si première initialisation (passage 0 → N), initialiser expanded Sets
-      const statePostsLength = state.counts?.allPostIds?.length || 0;
-      const newPostsLength = newCounts.allPostIds?.length || 0;
-      const isFirstInit = statePostsLength === 0 && newPostsLength > 0;
-
-      if (isFirstInit) {
-        console.log('🔧 [Context] Première init → auto-expand posts + photoGrids');
-        return {
-          ...state,
-          counts: newCounts,
-          expanded: {
-            ...state.expanded,
-            posts: new Set(newCounts.allPostIds || []),
-            photoGrids: new Set(newCounts.allPhotoGridIds || [])
-          }
-        };
-      }
-
+      // ⭐ v2.15m : FIX React #310 - NE PLUS auto-expand sur changement de filtre !
+      // UPDATE_COUNTS ne fait que mettre à jour les counts
+      // L'expansion initiale est gérée UNIQUEMENT par getInitialState()
+      // Problème avant : AT=0 (allPostIds=[]) → AT=1 (allPostIds=[276]) déclenchait isFirstInit
       return { ...state, counts: newCounts };
     }
 
