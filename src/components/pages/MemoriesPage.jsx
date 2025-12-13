@@ -1143,17 +1143,112 @@ const navigationProcessedRef = useRef(null);
   }, [isSearchOpen]);
 
   useImperativeHandle(ref, () => ({
+  // ⭐ v2.16a : Dés aléatoire intelligent selon filtres actifs (AM/AT/AP)
   jumpToRandomMoment: () => {
-    if (momentsData.length > 0) {
-      const randomIndex = Math.floor(Math.random() * momentsData.length);
-      const randomMoment = momentsData[randomIndex];
-      handleSelectMoment(randomMoment);
+    // Lire les filtres actifs depuis le Context
+    const { structure: AM, textes: AT, images: AP } = state.contentFilters;
+
+    // Compter combien de filtres sont actifs
+    const activeFilters = [AM, AT, AP].filter(Boolean).length;
+
+    if (activeFilters === 0) {
+      console.warn('⚠️ Aucun filtre actif, impossible de choisir un élément aléatoire');
+      return;
+    }
+
+    let targetType = null;
+
+    // ⭐ Logique de priorité
+    if (activeFilters === 1) {
+      // Un seul filtre actif → utiliser ce type
+      if (AM) targetType = 'moment';
+      else if (AT) targetType = 'post';
+      else if (AP) targetType = 'photo';
+    } else {
+      // Plusieurs filtres actifs
+      if (AM) {
+        // AM prioritaire si actif
+        targetType = 'moment';
+      } else {
+        // Sinon tirer au hasard entre AT et AP actifs
+        const options = [];
+        if (AT) options.push('post');
+        if (AP) options.push('photo');
+        targetType = options[Math.floor(Math.random() * options.length)];
+      }
+    }
+
+    console.log('🎲 [Random] Type sélectionné:', targetType, { AM, AT, AP, activeFilters });
+
+    // ⭐ Sélectionner et ouvrir élément selon type
+    if (targetType === 'moment' && filteredMoments.length > 0) {
+      // Ouvrir moment aléatoire
+      const randomIndex = Math.floor(Math.random() * filteredMoments.length);
+      const randomMoment = filteredMoments[randomIndex];
+      handleSelectMoment(randomMoment, true);
       setCurrentDay(randomMoment.dayStart);
 
-      // Scroll vers le moment sélectionné
       setTimeout(() => {
         scrollToMoment(randomMoment.id);
       }, 100);
+
+    } else if (targetType === 'post') {
+      // Collecter tous les posts visibles
+      const allPosts = [];
+      filteredMoments.forEach(moment => {
+        if (moment.posts && moment.posts.length > 0) {
+          moment.posts.forEach(post => {
+            allPosts.push({ post, moment });
+          });
+        }
+      });
+
+      if (allPosts.length > 0) {
+        const randomIndex = Math.floor(Math.random() * allPosts.length);
+        const { post, moment } = allPosts[randomIndex];
+
+        // Ouvrir le moment parent
+        handleSelectMoment(moment, true);
+
+        // Déplier le post
+        const postKey = generatePostKey(post);
+        if (!state.expanded.posts.has(postKey)) {
+          actions.toggleExpanded('posts', postKey);
+        }
+
+        // Scroll vers le post
+        setTimeout(() => {
+          const postElement = document.querySelector(`[data-post-id="${post.id}"]`);
+          if (postElement) {
+            postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 150);
+      }
+
+    } else if (targetType === 'photo') {
+      // Collecter tous les moments avec photos
+      const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos && m.dayPhotos.length > 0);
+
+      if (momentsWithPhotos.length > 0) {
+        const randomIndex = Math.floor(Math.random() * momentsWithPhotos.length);
+        const randomMoment = momentsWithPhotos[randomIndex];
+
+        // Ouvrir le moment
+        handleSelectMoment(randomMoment, true);
+
+        // Déplier la grille photo
+        if (!state.expanded.photoGrids.has(randomMoment.id)) {
+          actions.toggleExpanded('photoGrids', randomMoment.id);
+        }
+
+        // Scroll vers la grille
+        setTimeout(() => {
+          const photoGridElement = document.querySelector(`[data-photo-grid-id="${randomMoment.id}"]`);
+          if (photoGridElement) {
+            photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 150);
+      }
     }
   },
   jumpToDay: (day) => {
