@@ -235,35 +235,25 @@ export default function MemoriesTopBar({
               <FileText className="w-4 h-4" />
             </button>
 
-            {/* ⭐ v2.14 : Bouton Dépliement - Collé + même couleur */}
+            {/* ⭐ v2.17a : Bouton Dépliement - Prerequisite automatique */}
             <button
               onClick={() => {
-                console.log('🔍 [TopBar] Clic DeploiementPost:', {
-                  postsAllExpanded,
-                  expandedSize: state.expanded.posts.size,
-                  totalCount: totalPostsCount,
-                  allPostIdsLength: state.counts.allPostIds?.length || 0
-                });
+                // ⭐ v2.17a : Si AT=0, activer d'abord (prerequisite automatique)
+                if (!state.contentFilters.textes) {
+                  actions.toggleContentFilter('textes');
+                }
 
                 if (postsAllExpanded) {
-                  console.log('  → Action: collapseAll');
                   actions.collapseAll('posts');
                 } else {
                   const postIds = state.counts.allPostIds;
-                  console.log('  → Action: expandAll avec', postIds?.length || 0, 'IDs');
-                  console.log('  → Premiers 5 IDs:', postIds?.slice(0, 5));
-                  console.log('  → IDs uniques:', new Set(postIds).size, '/', postIds?.length);
                   actions.expandAll('posts', postIds);
                 }
               }}
-              // ⭐ v2.14s : Désactivé SEULEMENT si Texte OFF (actif même en mode Vrac)
-              disabled={!state.contentFilters.textes}
               className={`p-0.5 rounded-b transition-colors duration-150 ${
-                !state.contentFilters.textes
-                  ? 'opacity-30 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400'
-                  : 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800'
+                'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800'
               }`}
-              title={postsAllExpanded ? "Replier tous les textes" : "Déplier tous les textes"}
+              title={postsAllExpanded ? "Replier tous les textes" : "Déplier tous les textes (active AT si nécessaire)"}
             >
               {postsAllExpanded ? (
                 <ChevronDown className="w-3 h-3" />
@@ -302,35 +292,25 @@ export default function MemoriesTopBar({
               <Camera className="w-4 h-4" />
             </button>
 
-            {/* ⭐ v2.15w : Bouton Dépliement - Collé + même couleur */}
+            {/* ⭐ v2.17a : Bouton Dépliement - Prerequisite automatique */}
             <button
               onClick={() => {
-                console.log('🔍 [TopBar] Clic DeploiementPhotos:', {
-                  photosAllExpanded,
-                  expandedSize: state.expanded.photoGrids.size,
-                  totalCount: allPhotoGridIds?.length || 0,
-                  allPhotoGridIdsLength: state.counts.allPhotoGridIds?.length || 0
-                });
+                // ⭐ v2.17a : Si AP=0, activer d'abord (prerequisite automatique)
+                if (!state.contentFilters.images) {
+                  actions.toggleContentFilter('images');
+                }
 
                 if (photosAllExpanded) {
-                  console.log('  → Action: collapseAll');
                   actions.collapseAll('photoGrids');
                 } else {
                   const photoGridIds = state.counts.allPhotoGridIds;
-                  console.log('  → Action: expandAll avec', photoGridIds?.length || 0, 'IDs');
-                  console.log('  → Premiers 5 IDs:', photoGridIds?.slice(0, 5));
-                  console.log('  → IDs uniques:', new Set(photoGridIds).size, '/', photoGridIds?.length);
                   actions.expandAll('photoGrids', photoGridIds);
                 }
               }}
-              // ⭐ v2.14s : Désactivé SEULEMENT si Images OFF (actif même en mode Vrac)
-              disabled={!state.contentFilters.images}
               className={`p-0.5 rounded-b transition-colors duration-150 ${
-                !state.contentFilters.images
-                  ? 'opacity-30 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400'
-                  : 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800'
+                'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800'
               }`}
-              title={photosAllExpanded ? "Replier toutes les grilles images" : "Déplier toutes les grilles images"}
+              title={photosAllExpanded ? "Replier toutes les grilles images" : "Déplier toutes les grilles images (active AP si nécessaire)"}
             >
               {photosAllExpanded ? (
                 <ChevronDown className="w-3 h-3" />
