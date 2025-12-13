@@ -1215,11 +1215,13 @@ const navigationProcessedRef = useRef(null);
       handleSelectMoment(randomMoment, true);
       setCurrentDay(randomMoment.dayStart);
 
-      console.log('🎲 [Random MOMENT] Scroll dans 100ms...');
+      // ⭐ v2.16l : Délai plus long pour laisser le DOM se stabiliser après collapseAll
+      console.log('🎲 [Random MOMENT] Scroll dans 300ms (laisser DOM se stabiliser)...');
       setTimeout(() => {
-        console.log('🎲 [Random MOMENT] Appel scrollToMoment...');
+        console.log('🎲 [Random MOMENT] Appel scrollToMoment avec id:', randomMoment.id);
         scrollToMoment(randomMoment.id);
-      }, 100);
+        console.log('🎲 [Random MOMENT] scrollToMoment appelé (si rien ne se passe, vérifier momentRefs)');
+      }, 300);
 
     } else if (targetType === 'post') {
       // Collecter tous les posts visibles
@@ -1307,13 +1309,18 @@ const navigationProcessedRef = useRef(null);
             actions.toggleExpanded('photoGrids', randomMoment.id);
           }
 
+          // ⭐ v2.16l : FIX - Utiliser le BON gridId pattern!
+          // PhotoGrid utilise gridId="moment_${moment.id}_day" pas juste l'ID
+          const correctGridId = `moment_${randomMoment.id}_day`;
+          console.log('🎲 [Random PHOTO] GridId correct:', correctGridId);
+
           // ⭐ v2.16i : Polling pour attendre que l'élément existe avant scroll
           let attempts = 0;
           const maxAttempts = 20;  // 20 tentatives * 100ms = 2 secondes max
 
           const waitForElement = () => {
             attempts++;
-            const photoGridElement = document.querySelector(`[data-photo-grid-id="${randomMoment.id}"]`);
+            const photoGridElement = document.querySelector(`[data-photo-grid-id="${correctGridId}"]`);
 
             if (photoGridElement) {
               console.log(`🎲 [Random PHOTO] Element grille trouvé après ${attempts} tentatives (${attempts * 100}ms)`);
@@ -1322,7 +1329,7 @@ const navigationProcessedRef = useRef(null);
               console.log(`🎲 [Random PHOTO] Tentative ${attempts}/${maxAttempts} - grille pas encore rendue, réessai...`);
               setTimeout(waitForElement, 100);
             } else {
-              console.error(`❌ [Random PHOTO] Grille photo introuvable après ${maxAttempts} tentatives (${maxAttempts * 100}ms) avec id:`, randomMoment.id);
+              console.error(`❌ [Random PHOTO] Grille photo introuvable après ${maxAttempts} tentatives (${maxAttempts * 100}ms) avec gridId:`, correctGridId);
             }
           };
 
