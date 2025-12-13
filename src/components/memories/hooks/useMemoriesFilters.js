@@ -71,8 +71,10 @@ export function useMemoriesFilters(momentsData, sessions = []) {
         return contentFilters.posts;
 
       case 'post_photos':
-        // Photos de post visibles si 🗒️ posts OU 📸 photos
-        return contentFilters.posts || contentFilters.photos;
+        // ⭐ v2.17c : Photos de post visibles si :
+        // - 🗒️ posts OU 📸 photos (logique normale)
+        // - OU mode PhotoDePost actif (AM=0 ET AT=0, DT gère cet affichage)
+        return contentFilters.posts || contentFilters.photos || state.postPhotosOnlyMode;
 
       case 'day_photos':
         // 📸 Photos de moment (visible si photos actif)
@@ -81,7 +83,7 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       default:
         return true;
     }
-  }, [contentFilters]);
+  }, [contentFilters, state.postPhotosOnlyMode]);
 
   // Calculer stats visibles pour un moment selon filtres actifs
   const getVisibleStats = useCallback((moment) => {

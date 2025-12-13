@@ -8,7 +8,7 @@
  * - Reset au collapse
  */
 
-import React, { useState, useEffect, useRef, memo, forwardRef } from 'react';
+import React, { useState, useEffect, memo, forwardRef } from 'react';
 import MomentHeader from './MomentHeader.jsx';
 import MomentContent from './MomentContent.jsx';
 import { useMemoriesDisplay } from '../context/MemoriesDisplayContext.jsx';  // ⭐ v2.14
@@ -60,19 +60,9 @@ export const MomentCard = memo(forwardRef(({
       showDayPhotos: state.contentFilters.images
     }));
   }, [state.contentFilters.textes, state.contentFilters.images]);
-  
-  const wasSelectedRef = useRef(isSelected);
-  
-  // Reset affichage si on ferme le moment
-  useEffect(() => {
-    if (wasSelectedRef.current && !isSelected) {
-      setLocalDisplay({
-        showPosts: false,
-        showDayPhotos: false
-      });
-    }
-    wasSelectedRef.current = isSelected;
-  }, [isSelected]);
+
+  // ⭐ v2.17c : SUPPRIMÉ - Ne plus reset les boutons locaux quand on replie le moment
+  // Les états locaux persistent (override local reste actif)
 
   // ⭐ v2.17 : SUPPRIMÉ - Ne plus synchroniser affichage avec déploiement
   // Affichage et déploiement sont INDÉPENDANTS

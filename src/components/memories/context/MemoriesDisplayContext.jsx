@@ -70,6 +70,9 @@ export const getInitialState = (momentsData = []) => {
       images: true      // 📸 Photos (ex "Photos")
     },
 
+    // ⭐ v2.17c : Mode spécial PhotoDePost (AM=0 ET AT=0)
+    postPhotosOnlyMode: false,  // Si true, affiche SEULEMENT les photos de posts (pas les posts eux-mêmes)
+
     // États expansion
     expanded: {
       moments: new Set(),                    // Moments ouverts (accordion fermé par défaut)
@@ -110,6 +113,7 @@ export const getInitialState = (momentsData = []) => {
 export const ACTIONS = {
   // Filtres de contenu
   TOGGLE_CONTENT_FILTER: 'TOGGLE_CONTENT_FILTER',
+  TOGGLE_POST_PHOTOS_ONLY: 'TOGGLE_POST_PHOTOS_ONLY',  // ⭐ v2.17c
 
   // Expansion
   TOGGLE_EXPANDED: 'TOGGLE_EXPANDED',
@@ -204,6 +208,14 @@ function displayReducer(state, action) {
         contentFilters: newFilters,
         lastFilterClickCount: 0,
         shakeFilter: null
+      };
+    }
+
+    // ⭐ v2.17c : Toggle mode PhotoDePost (AM=0 ET AT=0)
+    case ACTIONS.TOGGLE_POST_PHOTOS_ONLY: {
+      return {
+        ...state,
+        postPhotosOnlyMode: !state.postPhotosOnlyMode
       };
     }
 
@@ -419,6 +431,11 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
     // Filtres de contenu
     toggleContentFilter: (filterKey) => {
       dispatch({ type: ACTIONS.TOGGLE_CONTENT_FILTER, payload: { filterKey } });
+    },
+
+    // ⭐ v2.17c : Toggle mode PhotoDePost
+    togglePostPhotosOnly: () => {
+      dispatch({ type: ACTIONS.TOGGLE_POST_PHOTOS_ONLY });
     },
 
     updateCounts: (counts) => {

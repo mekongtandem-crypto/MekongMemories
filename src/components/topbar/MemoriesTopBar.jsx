@@ -224,6 +224,11 @@ export default function MemoriesTopBar({
                   const postIds = state.counts.allPostIds;
                   actions.expandAll('posts', postIds);
                 }
+
+                // ⭐ v2.17c : CASCADE - Si passage ON → OFF, replier tous les posts (DT→0)
+                if (!wasOff) {
+                  actions.collapseAll('posts');
+                }
               }}
               className={`p-1.5 rounded-t transition-colors duration-150 ${
                 state.contentFilters.textes
@@ -235,14 +240,25 @@ export default function MemoriesTopBar({
               <FileText className="w-4 h-4" />
             </button>
 
-            {/* ⭐ v2.17a : Bouton Dépliement - Prerequisite automatique */}
+            {/* ⭐ v2.17c : Bouton Dépliement - Gère PhotoDePost si AM=0 ET AT=0 */}
             <button
               onClick={() => {
-                // ⭐ v2.17a : Si AT=0, activer d'abord (prerequisite automatique)
-                if (!state.contentFilters.textes) {
+                const isVracMode = !state.contentFilters.structure;  // AM=0
+                const textesOff = !state.contentFilters.textes;      // AT=0
+
+                // ⭐ v2.17c : CAS SPÉCIAL - Mode Vrac (AM=0) + Textes OFF (AT=0)
+                // → DT gère l'affichage des PhotoDePost
+                if (isVracMode && textesOff) {
+                  actions.togglePostPhotosOnly();
+                  return;
+                }
+
+                // ⭐ v2.17a : Cas normal - Si AT=0, activer d'abord (prerequisite automatique)
+                if (textesOff) {
                   actions.toggleContentFilter('textes');
                 }
 
+                // Toggle déploiement posts
                 if (postsAllExpanded) {
                   actions.collapseAll('posts');
                 } else {
@@ -253,7 +269,11 @@ export default function MemoriesTopBar({
               className={`p-0.5 rounded-b transition-colors duration-150 ${
                 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800'
               }`}
-              title={postsAllExpanded ? "Replier tous les textes" : "Déplier tous les textes (active AT si nécessaire)"}
+              title={
+                (!state.contentFilters.structure && !state.contentFilters.textes)
+                  ? (state.postPhotosOnlyMode ? "Masquer photos de posts" : "Afficher photos de posts")
+                  : (postsAllExpanded ? "Replier tous les textes" : "Déplier tous les textes (active AT si nécessaire)")
+              }
             >
               {postsAllExpanded ? (
                 <ChevronDown className="w-3 h-3" />
