@@ -1263,6 +1263,15 @@ const navigationProcessedRef = useRef(null);
         const randomMoment = momentsWithPhotos[randomIndex];
         console.log('🎲 [Random PHOTO] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
+        // ⭐ v2.16j : CRITICAL - Activer mode Structure si nécessaire
+        // Les PhotoGrid de moments ne se rendent QUE en mode Structure!
+        const isStructureMode = state.contentFilters.structure;
+        console.log('🎲 [Random PHOTO] Mode Structure?', isStructureMode);
+        if (!isStructureMode) {
+          console.log('🎲 [Random PHOTO] Activation mode Structure (AM=1) pour rendre la PhotoGrid...');
+          actions.toggleContentFilter('structure');
+        }
+
         // Ouvrir le moment
         console.log('🎲 [Random PHOTO] Ouverture moment...');
         handleSelectMoment(randomMoment, true);
