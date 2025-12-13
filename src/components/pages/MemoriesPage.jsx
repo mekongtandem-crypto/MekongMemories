@@ -1267,20 +1267,28 @@ const navigationProcessedRef = useRef(null);
         console.log('🎲 [Random PHOTO] Ouverture moment...');
         handleSelectMoment(randomMoment, true);
 
-        // ⭐ v2.16g : Attendre que le moment soit rendu AVANT de déplier la grille
+        // ⭐ v2.16h : Attendre que le moment soit rendu AVANT de déplier la grille
         setTimeout(() => {
           console.log('🎲 [Random PHOTO] Dépliement grille photo (après render moment)...');
-          console.log('🎲 [Random PHOTO] Grille actuellement dépliée?', state.expanded.photoGrids.has(randomMoment.id));
+          const wasExpanded = state.expanded.photoGrids.has(randomMoment.id);
+          console.log('🎲 [Random PHOTO] Grille dans state?', wasExpanded);
 
-          // Toujours déplier, même si déjà déplié (handleSelectMoment peut avoir reset)
-          if (!state.expanded.photoGrids.has(randomMoment.id)) {
+          // ⭐ TOUJOURS forcer le toggle pour garantir le rendu, même si "déjà déplié"
+          // Car le moment vient d'être ouvert, la grille n'est pas encore rendue
+          if (wasExpanded) {
+            console.log('🎲 [Random PHOTO] State dit déplié mais grille non rendue → double toggle');
+            // Fermer puis rouvrir pour forcer le rendu
+            actions.toggleExpanded('photoGrids', randomMoment.id);
+            setTimeout(() => {
+              actions.toggleExpanded('photoGrids', randomMoment.id);
+              console.log('🎲 [Random PHOTO] Double toggle terminé, grille forcée ouverte');
+            }, 50);
+          } else {
             console.log('🎲 [Random PHOTO] Toggle grille (fermée → ouverte)...');
             actions.toggleExpanded('photoGrids', randomMoment.id);
-          } else {
-            console.log('🎲 [Random PHOTO] Grille déjà ouverte, OK');
           }
 
-          // Scroll vers la grille après un délai supplémentaire
+          // Scroll vers la grille après un délai suffisant
           setTimeout(() => {
             const photoGridElement = document.querySelector(`[data-photo-grid-id="${randomMoment.id}"]`);
             console.log('🎲 [Random PHOTO] Element grille trouvé:', !!photoGridElement);
@@ -1289,7 +1297,7 @@ const navigationProcessedRef = useRef(null);
             } else {
               console.error('❌ [Random PHOTO] Grille photo introuvable avec id:', randomMoment.id);
             }
-          }, 100);
+          }, 200);  // Augmenté de 100ms à 200ms
         }, 100);
       }
     }
