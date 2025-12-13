@@ -58,13 +58,14 @@ import {
 /**
  * MemoriesPage - Wrapper simplifié
  * ⭐ v2.14 : Provider déplacé dans App.jsx pour englober TopBar + MemoriesPage
+ * ⭐ v2.16b : FIX - Utilise forwardRef pour passer la ref correctement
  */
-function MemoriesPage(props, ref) {
+const MemoriesPage = React.forwardRef((props, ref) => {
   const app = useAppState();
   const momentsData = enrichMomentsWithData(app.masterIndex?.moments);
 
   return <MemoriesPageInner {...props} ref={ref} momentsData={momentsData} app={app} />;
-}
+});
 
 // ========================================
 // COMPOSANT INTERNE (Contenu)
