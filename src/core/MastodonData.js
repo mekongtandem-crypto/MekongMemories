@@ -212,9 +212,9 @@
   }
 
   cleanTitle(title) {
-    // Nettoyer emojis excessifs et caractères spéciaux
+    // ⭐ v2.17h : Garder les émojis dans les titres (ne plus les supprimer)
     return title
-      .replace(/[⛩️🦩✈️🇨🇵🔥⚡🌟🎯💪🚀✨🎉🎊🎈🎁🎀🎇🎆]/g, '')
+      // .replace(/[⛩️🦩✈️🇨🇵🔥⚡🌟🎯💪🚀✨🎉🎊🎈🎁🎀🎇🎆]/g, '')  // Désactivé pour garder émojis
       .replace(/\s+/g, ' ')
       .trim();
   }
