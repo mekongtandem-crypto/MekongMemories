@@ -45,18 +45,20 @@ export const MomentCard = memo(forwardRef(({
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
 
+  // ⭐ v2.17 : Utiliser directement contentFilters du Context (pas displayOptions)
   const [localDisplay, setLocalDisplay] = useState({
-    showPosts: displayOptions.showPostText,
-    showDayPhotos: displayOptions.showMomentPhotos
+    showPosts: state.contentFilters.textes,
+    showDayPhotos: state.contentFilters.images
   });
 
+  // ⭐ v2.17 : Reset états locaux quand filtres globaux changent
   useEffect(() => {
     setLocalDisplay(prev => ({
       ...prev,
-      showPosts: displayOptions.showPostText,
-      showDayPhotos: displayOptions.showMomentPhotos
+      showPosts: state.contentFilters.textes,
+      showDayPhotos: state.contentFilters.images
     }));
-  }, [displayOptions.showPostText, displayOptions.showMomentPhotos]);
+  }, [state.contentFilters.textes, state.contentFilters.images]);
   
   const wasSelectedRef = useRef(isSelected);
   
@@ -91,17 +93,28 @@ export const MomentCard = memo(forwardRef(({
     setLocalDisplay(options);
   };
 
-  const handleToggleLocal = (key) => {
-    setLocalDisplay(prev => {
-      const newValue = !prev[key];
+  // ⭐ v2.17 : SÉPARATION Affichage / Déploiement (indépendants)
+  // Icône locale → change SEULEMENT l'affichage (localDisplay)
+  const handleToggleAffichage = (key) => {
+    setLocalDisplay(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
-      // ⭐ v2.14 : Synchroniser avec Context (zero mutation!)
-      if (key === 'showDayPhotos') {
-        actions.toggleExpanded('photoGrids', moment.id);
-      }
-
-      return { ...prev, [key]: newValue };
-    });
+  // Texte local → change SEULEMENT le déploiement (expanded dans Context)
+  const handleToggleDeploiement = (contentType) => {
+    if (contentType === 'posts') {
+      // Toggle tous les posts de ce moment
+      const postIds = moment.posts?.map(p => p.id) || [];
+      postIds.forEach(postId => {
+        const postKey = `${moment.id}_${postId}`;
+        actions.toggleExpanded('posts', postKey);
+      });
+    } else if (contentType === 'photos') {
+      // Toggle la grille photos de ce moment
+      actions.toggleExpanded('photoGrids', moment.id);
+    }
   };
 
   return (
@@ -122,7 +135,8 @@ export const MomentCard = memo(forwardRef(({
           onOpenWith={handleOpenWith}
           onCreateSession={onCreateSession}
           localDisplay={localDisplay}
-          onToggleLocal={handleToggleLocal}
+          onToggleAffichage={handleToggleAffichage}
+          onToggleDeploiement={handleToggleDeploiement}
           selectionMode={selectionMode}
           onContentSelected={onContentSelected}
           sessions={sessions}
@@ -142,7 +156,7 @@ export const MomentCard = memo(forwardRef(({
           onPhotoClick={onPhotoClick}
           onCreateSession={onCreateSession}
           onLoadMorePhotos={() => setVisibleDayPhotos(prev => prev + photosPerLoad)}
-          onToggleDayPhotos={() => handleToggleLocal('showDayPhotos')}
+          onToggleDayPhotos={() => handleToggleDeploiement('photos')}
           activePhotoGrid={activePhotoGrid}
           selectedPhotos={selectedPhotos}
           onActivateSelection={onActivateSelection}

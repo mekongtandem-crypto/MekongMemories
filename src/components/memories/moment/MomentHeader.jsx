@@ -27,7 +27,8 @@ export const MomentHeader = memo(({
   onOpenWith,
   onCreateSession,
   localDisplay,
-  onToggleLocal,
+  onToggleAffichage,     // ⭐ v2.17 : Icône → affichage seul
+  onToggleDeploiement,   // ⭐ v2.17 : Texte → déploiement seul
   selectionMode,
   onContentSelected,
   sessions,
@@ -80,37 +81,28 @@ export const MomentHeader = memo(({
     }
   }, [moment, momentKey, momentThemes]);
   
-  // ⭐ v2.15m : Icône = AFFICHAGE du volet (comme AM/AT/AP)
-  const handleToggleAffichage = useCallback((e, contentType) => {
+  // ⭐ v2.17 : Icône = AFFICHAGE du volet (indépendant du déploiement)
+  const handleToggleAffichageLocal = useCallback((e, contentType) => {
     e.stopPropagation();
 
     if (!isSelected) {
-      // Moment fermé → ouvrir moment + ouvrir volet
-      if (contentType === 'posts') {
-        onOpenWith({ showPosts: true, showDayPhotos: false });
-      } else if (contentType === 'photos') {
-        onOpenWith({ showPosts: false, showDayPhotos: true });
-      }
-    } else {
-      // Moment ouvert → toggle affichage volet
-      onToggleLocal(contentType === 'posts' ? 'showPosts' : 'showDayPhotos');
+      // Moment fermé → ouvrir avec états locaux ACTUELS (pas de forcing!)
+      onOpenWith(localDisplay);
     }
-  }, [isSelected, onOpenWith, onToggleLocal]);
 
-  // ⭐ v2.15m : Texte = DÉPLOIEMENT du volet (comme DM/DT/DP) + scroll si déplie
-  const handleToggleDeploiement = useCallback((e, contentType) => {
+    // Toggle affichage dans tous les cas (moment ouvert ou fraîchement ouvert)
+    const key = contentType === 'posts' ? 'showPosts' : 'showDayPhotos';
+    onToggleAffichage(key);
+  }, [isSelected, onOpenWith, onToggleAffichage, localDisplay]);
+
+  // ⭐ v2.17 : Texte = DÉPLOIEMENT du volet (indépendant de l'affichage)
+  const handleToggleDeploiementLocal = useCallback((e, contentType) => {
     e.stopPropagation();
-    const voletKey = contentType === 'posts' ? 'showPosts' : 'showDayPhotos';
-    const wasOpen = isSelected && localDisplay[voletKey];
 
     if (!isSelected) {
-      // Moment fermé → ouvrir moment + ouvrir volet
-      if (contentType === 'posts') {
-        onOpenWith({ showPosts: true, showDayPhotos: false });
-      } else {
-        onOpenWith({ showPosts: false, showDayPhotos: true });
-      }
-      // Scroll après ouverture
+      // Moment fermé → ouvrir avec états locaux ACTUELS (pas de forcing!)
+      onOpenWith(localDisplay);
+      // Scroll après ouverture vers le contenu concerné
       setTimeout(() => {
         const targetSelector = contentType === 'posts' ? '[data-post-id]' : `[data-photo-grid-id="${moment.id}"]`;
         const element = document.querySelector(`#${moment.id} ${targetSelector}`);
@@ -119,33 +111,28 @@ export const MomentHeader = memo(({
         }
       }, 150);
     } else {
-      // Moment ouvert → toggle déploiement volet
-      onToggleLocal(voletKey);
-
-      // Scroll seulement si on vient de déplier (wasOpen=false → devient true)
-      if (!wasOpen) {
-        setTimeout(() => {
-          const targetSelector = contentType === 'posts' ? '[data-post-id]' : `[data-photo-grid-id="${moment.id}"]`;
-          const element = document.querySelector(`#${moment.id} ${targetSelector}`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          }
-        }, 150);
-      }
+      // Moment ouvert → scroll seulement (déploiement géré par le handler parent)
+      setTimeout(() => {
+        const targetSelector = contentType === 'posts' ? '[data-post-id]' : `[data-photo-grid-id="${moment.id}"]`;
+        const element = document.querySelector(`#${moment.id} ${targetSelector}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 150);
     }
-  }, [isSelected, onOpenWith, onToggleLocal, localDisplay, moment.id]);
+
+    // Toggle déploiement dans tous les cas (via handler parent)
+    onToggleDeploiement(contentType);
+  }, [isSelected, onOpenWith, onToggleDeploiement, localDisplay, moment.id]);
   
-  // ⭐ v2.17 : SIMPLIFICATION - Ouvrir avec état par défaut = filtres globaux
+  // ⭐ v2.17 : SIMPLIFICATION - Ouvrir avec états locaux (respect overrides)
   const handleChevronClick = useCallback(() => {
     if (!isSelected) {
-      onOpenWith({
-        showPosts: showTextBadges,      // ⭐ AT global
-        showDayPhotos: showImageBadges  // ⭐ AP global
-      });
+      onOpenWith(localDisplay);  // ✅ États locaux (qui tiennent compte des overrides)
     } else {
       onSelect(moment);
     }
-  }, [isSelected, onOpenWith, onSelect, moment, showTextBadges, showImageBadges]);
+  }, [isSelected, onOpenWith, onSelect, moment, localDisplay]);
 
   const handleShowSessions = useCallback((e) => {
     e.stopPropagation();
@@ -200,7 +187,7 @@ export const MomentHeader = memo(({
           <div className="flex items-center gap-0.5 text-sm">
             {/* Icône = AFFICHAGE volet (comme AT global) */}
             <button
-              onClick={(e) => handleToggleAffichage(e, 'posts')}
+              onClick={(e) => handleToggleAffichageLocal(e, 'posts')}
               title="Afficher/Masquer le volet posts"
               className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
             >
@@ -212,7 +199,7 @@ export const MomentHeader = memo(({
             </button>
             {/* Texte = DÉPLOIEMENT volet (comme DT global) + scroll */}
             <button
-              onClick={(e) => handleToggleDeploiement(e, 'posts')}
+              onClick={(e) => handleToggleDeploiementLocal(e, 'posts')}
               title="Déplier/Plier et aller aux posts"
               className={`font-medium hover:underline transition-colors ${
                 (showTextBadges && localDisplay.showPosts)
@@ -230,7 +217,7 @@ export const MomentHeader = memo(({
           <div className="flex items-center gap-0.5 text-sm">
             {/* Icône = AFFICHAGE volet (comme AT global) */}
             <button
-              onClick={(e) => handleToggleAffichage(e, 'posts')}
+              onClick={(e) => handleToggleAffichageLocal(e, 'posts')}
               title="Afficher/Masquer le volet notes"
               className="p-1 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded transition-colors"
             >
@@ -242,7 +229,7 @@ export const MomentHeader = memo(({
             </button>
             {/* Texte = DÉPLOIEMENT volet (comme DT global) + scroll */}
             <button
-              onClick={(e) => handleToggleDeploiement(e, 'posts')}
+              onClick={(e) => handleToggleDeploiementLocal(e, 'posts')}
               title="Déplier/Plier et aller aux notes"
               className={`font-medium hover:underline transition-colors ${
                 (showTextBadges && localDisplay.showPosts)
@@ -260,7 +247,7 @@ export const MomentHeader = memo(({
           <div className="flex items-center gap-0.5 text-sm">
             {/* Icône = AFFICHAGE volet (comme AP global) */}
             <button
-              onClick={(e) => handleToggleAffichage(e, 'photos')}
+              onClick={(e) => handleToggleAffichageLocal(e, 'photos')}
               title="Afficher/Masquer le volet photos"
               className="p-1 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors"
             >
@@ -272,7 +259,7 @@ export const MomentHeader = memo(({
             </button>
             {/* Texte = DÉPLOIEMENT volet (comme DP global) + scroll */}
             <button
-              onClick={(e) => handleToggleDeploiement(e, 'photos')}
+              onClick={(e) => handleToggleDeploiementLocal(e, 'photos')}
               title="Déplier/Plier et aller aux photos"
               className={`font-medium hover:underline transition-colors ${
                 (showImageBadges && localDisplay.showDayPhotos)
