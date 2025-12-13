@@ -47,19 +47,15 @@ export const MomentCard = memo(forwardRef(({
   const photosPerLoad = 30;
 
   // ⭐ v2.17 : Utiliser directement contentFilters du Context (pas displayOptions)
+  // ⭐ v2.17d : État local INDÉPENDANT des filtres globaux (override local prime)
   const [localDisplay, setLocalDisplay] = useState({
     showPosts: state.contentFilters.textes,
     showDayPhotos: state.contentFilters.images
   });
 
-  // ⭐ v2.17 : Reset états locaux quand filtres globaux changent
-  useEffect(() => {
-    setLocalDisplay(prev => ({
-      ...prev,
-      showPosts: state.contentFilters.textes,
-      showDayPhotos: state.contentFilters.images
-    }));
-  }, [state.contentFilters.textes, state.contentFilters.images]);
+  // ⭐ v2.17d : SUPPRIMÉ - Ne plus reset quand filtres globaux changent
+  // L'override local doit rester indépendant des filtres globaux
+  // (ancien useEffect lignes 54-61 retiré)
 
   // ⭐ v2.17c : SUPPRIMÉ - Ne plus reset les boutons locaux quand on replie le moment
   // Les états locaux persistent (override local reste actif)

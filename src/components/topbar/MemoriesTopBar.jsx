@@ -267,7 +267,10 @@ export default function MemoriesTopBar({
                 }
               }}
               className={`p-0.5 rounded-b transition-colors duration-150 ${
-                'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800'
+                // ⭐ v2.17d : Griser si AT=0 (sauf en mode spécial PhotoDePost AM=0 ET AT=0)
+                !state.contentFilters.textes && state.contentFilters.structure
+                  ? 'opacity-50 bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
+                  : 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800'
               }`}
               title={
                 (!state.contentFilters.structure && !state.contentFilters.textes)
@@ -328,7 +331,10 @@ export default function MemoriesTopBar({
                 }
               }}
               className={`p-0.5 rounded-b transition-colors duration-150 ${
-                'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800'
+                // ⭐ v2.17d : Griser si AP=0
+                !state.contentFilters.images
+                  ? 'opacity-50 bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
+                  : 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800'
               }`}
               title={photosAllExpanded ? "Replier toutes les grilles images" : "Déplier toutes les grilles images (active AP si nécessaire)"}
             >

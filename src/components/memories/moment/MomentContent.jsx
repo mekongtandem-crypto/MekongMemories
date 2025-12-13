@@ -49,43 +49,58 @@ export const MomentContent = memo(({
   const allPhotoGridIds = state.counts.allPhotoGridIds || [];
   const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds.length);
 
-  // ⭐ v2.17 : SÉPARATION AFFICHAGE / DÉPLOIEMENT PhotoGrid
+  // ⭐ v2.17d : SÉPARATION AFFICHAGE / DÉPLOIEMENT PhotoGrid
   // AFFICHAGE (Icône 📸 locale) : Contrôle la visibilité du HEADER PhotoGrid
   // DÉPLOIEMENT (Texte "X photos" local) : Contrôle la visibilité de la GRILLE
   const imagesFilterActive = isElementVisible?.('day_photos') ?? true; // AP global
+  const isVracMode = !state.contentFilters.structure;  // AM=0
+  const textesOff = !state.contentFilters.textes;       // AT=0
 
-  // ⭐ v2.17 : Header PhotoGrid visible ?
-  // Requis : AP=1 (filtre Images global ON) ET localDisplay.showDayPhotos (affichage local ON)
-  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 && imagesFilterActive && localDisplay.showDayPhotos;
+  // ⭐ v2.17d : Header PhotoGrid visible ?
+  // Mode Structure (AM=1) : Override local prime → visible si localDisplay.showDayPhotos (indépendant AP global)
+  // Mode Vrac (AM=0) : Dépend des filtres globaux AP
+  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 &&
+    (isVracMode ? imagesFilterActive : localDisplay.showDayPhotos);
 
-  // ⭐ v2.17 : Grille PhotoGrid visible ?
-  // Requis : Header visible ET grille déployée
+  // ⭐ v2.17d : Grille PhotoGrid visible ?
+  // Requis : Header visible OU (règle spéciale : AM=0 ET AT=0 ET AP=1 ET DP=1)
   const isPhotoGridExpanded = computed.isPhotoGridExpanded(moment.id);
-  const shouldShowDayPhotosGrid = shouldShowDayPhotosHeader && isPhotoGridExpanded;
+  const specialVracPhotoMode = isVracMode && textesOff && imagesFilterActive && isPhotoGridExpanded;
+  const shouldShowDayPhotosGrid = (shouldShowDayPhotosHeader && isPhotoGridExpanded) || specialVracPhotoMode;
 
-  // ⭐ v2.15n : Posts - Filtres globaux s'appliquent TOUJOURS - FIX re-renders excessifs
+  // ⭐ v2.17d : Posts - Override local indépendant en mode Structure
   const hasVisiblePosts = useMemo(() => {
-    if (!localDisplay.showPosts || !moment?.posts || !Array.isArray(moment.posts) || moment.posts.length === 0) {
+    if (!moment?.posts || !Array.isArray(moment.posts) || moment.posts.length === 0) {
       return false;
     }
 
-    // ⭐ v2.15n : Vérifier si AU MOINS un post a du contenu visible selon filtres globaux
-    // Important : Cette logique DOIT matcher exactement PostArticle.jsx ligne 114-116
-    const isVracMode = !state.contentFilters.structure; // ← state.contentFilters au lieu de computed
+    // ⭐ v2.17d : Mode Structure → Override local prime (indépendant AT global)
+    // Mode Vrac → Filtres globaux s'appliquent
     const localOverride = localDisplay.showPosts;
+
+    // Mode Structure : visible si localDisplay.showPosts = true
+    // Mode Vrac : visible si AT=1 global
+    if (isVracMode) {
+      // Mode Vrac : dépend du filtre global Textes
+      const textesOn = state.contentFilters.textes;
+      if (!textesOn) return false;
+    } else {
+      // Mode Structure : dépend de l'override local
+      if (!localOverride) return false;
+    }
 
     return moment.posts.some(post => {
       const hasText = post?.content?.trim();
       const hasPhotos = post?.photos?.length > 0;
 
-      // ⭐ v2.15i : Appliquer EXACTEMENT la même logique que PostArticle (avec localOverride)
-      const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true) && (isVracMode || localOverride);
-      const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true) && (isVracMode || localOverride);
-      const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true) && (isVracMode || localOverride);
+      // ⭐ v2.17d : En mode Structure, localOverride suffit (pas besoin de vérifier isElementVisible)
+      const shouldShowHeader = hasText && (isVracMode ? (isElementVisible?.('post_header') ?? true) : localOverride);
+      const shouldShowText = hasText && (isVracMode ? (isElementVisible?.('post_text') ?? true) : localOverride);
+      const shouldShowPhotos = hasPhotos && (isVracMode ? (isElementVisible?.('post_photos') ?? true) : localOverride);
 
       return shouldShowHeader || shouldShowText || shouldShowPhotos;
     });
-  }, [localDisplay.showPosts, moment?.posts, isElementVisible, state.contentFilters.structure]); // ← deps plus stables
+  }, [localDisplay.showPosts, moment?.posts, isElementVisible, state.contentFilters.structure, state.contentFilters.textes, isVracMode]);
 
   return (
     <div className="px-3 pb-3">
@@ -128,8 +143,8 @@ export const MomentContent = memo(({
         </div>
       )}
 
-      {/* ⭐ v2.17 : Header PhotoGrid - Affiché si icône locale ON */}
-      {shouldShowDayPhotosHeader && (
+      {/* ⭐ v2.17d : Header PhotoGrid - Affiché si icône locale ON (mode Structure) */}
+      {shouldShowDayPhotosHeader && !specialVracPhotoMode && (
         <div className="mt-3">
           <PhotoGridHeader
             moment={moment}
@@ -142,7 +157,7 @@ export const MomentContent = memo(({
             onContentSelected={onContentSelected}
           />
 
-          {/* ⭐ v2.17 : Grille visible si déployée (texte local ON) */}
+          {/* ⭐ v2.17d : Grille visible si déployée (texte local ON) */}
           {shouldShowDayPhotosGrid && (
             <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
               <PhotoGrid
@@ -178,6 +193,46 @@ export const MomentContent = memo(({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ⭐ v2.17d : RÈGLE SPÉCIALE - Mode Vrac (AM=0) + Textes OFF (AT=0) + Images ON (AP=1) + DP=1 */}
+      {/* → Afficher grille PhotoGrid SANS header */}
+      {specialVracPhotoMode && (
+        <div className="mt-3">
+          <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+            <PhotoGrid
+              photos={moment.dayPhotos.slice(0, visibleDayPhotos)}
+              moment={moment}
+              onPhotoClick={onPhotoClick}
+              allPhotos={moment.dayPhotos}
+              gridId={`moment_${moment.id}_day`}
+              activePhotoGrid={activePhotoGrid}
+              selectedPhotos={selectedPhotos}
+              onActivateSelection={onActivateSelection}
+              onTogglePhotoSelection={onTogglePhotoSelection}
+              onBulkTagPhotos={onBulkTagPhotos}
+              onCancelSelection={onCancelSelection}
+              isFromChat={isFromChat}
+              onOpenPhotoContextMenu={onOpenPhotoContextMenu}
+              selectionMode={selectionMode}
+              onContentSelected={onContentSelected}
+              sessions={sessions}
+              onShowSessions={onShowSessions}
+              editionMode={editionMode}
+            />
+
+            {visibleDayPhotos < moment.dayPhotoCount && (
+              <div className="text-center mt-3">
+                <button
+                  onClick={onLoadMorePhotos}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 text-sm font-medium transition-colors"
+                >
+                  Afficher {Math.min(photosPerLoad, moment.dayPhotoCount - visibleDayPhotos)} de plus
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
