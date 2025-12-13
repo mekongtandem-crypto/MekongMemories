@@ -1142,9 +1142,11 @@ const navigationProcessedRef = useRef(null);
     }
   }, [isSearchOpen]);
 
+  // ⭐ v2.16a : useImperativeHandle avec dépendances pour accès aux valeurs à jour
   useImperativeHandle(ref, () => ({
   // ⭐ v2.16a : Dés aléatoire intelligent selon filtres actifs (AM/AT/AP)
   jumpToRandomMoment: () => {
+    console.log('🎲 [jumpToRandomMoment] Fonction appelée!');
     // Lire les filtres actifs depuis le Context
     const { structure: AM, textes: AT, images: AP } = state.contentFilters;
 
@@ -1292,7 +1294,7 @@ const navigationProcessedRef = useRef(null);
     };
     return counts;
   }
-}), [momentsData, filteredMoments, setCurrentDay, scrollToMoment, handleSelectMoment]);
+}), [momentsData, filteredMoments, setCurrentDay, scrollToMoment, handleSelectMoment, state, actions]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
