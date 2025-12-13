@@ -1,40 +1,44 @@
 /**
  * ==============================================================================
- * MasterIndexGenerator.js v5.2 - Logger + Thèmes + Progression
+ * MasterIndexGenerator.js v5.3 - Préservation Données Utilisateur (v2.18)
  * ==============================================================================
- * 
+ *
  * RESPONSABILITÉS :
  * - Génération du MasterIndex (moments unifiés)
  * - Fusion photos + posts Mastodon
  * - Mapping photos Mastodon avec google_drive_id
- * - Préservation thèmes entre régénérations
+ * - ⭐ Préservation COMPLÈTE données utilisateur entre régénérations (v5.3)
+ * - Préservation thèmes entre régénérations (v5.1)
  * - Reporting progression temps réel
- * 
+ *
  * ⚠️ PRÉREQUIS MANUEL SUR GOOGLE DRIVE :
- * 
+ *
  * STRUCTURE ATTENDUE POUR LES PHOTOS MASTODON :
- * 
+ *
  * Medias/
  * └── Mastodon/
  *     └── Mastodon_Photos/          ← Dossier unique (structure APLATIE)
  *         ├── photo1.jpg
  *         ├── photo2.jpg
  *         └── photo3.jpg
- * 
+ *
  * Les photos Mastodon doivent être TOUTES dans le dossier "Mastodon_Photos".
  * Ne pas conserver l'arborescence complexe type "/media_attachments/files/109/..."
- * 
+ *
  * IMPORTANT : Cette restructuration doit être faite MANUELLEMENT sur Drive
  * avant de générer le MasterIndex, car elle évite les chemins longs et complexes.
- * 
+ *
  * ==============================================================================
- * 
- * FIXES v5.2 :
- * ✅ Préservation thèmes (v5.1)
- * ✅ Progression incrémentale scan photos (v5.2)
- * ✅ Logger intégré (v5.2)
- * ✅ Suppression URLs relatives Mastodon (v5.3)
- * 
+ *
+ * CHANGELOG :
+ * ✅ v5.3 (App v2.18) : Préservation données utilisateur
+ *    - Moments importés (source='imported')
+ *    - Notes de photos (category='user_added')
+ *    - Photos importées (source='imported')
+ * ✅ v5.2 : Progression incrémentale scan photos
+ * ✅ v5.1 : Préservation thèmes
+ * ✅ v5.0 : Logger intégré + suppression URLs relatives Mastodon
+ *
  * ==============================================================================
  */
 
@@ -50,9 +54,9 @@ class MasterIndexGenerator {
   
   constructor() {
     this.debugMode = true;
-    this.version = '5.2-themes-fix-progress';
+    this.version = '5.3-user-data-preservation';
     this.progressCallback = null;
-    
+
     logger.info(`MasterIndexGenerator ${this.version}: Ready`);
   }
 
@@ -242,12 +246,20 @@ class MasterIndexGenerator {
       this.reportProgress('themes', 'Préservation thèmes...', 5);
       const existingThemes = await this.loadExistingThemes();
 
-      // ⭐ v2.17j : Charger contenus utilisateur (moments importés + notes + photos)
-      this.reportProgress('user-content', 'Préservation contenus utilisateur...', 7);
+      // ⭐ v2.18 : Charger contenus utilisateur (moments importés + notes + photos)
+      this.reportProgress('user-content', '🔒 Sauvegarde données utilisateur...', 7);
       const { importedMoments, userContentByMomentId } = await this.loadUserAddedContent();
 
+      // Message détaillé après chargement
+      const totalUserContent = importedMoments.length + userContentByMomentId.size;
+      if (totalUserContent > 0) {
+        this.reportProgress('user-content-loaded',
+          `✅ ${importedMoments.length} moments + ${userContentByMomentId.size} moments avec notes/photos préservés`,
+          8);
+      }
+
       // 2. Import posts Mastodon
-      this.reportProgress('mastodon', 'Import posts Mastodon...', 10);
+      this.reportProgress('mastodon', '📥 Import posts Mastodon...', 10);
       await this.mastodonData.importFromGoogleDrive();
 
       // 3. Analyse photo moments (avec progression v5.2)
@@ -269,16 +281,19 @@ class MasterIndexGenerator {
       const unifiedMoments = await this.createUnifiedMoments(photoMoments, postsByDay);
       this.reportProgress('merge', `${unifiedMoments.length} moments unifiés`, 85);
 
-      // ⭐ v2.17j : Réinjecter contenus utilisateur dans moments Mastodon
-      this.reportProgress('user-merge', 'Fusion contenus utilisateur...', 87);
-      this.mergeUserContentIntoMoments(unifiedMoments, userContentByMomentId);
+      // ⭐ v2.18 : Réinjecter contenus utilisateur dans moments Mastodon
+      if (userContentByMomentId.size > 0 || importedMoments.length > 0) {
+        this.reportProgress('user-merge', '🔄 Restauration notes et photos importées...', 87);
+        this.mergeUserContentIntoMoments(unifiedMoments, userContentByMomentId);
 
-      // ⭐ v2.17j : Ajouter moments importés complets
-      if (importedMoments.length > 0) {
-        unifiedMoments.push(...importedMoments);
-        logger.info(`${importedMoments.length} moments importés ajoutés`);
+        // ⭐ v2.18 : Ajouter moments importés complets
+        if (importedMoments.length > 0) {
+          unifiedMoments.push(...importedMoments);
+          this.reportProgress('user-merge-moments', `✅ ${importedMoments.length} moments importés ajoutés`, 89);
+        }
       }
-      this.reportProgress('merge-complete', `${unifiedMoments.length} moments totaux`, 90);
+
+      this.reportProgress('merge-complete', `✅ ${unifiedMoments.length} moments totaux`, 90);
 
       // 7. Construction structure finale (avec thèmes v5.1)
       this.reportProgress('build', 'Construction structure finale...', 95);
