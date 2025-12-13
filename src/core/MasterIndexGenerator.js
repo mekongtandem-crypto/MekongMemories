@@ -113,6 +113,123 @@ class MasterIndexGenerator {
     }
   }
 
+  /**
+   * ⭐ v2.17j : Charge les contenus ajoutés par l'utilisateur
+   * À préserver lors de la régénération du masterIndex
+   *
+   * @returns {Promise<Object>} { importedMoments: [], userContentByMomentId: Map }
+   */
+  async loadUserAddedContent() {
+    try {
+      logger.info('Chargement contenus utilisateur...');
+
+      const oldIndex = await this.driveSync.loadFile('mekong_master_index_v3_moments.json');
+
+      if (!oldIndex || !oldIndex.moments) {
+        logger.info('Aucun contenu existant (première génération)');
+        return { importedMoments: [], userContentByMomentId: new Map() };
+      }
+
+      const importedMoments = [];
+      const userContentByMomentId = new Map();
+
+      // Parcourir tous les moments de l'ancien index
+      for (const moment of oldIndex.moments) {
+
+        // 1. Préserver moments importés COMPLETS (source='imported')
+        if (moment.source === 'imported') {
+          importedMoments.push(moment);
+          logger.debug(`Moment importé préservé: ${moment.id} (${moment.title})`);
+          continue;
+        }
+
+        // 2. Pour moments Mastodon: extraire posts user_added + photos imported
+        const userContent = {
+          userAddedPosts: [],
+          importedPhotos: []
+        };
+
+        // Extraire posts user_added (Notes de photos)
+        if (moment.posts && Array.isArray(moment.posts)) {
+          const userPosts = moment.posts.filter(p => p.category === 'user_added');
+          if (userPosts.length > 0) {
+            userContent.userAddedPosts = userPosts;
+            logger.debug(`${userPosts.length} notes de photos dans ${moment.id}`);
+          }
+        }
+
+        // Extraire photos imported (sans texte, dans dayPhotos[])
+        if (moment.dayPhotos && Array.isArray(moment.dayPhotos)) {
+          const importedPhotos = moment.dayPhotos.filter(p => p.source === 'imported');
+          if (importedPhotos.length > 0) {
+            userContent.importedPhotos = importedPhotos;
+            logger.debug(`${importedPhotos.length} photos importées dans ${moment.id}`);
+          }
+        }
+
+        // Stocker si du contenu utilisateur trouvé
+        if (userContent.userAddedPosts.length > 0 || userContent.importedPhotos.length > 0) {
+          userContentByMomentId.set(moment.id, userContent);
+        }
+      }
+
+      logger.success(
+        `Préservation: ${importedMoments.length} moments importés, ` +
+        `${userContentByMomentId.size} moments avec contenu utilisateur`
+      );
+
+      return { importedMoments, userContentByMomentId };
+
+    } catch (error) {
+      logger.warn('Erreur chargement contenus utilisateur', error.message);
+      return { importedMoments: [], userContentByMomentId: new Map() };
+    }
+  }
+
+  /**
+   * ⭐ v2.17j : Fusionne les contenus utilisateur dans les moments Mastodon régénérés
+   *
+   * @param {Array} unifiedMoments - Moments Mastodon fraîchement régénérés
+   * @param {Map} userContentByMomentId - Contenus utilisateur groupés par momentId
+   */
+  mergeUserContentIntoMoments(unifiedMoments, userContentByMomentId) {
+    if (userContentByMomentId.size === 0) {
+      logger.info('Aucun contenu utilisateur à fusionner');
+      return;
+    }
+
+    let mergedPosts = 0;
+    let mergedPhotos = 0;
+
+    for (const moment of unifiedMoments) {
+      const userContent = userContentByMomentId.get(moment.id);
+
+      if (!userContent) continue;
+
+      // 1. Réinjecter posts user_added (Notes de photos)
+      if (userContent.userAddedPosts.length > 0) {
+        if (!moment.posts) {
+          moment.posts = [];
+        }
+        moment.posts.push(...userContent.userAddedPosts);
+        mergedPosts += userContent.userAddedPosts.length;
+        logger.debug(`${userContent.userAddedPosts.length} notes réintégrées dans ${moment.id}`);
+      }
+
+      // 2. Réinjecter photos imported (dans dayPhotos[])
+      if (userContent.importedPhotos.length > 0) {
+        if (!moment.dayPhotos) {
+          moment.dayPhotos = [];
+        }
+        moment.dayPhotos.push(...userContent.importedPhotos);
+        mergedPhotos += userContent.importedPhotos.length;
+        logger.debug(`${userContent.importedPhotos.length} photos réintégrées dans ${moment.id}`);
+      }
+    }
+
+    logger.success(`Fusion terminée: ${mergedPosts} notes + ${mergedPhotos} photos réintégrées`);
+  }
+
   // ========================================
   // GÉNÉRATION PRINCIPALE
   // ========================================
@@ -120,34 +237,49 @@ class MasterIndexGenerator {
   async generateMomentsStructure() {
     try {
       this.reportProgress('init', 'Démarrage génération...', 0);
-      
+
       // 1. Charger thèmes existants (v5.1)
       this.reportProgress('themes', 'Préservation thèmes...', 5);
       const existingThemes = await this.loadExistingThemes();
-      
+
+      // ⭐ v2.17j : Charger contenus utilisateur (moments importés + notes + photos)
+      this.reportProgress('user-content', 'Préservation contenus utilisateur...', 7);
+      const { importedMoments, userContentByMomentId } = await this.loadUserAddedContent();
+
       // 2. Import posts Mastodon
       this.reportProgress('mastodon', 'Import posts Mastodon...', 10);
       await this.mastodonData.importFromGoogleDrive();
-      
+
       // 3. Analyse photo moments (avec progression v5.2)
       this.reportProgress('photos', 'Analyse photo moments...', 25);
       const photoMoments = await this.analyzePhotoMoments();
-      
+
       // 4. Analyse posts par jour
       this.reportProgress('posts', 'Analyse posts Mastodon...', 50);
       const postsByDay = this.analyzeMastodonPostsByDay();
       this.reportProgress('posts', 'Posts analysés', 60);
-      
+
       // 5. Mapping photos Mastodon
       this.reportProgress('mapping', 'Mapping photos Mastodon...', 70);
       const mastodonPhotoMapping = await this.buildMastodonPhotoMapping();
       this.reportProgress('mapping', `${Object.keys(mastodonPhotoMapping).length} photos mappées`, 75);
-      
+
       // 6. Création moments unifiés
       this.reportProgress('merge', 'Création moments unifiés...', 80);
       const unifiedMoments = await this.createUnifiedMoments(photoMoments, postsByDay);
-      this.reportProgress('merge', `${unifiedMoments.length} moments unifiés`, 90);
-      
+      this.reportProgress('merge', `${unifiedMoments.length} moments unifiés`, 85);
+
+      // ⭐ v2.17j : Réinjecter contenus utilisateur dans moments Mastodon
+      this.reportProgress('user-merge', 'Fusion contenus utilisateur...', 87);
+      this.mergeUserContentIntoMoments(unifiedMoments, userContentByMomentId);
+
+      // ⭐ v2.17j : Ajouter moments importés complets
+      if (importedMoments.length > 0) {
+        unifiedMoments.push(...importedMoments);
+        logger.info(`${importedMoments.length} moments importés ajoutés`);
+      }
+      this.reportProgress('merge-complete', `${unifiedMoments.length} moments totaux`, 90);
+
       // 7. Construction structure finale (avec thèmes v5.1)
       this.reportProgress('build', 'Construction structure finale...', 95);
       const finalStructure = this.buildFinalStructure(unifiedMoments, existingThemes);
