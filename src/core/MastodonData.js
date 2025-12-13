@@ -206,9 +206,17 @@
   }
 
   decodeHtmlEntities(text) {
-    const textArea = document.createElement('textarea');
-    textArea.innerHTML = text;
-    return textArea.value;
+    // ⭐ v2.17i : Méthode plus robuste pour décoder émojis et entités HTML
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'text/html');
+      return doc.documentElement.textContent || '';
+    } catch (e) {
+      // Fallback: méthode textarea si DOMParser échoue
+      const textArea = document.createElement('textarea');
+      textArea.innerHTML = text;
+      return textArea.value;
+    }
   }
 
   cleanTitle(title) {
