@@ -91,7 +91,15 @@ export default function MemoriesTopBar({
       <div className="flex items-center space-x-1.5">
         {/* Random moment */}
         <button
-          onClick={jumpToRandomMoment}
+          onClick={() => {
+            console.log('🎲 [MemoriesTopBar] Bouton dés cliqué !');
+            console.log('🎲 [MemoriesTopBar] jumpToRandomMoment:', jumpToRandomMoment);
+            if (jumpToRandomMoment) {
+              jumpToRandomMoment();
+            } else {
+              console.error('❌ [MemoriesTopBar] jumpToRandomMoment est undefined !');
+            }
+          }}
           className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-150"
           title="Moment aléatoire"
         >

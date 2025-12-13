@@ -385,8 +385,13 @@ export default function App() {
    * Jump vers moment aléatoire
    */
   const handleJumpToRandomMoment = useCallback(() => {
+    console.log('🎲 [App.jsx] handleJumpToRandomMoment appelé');
+    console.log('🎲 [App.jsx] memoriesPageRef.current:', memoriesPageRef.current);
     if (memoriesPageRef.current?.jumpToRandomMoment) {
+      console.log('🎲 [App.jsx] Appel de memoriesPageRef.current.jumpToRandomMoment()');
       memoriesPageRef.current.jumpToRandomMoment();
+    } else {
+      console.error('❌ [App.jsx] memoriesPageRef.current.jumpToRandomMoment N\'EXISTE PAS !');
     }
   }, []);
 
