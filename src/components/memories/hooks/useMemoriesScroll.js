@@ -42,15 +42,9 @@ export function useMemoriesScroll(navigationContext, onNavigateBack) {
   }, []);
   
   const scrollToMoment = useCallback((momentId) => {
-    console.log('🎲 [scrollToMoment] Recherche moment:', momentId);
     const element = momentRefs.current[momentId];
-    console.log('🎲 [scrollToMoment] Element trouvé dans refs?', !!element);
-    console.log('🎲 [scrollToMoment] Refs disponibles:', Object.keys(momentRefs.current));
     if (element) {
       executeScrollToElement(element);
-      console.log('🎲 [scrollToMoment] Scroll exécuté!');
-    } else {
-      console.error('❌ [scrollToMoment] Aucun element pour momentId:', momentId);
     }
   }, [executeScrollToElement]);
   
