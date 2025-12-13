@@ -1202,43 +1202,22 @@ const navigationProcessedRef = useRef(null);
       const randomMoment = filteredMoments[randomIndex];
       console.log('🎲 [Random MOMENT] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
-      // ⭐ v2.16k : CRITICAL - Activer mode Structure si nécessaire
-      // Les MomentCard ne se rendent QUE en mode Structure!
-      const isStructureMode = state.contentFilters.structure;
-      console.log('🎲 [Random MOMENT] Mode Structure?', isStructureMode);
-      if (!isStructureMode) {
-        console.log('🎲 [Random MOMENT] Activation mode Structure (AM=1) pour rendre le MomentCard...');
-        actions.toggleContentFilter('structure');
-      }
-
+      // ⭐ v2.16n : SIMPLE - Ouvrir moment + scroll
       console.log('🎲 [Random MOMENT] Appel handleSelectMoment...');
       handleSelectMoment(randomMoment, true);
       setCurrentDay(randomMoment.dayStart);
 
-      // ⭐ v2.16m : POLLING pour attendre que la ref soit enregistrée
-      // collapseAll détruit toutes les refs, il faut attendre que le nouveau moment s'enregistre
-      console.log('🎲 [Random MOMENT] Polling pour attendre enregistrement ref...');
-      let attempts = 0;
-      const maxAttempts = 20;  // 20 * 100ms = 2 secondes max
-
-      const waitForRef = () => {
-        attempts++;
-        const element = momentRefs.current[randomMoment.id];
-
-        if (element) {
-          console.log(`🎲 [Random MOMENT] Ref trouvée après ${attempts} tentatives (${attempts * 100}ms)`);
-          scrollToMoment(randomMoment.id);
-        } else if (attempts < maxAttempts) {
-          console.log(`🎲 [Random MOMENT] Tentative ${attempts}/${maxAttempts} - ref pas encore enregistrée, réessai...`);
-          setTimeout(waitForRef, 100);
+      console.log('🎲 [Random MOMENT] Scroll dans 200ms...');
+      setTimeout(() => {
+        const momentElement = document.getElementById(randomMoment.id);
+        console.log('🎲 [Random MOMENT] Element trouvé?', !!momentElement);
+        if (momentElement) {
+          momentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          console.log('🎲 [Random MOMENT] Scroll effectué!');
         } else {
-          console.error(`❌ [Random MOMENT] Ref introuvable après ${maxAttempts} tentatives. ID:`, randomMoment.id);
-          console.error('Refs disponibles:', Object.keys(momentRefs.current));
+          console.error('❌ [Random MOMENT] Element introuvable:', randomMoment.id);
         }
-      };
-
-      // Démarrer le polling après 100ms
-      setTimeout(waitForRef, 100);
+      }, 200);
 
     } else if (targetType === 'post') {
       // Collecter tous les posts visibles
@@ -1292,66 +1271,29 @@ const navigationProcessedRef = useRef(null);
         const randomMoment = momentsWithPhotos[randomIndex];
         console.log('🎲 [Random PHOTO] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
-        // ⭐ v2.16j : CRITICAL - Activer mode Structure si nécessaire
-        // Les PhotoGrid de moments ne se rendent QUE en mode Structure!
-        const isStructureMode = state.contentFilters.structure;
-        console.log('🎲 [Random PHOTO] Mode Structure?', isStructureMode);
-        if (!isStructureMode) {
-          console.log('🎲 [Random PHOTO] Activation mode Structure (AM=1) pour rendre la PhotoGrid...');
-          actions.toggleContentFilter('structure');
-        }
-
-        // Ouvrir le moment
+        // ⭐ v2.16n : SIMPLE - Ouvrir moment + déplier grille + scroll
         console.log('🎲 [Random PHOTO] Ouverture moment...');
         handleSelectMoment(randomMoment, true);
 
-        // ⭐ v2.16i : Attendre que le moment soit rendu AVANT de déplier la grille
+        // Déplier la grille photos après ouverture moment
         setTimeout(() => {
-          console.log('🎲 [Random PHOTO] Dépliement grille photo (après render moment)...');
-          const wasExpanded = state.expanded.photoGrids.has(randomMoment.id);
-          console.log('🎲 [Random PHOTO] Grille dans state?', wasExpanded);
-
-          // ⭐ TOUJOURS forcer le toggle pour garantir le rendu, même si "déjà déplié"
-          // Car le moment vient d'être ouvert, la grille n'est pas encore rendue
-          if (wasExpanded) {
-            console.log('🎲 [Random PHOTO] State dit déplié mais grille non rendue → double toggle');
-            // Fermer puis rouvrir pour forcer le rendu
-            actions.toggleExpanded('photoGrids', randomMoment.id);
-            setTimeout(() => {
-              actions.toggleExpanded('photoGrids', randomMoment.id);
-              console.log('🎲 [Random PHOTO] Double toggle terminé, grille forcée ouverte');
-            }, 50);
-          } else {
-            console.log('🎲 [Random PHOTO] Toggle grille (fermée → ouverte)...');
+          console.log('🎲 [Random PHOTO] Toggle grille photos...');
+          if (!state.expanded.photoGrids.has(randomMoment.id)) {
             actions.toggleExpanded('photoGrids', randomMoment.id);
           }
 
-          // ⭐ v2.16l : FIX - Utiliser le BON gridId pattern!
-          // PhotoGrid utilise gridId="moment_${moment.id}_day" pas juste l'ID
+          // Attendre render et scroll vers grille
           const correctGridId = `moment_${randomMoment.id}_day`;
-          console.log('🎲 [Random PHOTO] GridId correct:', correctGridId);
-
-          // ⭐ v2.16i : Polling pour attendre que l'élément existe avant scroll
-          let attempts = 0;
-          const maxAttempts = 20;  // 20 tentatives * 100ms = 2 secondes max
-
-          const waitForElement = () => {
-            attempts++;
+          setTimeout(() => {
             const photoGridElement = document.querySelector(`[data-photo-grid-id="${correctGridId}"]`);
-
+            console.log('🎲 [Random PHOTO] Element grille trouvé?', !!photoGridElement);
             if (photoGridElement) {
-              console.log(`🎲 [Random PHOTO] Element grille trouvé après ${attempts} tentatives (${attempts * 100}ms)`);
               photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else if (attempts < maxAttempts) {
-              console.log(`🎲 [Random PHOTO] Tentative ${attempts}/${maxAttempts} - grille pas encore rendue, réessai...`);
-              setTimeout(waitForElement, 100);
+              console.log('🎲 [Random PHOTO] Scroll effectué!');
             } else {
-              console.error(`❌ [Random PHOTO] Grille photo introuvable après ${maxAttempts} tentatives (${maxAttempts * 100}ms) avec gridId:`, correctGridId);
+              console.error('❌ [Random PHOTO] Grille introuvable:', correctGridId);
             }
-          };
-
-          // Démarrer le polling après 100ms
-          setTimeout(waitForElement, 100);
+          }, 150);
         }, 100);
       }
     }
