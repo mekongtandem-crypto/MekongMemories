@@ -890,6 +890,17 @@ const handleSelectSession = useCallback((session) => {
 const handleSelectMoment = useCallback((moment, forceOpen = false) => {
   const isAlreadySelected = state.expanded.moments.has(moment.id);
 
+  // ⭐ v2.16e : Si forceOpen, toujours ouvrir (pour bouton dés)
+  if (forceOpen) {
+    console.log('🎲 [handleSelectMoment] forceOpen=true, ouverture forcée du moment', moment.id);
+    // Fermer tous les autres moments
+    actions.collapseAll('moments');
+    // Après collapseAll, le moment est fermé → toggle l'ouvre
+    actions.toggleExpanded('moments', moment.id);
+    console.log('🎲 [handleSelectMoment] Moment ouvert via toggleExpanded');
+    return;
+  }
+
   if (displayMode === 'focus') {
     if (isAlreadySelected && state.expanded.moments.size === 1) {
       // Fermer le seul moment ouvert
