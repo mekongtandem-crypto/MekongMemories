@@ -49,20 +49,19 @@ export const MomentContent = memo(({
   const allPhotoGridIds = state.counts.allPhotoGridIds || [];
   const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds.length);
 
-  // ⭐ v2.15h : Combiner logique AM (Structure/Vrac) + DP (déplié/replié) + AP (Images ON/OFF)
-  // Note : En mode Vrac (AM=0), FlatContentList gère l'affichage des volets
-  // Ce composant (MomentContent) gère UNIQUEMENT le mode Structure (AM=1)
-  const imagesFilterActive = isElementVisible?.('day_photos') ?? true; // AP
+  // ⭐ v2.17 : SÉPARATION AFFICHAGE / DÉPLOIEMENT PhotoGrid
+  // AFFICHAGE (Icône 📸 locale) : Contrôle la visibilité du HEADER PhotoGrid
+  // DÉPLOIEMENT (Texte "X photos" local) : Contrôle la visibilité de la GRILLE
+  const imagesFilterActive = isElementVisible?.('day_photos') ?? true; // AP global
 
-  // Volet PhotoDuMoment visible en mode Structure ?
-  // Requis : AP=1 (filtre Images ON)
-  // En mode Structure, volets toujours visibles (DP n'affecte pas la visibilité, seulement l'état)
-  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 && imagesFilterActive;
+  // ⭐ v2.17 : Header PhotoGrid visible ?
+  // Requis : AP=1 (filtre Images global ON) ET localDisplay.showDayPhotos (affichage local ON)
+  const shouldShowDayPhotosHeader = moment.dayPhotoCount > 0 && imagesFilterActive && localDisplay.showDayPhotos;
 
-  // Grille PhotoDuMoment visible ?
-  // Requis : AP=1 (filtre Images ON)
-  // ET (DP=déplié OU volet ouvert localement)
-  const shouldShowDayPhotosGrid = imagesFilterActive && (photosAllExpanded || localDisplay.showDayPhotos);
+  // ⭐ v2.17 : Grille PhotoGrid visible ?
+  // Requis : Header visible ET grille déployée
+  const isPhotoGridExpanded = computed.isPhotoGridExpanded(moment.id);
+  const shouldShowDayPhotosGrid = shouldShowDayPhotosHeader && isPhotoGridExpanded;
 
   // ⭐ v2.15n : Posts - Filtres globaux s'appliquent TOUJOURS - FIX re-renders excessifs
   const hasVisiblePosts = useMemo(() => {
@@ -129,12 +128,12 @@ export const MomentContent = memo(({
         </div>
       )}
 
-      {/* ⭐ v2.15 : Photos moment - Volet toujours cliquable (override local) */}
+      {/* ⭐ v2.17 : Header PhotoGrid - Affiché si icône locale ON */}
       {shouldShowDayPhotosHeader && (
         <div className="mt-3">
           <PhotoGridHeader
             moment={moment}
-            isOpen={localDisplay.showDayPhotos}
+            isOpen={isPhotoGridExpanded}
             onToggle={onToggleDayPhotos}
             activePhotoGrid={activePhotoGrid}
             onActivateSelection={onActivateSelection}
@@ -143,7 +142,7 @@ export const MomentContent = memo(({
             onContentSelected={onContentSelected}
           />
 
-          {/* ⭐ v2.15 : Grille visible si volet ouvert (override local prime) */}
+          {/* ⭐ v2.17 : Grille visible si déployée (texte local ON) */}
           {shouldShowDayPhotosGrid && (
             <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
               <PhotoGrid

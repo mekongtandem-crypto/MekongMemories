@@ -15,7 +15,7 @@ import React, { memo, useCallback } from 'react';
 import {
   ChevronDown, FileText, Camera, MapPin, Tag, Link, MessageCircle, FileEdit, Edit, Trash2
 } from 'lucide-react';
-import { generateMomentKey, getMomentChildrenKeys } from '../../../utils/themeUtils.js';
+import { generateMomentKey, generatePostKey, getMomentChildrenKeys } from '../../../utils/themeUtils.js';  // ⭐ v2.17
 import { getSessionsForContent } from '../../../utils/sessionUtils.js';
 import { useMemoriesDisplay } from '../context/MemoriesDisplayContext.jsx';  // ⭐ v2.14
 
@@ -44,7 +44,7 @@ export const MomentHeader = memo(({
   // ⭐ v2.17 : Calcul déploiement (expanded) - indépendant de l'affichage
   // Posts : vérifier si AU MOINS UN post de ce moment est déplié
   const hasExpandedPosts = moment.posts?.some(post => {
-    const postKey = `${moment.id}_${post.id}`;
+    const postKey = generatePostKey(post);  // ⭐ v2.17 : FIX - Utiliser generatePostKey() pour cohérence
     return computed.isPostExpanded(postKey);
   }) || false;
 

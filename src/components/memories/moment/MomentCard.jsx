@@ -12,6 +12,7 @@ import React, { useState, useEffect, useRef, memo, forwardRef } from 'react';
 import MomentHeader from './MomentHeader.jsx';
 import MomentContent from './MomentContent.jsx';
 import { useMemoriesDisplay } from '../context/MemoriesDisplayContext.jsx';  // ⭐ v2.14
+import { generatePostKey } from '../../../utils/themeUtils.js';  // ⭐ v2.17
 
 export const MomentCard = memo(forwardRef(({
   moment,
@@ -97,8 +98,9 @@ export const MomentCard = memo(forwardRef(({
   // Logique "tout ou rien" : si AU MOINS UN ouvert → fermer TOUS, sinon ouvrir TOUS
   const handleToggleDeploiement = (contentType) => {
     if (contentType === 'posts') {
-      const postIds = moment.posts?.map(p => p.id) || [];
-      const postKeys = postIds.map(id => `${moment.id}_${id}`);
+      // ⭐ v2.17 : FIX - Utiliser generatePostKey() pour cohérence avec PostArticle
+      const posts = moment.posts || [];
+      const postKeys = posts.map(post => generatePostKey(post));
 
       // Vérifier si AU MOINS UN post est ouvert
       const hasAnyExpanded = postKeys.some(key => computed.isPostExpanded(key));
