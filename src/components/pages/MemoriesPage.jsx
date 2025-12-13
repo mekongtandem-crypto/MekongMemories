@@ -1215,13 +1215,30 @@ const navigationProcessedRef = useRef(null);
       handleSelectMoment(randomMoment, true);
       setCurrentDay(randomMoment.dayStart);
 
-      // ⭐ v2.16l : Délai plus long pour laisser le DOM se stabiliser après collapseAll
-      console.log('🎲 [Random MOMENT] Scroll dans 300ms (laisser DOM se stabiliser)...');
-      setTimeout(() => {
-        console.log('🎲 [Random MOMENT] Appel scrollToMoment avec id:', randomMoment.id);
-        scrollToMoment(randomMoment.id);
-        console.log('🎲 [Random MOMENT] scrollToMoment appelé (si rien ne se passe, vérifier momentRefs)');
-      }, 300);
+      // ⭐ v2.16m : POLLING pour attendre que la ref soit enregistrée
+      // collapseAll détruit toutes les refs, il faut attendre que le nouveau moment s'enregistre
+      console.log('🎲 [Random MOMENT] Polling pour attendre enregistrement ref...');
+      let attempts = 0;
+      const maxAttempts = 20;  // 20 * 100ms = 2 secondes max
+
+      const waitForRef = () => {
+        attempts++;
+        const element = momentRefs.current[randomMoment.id];
+
+        if (element) {
+          console.log(`🎲 [Random MOMENT] Ref trouvée après ${attempts} tentatives (${attempts * 100}ms)`);
+          scrollToMoment(randomMoment.id);
+        } else if (attempts < maxAttempts) {
+          console.log(`🎲 [Random MOMENT] Tentative ${attempts}/${maxAttempts} - ref pas encore enregistrée, réessai...`);
+          setTimeout(waitForRef, 100);
+        } else {
+          console.error(`❌ [Random MOMENT] Ref introuvable après ${maxAttempts} tentatives. ID:`, randomMoment.id);
+          console.error('Refs disponibles:', Object.keys(momentRefs.current));
+        }
+      };
+
+      // Démarrer le polling après 100ms
+      setTimeout(waitForRef, 100);
 
     } else if (targetType === 'post') {
       // Collecter tous les posts visibles
