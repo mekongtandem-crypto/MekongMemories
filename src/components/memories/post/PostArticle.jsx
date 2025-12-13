@@ -1,15 +1,17 @@
 /**
- * PostArticle.jsx v7.2i - Filtres de contenu additifs + FIX React #300
+ * PostArticle.jsx v8.0 - SIMPLIFICATION MAJEURE
  * Article Mastodon complet
  *
- * ⭐ v2.11 : Filtres strictes
- * - 🗒️ Textes : Affiche seulement le texte (masque photos)
- * - 🖼️ Images : Affiche seulement les photos (masque texte)
+ * ⭐ v2.17 : SIMPLIFICATION - Suppression états locaux redondants
+ * - Plus de useState/useEffect pour synchroniser avec Context
+ * - Calculs directs depuis Context (source unique de vérité)
+ * - Code réduit de ~40 lignes
+ *
+ * ⭐ Filtres d'affichage :
+ * - 🗒️ Textes (AT) : Affiche texte
+ * - 📸 Images (AP) : Affiche photos
  * - Les deux : Affiche tout
  * - Aucun : Masque complètement le post
- *
- * ⭐ v2.15h : Décoder entités HTML (emojis)
- * ⭐ v2.15i : Safety checks pour éviter React #300
  *
  * Structure :
  * - Header (titre, toggle photos, badges)
@@ -17,7 +19,7 @@
  * - Photos (si filtre images actif ET toggle ON)
  */
 
-import React, { useState, useEffect, memo, useCallback } from 'react';
+import React, { memo, useCallback } from 'react';
 import { Tag, Link, Image as ImageIcon, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { SessionBadgePost } from '../shared/SessionBadges.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
@@ -48,48 +50,26 @@ export const PostArticle = memo(({
   editionMode  // ⭐ v2.9o : Recevoir editionMode
 }) => {
 
-  // ⭐ v2.14 : Accès au Context (remplace polling) - DOIT être appelé AVANT tout return
-  const { state, computed, actions } = useMemoriesDisplay();
-  const imagesFilterActive = state.contentFilters.images;  // ⭐ v2.14 : Pour griser badge
-
-  // ⭐ v2.15c : Détecter état global DP pour logique volet/grille
-  const allPhotoGridIds = state.counts.allPhotoGridIds || [];
-  const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds.length);
-
-  const [showThisPostPhotos, setShowThisPostPhotos] = useState(displayOptions.showPostPhotos);
-
-  // ⭐ v2.14s : État local post expansion (synchronisé avec Context) - avec safety check
-  const [isPostExpanded, setIsPostExpanded] = useState(() => {
-    if (!post) return false;  // Safety dans initialiseur
-    const postKey = generatePostKey(post);
-    return computed.isPostExpanded(postKey);
-  });
-
-  useEffect(() => {
-    setShowThisPostPhotos(displayOptions.showPostPhotos);
-  }, [displayOptions.showPostPhotos]);
-
-  // ⭐ v2.15m : Synchroniser post expansion avec Context - FIX boucle infinie
-  useEffect(() => {
-    if (!post) return;
-    const postKey = generatePostKey(post);
-    const expanded = computed.isPostExpanded(postKey);
-    setIsPostExpanded(expanded);
-  }, [post?.id, state.expanded.posts.size]); // ← state.expanded.posts au lieu de computed
-
-  // ⭐ v2.15m : Synchroniser photos posts avec Context - FIX boucle infinie
-  useEffect(() => {
-    if (!post || !isPostExpanded || !post.photos?.length) return;
-    const photoGridId = `post_${post.id}`;
-    const isExpanded = computed.isPhotoGridExpanded(photoGridId);
-    setShowThisPostPhotos(isExpanded);
-  }, [post?.id, post?.photos?.length, isPostExpanded, state.expanded.photoGrids.size]); // ← state.expanded.photoGrids au lieu de computed
-
-  // ⭐ v2.15k : Safety check APRÈS les hooks - Fix React #310
+  // ⭐ v2.17 : SIMPLIFICATION - Supprimer états locaux redondants
+  // Safety check AVANT hooks (React rules)
   if (!post || !moment) {
     console.warn('⚠️ [PostArticle] Missing required props:', { post: !!post, moment: !!moment });
     return null;
   }
+
+  // ⭐ v2.17 : Accès au Context - Source unique de vérité
+  const { state, computed, actions } = useMemoriesDisplay();
+  const imagesFilterActive = state.contentFilters.images;
+
+  // ⭐ v2.17 : États calculés directement depuis Context (plus d'états locaux !)
+  const postKey = generatePostKey(post);
+  const isPostExpanded = computed.isPostExpanded(postKey);
+  const photoGridId = `post_${post.id}`;
+  const showThisPostPhotos = computed.isPhotoGridExpanded(photoGridId);
+
+  // ⭐ v2.15c : État global DP pour logique volet/grille
+  const allPhotoGridIds = state.counts.allPhotoGridIds || [];
+  const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds.length);
 
   const contentParts = post.content ? post.content.trim().split('\n') : [];
 
@@ -165,7 +145,7 @@ export const PostArticle = memo(({
     }
   }, [post]);
 
-  const postKey = generatePostKey(post);
+  // ⭐ postKey déjà déclaré ligne 63 (éviter duplication)
   const postThemes = window.themeAssignments?.getThemesForContent(postKey) || [];
   const hasThemes = postThemes.length > 0;
 
