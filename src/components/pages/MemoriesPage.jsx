@@ -1202,35 +1202,26 @@ const navigationProcessedRef = useRef(null);
       const randomMoment = filteredMoments[randomIndex];
       console.log('🎲 [Random MOMENT] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
-      // ⭐ Log filtres AVANT
-      console.log('🎲 [Random MOMENT] Filtres AVANT:', {
-        structure: state.contentFilters.structure,
-        text: state.contentFilters.text,
-        photo: state.contentFilters.photo
-      });
-
-      // ⭐ v2.16r : Ouverture directe
-      console.log('🎲 [Random MOMENT] Ouverture directe...');
+      // ⭐ v2.16t : Délai entre collapseAll et toggleExpanded
+      console.log('🎲 [Random MOMENT] Fermeture tous moments...');
       actions.collapseAll('moments');
-      actions.toggleExpanded('moments', randomMoment.id);
-      setCurrentDay(randomMoment.dayStart);
 
-      // ⭐ Log filtres APRÈS
-      console.log('🎲 [Random MOMENT] Filtres APRÈS:', {
-        structure: state.contentFilters.structure,
-        text: state.contentFilters.text,
-        photo: state.contentFilters.photo
-      });
-
-      // Attendre render et scroller
+      // Attendre que collapseAll soit appliqué avant d'ouvrir
       setTimeout(() => {
-        const momentElement = document.getElementById(randomMoment.id);
-        console.log('🎲 [Random MOMENT] Element trouvé?', !!momentElement);
-        if (momentElement) {
-          momentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          console.log('🎲 [Random MOMENT] Scroll effectué!');
-        }
-      }, 400);
+        console.log('🎲 [Random MOMENT] Ouverture moment...');
+        actions.toggleExpanded('moments', randomMoment.id);
+        setCurrentDay(randomMoment.dayStart);
+
+        // Scroller après ouverture
+        setTimeout(() => {
+          const momentElement = document.getElementById(randomMoment.id);
+          console.log('🎲 [Random MOMENT] Element trouvé?', !!momentElement);
+          if (momentElement) {
+            momentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            console.log('🎲 [Random MOMENT] Scroll effectué!');
+          }
+        }, 300);
+      }, 50);
 
     } else if (targetType === 'post') {
       // Collecter tous les posts visibles
