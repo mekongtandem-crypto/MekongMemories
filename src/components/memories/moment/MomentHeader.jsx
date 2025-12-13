@@ -189,28 +189,29 @@ export const MomentHeader = memo(({
 
         {/* Compteurs cliquables - ⭐ v2.8e : Séparation posts Mastodon / Note de photos */}
 
-        {/* ⭐ v2.15m : Badges - Icône=Affichage, Texte=Déploiement+Scroll */}
+        {/* ⭐ v2.15o : Badges - Icône=Affichage, Texte=Déploiement+Scroll */}
+        {/* Les boutons globaux commandent tous les boutons locaux correspondants */}
         {/* 🗒️ Posts Mastodon (bleu) */}
         {moment.mastodonPostCount > 0 && (
           <div className="flex items-center gap-0.5 text-sm">
-            {/* Icône = AFFICHAGE volet (comme AM/AT/AP) */}
+            {/* Icône = AFFICHAGE volet (comme AT global) */}
             <button
               onClick={(e) => handleToggleAffichage(e, 'posts')}
               title="Afficher/Masquer le volet posts"
               className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
             >
               <FileText className={`w-4 h-4 transition-colors ${
-                localDisplay.showPosts
+                (showTextBadges && localDisplay.showPosts)
                   ? 'text-blue-600 dark:text-blue-400'
                   : 'text-gray-400 dark:text-gray-500'
               }`} />
             </button>
-            {/* Texte = DÉPLOIEMENT volet (comme DM/DT/DP) + scroll */}
+            {/* Texte = DÉPLOIEMENT volet (comme DT global) + scroll */}
             <button
               onClick={(e) => handleToggleDeploiement(e, 'posts')}
               title="Déplier/Plier et aller aux posts"
               className={`font-medium hover:underline transition-colors ${
-                localDisplay.showPosts
+                (showTextBadges && localDisplay.showPosts)
                   ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
                   : 'text-gray-400 dark:text-gray-500'
               }`}
@@ -223,24 +224,24 @@ export const MomentHeader = memo(({
         {/* 📝 Note de photos (jaune/amber) */}
         {moment.noteCount > 0 && (
           <div className="flex items-center gap-0.5 text-sm">
-            {/* Icône = AFFICHAGE volet */}
+            {/* Icône = AFFICHAGE volet (comme AT global) */}
             <button
               onClick={(e) => handleToggleAffichage(e, 'posts')}
               title="Afficher/Masquer le volet notes"
               className="p-1 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded transition-colors"
             >
               <FileEdit className={`w-4 h-4 transition-colors ${
-                localDisplay.showPosts
+                (showTextBadges && localDisplay.showPosts)
                   ? 'text-amber-600 dark:text-amber-500'
                   : 'text-gray-400 dark:text-gray-500'
               }`} />
             </button>
-            {/* Texte = DÉPLOIEMENT volet + scroll */}
+            {/* Texte = DÉPLOIEMENT volet (comme DT global) + scroll */}
             <button
               onClick={(e) => handleToggleDeploiement(e, 'posts')}
               title="Déplier/Plier et aller aux notes"
               className={`font-medium hover:underline transition-colors ${
-                localDisplay.showPosts
+                (showTextBadges && localDisplay.showPosts)
                   ? 'text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400'
                   : 'text-gray-400 dark:text-gray-500'
               }`}
@@ -253,24 +254,24 @@ export const MomentHeader = memo(({
         {/* 📸 Photos (vert) */}
         {moment.dayPhotoCount > 0 && (
           <div className="flex items-center gap-0.5 text-sm">
-            {/* Icône = AFFICHAGE volet */}
+            {/* Icône = AFFICHAGE volet (comme AP global) */}
             <button
               onClick={(e) => handleToggleAffichage(e, 'photos')}
               title="Afficher/Masquer le volet photos"
               className="p-1 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors"
             >
               <Camera className={`w-4 h-4 transition-colors ${
-                localDisplay.showDayPhotos
+                (showImageBadges && localDisplay.showDayPhotos)
                   ? 'text-green-600 dark:text-green-500'
                   : 'text-gray-400 dark:text-gray-500'
               }`} />
             </button>
-            {/* Texte = DÉPLOIEMENT volet + scroll */}
+            {/* Texte = DÉPLOIEMENT volet (comme DP global) + scroll */}
             <button
               onClick={(e) => handleToggleDeploiement(e, 'photos')}
               title="Déplier/Plier et aller aux photos"
               className={`font-medium hover:underline transition-colors ${
-                localDisplay.showDayPhotos
+                (showImageBadges && localDisplay.showDayPhotos)
                   ? 'text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400'
                   : 'text-gray-400 dark:text-gray-500'
               }`}

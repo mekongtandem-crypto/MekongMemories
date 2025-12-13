@@ -64,15 +64,15 @@ export const MomentContent = memo(({
   // ET (DP=déplié OU volet ouvert localement)
   const shouldShowDayPhotosGrid = imagesFilterActive && (photosAllExpanded || localDisplay.showDayPhotos);
 
-  // ⭐ v2.15i : Posts - Filtres globaux s'appliquent TOUJOURS (FIX React #300)
+  // ⭐ v2.15n : Posts - Filtres globaux s'appliquent TOUJOURS - FIX re-renders excessifs
   const hasVisiblePosts = useMemo(() => {
     if (!localDisplay.showPosts || !moment?.posts || !Array.isArray(moment.posts) || moment.posts.length === 0) {
       return false;
     }
 
-    // ⭐ v2.15i : Vérifier si AU MOINS un post a du contenu visible selon filtres globaux
+    // ⭐ v2.15n : Vérifier si AU MOINS un post a du contenu visible selon filtres globaux
     // Important : Cette logique DOIT matcher exactement PostArticle.jsx ligne 114-116
-    const isVracMode = !computed.isStructureMode;
+    const isVracMode = !state.contentFilters.structure; // ← state.contentFilters au lieu de computed
     const localOverride = localDisplay.showPosts;
 
     return moment.posts.some(post => {
@@ -86,7 +86,7 @@ export const MomentContent = memo(({
 
       return shouldShowHeader || shouldShowText || shouldShowPhotos;
     });
-  }, [localDisplay.showPosts, moment?.posts, isElementVisible, computed]);
+  }, [localDisplay.showPosts, moment?.posts, isElementVisible, state.contentFilters.structure]); // ← deps plus stables
 
   return (
     <div className="px-3 pb-3">

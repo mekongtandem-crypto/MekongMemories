@@ -69,21 +69,21 @@ export const PostArticle = memo(({
     setShowThisPostPhotos(displayOptions.showPostPhotos);
   }, [displayOptions.showPostPhotos]);
 
-  // ⭐ v2.14s : Synchroniser post expansion avec Context (zero polling!)
+  // ⭐ v2.15m : Synchroniser post expansion avec Context - FIX boucle infinie
   useEffect(() => {
-    if (!post) return;  // Safety dans effet
+    if (!post) return;
     const postKey = generatePostKey(post);
-    const expanded = computed.isPostExpanded(postKey);  // ✅ FIX v2.14s: Utiliser generatePostKey pour cohérence
+    const expanded = computed.isPostExpanded(postKey);
     setIsPostExpanded(expanded);
-  }, [post?.id, computed]);
+  }, [post?.id, state.expanded.posts.size]); // ← state.expanded.posts au lieu de computed
 
-  // ⭐ v2.14s : Synchroniser photos posts avec Context (comme MomentCard)
+  // ⭐ v2.15m : Synchroniser photos posts avec Context - FIX boucle infinie
   useEffect(() => {
-    if (!post || !isPostExpanded || !post.photos?.length) return;  // Safety dans effet
+    if (!post || !isPostExpanded || !post.photos?.length) return;
     const photoGridId = `post_${post.id}`;
     const isExpanded = computed.isPhotoGridExpanded(photoGridId);
     setShowThisPostPhotos(isExpanded);
-  }, [post?.id, post?.photos?.length, isPostExpanded, computed]);
+  }, [post?.id, post?.photos?.length, isPostExpanded, state.expanded.photoGrids.size]); // ← state.expanded.photoGrids au lieu de computed
 
   // ⭐ v2.15k : Safety check APRÈS les hooks - Fix React #310
   if (!post || !moment) {
@@ -239,10 +239,11 @@ export const PostArticle = memo(({
               {title}
             </h4>
 
-            {/* ⭐ v2.15m : Badge photos - Icône=Affichage, Texte=Déploiement+Scroll */}
+            {/* ⭐ v2.15o : Badge photos - Icône=Affichage, Texte=Déploiement+Scroll */}
+            {/* Les boutons globaux commandent tous les boutons locaux correspondants */}
             {hasPhotos && (
               <div className="flex items-center space-x-0.5 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/30 flex-shrink-0">
-                {/* Icône = AFFICHAGE grille (comme AM/AT/AP) */}
+                {/* Icône = AFFICHAGE grille (comme AP global) */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -253,13 +254,13 @@ export const PostArticle = memo(({
                   className="p-0.5 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
                 >
                   <ImageIcon className={`w-4 h-4 transition-colors ${
-                    showThisPostPhotos
+                    (imagesFilterActive && showThisPostPhotos)
                       ? 'text-blue-600 dark:text-blue-400'
                       : 'text-gray-400 dark:text-gray-500'
                   }`} />
                 </button>
 
-                {/* Texte = DÉPLOIEMENT grille (comme DM/DT/DP) + scroll si déplie */}
+                {/* Texte = DÉPLOIEMENT grille (comme DP global) + scroll si déplie */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -283,7 +284,7 @@ export const PostArticle = memo(({
                   className="px-1 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
                 >
                   <span className={`font-medium transition-colors ${
-                    showThisPostPhotos
+                    (imagesFilterActive && showThisPostPhotos)
                       ? 'text-blue-600 dark:text-blue-400'
                       : 'text-gray-400 dark:text-gray-500'
                   }`}>{post.photos.length}</span>
