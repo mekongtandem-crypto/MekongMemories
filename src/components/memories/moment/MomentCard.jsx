@@ -40,7 +40,7 @@ export const MomentCard = memo(forwardRef(({
 }, ref) => {
 
   // ⭐ v2.14 : Accès au Context (remplace polling)
-  const { computed, actions } = useMemoriesDisplay();
+  const { state, computed, actions } = useMemoriesDisplay();
 
   const [visibleDayPhotos, setVisibleDayPhotos] = useState(30);
   const photosPerLoad = 30;
@@ -71,7 +71,7 @@ export const MomentCard = memo(forwardRef(({
     wasSelectedRef.current = isSelected;
   }, [isSelected]);
 
-  // ⭐ v2.14 : Synchroniser showDayPhotos avec Context (zero polling!)
+  // ⭐ v2.15m : Synchroniser showDayPhotos avec Context - FIX boucle infinie
   useEffect(() => {
     if (isSelected) {
       const isExpanded = computed.isPhotoGridExpanded(moment.id);
@@ -82,7 +82,7 @@ export const MomentCard = memo(forwardRef(({
         return prev;
       });
     }
-  }, [moment.id, isSelected, computed]);
+  }, [moment.id, isSelected, state.expanded.photoGrids.size]); // ← state.expanded.photoGrids au lieu de computed
 
   const handleOpenWith = (options) => {
     if (!isSelected) {
