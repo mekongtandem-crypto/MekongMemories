@@ -68,22 +68,23 @@ export const MomentContent = memo(({
   const specialVracPhotoMode = isVracMode && textesOff && imagesFilterActive && isPhotoGridExpanded;
   const shouldShowDayPhotosGrid = (shouldShowDayPhotosHeader && isPhotoGridExpanded) || specialVracPhotoMode;
 
-  // ⭐ v2.17d : Posts - Override local indépendant en mode Structure
+  // ⭐ v2.17e : Posts - Override local indépendant en mode Structure
   const hasVisiblePosts = useMemo(() => {
     if (!moment?.posts || !Array.isArray(moment.posts) || moment.posts.length === 0) {
       return false;
     }
 
-    // ⭐ v2.17d : Mode Structure → Override local prime (indépendant AT global)
+    // ⭐ v2.17e : Mode Structure → Override local prime (indépendant AT global)
     // Mode Vrac → Filtres globaux s'appliquent
     const localOverride = localDisplay.showPosts;
 
     // Mode Structure : visible si localDisplay.showPosts = true
-    // Mode Vrac : visible si AT=1 global
+    // Mode Vrac : visible si AT=1 global OU postPhotosOnlyMode=true (afficher photos de posts seulement)
     if (isVracMode) {
-      // Mode Vrac : dépend du filtre global Textes
+      // Mode Vrac : dépend du filtre global Textes OU mode PhotoDePost
       const textesOn = state.contentFilters.textes;
-      if (!textesOn) return false;
+      const photoDePostMode = state.postPhotosOnlyMode;
+      if (!textesOn && !photoDePostMode) return false;
     } else {
       // Mode Structure : dépend de l'override local
       if (!localOverride) return false;
@@ -93,14 +94,14 @@ export const MomentContent = memo(({
       const hasText = post?.content?.trim();
       const hasPhotos = post?.photos?.length > 0;
 
-      // ⭐ v2.17d : En mode Structure, localOverride suffit (pas besoin de vérifier isElementVisible)
+      // ⭐ v2.17e : En mode Structure, localOverride suffit (pas besoin de vérifier isElementVisible)
       const shouldShowHeader = hasText && (isVracMode ? (isElementVisible?.('post_header') ?? true) : localOverride);
       const shouldShowText = hasText && (isVracMode ? (isElementVisible?.('post_text') ?? true) : localOverride);
       const shouldShowPhotos = hasPhotos && (isVracMode ? (isElementVisible?.('post_photos') ?? true) : localOverride);
 
       return shouldShowHeader || shouldShowText || shouldShowPhotos;
     });
-  }, [localDisplay.showPosts, moment?.posts, isElementVisible, state.contentFilters.structure, state.contentFilters.textes, isVracMode]);
+  }, [localDisplay.showPosts, moment?.posts, isElementVisible, state.contentFilters.structure, state.contentFilters.textes, state.postPhotosOnlyMode, isVracMode]);
 
   return (
     <div className="px-3 pb-3">
