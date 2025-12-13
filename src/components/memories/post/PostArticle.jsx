@@ -98,12 +98,12 @@ export const PostArticle = memo(({
 
   const isVracMode = !computed.isStructureMode;
 
-  // ⭐ v2.14t : Logique correcte - Filtres globaux s'appliquent TOUJOURS
-  // Mode Vrac (AM=0): visible si filtre ON
-  // Mode Structure (AM=1): visible si filtre ON ET moment ouvert (localOverride)
-  const shouldShowHeader = hasText && (isElementVisible?.('post_header') ?? true) && (isVracMode || localOverride);
-  const shouldShowText = hasText && (isElementVisible?.('post_text') ?? true) && (isVracMode || localOverride);
-  const shouldShowPhotos = hasPhotos && (isElementVisible?.('post_photos') ?? true) && (isVracMode || localOverride);
+  // ⭐ v2.17 : Logique correcte - Override local en mode Structure
+  // Mode Vrac (AM=0): visible si filtre global ON
+  // Mode Structure (AM=1): visible si état local ON (indépendant du global!)
+  const shouldShowHeader = hasText && (isVracMode ? (isElementVisible?.('post_header') ?? true) : localOverride);
+  const shouldShowText = hasText && (isVracMode ? (isElementVisible?.('post_text') ?? true) : localOverride);
+  const shouldShowPhotos = hasPhotos && (isVracMode ? (isElementVisible?.('post_photos') ?? true) : localOverride);
 
   // 🔍 DEBUG v2.13 : Log pour diagnostiquer React #310
   if (!post.id) {
