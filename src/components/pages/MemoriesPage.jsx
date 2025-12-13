@@ -1202,13 +1202,16 @@ const navigationProcessedRef = useRef(null);
       const randomMoment = filteredMoments[randomIndex];
       console.log('🎲 [Random MOMENT] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
-      // ⭐ v2.16n : SIMPLE - Ouvrir moment + scroll
+      // ⭐ v2.16o : SIMPLE - Ouvrir moment + scroll
       console.log('🎲 [Random MOMENT] Appel handleSelectMoment...');
       handleSelectMoment(randomMoment, true);
       setCurrentDay(randomMoment.dayStart);
 
-      console.log('🎲 [Random MOMENT] Scroll dans 200ms...');
+      // ⭐ Attendre que React re-render avant scroll
+      console.log('🎲 [Random MOMENT] Scroll dans 400ms...');
       setTimeout(() => {
+        console.log('🎲 [Random MOMENT] Moment dans expanded?', state.expanded.moments.has(randomMoment.id));
+        console.log('🎲 [Random MOMENT] Nb moments expanded:', state.expanded.moments.size);
         const momentElement = document.getElementById(randomMoment.id);
         console.log('🎲 [Random MOMENT] Element trouvé?', !!momentElement);
         if (momentElement) {
@@ -1217,7 +1220,7 @@ const navigationProcessedRef = useRef(null);
         } else {
           console.error('❌ [Random MOMENT] Element introuvable:', randomMoment.id);
         }
-      }, 200);
+      }, 400);
 
     } else if (targetType === 'post') {
       // Collecter tous les posts visibles
@@ -1283,7 +1286,9 @@ const navigationProcessedRef = useRef(null);
           }
 
           // Attendre render et scroll vers grille
-          const correctGridId = `moment_${randomMoment.id}_day`;
+          // ⭐ moment.id contient DÉJÀ "moment_", donc juste ajouter "_day"
+          const correctGridId = `${randomMoment.id}_day`;
+          console.log('🎲 [Random PHOTO] GridId à chercher:', correctGridId);
           setTimeout(() => {
             const photoGridElement = document.querySelector(`[data-photo-grid-id="${correctGridId}"]`);
             console.log('🎲 [Random PHOTO] Element grille trouvé?', !!photoGridElement);
