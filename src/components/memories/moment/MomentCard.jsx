@@ -73,18 +73,9 @@ export const MomentCard = memo(forwardRef(({
     wasSelectedRef.current = isSelected;
   }, [isSelected]);
 
-  // ⭐ v2.15m : Synchroniser showDayPhotos avec Context - FIX boucle infinie
-  useEffect(() => {
-    if (isSelected) {
-      const isExpanded = computed.isPhotoGridExpanded(moment.id);
-      setLocalDisplay(prev => {
-        if (prev.showDayPhotos !== isExpanded) {
-          return { ...prev, showDayPhotos: isExpanded };
-        }
-        return prev;
-      });
-    }
-  }, [moment.id, isSelected, state.expanded.photoGrids.size]); // ← state.expanded.photoGrids au lieu de computed
+  // ⭐ v2.17 : SUPPRIMÉ - Ne plus synchroniser affichage avec déploiement
+  // Affichage et déploiement sont INDÉPENDANTS
+  // (ancien useEffect lignes 76-87 retiré)
 
   const handleOpenWith = (options) => {
     if (!isSelected) {
@@ -102,15 +93,31 @@ export const MomentCard = memo(forwardRef(({
     }));
   };
 
-  // Texte local → change SEULEMENT le déploiement (expanded dans Context)
+  // ⭐ v2.17 : Texte local → change SEULEMENT le déploiement (expanded dans Context)
+  // Logique "tout ou rien" : si AU MOINS UN ouvert → fermer TOUS, sinon ouvrir TOUS
   const handleToggleDeploiement = (contentType) => {
     if (contentType === 'posts') {
-      // Toggle tous les posts de ce moment
       const postIds = moment.posts?.map(p => p.id) || [];
-      postIds.forEach(postId => {
-        const postKey = `${moment.id}_${postId}`;
-        actions.toggleExpanded('posts', postKey);
-      });
+      const postKeys = postIds.map(id => `${moment.id}_${id}`);
+
+      // Vérifier si AU MOINS UN post est ouvert
+      const hasAnyExpanded = postKeys.some(key => computed.isPostExpanded(key));
+
+      if (hasAnyExpanded) {
+        // Fermer TOUS les posts
+        postKeys.forEach(key => {
+          if (computed.isPostExpanded(key)) {
+            actions.toggleExpanded('posts', key);
+          }
+        });
+      } else {
+        // Ouvrir TOUS les posts
+        postKeys.forEach(key => {
+          if (!computed.isPostExpanded(key)) {
+            actions.toggleExpanded('posts', key);
+          }
+        });
+      }
     } else if (contentType === 'photos') {
       // Toggle la grille photos de ce moment
       actions.toggleExpanded('photoGrids', moment.id);
