@@ -1182,16 +1182,21 @@ const navigationProcessedRef = useRef(null);
     }
 
     console.log('🎲 [Random] Type sélectionné:', targetType, { AM, AT, AP, activeFilters });
+    console.log('🎲 [Random] filteredMoments.length:', filteredMoments.length);
 
     // ⭐ Sélectionner et ouvrir élément selon type
     if (targetType === 'moment' && filteredMoments.length > 0) {
       // Ouvrir moment aléatoire
       const randomIndex = Math.floor(Math.random() * filteredMoments.length);
       const randomMoment = filteredMoments[randomIndex];
+      console.log('🎲 [Random] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
+      console.log('🎲 [Random] Appel handleSelectMoment...');
       handleSelectMoment(randomMoment, true);
       setCurrentDay(randomMoment.dayStart);
 
+      console.log('🎲 [Random] Scroll dans 100ms...');
       setTimeout(() => {
+        console.log('🎲 [Random] Appel scrollToMoment...');
         scrollToMoment(randomMoment.id);
       }, 100);
 
