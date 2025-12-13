@@ -1202,12 +1202,13 @@ const navigationProcessedRef = useRef(null);
       const randomMoment = filteredMoments[randomIndex];
       console.log('🎲 [Random MOMENT] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
-      // ⭐ v2.16p : FIX - Ne PAS lire state dans setTimeout (closure!)
-      console.log('🎲 [Random MOMENT] Ouverture + scroll...');
-      handleSelectMoment(randomMoment, true);
+      // ⭐ v2.16q : DIRECT - Ne pas passer par handleSelectMoment
+      console.log('🎲 [Random MOMENT] Ouverture directe...');
+      actions.collapseAll('moments');
+      actions.toggleExpanded('moments', randomMoment.id);
       setCurrentDay(randomMoment.dayStart);
 
-      // Juste attendre render et scroller, sans vérifier state (closure périmée)
+      // Attendre render et scroller
       setTimeout(() => {
         const momentElement = document.getElementById(randomMoment.id);
         console.log('🎲 [Random MOMENT] Element trouvé?', !!momentElement);
@@ -1235,30 +1236,37 @@ const navigationProcessedRef = useRef(null);
         const { post, moment } = allPosts[randomIndex];
         console.log('🎲 [Random POST] Post sélectionné:', post.id, 'dans moment', moment.id);
 
-        // Ouvrir le moment parent
+        // ⭐ v2.16q : Ouvrir moment directement
         console.log('🎲 [Random POST] Ouverture moment parent...');
-        handleSelectMoment(moment, true);
+        actions.collapseAll('moments');
+        actions.toggleExpanded('moments', moment.id);
 
         // Déplier le post
         const postKey = generatePostKey(post);
-        console.log('🎲 [Random POST] Dépliement post, postKey:', postKey);
-        console.log('🎲 [Random POST] Post déjà déplié?', state.expanded.posts.has(postKey));
-        if (!state.expanded.posts.has(postKey)) {
-          actions.toggleExpanded('posts', postKey);
-        }
+        console.log('🎲 [Random POST] Dépliement post...');
+        actions.toggleExpanded('posts', postKey);
 
         // Scroll vers le post
-        console.log('🎲 [Random POST] Scroll dans 150ms...');
         setTimeout(() => {
           const postElement = document.querySelector(`[data-post-id="${post.id}"]`);
           console.log('🎲 [Random POST] Element trouvé:', !!postElement);
           if (postElement) {
             postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
-        }, 150);
+        }, 200);
       }
 
     } else if (targetType === 'photo') {
+      // ⭐ v2.16q : NE PAS modifier les filtres! Vérifier mode Structure
+      const isStructureMode = state.contentFilters.structure;
+      console.log('🎲 [Random PHOTO] Mode Structure?', isStructureMode);
+
+      if (!isStructureMode) {
+        console.warn('⚠️ Random Photo nécessite mode Structure (AM=1) pour afficher dayPhotos');
+        console.warn('   En mode Vrac, seules les photos de POSTS sont visibles');
+        return; // Sortir sans rien faire
+      }
+
       // Collecter tous les moments avec photos
       console.log('🎲 [Random PHOTO] Collecte des moments avec photos...');
       const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos && m.dayPhotos.length > 0);
@@ -1269,39 +1277,39 @@ const navigationProcessedRef = useRef(null);
         const randomMoment = momentsWithPhotos[randomIndex];
         console.log('🎲 [Random PHOTO] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
-        // ⭐ v2.16p : CRITICAL - dayPhotos ne s'affichent QU'EN mode Structure!
-        // En mode Vrac, seules les photos de POSTS s'affichent
-        const isStructureMode = state.contentFilters.structure;
-        console.log('🎲 [Random PHOTO] Mode Structure?', isStructureMode);
-        if (!isStructureMode) {
-          console.log('🎲 [Random PHOTO] Activation Structure (dayPhotos invisibles en Vrac)');
-          actions.toggleContentFilter('structure');
-        }
-
+        // Ouvrir moment directement
         console.log('🎲 [Random PHOTO] Ouverture moment...');
-        handleSelectMoment(randomMoment, true);
+        actions.collapseAll('moments');
+        actions.toggleExpanded('moments', randomMoment.id);
 
         // Déplier la grille photos après ouverture moment
         setTimeout(() => {
           console.log('🎲 [Random PHOTO] Toggle grille photos...');
-          if (!state.expanded.photoGrids.has(randomMoment.id)) {
-            actions.toggleExpanded('photoGrids', randomMoment.id);
-          }
+          actions.toggleExpanded('photoGrids', randomMoment.id);
 
-          // Attendre render et scroll vers grille
+          // ⭐ Polling pour attendre render de la grille
           const correctGridId = `${randomMoment.id}_day`;
           console.log('🎲 [Random PHOTO] GridId à chercher:', correctGridId);
-          setTimeout(() => {
+
+          let attempts = 0;
+          const maxAttempts = 10;
+          const waitForGrid = () => {
+            attempts++;
             const photoGridElement = document.querySelector(`[data-photo-grid-id="${correctGridId}"]`);
-            console.log('🎲 [Random PHOTO] Element grille trouvé?', !!photoGridElement);
+
             if (photoGridElement) {
+              console.log(`🎲 [Random PHOTO] Grille trouvée après ${attempts} tentatives`);
               photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              console.log('🎲 [Random PHOTO] Scroll effectué!');
+            } else if (attempts < maxAttempts) {
+              console.log(`🎲 [Random PHOTO] Tentative ${attempts}/${maxAttempts}...`);
+              setTimeout(waitForGrid, 100);
             } else {
-              console.error('❌ [Random PHOTO] Grille introuvable:', correctGridId);
+              console.error('❌ [Random PHOTO] Grille introuvable après', maxAttempts, 'tentatives');
             }
-          }, 150);
-        }, 100);
+          };
+
+          setTimeout(waitForGrid, 100);
+        }, 150);
       }
     }
   },
