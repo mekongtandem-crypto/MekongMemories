@@ -36,10 +36,20 @@ export const MomentHeader = memo(({
   editionMode  // ⭐ v2.9n3 : Recevoir editionMode comme prop
 }) => {
 
-  // ⭐ v2.14 : Context pour filtres globaux (masquer badges selon filtres)
-  const { state } = useMemoriesDisplay();
+  // ⭐ v2.14 : Context pour filtres globaux ET déploiement
+  const { state, computed } = useMemoriesDisplay();
   const showTextBadges = state.contentFilters.textes;   // Filtre "Textes" ON → afficher badges posts
   const showImageBadges = state.contentFilters.images;  // Filtre "Images" ON → afficher badges photos
+
+  // ⭐ v2.17 : Calcul déploiement (expanded) - indépendant de l'affichage
+  // Posts : vérifier si AU MOINS UN post de ce moment est déplié
+  const hasExpandedPosts = moment.posts?.some(post => {
+    const postKey = `${moment.id}_${post.id}`;
+    return computed.isPostExpanded(postKey);
+  }) || false;
+
+  // Photos : vérifier si la grille photos de ce moment est dépliée
+  const hasExpandedPhotos = computed.isPhotoGridExpanded(moment.id);
 
   // Badge moment : UNIQUEMENT le moment lui-même
   const momentKey = generateMomentKey(moment);
@@ -185,24 +195,24 @@ export const MomentHeader = memo(({
         {/* 🗒️ Posts Mastodon (bleu) */}
         {moment.mastodonPostCount > 0 && (
           <div className="flex items-center gap-0.5 text-sm">
-            {/* Icône = AFFICHAGE volet (comme AT global) */}
+            {/* Icône = AFFICHAGE volet (override possible) */}
             <button
               onClick={(e) => handleToggleAffichageLocal(e, 'posts')}
-              title="Afficher/Masquer le volet posts"
+              title={localDisplay.showPosts ? "Masquer le volet posts" : "Afficher le volet posts"}
               className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
             >
               <FileText className={`w-4 h-4 transition-colors ${
-                (showTextBadges && localDisplay.showPosts)
+                localDisplay.showPosts
                   ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-400 dark:text-gray-500'
+                  : (showTextBadges ? 'text-gray-400 dark:text-gray-500' : 'text-gray-300 dark:text-gray-600')
               }`} />
             </button>
-            {/* Texte = DÉPLOIEMENT volet (comme DT global) + scroll */}
+            {/* Texte = DÉPLOIEMENT posts (indépendant affichage) + scroll */}
             <button
               onClick={(e) => handleToggleDeploiementLocal(e, 'posts')}
-              title="Déplier/Plier et aller aux posts"
+              title={hasExpandedPosts ? "Replier les posts" : "Déplier et aller aux posts"}
               className={`font-medium hover:underline transition-colors ${
-                (showTextBadges && localDisplay.showPosts)
+                hasExpandedPosts
                   ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
                   : 'text-gray-400 dark:text-gray-500'
               }`}
@@ -215,24 +225,24 @@ export const MomentHeader = memo(({
         {/* 📝 Note de photos (jaune/amber) */}
         {moment.noteCount > 0 && (
           <div className="flex items-center gap-0.5 text-sm">
-            {/* Icône = AFFICHAGE volet (comme AT global) */}
+            {/* Icône = AFFICHAGE volet (override possible) */}
             <button
               onClick={(e) => handleToggleAffichageLocal(e, 'posts')}
-              title="Afficher/Masquer le volet notes"
+              title={localDisplay.showPosts ? "Masquer le volet notes" : "Afficher le volet notes"}
               className="p-1 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded transition-colors"
             >
               <FileEdit className={`w-4 h-4 transition-colors ${
-                (showTextBadges && localDisplay.showPosts)
+                localDisplay.showPosts
                   ? 'text-amber-600 dark:text-amber-500'
-                  : 'text-gray-400 dark:text-gray-500'
+                  : (showTextBadges ? 'text-gray-400 dark:text-gray-500' : 'text-gray-300 dark:text-gray-600')
               }`} />
             </button>
-            {/* Texte = DÉPLOIEMENT volet (comme DT global) + scroll */}
+            {/* Texte = DÉPLOIEMENT notes (indépendant affichage) + scroll */}
             <button
               onClick={(e) => handleToggleDeploiementLocal(e, 'posts')}
-              title="Déplier/Plier et aller aux notes"
+              title={hasExpandedPosts ? "Replier les notes" : "Déplier et aller aux notes"}
               className={`font-medium hover:underline transition-colors ${
-                (showTextBadges && localDisplay.showPosts)
+                hasExpandedPosts
                   ? 'text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400'
                   : 'text-gray-400 dark:text-gray-500'
               }`}
@@ -245,24 +255,24 @@ export const MomentHeader = memo(({
         {/* 📸 Photos (vert) */}
         {moment.dayPhotoCount > 0 && (
           <div className="flex items-center gap-0.5 text-sm">
-            {/* Icône = AFFICHAGE volet (comme AP global) */}
+            {/* Icône = AFFICHAGE volet (override possible) */}
             <button
               onClick={(e) => handleToggleAffichageLocal(e, 'photos')}
-              title="Afficher/Masquer le volet photos"
+              title={localDisplay.showDayPhotos ? "Masquer le volet photos" : "Afficher le volet photos"}
               className="p-1 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors"
             >
               <Camera className={`w-4 h-4 transition-colors ${
-                (showImageBadges && localDisplay.showDayPhotos)
+                localDisplay.showDayPhotos
                   ? 'text-green-600 dark:text-green-500'
-                  : 'text-gray-400 dark:text-gray-500'
+                  : (showImageBadges ? 'text-gray-400 dark:text-gray-500' : 'text-gray-300 dark:text-gray-600')
               }`} />
             </button>
-            {/* Texte = DÉPLOIEMENT volet (comme DP global) + scroll */}
+            {/* Texte = DÉPLOIEMENT grille (indépendant affichage) + scroll */}
             <button
               onClick={(e) => handleToggleDeploiementLocal(e, 'photos')}
-              title="Déplier/Plier et aller aux photos"
+              title={hasExpandedPhotos ? "Replier la grille photos" : "Déplier et aller aux photos"}
               className={`font-medium hover:underline transition-colors ${
-                (showImageBadges && localDisplay.showDayPhotos)
+                hasExpandedPhotos
                   ? 'text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400'
                   : 'text-gray-400 dark:text-gray-500'
               }`}
