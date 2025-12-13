@@ -1202,11 +1202,25 @@ const navigationProcessedRef = useRef(null);
       const randomMoment = filteredMoments[randomIndex];
       console.log('🎲 [Random MOMENT] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
-      // ⭐ v2.16q : DIRECT - Ne pas passer par handleSelectMoment
+      // ⭐ Log filtres AVANT
+      console.log('🎲 [Random MOMENT] Filtres AVANT:', {
+        structure: state.contentFilters.structure,
+        text: state.contentFilters.text,
+        photo: state.contentFilters.photo
+      });
+
+      // ⭐ v2.16r : Ouverture directe
       console.log('🎲 [Random MOMENT] Ouverture directe...');
       actions.collapseAll('moments');
       actions.toggleExpanded('moments', randomMoment.id);
       setCurrentDay(randomMoment.dayStart);
+
+      // ⭐ Log filtres APRÈS
+      console.log('🎲 [Random MOMENT] Filtres APRÈS:', {
+        structure: state.contentFilters.structure,
+        text: state.contentFilters.text,
+        photo: state.contentFilters.photo
+      });
 
       // Attendre render et scroller
       setTimeout(() => {
@@ -1257,59 +1271,75 @@ const navigationProcessedRef = useRef(null);
       }
 
     } else if (targetType === 'photo') {
-      // ⭐ v2.16q : NE PAS modifier les filtres! Vérifier mode Structure
       const isStructureMode = state.contentFilters.structure;
       console.log('🎲 [Random PHOTO] Mode Structure?', isStructureMode);
 
-      if (!isStructureMode) {
-        console.warn('⚠️ Random Photo nécessite mode Structure (AM=1) pour afficher dayPhotos');
-        console.warn('   En mode Vrac, seules les photos de POSTS sont visibles');
-        return; // Sortir sans rien faire
-      }
+      if (isStructureMode) {
+        // ⭐ Mode Structure: chercher dayPhotos dans PhotoGrid
+        console.log('🎲 [Random PHOTO] Mode Structure: collecte dayPhotos...');
+        const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos && m.dayPhotos.length > 0);
 
-      // Collecter tous les moments avec photos
-      console.log('🎲 [Random PHOTO] Collecte des moments avec photos...');
-      const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos && m.dayPhotos.length > 0);
+        console.log('🎲 [Random PHOTO] Moments avec dayPhotos:', momentsWithPhotos.length);
+        if (momentsWithPhotos.length > 0) {
+          const randomIndex = Math.floor(Math.random() * momentsWithPhotos.length);
+          const randomMoment = momentsWithPhotos[randomIndex];
+          console.log('🎲 [Random PHOTO] Moment sélectionné:', randomMoment.id);
 
-      console.log('🎲 [Random PHOTO] Nombre de moments avec photos:', momentsWithPhotos.length);
-      if (momentsWithPhotos.length > 0) {
-        const randomIndex = Math.floor(Math.random() * momentsWithPhotos.length);
-        const randomMoment = momentsWithPhotos[randomIndex];
-        console.log('🎲 [Random PHOTO] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
+          actions.collapseAll('moments');
+          actions.toggleExpanded('moments', randomMoment.id);
 
-        // Ouvrir moment directement
-        console.log('🎲 [Random PHOTO] Ouverture moment...');
-        actions.collapseAll('moments');
-        actions.toggleExpanded('moments', randomMoment.id);
+          setTimeout(() => {
+            actions.toggleExpanded('photoGrids', randomMoment.id);
 
-        // Déplier la grille photos après ouverture moment
-        setTimeout(() => {
-          console.log('🎲 [Random PHOTO] Toggle grille photos...');
-          actions.toggleExpanded('photoGrids', randomMoment.id);
+            const correctGridId = `${randomMoment.id}_day`;
+            let attempts = 0;
+            const waitForGrid = () => {
+              attempts++;
+              const photoGridElement = document.querySelector(`[data-photo-grid-id="${correctGridId}"]`);
+              if (photoGridElement) {
+                console.log(`✅ [Random PHOTO] Grille trouvée après ${attempts} tentatives`);
+                photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } else if (attempts < 10) {
+                setTimeout(waitForGrid, 100);
+              }
+            };
+            setTimeout(waitForGrid, 100);
+          }, 150);
+        }
+      } else {
+        // ⭐ Mode Vrac: chercher photos dans les POSTS
+        console.log('🎲 [Random PHOTO] Mode Vrac: collecte photos de posts...');
+        const postsWithPhotos = [];
+        filteredMoments.forEach(moment => {
+          if (moment.posts && moment.posts.length > 0) {
+            moment.posts.forEach(post => {
+              if (post.photos && post.photos.length > 0) {
+                postsWithPhotos.push({ post, moment });
+              }
+            });
+          }
+        });
 
-          // ⭐ Polling pour attendre render de la grille
-          const correctGridId = `${randomMoment.id}_day`;
-          console.log('🎲 [Random PHOTO] GridId à chercher:', correctGridId);
+        console.log('🎲 [Random PHOTO] Posts avec photos:', postsWithPhotos.length);
+        if (postsWithPhotos.length > 0) {
+          const randomIndex = Math.floor(Math.random() * postsWithPhotos.length);
+          const { post, moment } = postsWithPhotos[randomIndex];
+          console.log('🎲 [Random PHOTO] Post sélectionné:', post.id, 'dans moment', moment.id);
 
-          let attempts = 0;
-          const maxAttempts = 10;
-          const waitForGrid = () => {
-            attempts++;
-            const photoGridElement = document.querySelector(`[data-photo-grid-id="${correctGridId}"]`);
+          actions.collapseAll('moments');
+          actions.toggleExpanded('moments', moment.id);
 
-            if (photoGridElement) {
-              console.log(`🎲 [Random PHOTO] Grille trouvée après ${attempts} tentatives`);
-              photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else if (attempts < maxAttempts) {
-              console.log(`🎲 [Random PHOTO] Tentative ${attempts}/${maxAttempts}...`);
-              setTimeout(waitForGrid, 100);
-            } else {
-              console.error('❌ [Random PHOTO] Grille introuvable après', maxAttempts, 'tentatives');
+          const postKey = generatePostKey(post);
+          actions.toggleExpanded('posts', postKey);
+
+          setTimeout(() => {
+            const postElement = document.querySelector(`[data-post-id="${post.id}"]`);
+            if (postElement) {
+              console.log('✅ [Random PHOTO] Post avec photos trouvé');
+              postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-          };
-
-          setTimeout(waitForGrid, 100);
-        }, 150);
+          }, 200);
+        }
       }
     }
   },
