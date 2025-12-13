@@ -1202,23 +1202,18 @@ const navigationProcessedRef = useRef(null);
       const randomMoment = filteredMoments[randomIndex];
       console.log('🎲 [Random MOMENT] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
-      // ⭐ v2.16o : SIMPLE - Ouvrir moment + scroll
-      console.log('🎲 [Random MOMENT] Appel handleSelectMoment...');
+      // ⭐ v2.16p : FIX - Ne PAS lire state dans setTimeout (closure!)
+      console.log('🎲 [Random MOMENT] Ouverture + scroll...');
       handleSelectMoment(randomMoment, true);
       setCurrentDay(randomMoment.dayStart);
 
-      // ⭐ Attendre que React re-render avant scroll
-      console.log('🎲 [Random MOMENT] Scroll dans 400ms...');
+      // Juste attendre render et scroller, sans vérifier state (closure périmée)
       setTimeout(() => {
-        console.log('🎲 [Random MOMENT] Moment dans expanded?', state.expanded.moments.has(randomMoment.id));
-        console.log('🎲 [Random MOMENT] Nb moments expanded:', state.expanded.moments.size);
         const momentElement = document.getElementById(randomMoment.id);
         console.log('🎲 [Random MOMENT] Element trouvé?', !!momentElement);
         if (momentElement) {
           momentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
           console.log('🎲 [Random MOMENT] Scroll effectué!');
-        } else {
-          console.error('❌ [Random MOMENT] Element introuvable:', randomMoment.id);
         }
       }, 400);
 
@@ -1274,7 +1269,15 @@ const navigationProcessedRef = useRef(null);
         const randomMoment = momentsWithPhotos[randomIndex];
         console.log('🎲 [Random PHOTO] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
-        // ⭐ v2.16n : SIMPLE - Ouvrir moment + déplier grille + scroll
+        // ⭐ v2.16p : CRITICAL - dayPhotos ne s'affichent QU'EN mode Structure!
+        // En mode Vrac, seules les photos de POSTS s'affichent
+        const isStructureMode = state.contentFilters.structure;
+        console.log('🎲 [Random PHOTO] Mode Structure?', isStructureMode);
+        if (!isStructureMode) {
+          console.log('🎲 [Random PHOTO] Activation Structure (dayPhotos invisibles en Vrac)');
+          actions.toggleContentFilter('structure');
+        }
+
         console.log('🎲 [Random PHOTO] Ouverture moment...');
         handleSelectMoment(randomMoment, true);
 
@@ -1286,7 +1289,6 @@ const navigationProcessedRef = useRef(null);
           }
 
           // Attendre render et scroll vers grille
-          // ⭐ moment.id contient DÉJÀ "moment_", donc juste ajouter "_day"
           const correctGridId = `${randomMoment.id}_day`;
           console.log('🎲 [Random PHOTO] GridId à chercher:', correctGridId);
           setTimeout(() => {
