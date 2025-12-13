@@ -73,29 +73,19 @@ export const PostArticle = memo(({
 
   const contentParts = post.content ? post.content.trim().split('\n') : [];
 
-  // ⭐ v2.17e : Amélioration décodage HTML pour émojis
+  // ⭐ v2.17f : Décodage HTML simple pour contenu (garde émojis intacts)
   const decodeHTML = (html) => {
     if (!html) return '';
-
-    // Méthode 1: Utiliser DOMParser pour décoder les entités HTML (plus robuste)
-    try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      return doc.documentElement.textContent || '';
-    } catch (e) {
-      // Fallback: méthode textarea si DOMParser échoue
-      const txt = document.createElement('textarea');
-      txt.innerHTML = html;
-      return txt.value;
-    }
+    const txt = document.createElement('textarea');
+    txt.innerHTML = html;
+    return txt.value;
   };
 
   // ⭐ v2.8e : Pour Note de photos (user_added), utiliser post.title si présent
-  const rawTitle = post.title
-    ? post.title
-    : (contentParts.shift() || `Article du jour ${post.dayNumber}`);
-
-  const title = decodeHTML(rawTitle);
+  // ⭐ v2.17f : post.title déjà décodé par MastodonData.js → ne PAS décoder à nouveau
+  const title = post.title
+    ? post.title  // Déjà décodé → utiliser directement
+    : decodeHTML(contentParts.shift() || `Article du jour ${post.dayNumber}`);
 
   // ⭐ v2.8e : Pour Note de photos, afficher tout le content (pas de split)
   // Le body reste en HTML pour être affiché avec dangerouslySetInnerHTML
