@@ -1267,27 +1267,30 @@ const navigationProcessedRef = useRef(null);
         console.log('🎲 [Random PHOTO] Ouverture moment...');
         handleSelectMoment(randomMoment, true);
 
-        // Déplier la grille photo
-        console.log('🎲 [Random PHOTO] Dépliement grille photo...');
-        console.log('🎲 [Random PHOTO] Grille déjà dépliée?', state.expanded.photoGrids.has(randomMoment.id));
-        if (!state.expanded.photoGrids.has(randomMoment.id)) {
-          console.log('🎲 [Random PHOTO] Toggle grille...');
-          actions.toggleExpanded('photoGrids', randomMoment.id);
-        } else {
-          console.log('🎲 [Random PHOTO] Grille déjà ouverte, skip toggle');
-        }
-
-        // Scroll vers la grille
-        console.log('🎲 [Random PHOTO] Scroll dans 150ms...');
+        // ⭐ v2.16g : Attendre que le moment soit rendu AVANT de déplier la grille
         setTimeout(() => {
-          const photoGridElement = document.querySelector(`[data-photo-grid-id="${randomMoment.id}"]`);
-          console.log('🎲 [Random PHOTO] Element grille trouvé:', !!photoGridElement);
-          if (photoGridElement) {
-            photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          console.log('🎲 [Random PHOTO] Dépliement grille photo (après render moment)...');
+          console.log('🎲 [Random PHOTO] Grille actuellement dépliée?', state.expanded.photoGrids.has(randomMoment.id));
+
+          // Toujours déplier, même si déjà déplié (handleSelectMoment peut avoir reset)
+          if (!state.expanded.photoGrids.has(randomMoment.id)) {
+            console.log('🎲 [Random PHOTO] Toggle grille (fermée → ouverte)...');
+            actions.toggleExpanded('photoGrids', randomMoment.id);
           } else {
-            console.error('❌ [Random PHOTO] Grille photo introuvable avec id:', randomMoment.id);
+            console.log('🎲 [Random PHOTO] Grille déjà ouverte, OK');
           }
-        }, 150);
+
+          // Scroll vers la grille après un délai supplémentaire
+          setTimeout(() => {
+            const photoGridElement = document.querySelector(`[data-photo-grid-id="${randomMoment.id}"]`);
+            console.log('🎲 [Random PHOTO] Element grille trouvé:', !!photoGridElement);
+            if (photoGridElement) {
+              photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+              console.error('❌ [Random PHOTO] Grille photo introuvable avec id:', randomMoment.id);
+            }
+          }, 100);
+        }, 100);
       }
     }
   },
