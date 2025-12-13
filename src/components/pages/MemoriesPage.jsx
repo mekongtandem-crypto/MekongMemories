@@ -1213,6 +1213,7 @@ const navigationProcessedRef = useRef(null);
 
     } else if (targetType === 'post') {
       // Collecter tous les posts visibles
+      console.log('🎲 [Random POST] Collecte des posts...');
       const allPosts = [];
       filteredMoments.forEach(moment => {
         if (moment.posts && moment.posts.length > 0) {
@@ -1222,22 +1223,29 @@ const navigationProcessedRef = useRef(null);
         }
       });
 
+      console.log('🎲 [Random POST] Nombre de posts:', allPosts.length);
       if (allPosts.length > 0) {
         const randomIndex = Math.floor(Math.random() * allPosts.length);
         const { post, moment } = allPosts[randomIndex];
+        console.log('🎲 [Random POST] Post sélectionné:', post.id, 'dans moment', moment.id);
 
         // Ouvrir le moment parent
+        console.log('🎲 [Random POST] Ouverture moment parent...');
         handleSelectMoment(moment, true);
 
         // Déplier le post
         const postKey = generatePostKey(post);
+        console.log('🎲 [Random POST] Dépliement post, postKey:', postKey);
+        console.log('🎲 [Random POST] Post déjà déplié?', state.expanded.posts.has(postKey));
         if (!state.expanded.posts.has(postKey)) {
           actions.toggleExpanded('posts', postKey);
         }
 
         // Scroll vers le post
+        console.log('🎲 [Random POST] Scroll dans 150ms...');
         setTimeout(() => {
           const postElement = document.querySelector(`[data-post-id="${post.id}"]`);
+          console.log('🎲 [Random POST] Element trouvé:', !!postElement);
           if (postElement) {
             postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
@@ -1246,25 +1254,38 @@ const navigationProcessedRef = useRef(null);
 
     } else if (targetType === 'photo') {
       // Collecter tous les moments avec photos
+      console.log('🎲 [Random PHOTO] Collecte des moments avec photos...');
       const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos && m.dayPhotos.length > 0);
 
+      console.log('🎲 [Random PHOTO] Nombre de moments avec photos:', momentsWithPhotos.length);
       if (momentsWithPhotos.length > 0) {
         const randomIndex = Math.floor(Math.random() * momentsWithPhotos.length);
         const randomMoment = momentsWithPhotos[randomIndex];
+        console.log('🎲 [Random PHOTO] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
         // Ouvrir le moment
+        console.log('🎲 [Random PHOTO] Ouverture moment...');
         handleSelectMoment(randomMoment, true);
 
         // Déplier la grille photo
+        console.log('🎲 [Random PHOTO] Dépliement grille photo...');
+        console.log('🎲 [Random PHOTO] Grille déjà dépliée?', state.expanded.photoGrids.has(randomMoment.id));
         if (!state.expanded.photoGrids.has(randomMoment.id)) {
+          console.log('🎲 [Random PHOTO] Toggle grille...');
           actions.toggleExpanded('photoGrids', randomMoment.id);
+        } else {
+          console.log('🎲 [Random PHOTO] Grille déjà ouverte, skip toggle');
         }
 
         // Scroll vers la grille
+        console.log('🎲 [Random PHOTO] Scroll dans 150ms...');
         setTimeout(() => {
           const photoGridElement = document.querySelector(`[data-photo-grid-id="${randomMoment.id}"]`);
+          console.log('🎲 [Random PHOTO] Element grille trouvé:', !!photoGridElement);
           if (photoGridElement) {
             photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else {
+            console.error('❌ [Random PHOTO] Grille photo introuvable avec id:', randomMoment.id);
           }
         }, 150);
       }
