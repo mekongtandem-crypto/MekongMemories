@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mémoire du Mékong
 
-> **Version:** 2.10 "Archivage par Consensus" | **Last Updated:** December 1, 2025
+> **Version:** 2.17 "Simplification Règles d'Affichage" | **Last Updated:** December 13, 2025
 > **Purpose:** Comprehensive guide for development teams and AI assistants working on this codebase
 
 ---
@@ -9,9 +9,9 @@
 
 **Mémoire du Mékong** is a Progressive Web App that transforms a travel diary into an interactive, conversation-based memory exploration platform. Users can discuss and organize travel experiences through themed "sessions" (chats), explore a timeline of "moments" (thematic units), and manage photos and Mastodon posts.
 
-**Current Version:** 2.10 - Archivage par Consensus
-**Release Date:** December 1, 2025
-**Total LOC:** ~9,400 lines
+**Current Version:** 2.17 - Simplification Règles d'Affichage
+**Release Date:** December 13, 2025
+**Total LOC:** ~9,360 lines (-40 grâce à simplification)
 **Language:** JavaScript (ES6+), no TypeScript
 **Code Language:** French comments/documentation with English variable names
 
@@ -42,6 +42,129 @@
 ---
 
 ## 📝 Recent Changelog
+
+### Version 2.17 (December 13, 2025) - SIMPLIFICATION Règles d'Affichage ✅
+
+**🎯 Objectif : Simplification maximale du code d'affichage MemoriesPage**
+- Minimum de règles et d'exceptions
+- Code simple et optimisé
+- Suppression des états locaux redondants
+- Documentation complète des règles
+
+---
+
+#### 📐 RÈGLES D'AFFICHAGE COMPLÈTES
+
+**✅ RÈGLES GLOBALES (TopBar - MemoriesTopBar.jsx)**
+
+Nomenclature : **AM/AT/AP** (Affichage) + **DM/DT/DP** (Déploiement)
+
+| Bouton | Code | Fonction |
+|--------|------|----------|
+| **✨ Structure** | AM | Affiche/Masque les en-têtes moments |
+| **🗒️ Textes** | AT | Affiche/Masque les volets posts |
+| **📸 Images** | AP | Affiche/Masque les volets photos |
+| **> Structure** | DM | Déplie/Replie tous les moments |
+| **> Textes** | DT | Déplie/Replie tous les posts |
+| **> Images** | DP | Déplie/Replie toutes les grilles photos |
+
+**Protection :** Au moins 1 filtre AM/AT/AP doit être actif (impossible de tout masquer).
+
+**État par défaut :**
+```
+AM=1  DM=0    (Structure affichée, Moments fermés)
+AT=1  DT=1    (Textes affichés, Posts dépliés)
+AP=1  DP=1    (Images affichées, PhotoGrids dépliées)
+```
+
+---
+
+**✅ RÈGLES LOCALES (Volets - MomentHeader.jsx / PostArticle.jsx)**
+
+Format identique au global pour cohérence :
+- **Icône** (📸/🗒️) = **AFFICHAGE** du volet (comme AM/AT/AP)
+- **Texte** ("X photos") = **DÉPLOIEMENT** du volet (comme DM/DT/DP)
+
+**Les boutons globaux commandent les boutons locaux (pas l'inverse).**
+
+Exemples :
+- Clic sur icône 🗒️ dans MomentHeader → Toggle affichage volet posts
+- Clic sur texte "5 posts" → Toggle déploiement posts + scroll vers volet
+
+---
+
+**✅ RÈGLES D'INTERACTION Global ↔ Local**
+
+**1. Mode Structure (AM=1) :**
+- Volets visibles **SEULEMENT** si moment parent ouvert
+- Fermer moment → masque automatiquement ses volets
+
+**2. Mode Vrac (AM=0) :**
+- Structure invisible = tous moments "ouverts" implicitement
+- Tous volets visibles selon AT/AP (pas de notion de "moment parent")
+- Affichage en liste continue (FlatContentList)
+
+**3. Reset cascade (fermeture moment) :**
+- Fermer un moment (DM) → replier automatiquement ses posts/photoGrids enfants
+- Évite de garder l'état des enfants en mémoire
+- Simplifie la gestion d'état
+
+**4. Ouverture moment (chevron) :**
+- Ouvrir moment avec état local par défaut = **état global (AT/AP)**
+- `showPosts = AT`, `showDayPhotos = AP`
+- Pas de règle auto spéciale
+
+**5. Scroll automatique :**
+- Déclenché **UNIQUEMENT** par clic sur bouton **TEXTE** local (déploiement)
+- Scroll vers le volet qui vient de s'ouvrir
+- **PAS** de scroll si on referme
+- **PAS** de scroll depuis bouton ICÔNE (affichage)
+- **PAS** de scroll depuis boutons globaux TopBar
+- Délai 100-150ms pour attendre le rendu
+
+**6. Griser badges locaux :**
+- Badge local en **COULEUR** si : Filtre global ON **ET** volet local affiché
+- Badge local **GRISÉ** si : Filtre global OFF **OU** volet local masqué
+
+**7. Persistance localStorage :**
+- État d'affichage sauvegardé : `contentFilters`, `expanded`, `sortOrder`
+- Clé : `mekong_memories_display`
+- Restauré au chargement de la page
+
+---
+
+#### 🔧 SIMPLIFICATIONS TECHNIQUES (v2.17)
+
+**PostArticle.jsx (v8.0) :**
+- ❌ Supprimé : États locaux `isPostExpanded`, `showThisPostPhotos`
+- ❌ Supprimé : 3 useEffect de synchronisation
+- ✅ Remplacé par : Calculs directs depuis Context
+- **Gain :** ~40 lignes de code, plus de cycles de synchronisation
+
+**MomentHeader.jsx (v8.0) :**
+- ❌ Supprimé : Logique auto-open conditionnelle
+- ✅ Remplacé par : État par défaut = filtres globaux AT/AP
+- **Gain :** Cohérence totale Global ↔ Local
+
+**Architecture :**
+- **Source unique de vérité :** Context (`MemoriesDisplayContext.jsx`)
+- **Pas d'états locaux** pour synchroniser expansion
+- **Computed values** calculés à la volée
+- **Zero polling** (réactivité native React)
+
+---
+
+#### 📊 Métriques de simplification
+
+| Métrique | Avant v2.17 | Après v2.17 | Gain |
+|----------|-------------|-------------|------|
+| États locaux (PostArticle) | 2 | 0 | -2 |
+| useEffect (PostArticle) | 3 | 0 | -3 |
+| Lignes de code (PostArticle) | ~450 | ~410 | -40 |
+| Règles auto spéciales | 2 | 0 | -2 |
+| Cycles de synchronisation | ~6 | 0 | -6 |
+
+---
 
 ### Version 2.10 (December 1, 2025) - Archivage par Consensus ✅
 

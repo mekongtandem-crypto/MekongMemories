@@ -1,10 +1,14 @@
 /**
- * MomentHeader.jsx v7.1
+ * MomentHeader.jsx v8.0 - SIMPLIFICATION
  * En-tête du moment avec :
  * - Titre et sous-titre (jours)
  * - Chevron pour ouvrir/fermer
  * - Compteurs posts/photos (cliquables)
  * - Badges droite (thèmes, sessions, lien)
+ *
+ * ⭐ v2.17 : SIMPLIFICATION - Ouverture moment
+ * - État par défaut = filtres globaux AT/AP
+ * - Plus de règle auto spéciale
  */
 
 import React, { memo, useCallback } from 'react';
@@ -131,17 +135,17 @@ export const MomentHeader = memo(({
     }
   }, [isSelected, onOpenWith, onToggleLocal, localDisplay, moment.id]);
   
-  // ⭐ v2.14 : Auto-open photos SEULEMENT si filtre Images ON
+  // ⭐ v2.17 : SIMPLIFICATION - Ouvrir avec état par défaut = filtres globaux
   const handleChevronClick = useCallback(() => {
     if (!isSelected) {
       onOpenWith({
-        showPosts: true,
-        showDayPhotos: showImageBadges  // ⭐ v2.14 : Conditionnel selon filtre global
+        showPosts: showTextBadges,      // ⭐ AT global
+        showDayPhotos: showImageBadges  // ⭐ AP global
       });
     } else {
       onSelect(moment);
     }
-  }, [isSelected, onOpenWith, onSelect, moment, showImageBadges]);
+  }, [isSelected, onOpenWith, onSelect, moment, showTextBadges, showImageBadges]);
 
   const handleShowSessions = useCallback((e) => {
     e.stopPropagation();
