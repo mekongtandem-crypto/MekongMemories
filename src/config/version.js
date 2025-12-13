@@ -1,7 +1,7 @@
 /**
  * Configuration version - MémoireDuMékong
  */
-export const APP_VERSION = "2.16j";
+export const APP_VERSION = "2.16k";
 export const APP_NAME = "Mémoire du Mékong";
 export const BUILD_DATE = "13 décembre 2025";
-export const PHASE = "Fix: v2.16j - Activer Structure pour PhotoGrid moments";
+export const PHASE = "Fix: v2.16k - Activer Structure pour Random MOMENT aussi";

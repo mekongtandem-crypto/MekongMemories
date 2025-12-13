@@ -1200,14 +1200,24 @@ const navigationProcessedRef = useRef(null);
       // Ouvrir moment aléatoire
       const randomIndex = Math.floor(Math.random() * filteredMoments.length);
       const randomMoment = filteredMoments[randomIndex];
-      console.log('🎲 [Random] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
-      console.log('🎲 [Random] Appel handleSelectMoment...');
+      console.log('🎲 [Random MOMENT] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
+
+      // ⭐ v2.16k : CRITICAL - Activer mode Structure si nécessaire
+      // Les MomentCard ne se rendent QUE en mode Structure!
+      const isStructureMode = state.contentFilters.structure;
+      console.log('🎲 [Random MOMENT] Mode Structure?', isStructureMode);
+      if (!isStructureMode) {
+        console.log('🎲 [Random MOMENT] Activation mode Structure (AM=1) pour rendre le MomentCard...');
+        actions.toggleContentFilter('structure');
+      }
+
+      console.log('🎲 [Random MOMENT] Appel handleSelectMoment...');
       handleSelectMoment(randomMoment, true);
       setCurrentDay(randomMoment.dayStart);
 
-      console.log('🎲 [Random] Scroll dans 100ms...');
+      console.log('🎲 [Random MOMENT] Scroll dans 100ms...');
       setTimeout(() => {
-        console.log('🎲 [Random] Appel scrollToMoment...');
+        console.log('🎲 [Random MOMENT] Appel scrollToMoment...');
         scrollToMoment(randomMoment.id);
       }, 100);
 
