@@ -1271,75 +1271,34 @@ const navigationProcessedRef = useRef(null);
       }
 
     } else if (targetType === 'photo') {
-      const isStructureMode = state.contentFilters.structure;
-      console.log('🎲 [Random PHOTO] Mode Structure?', isStructureMode);
+      // ⭐ v2.16s : SIMPLE - Tirer moment + ouvrir PhotoGrid
+      console.log('🎲 [Random PHOTO] Collecte moments avec dayPhotos...');
+      const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos && m.dayPhotos.length > 0);
 
-      if (isStructureMode) {
-        // ⭐ Mode Structure: chercher dayPhotos dans PhotoGrid
-        console.log('🎲 [Random PHOTO] Mode Structure: collecte dayPhotos...');
-        const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos && m.dayPhotos.length > 0);
+      console.log('🎲 [Random PHOTO] Moments avec photos:', momentsWithPhotos.length);
+      if (momentsWithPhotos.length > 0) {
+        const randomIndex = Math.floor(Math.random() * momentsWithPhotos.length);
+        const randomMoment = momentsWithPhotos[randomIndex];
+        console.log('🎲 [Random PHOTO] Moment sélectionné:', randomMoment.id);
 
-        console.log('🎲 [Random PHOTO] Moments avec dayPhotos:', momentsWithPhotos.length);
-        if (momentsWithPhotos.length > 0) {
-          const randomIndex = Math.floor(Math.random() * momentsWithPhotos.length);
-          const randomMoment = momentsWithPhotos[randomIndex];
-          console.log('🎲 [Random PHOTO] Moment sélectionné:', randomMoment.id);
+        // Ouvrir le moment
+        actions.collapseAll('moments');
+        actions.toggleExpanded('moments', randomMoment.id);
 
-          actions.collapseAll('moments');
-          actions.toggleExpanded('moments', randomMoment.id);
+        // Déplier PhotoGrid
+        setTimeout(() => {
+          actions.toggleExpanded('photoGrids', randomMoment.id);
 
+          // Scroller vers PhotoGrid
+          const gridId = `${randomMoment.id}_day`;
           setTimeout(() => {
-            actions.toggleExpanded('photoGrids', randomMoment.id);
-
-            const correctGridId = `${randomMoment.id}_day`;
-            let attempts = 0;
-            const waitForGrid = () => {
-              attempts++;
-              const photoGridElement = document.querySelector(`[data-photo-grid-id="${correctGridId}"]`);
-              if (photoGridElement) {
-                console.log(`✅ [Random PHOTO] Grille trouvée après ${attempts} tentatives`);
-                photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              } else if (attempts < 10) {
-                setTimeout(waitForGrid, 100);
-              }
-            };
-            setTimeout(waitForGrid, 100);
-          }, 150);
-        }
-      } else {
-        // ⭐ Mode Vrac: chercher photos dans les POSTS
-        console.log('🎲 [Random PHOTO] Mode Vrac: collecte photos de posts...');
-        const postsWithPhotos = [];
-        filteredMoments.forEach(moment => {
-          if (moment.posts && moment.posts.length > 0) {
-            moment.posts.forEach(post => {
-              if (post.photos && post.photos.length > 0) {
-                postsWithPhotos.push({ post, moment });
-              }
-            });
-          }
-        });
-
-        console.log('🎲 [Random PHOTO] Posts avec photos:', postsWithPhotos.length);
-        if (postsWithPhotos.length > 0) {
-          const randomIndex = Math.floor(Math.random() * postsWithPhotos.length);
-          const { post, moment } = postsWithPhotos[randomIndex];
-          console.log('🎲 [Random PHOTO] Post sélectionné:', post.id, 'dans moment', moment.id);
-
-          actions.collapseAll('moments');
-          actions.toggleExpanded('moments', moment.id);
-
-          const postKey = generatePostKey(post);
-          actions.toggleExpanded('posts', postKey);
-
-          setTimeout(() => {
-            const postElement = document.querySelector(`[data-post-id="${post.id}"]`);
-            if (postElement) {
-              console.log('✅ [Random PHOTO] Post avec photos trouvé');
-              postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const photoGridElement = document.querySelector(`[data-photo-grid-id="${gridId}"]`);
+            console.log('🎲 [Random PHOTO] PhotoGrid trouvée?', !!photoGridElement);
+            if (photoGridElement) {
+              photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
           }, 200);
-        }
+        }, 150);
       }
     }
   },
