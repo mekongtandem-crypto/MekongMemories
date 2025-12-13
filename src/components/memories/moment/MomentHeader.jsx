@@ -91,26 +91,39 @@ export const MomentHeader = memo(({
     }
   }, [moment, momentKey, momentThemes]);
   
-  // ⭐ v2.17 : Icône = AFFICHAGE du volet (indépendant du déploiement)
+  // ⭐ v2.17 : Icône = AFFICHAGE du volet
+  // RÈGLE : Affichage OFF → force Déploiement OFF (cascade)
   const handleToggleAffichageLocal = useCallback((e, contentType) => {
     e.stopPropagation();
 
     if (!isSelected) {
-      // Moment fermé → ouvrir avec états locaux ACTUELS (pas de forcing!)
+      // Moment fermé → ouvrir avec états locaux ACTUELS
       onOpenWith(localDisplay);
     }
 
-    // Toggle affichage dans tous les cas (moment ouvert ou fraîchement ouvert)
     const key = contentType === 'posts' ? 'showPosts' : 'showDayPhotos';
-    onToggleAffichage(key);
-  }, [isSelected, onOpenWith, onToggleAffichage, localDisplay]);
+    const newValue = !localDisplay[key];
 
-  // ⭐ v2.17 : Texte = DÉPLOIEMENT du volet (indépendant de l'affichage)
+    // ⭐ CASCADE : Si on masque le volet → replier le contenu aussi (si déplié)
+    if (!newValue) {
+      const isCurrentlyExpanded = contentType === 'posts' ? hasExpandedPosts : hasExpandedPhotos;
+      if (isCurrentlyExpanded) {
+        // Affichage OFF + déploiement ON → forcer déploiement OFF
+        onToggleDeploiement(contentType);
+      }
+    }
+
+    // Toggle affichage
+    onToggleAffichage(key);
+  }, [isSelected, onOpenWith, onToggleAffichage, onToggleDeploiement, localDisplay, hasExpandedPosts, hasExpandedPhotos]);
+
+  // ⭐ v2.17 : Texte = DÉPLOIEMENT du contenu
+  // RÈGLE : Déploiement ON → force Affichage ON (prerequisite)
   const handleToggleDeploiementLocal = useCallback((e, contentType) => {
     e.stopPropagation();
 
     if (!isSelected) {
-      // Moment fermé → ouvrir avec états locaux ACTUELS (pas de forcing!)
+      // Moment fermé → ouvrir avec états locaux ACTUELS
       onOpenWith(localDisplay);
       // Scroll après ouverture vers le contenu concerné
       setTimeout(() => {
@@ -121,7 +134,7 @@ export const MomentHeader = memo(({
         }
       }, 150);
     } else {
-      // Moment ouvert → scroll seulement (déploiement géré par le handler parent)
+      // Moment ouvert → scroll seulement
       setTimeout(() => {
         const targetSelector = contentType === 'posts' ? '[data-post-id]' : `[data-photo-grid-id="${moment.id}"]`;
         const element = document.querySelector(`#${moment.id} ${targetSelector}`);
@@ -131,9 +144,18 @@ export const MomentHeader = memo(({
       }, 150);
     }
 
-    // Toggle déploiement dans tous les cas (via handler parent)
+    // ⭐ PREREQUISITE : Si on va déplier + volet masqué → afficher d'abord
+    const isCurrentlyExpanded = contentType === 'posts' ? hasExpandedPosts : hasExpandedPhotos;
+    const key = contentType === 'posts' ? 'showPosts' : 'showDayPhotos';
+
+    if (!isCurrentlyExpanded && !localDisplay[key]) {
+      // Déploiement OFF→ON + affichage OFF → forcer affichage ON
+      onToggleAffichage(key);
+    }
+
+    // Toggle déploiement
     onToggleDeploiement(contentType);
-  }, [isSelected, onOpenWith, onToggleDeploiement, localDisplay, moment.id]);
+  }, [isSelected, onOpenWith, onToggleDeploiement, onToggleAffichage, localDisplay, moment.id, hasExpandedPosts, hasExpandedPhotos]);
   
   // ⭐ v2.17 : SIMPLIFICATION - Ouvrir avec états locaux (respect overrides)
   const handleChevronClick = useCallback(() => {
