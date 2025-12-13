@@ -73,11 +73,21 @@ export const PostArticle = memo(({
 
   const contentParts = post.content ? post.content.trim().split('\n') : [];
 
-  // ⭐ v2.15h : Décoder entités HTML dans le titre (pour emojis et caractères spéciaux)
+  // ⭐ v2.17e : Amélioration décodage HTML pour émojis
   const decodeHTML = (html) => {
-    const txt = document.createElement('textarea');
-    txt.innerHTML = html;
-    return txt.value;
+    if (!html) return '';
+
+    // Méthode 1: Utiliser DOMParser pour décoder les entités HTML (plus robuste)
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      return doc.documentElement.textContent || '';
+    } catch (e) {
+      // Fallback: méthode textarea si DOMParser échoue
+      const txt = document.createElement('textarea');
+      txt.innerHTML = html;
+      return txt.value;
+    }
   };
 
   // ⭐ v2.8e : Pour Note de photos (user_added), utiliser post.title si présent
@@ -88,6 +98,7 @@ export const PostArticle = memo(({
   const title = decodeHTML(rawTitle);
 
   // ⭐ v2.8e : Pour Note de photos, afficher tout le content (pas de split)
+  // Le body reste en HTML pour être affiché avec dangerouslySetInnerHTML
   const body = post.title
     ? post.content
     : contentParts.filter(part => part.trim() !== '').join('<br />');
