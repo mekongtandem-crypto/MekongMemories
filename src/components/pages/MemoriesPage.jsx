@@ -1267,7 +1267,7 @@ const navigationProcessedRef = useRef(null);
         console.log('🎲 [Random PHOTO] Ouverture moment...');
         handleSelectMoment(randomMoment, true);
 
-        // ⭐ v2.16h : Attendre que le moment soit rendu AVANT de déplier la grille
+        // ⭐ v2.16i : Attendre que le moment soit rendu AVANT de déplier la grille
         setTimeout(() => {
           console.log('🎲 [Random PHOTO] Dépliement grille photo (après render moment)...');
           const wasExpanded = state.expanded.photoGrids.has(randomMoment.id);
@@ -1288,16 +1288,27 @@ const navigationProcessedRef = useRef(null);
             actions.toggleExpanded('photoGrids', randomMoment.id);
           }
 
-          // Scroll vers la grille après un délai suffisant
-          setTimeout(() => {
+          // ⭐ v2.16i : Polling pour attendre que l'élément existe avant scroll
+          let attempts = 0;
+          const maxAttempts = 20;  // 20 tentatives * 100ms = 2 secondes max
+
+          const waitForElement = () => {
+            attempts++;
             const photoGridElement = document.querySelector(`[data-photo-grid-id="${randomMoment.id}"]`);
-            console.log('🎲 [Random PHOTO] Element grille trouvé:', !!photoGridElement);
+
             if (photoGridElement) {
+              console.log(`🎲 [Random PHOTO] Element grille trouvé après ${attempts} tentatives (${attempts * 100}ms)`);
               photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (attempts < maxAttempts) {
+              console.log(`🎲 [Random PHOTO] Tentative ${attempts}/${maxAttempts} - grille pas encore rendue, réessai...`);
+              setTimeout(waitForElement, 100);
             } else {
-              console.error('❌ [Random PHOTO] Grille photo introuvable avec id:', randomMoment.id);
+              console.error(`❌ [Random PHOTO] Grille photo introuvable après ${maxAttempts} tentatives (${maxAttempts * 100}ms) avec id:`, randomMoment.id);
             }
-          }, 200);  // Augmenté de 100ms à 200ms
+          };
+
+          // Démarrer le polling après 100ms
+          setTimeout(waitForElement, 100);
         }, 100);
       }
     }
