@@ -1,5 +1,5 @@
 /**
- * ChatPage.jsx v3.0e - Modal 2 sections + insertion chat après conversion
+ * ChatPage.jsx v3.0f - Fix boucle infinie useEffect navigationContext
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
@@ -158,22 +158,27 @@ useEffect(() => {
 
   // Détecter photo attachée ou lien depuis Memories
   useEffect(() => {
-console.log('🔍 DEBUG navigationContext:', {
-    pendingAttachment: navigationContext?.pendingAttachment,
-    pendingLink: navigationContext?.pendingLink,
-    previousPage: navigationContext?.previousPage
-  });
+    // ⭐ v2.18 FIX BOUCLE : Ne rien faire si pendingAttachment ET pendingLink sont déjà null
+    if (!navigationContext?.pendingAttachment && !navigationContext?.pendingLink) {
+      return; // Éviter boucle infinie : rien à traiter
+    }
+
+    console.log('🔍 DEBUG navigationContext:', {
+      pendingAttachment: navigationContext?.pendingAttachment,
+      pendingLink: navigationContext?.pendingLink,
+      previousPage: navigationContext?.previousPage
+    });
 
     let hasCleared = false;
-    
+
     // ✅ PHOTO : Toujours injecter (pas de condition previousPage)
     if (navigationContext?.pendingAttachment) {
       const { type, data } = navigationContext.pendingAttachment;
-      
+
       if (type === 'photo') {
         console.log('📎 Photo reçue depuis Memories:', data);
         setAttachedPhoto(data);
-        
+
         if (!hasCleared) {
           console.log('🧹 Clear pendingAttachment');
           onClearAttachment?.();
@@ -181,7 +186,7 @@ console.log('🔍 DEBUG navigationContext:', {
         }
       }
     }
-    
+
     // ⭐ LIEN : Injecter lien sélectionné depuis Memories
     if (navigationContext?.pendingLink) {
       setPendingLink(navigationContext.pendingLink);
