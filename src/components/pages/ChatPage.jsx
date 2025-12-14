@@ -86,7 +86,8 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   const messagesContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const messageRefs = useRef({});  // ⭐ v2.9s : Refs pour messages individuels
-  const lastSessionIdRef = useRef(null);  // ⭐ v2.18a : Track dernière session pour détecter changement
+  const lastSessionIdRef = useRef(null);  // ⭐ v2.18b : Track dernière session pour détecter changement
+  const markedSessionsRef = useRef(new Set());  // ⭐ v2.18b : NÉCESSAIRE pour éviter notify() en boucle
 
   // Scroll vers dernier message
   useEffect(() => {
@@ -144,18 +145,23 @@ useEffect(() => {
   }
 }, [app.currentChatSession?.id]);
 
-// ⭐ v2.18a : Marquage session séparé (1 fois au mount, pas à chaque changement app)
+// ⭐ v2.18b : Marquage session séparé avec double protection
 useEffect(() => {
   const currentSessionId = app.currentChatSession?.id;
   const userId = app.currentUser?.id;
 
   if (!currentSessionId || !userId) return;
 
+  // ⭐ DOUBLE PROTECTION pour éviter boucle :
+  // 1. Vérifier si déjà marquée DANS CE COMPOSANT (évite notify() multiple)
+  if (markedSessionsRef.current.has(currentSessionId)) return;
+
+  // 2. Vérifier localStorage (persistance entre sessions)
   const storageKey = `mekong_sessionReadStatus_${userId}`;
   const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
 
-  // ⭐ Marquer SEULEMENT si pas déjà marquée dans localStorage
   if (!allTracking[currentSessionId]?.hasBeenOpened) {
+    // Marquer dans localStorage
     allTracking[currentSessionId] = {
       hasBeenOpened: true,
       lastOpenedAt: new Date().toISOString()
@@ -163,12 +169,16 @@ useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(allTracking));
     console.log(`✅ v2.9x: Session ${currentSessionId} marquée comme ouverte`);
 
+    // Marquer dans le ref AVANT notify pour éviter re-déclenchement
+    markedSessionsRef.current.add(currentSessionId);
+
     // Notifier UNE SEULE FOIS
     dataManager.notify();
+  } else {
+    // Déjà dans localStorage, juste marquer dans le ref
+    markedSessionsRef.current.add(currentSessionId);
   }
 }, [app.currentChatSession?.id, app.currentUser?.id]);
-// ⚠️ NOTE : Ce useEffect se déclenche quand app change, MAIS le marquage
-// ne se fait que si pas déjà dans localStorage, donc notify() appelé 1 fois max
 
   // Détecter photo attachée ou lien depuis Memories
   useEffect(() => {
