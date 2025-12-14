@@ -29,10 +29,10 @@ export const PhotoGridHeader = memo(({
   const isSelectionActive = activePhotoGrid === gridId;
 
   return (
-    <div className="mb-2 border border-teal-200 dark:border-teal-800 rounded-lg bg-teal-50 dark:bg-teal-900/10">
+    <div className="mb-2 border border-teal-200 dark:border-teal-700 rounded-lg bg-teal-50 dark:bg-teal-900/30">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-2 hover:bg-teal-100 dark:hover:bg-teal-900/20 rounded-lg transition-colors group"
+        className="w-full flex items-center justify-between p-2 hover:bg-teal-100 dark:hover:bg-teal-800/40 rounded-lg transition-colors group"
       >
         <div className="flex items-center space-x-2">
           <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
