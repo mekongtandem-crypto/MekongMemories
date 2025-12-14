@@ -1,5 +1,5 @@
 /**
- * ChatPage.jsx v3.0i - Fix final boucle (useEffect fusionnés)
+ * ChatPage.jsx v3.0j - Séparation useEffect avec dépendances distinctes
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
@@ -126,12 +126,11 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
     }, 10000);
   }, [navigationContext?.returnContext?.targetMessageId, app.currentChatSession?.id]);
 
-// ⭐ v2.18b : Nettoyer états + marquer session lors du changement (FUSIONNÉ)
+// ⭐ v2.18c : Nettoyer états locaux lors changement de session SEULEMENT
 useEffect(() => {
   const currentSessionId = app.currentChatSession?.id;
-  const userId = app.currentUser?.id;
 
-  if (!currentSessionId || !userId) return;
+  if (!currentSessionId) return;
 
   // ⭐ Ne traiter QUE si session vraiment changée
   const hasSessionChanged = lastSessionIdRef.current !== currentSessionId;
@@ -139,42 +138,50 @@ useEffect(() => {
   if (hasSessionChanged) {
     console.log('🧹 ChatPage: Session changée, nettoyage des attachements');
 
-    // 1. Nettoyer états locaux
+    // Nettoyer états locaux
     setPendingLink(null);
     setAttachedPhoto(null);
     setNewMessage('');
     setEditingMessage(null);
     setAttachmentMenuOpen(false);
 
-    // 2. Mettre à jour ref
+    // Mettre à jour ref
     lastSessionIdRef.current = currentSessionId;
+  }
+}, [app.currentChatSession?.id]); // ⚠️ Dépend UNIQUEMENT de l'ID session
 
-    // 3. Marquer session comme ouverte (si pas déjà fait)
-    if (!markedSessionsRef.current.has(currentSessionId)) {
-      const storageKey = `mekong_sessionReadStatus_${userId}`;
-      const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+// ⭐ v2.18c : Marquage session séparé (se déclenche UNE FOIS au mount)
+useEffect(() => {
+  const currentSessionId = app.currentChatSession?.id;
+  const userId = app.currentUser?.id;
 
-      if (!allTracking[currentSessionId]?.hasBeenOpened) {
-        allTracking[currentSessionId] = {
-          hasBeenOpened: true,
-          lastOpenedAt: new Date().toISOString()
-        };
-        localStorage.setItem(storageKey, JSON.stringify(allTracking));
-        console.log(`✅ v2.9x: Session ${currentSessionId} marquée comme ouverte`);
+  if (!currentSessionId || !userId) return;
 
-        // Marquer dans ref AVANT notify
-        markedSessionsRef.current.add(currentSessionId);
+  // Marquer session SEULEMENT si pas déjà fait
+  if (!markedSessionsRef.current.has(currentSessionId)) {
+    const storageKey = `mekong_sessionReadStatus_${userId}`;
+    const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
 
-        // Notifier UNE SEULE FOIS
-        dataManager.notify();
-      } else {
-        // Déjà dans localStorage, juste marquer dans ref
-        markedSessionsRef.current.add(currentSessionId);
-      }
+    if (!allTracking[currentSessionId]?.hasBeenOpened) {
+      allTracking[currentSessionId] = {
+        hasBeenOpened: true,
+        lastOpenedAt: new Date().toISOString()
+      };
+      localStorage.setItem(storageKey, JSON.stringify(allTracking));
+      console.log(`✅ v2.9x: Session ${currentSessionId} marquée comme ouverte`);
+
+      // Marquer dans ref AVANT notify
+      markedSessionsRef.current.add(currentSessionId);
+
+      // Notifier UNE SEULE FOIS
+      dataManager.notify();
+    } else {
+      // Déjà dans localStorage, juste marquer dans ref
+      markedSessionsRef.current.add(currentSessionId);
     }
   }
 }, [app.currentChatSession?.id, app.currentUser?.id]);
-// ⚠️ NOTE : Un seul useEffect pour tout gérer, évite cascade de re-déclenchements
+// ⚠️ NOTE : Se déclenche quand app change, MAIS markedSessionsRef empêche re-exécution
 
   // Détecter photo attachée ou lien depuis Memories
   useEffect(() => {
