@@ -692,11 +692,7 @@ const handleSavePostThemes = useCallback(async (selectedThemes, propagationOptio
     selectedThemes,
     app.currentUser.id
   );
-  
-  if (result.success) {
-    console.log(`✅ Post taggué (${result.count} élément${result.count > 1 ? 's' : ''})`);
-  }
-  
+
   closeThemeModal();
 }, [app.currentUser, closeThemeModal]);
 
@@ -731,11 +727,7 @@ const handleSaveMomentThemes = useCallback(async (selectedThemes, propagationOpt
     selectedThemes,
     app.currentUser.id
   );
-  
-  if (result.success) {
-    console.log(`✅ Moment taggué (${result.count} élément${result.count > 1 ? 's' : ''})`);
-  }
-  
+
   closeThemeModal();
 }, [app.currentUser, closeThemeModal]);
 
@@ -892,12 +884,10 @@ const handleSelectMoment = useCallback((moment, forceOpen = false) => {
 
   // ⭐ v2.16e : Si forceOpen, toujours ouvrir (pour bouton dés)
   if (forceOpen) {
-    console.log('🎲 [handleSelectMoment] forceOpen=true, ouverture forcée du moment', moment.id);
     // Fermer tous les autres moments
     actions.collapseAll('moments');
     // Après collapseAll, le moment est fermé → toggle l'ouvre
     actions.toggleExpanded('moments', moment.id);
-    console.log('🎲 [handleSelectMoment] Moment ouvert via toggleExpanded');
     return;
   }
 
@@ -1032,11 +1022,10 @@ const handleCreateAndOpenSession = useCallback(async (source, contextMoment, opt
     
     if (newSession) {
       if (viewerState.isOpen) closePhotoViewer();
-      
+
+
       if (options.shouldOpen) {
         await app.openChatSession(newSession);
-      } else {
-        console.log('✅ Session créée:', newSession.gameTitle);
       }
     }
   } catch (error) {
@@ -1158,7 +1147,6 @@ const navigationProcessedRef = useRef(null);
   useImperativeHandle(ref, () => ({
   // ⭐ v2.16a : Dés aléatoire intelligent selon filtres actifs (AM/AT/AP)
   jumpToRandomMoment: () => {
-    console.log('🎲 [jumpToRandomMoment] Fonction appelée!');
     // Lire les filtres actifs depuis le Context
     const { structure: AM, textes: AT, images: AP } = state.contentFilters;
 
@@ -1192,40 +1180,31 @@ const navigationProcessedRef = useRef(null);
       }
     }
 
-    console.log('🎲 [Random] Type sélectionné:', targetType, { AM, AT, AP, activeFilters });
-    console.log('🎲 [Random] filteredMoments.length:', filteredMoments.length);
-
     // ⭐ Sélectionner et ouvrir élément selon type
     if (targetType === 'moment' && filteredMoments.length > 0) {
       // Ouvrir moment aléatoire
       const randomIndex = Math.floor(Math.random() * filteredMoments.length);
       const randomMoment = filteredMoments[randomIndex];
-      console.log('🎲 [Random MOMENT] Moment sélectionné:', randomMoment.id, randomMoment.displayTitle);
 
       // ⭐ v2.16t : Délai entre collapseAll et toggleExpanded
-      console.log('🎲 [Random MOMENT] Fermeture tous moments...');
       actions.collapseAll('moments');
 
       // Attendre que collapseAll soit appliqué avant d'ouvrir
       setTimeout(() => {
-        console.log('🎲 [Random MOMENT] Ouverture moment...');
         actions.toggleExpanded('moments', randomMoment.id);
         setCurrentDay(randomMoment.dayStart);
 
         // Scroller après ouverture
         setTimeout(() => {
           const momentElement = document.getElementById(randomMoment.id);
-          console.log('🎲 [Random MOMENT] Element trouvé?', !!momentElement);
           if (momentElement) {
             momentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            console.log('🎲 [Random MOMENT] Scroll effectué!');
           }
         }, 300);
       }, 50);
 
     } else if (targetType === 'post') {
       // Collecter tous les posts visibles
-      console.log('🎲 [Random POST] Collecte des posts...');
       const allPosts = [];
       filteredMoments.forEach(moment => {
         if (moment.posts && moment.posts.length > 0) {
@@ -1235,26 +1214,21 @@ const navigationProcessedRef = useRef(null);
         }
       });
 
-      console.log('🎲 [Random POST] Nombre de posts:', allPosts.length);
       if (allPosts.length > 0) {
         const randomIndex = Math.floor(Math.random() * allPosts.length);
         const { post, moment } = allPosts[randomIndex];
-        console.log('🎲 [Random POST] Post sélectionné:', post.id, 'dans moment', moment.id);
 
         // ⭐ v2.16q : Ouvrir moment directement
-        console.log('🎲 [Random POST] Ouverture moment parent...');
         actions.collapseAll('moments');
         actions.toggleExpanded('moments', moment.id);
 
         // Déplier le post
         const postKey = generatePostKey(post);
-        console.log('🎲 [Random POST] Dépliement post...');
         actions.toggleExpanded('posts', postKey);
 
         // Scroll vers le post
         setTimeout(() => {
           const postElement = document.querySelector(`[data-post-id="${post.id}"]`);
-          console.log('🎲 [Random POST] Element trouvé:', !!postElement);
           if (postElement) {
             postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
@@ -1263,14 +1237,11 @@ const navigationProcessedRef = useRef(null);
 
     } else if (targetType === 'photo') {
       // ⭐ v2.16s : SIMPLE - Tirer moment + ouvrir PhotoGrid
-      console.log('🎲 [Random PHOTO] Collecte moments avec dayPhotos...');
       const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos && m.dayPhotos.length > 0);
 
-      console.log('🎲 [Random PHOTO] Moments avec photos:', momentsWithPhotos.length);
       if (momentsWithPhotos.length > 0) {
         const randomIndex = Math.floor(Math.random() * momentsWithPhotos.length);
         const randomMoment = momentsWithPhotos[randomIndex];
-        console.log('🎲 [Random PHOTO] Moment sélectionné:', randomMoment.id);
 
         // Ouvrir le moment
         actions.collapseAll('moments');
@@ -1284,7 +1255,6 @@ const navigationProcessedRef = useRef(null);
           const gridId = `${randomMoment.id}_day`;
           setTimeout(() => {
             const photoGridElement = document.querySelector(`[data-photo-grid-id="${gridId}"]`);
-            console.log('🎲 [Random PHOTO] PhotoGrid trouvée?', !!photoGridElement);
             if (photoGridElement) {
               photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
