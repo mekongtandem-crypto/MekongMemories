@@ -191,7 +191,7 @@ class MasterIndexGenerator {
   }
 
   /**
-   * ⭐ v2.17j : Fusionne les contenus utilisateur dans les moments Mastodon régénérés
+   * ⭐ v2.18 FIX : Fusionne les contenus utilisateur dans les moments Mastodon régénérés
    *
    * @param {Array} unifiedMoments - Moments Mastodon fraîchement régénérés
    * @param {Map} userContentByMomentId - Contenus utilisateur groupés par momentId
@@ -202,13 +202,21 @@ class MasterIndexGenerator {
       return;
     }
 
+    logger.info(`🔍 Fusion: ${userContentByMomentId.size} moments avec contenus à restaurer`);
+    logger.debug(`IDs moments à restaurer: ${Array.from(userContentByMomentId.keys()).join(', ')}`);
+    logger.debug(`IDs moments disponibles: ${unifiedMoments.map(m => m.id).slice(0, 5).join(', ')}...`);
+
     let mergedPosts = 0;
     let mergedPhotos = 0;
+    let matchedMoments = 0;
 
     for (const moment of unifiedMoments) {
       const userContent = userContentByMomentId.get(moment.id);
 
       if (!userContent) continue;
+
+      matchedMoments++;
+      logger.debug(`✅ Match trouvé pour moment ${moment.id}`);
 
       // 1. Réinjecter posts user_added (Notes de photos)
       if (userContent.userAddedPosts.length > 0) {
@@ -217,7 +225,7 @@ class MasterIndexGenerator {
         }
         moment.posts.push(...userContent.userAddedPosts);
         mergedPosts += userContent.userAddedPosts.length;
-        logger.debug(`${userContent.userAddedPosts.length} notes réintégrées dans ${moment.id}`);
+        logger.info(`📝 ${userContent.userAddedPosts.length} notes réintégrées dans ${moment.id}`);
       }
 
       // 2. Réinjecter photos imported (dans dayPhotos[])
@@ -227,11 +235,15 @@ class MasterIndexGenerator {
         }
         moment.dayPhotos.push(...userContent.importedPhotos);
         mergedPhotos += userContent.importedPhotos.length;
-        logger.debug(`${userContent.importedPhotos.length} photos réintégrées dans ${moment.id}`);
+        logger.info(`📸 ${userContent.importedPhotos.length} photos réintégrées dans ${moment.id}`);
       }
     }
 
-    logger.success(`Fusion terminée: ${mergedPosts} notes + ${mergedPhotos} photos réintégrées`);
+    if (matchedMoments < userContentByMomentId.size) {
+      logger.warn(`⚠️ ${userContentByMomentId.size - matchedMoments} moments avec contenus NON trouvés dans la nouvelle génération`);
+    }
+
+    logger.success(`Fusion terminée: ${mergedPosts} notes + ${mergedPhotos} photos réintégrées (${matchedMoments}/${userContentByMomentId.size} moments matchés)`);
   }
 
   // ========================================
@@ -527,15 +539,22 @@ class MasterIndexGenerator {
 
   async createUnifiedMoments(photoMoments, postsByDay) {
     logger.info('Fusion moments photos + posts...');
-    
+
     const mastodonPhotoMapping = await this.buildMastodonPhotoMapping();
-    
+
     const unifiedMoments = [...photoMoments];
     const processedDays = new Set(
-      photoMoments.flatMap(m => 
+      photoMoments.flatMap(m =>
         Array.from({length: m.dayEnd - m.dayStart + 1}, (_, i) => m.dayStart + i)
       )
     );
+
+    // ⭐ v2.18 FIX : Assigner IDs aux moments photo AVANT de merger les posts
+    unifiedMoments.forEach(moment => {
+      if (!moment.id) {
+        moment.id = `moment_${moment.dayStart}_${moment.dayEnd}`;
+      }
+    });
 
     // Enrichir moments existants avec posts
     unifiedMoments.forEach(moment => {
