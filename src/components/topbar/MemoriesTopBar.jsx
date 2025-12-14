@@ -39,8 +39,8 @@ export default function MemoriesTopBar({
   // ⭐ v2.14 : Accès au Context (remplace polling + window.state)
   const { state, actions, computed } = useMemoriesDisplay();
 
-  // ⭐ v2.19b : FIX - Ajouter allMomentIds à la déstructuration
-  const { filteredMomentsCount, totalPostsCount, momentsWithPhotosCount, allPhotoGridIds, allMomentIds } = state.counts;
+  // ⭐ v2.19f : FIX - Ajouter allPostIds pour synchronisation DT
+  const { filteredMomentsCount, totalPostsCount, momentsWithPhotosCount, allPhotoGridIds, allMomentIds, allPostIds } = state.counts;
 
   // États UI locaux (menus)
   const [showMenu, setShowMenu] = useState(false);
@@ -75,9 +75,9 @@ export default function MemoriesTopBar({
     // actions.setMomentFilter(filter);
   };
 
-  // ⭐ v2.19c : FIX - Passer array allMomentIds (pas length) pour filtrage correct
+  // ⭐ v2.19f : FIX - Passer arrays d'IDs pour synchronisation correcte
   const momentsAllExpanded = computed.allMomentsExpanded(allMomentIds || []);
-  const postsAllExpanded = computed.allPostsExpanded(totalPostsCount);
+  const postsAllExpanded = computed.allPostsExpanded(allPostIds || []);  // ⭐ v2.19f : FIX DT sync
   // ✅ FIX: Utiliser allPhotoGridIds.length au lieu de momentsWithPhotosCount
   const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds?.length || 0);
 
