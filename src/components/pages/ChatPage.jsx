@@ -1,5 +1,5 @@
 /**
- * ChatPage.jsx v3.0g - Fix complet boucle infinie (4 corrections)
+ * ChatPage.jsx v3.0h - Simplification fix boucle (useEffect séparés)
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
@@ -86,7 +86,6 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   const messagesContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const messageRefs = useRef({});  // ⭐ v2.9s : Refs pour messages individuels
-  const markedSessionsRef = useRef(new Set());  // ⭐ v2.18a : Track sessions déjà marquées
   const lastSessionIdRef = useRef(null);  // ⭐ v2.18a : Track dernière session pour détecter changement
 
   // Scroll vers dernier message
@@ -126,54 +125,50 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
     }, 10000);
   }, [navigationContext?.returnContext?.targetMessageId, app.currentChatSession?.id]);
 
-// ⭐ NOUVEAU : Nettoyer liens/photos en changeant de session
+// ⭐ v2.18a : Nettoyer états locaux lors changement de session
 useEffect(() => {
-  // ⭐ v2.18a FIX BOUCLE : Ne traiter QUE si on a vraiment changé de session
   const currentSessionId = app.currentChatSession?.id;
-
   if (!currentSessionId) return;
 
-  // ⭐ v2.18a FIX BOUCLE : Ne nettoyer QUE si session vraiment changée
+  // ⭐ v2.18a : Ne nettoyer QUE si session vraiment changée
   const hasSessionChanged = lastSessionIdRef.current !== currentSessionId;
 
   if (hasSessionChanged) {
-    // Chaque fois qu'on change de chat, nettoyer l'état local
     console.log('🧹 ChatPage: Session changée, nettoyage des attachements');
     setPendingLink(null);
     setAttachedPhoto(null);
     setNewMessage('');
     setEditingMessage(null);
-    setAttachmentMenuOpen(false); // ⭐ v3.0a : Fermer le menu aussi
-
-    // Mettre à jour lastSessionId
+    setAttachmentMenuOpen(false);
     lastSessionIdRef.current = currentSessionId;
   }
+}, [app.currentChatSession?.id]);
 
-  // ⭐ v2.18a FIX BOUCLE : Marquer comme ouverte SEULEMENT si pas déjà fait
-  if (app.currentUser?.id && !markedSessionsRef.current.has(currentSessionId)) {
-    const userId = app.currentUser.id;
-    const storageKey = `mekong_sessionReadStatus_${userId}`;
+// ⭐ v2.18a : Marquage session séparé (1 fois au mount, pas à chaque changement app)
+useEffect(() => {
+  const currentSessionId = app.currentChatSession?.id;
+  const userId = app.currentUser?.id;
 
-    // Lire tracking actuel
-    const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+  if (!currentSessionId || !userId) return;
 
-    // Mettre à jour tracking pour cette session
+  const storageKey = `mekong_sessionReadStatus_${userId}`;
+  const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+  // ⭐ Marquer SEULEMENT si pas déjà marquée dans localStorage
+  if (!allTracking[currentSessionId]?.hasBeenOpened) {
     allTracking[currentSessionId] = {
       hasBeenOpened: true,
       lastOpenedAt: new Date().toISOString()
     };
-
-    // Sauvegarder
     localStorage.setItem(storageKey, JSON.stringify(allTracking));
     console.log(`✅ v2.9x: Session ${currentSessionId} marquée comme ouverte`);
 
-    // Ajouter au Set pour ne plus re-traiter
-    markedSessionsRef.current.add(currentSessionId);
-
-    // Notifier les composants pour refresh badges (SessionsTopBar, Navigation)
+    // Notifier UNE SEULE FOIS
     dataManager.notify();
   }
-}, [app.currentChatSession?.id, app.currentUser?.id]); // Dépendance : l'ID de la session actuelle
+}, [app.currentChatSession?.id, app.currentUser?.id]);
+// ⚠️ NOTE : Ce useEffect se déclenche quand app change, MAIS le marquage
+// ne se fait que si pas déjà dans localStorage, donc notify() appelé 1 fois max
 
   // Détecter photo attachée ou lien depuis Memories
   useEffect(() => {
