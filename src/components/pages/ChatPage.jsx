@@ -1,5 +1,5 @@
 /**
- * ChatPage.jsx v3.0k - Debug lifecycle mount/unmount (v2.18h)
+ * ChatPage.jsx v3.1 - Clean après fix ContentWrapper
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
@@ -13,7 +13,6 @@
  * ✅ Preview photo importée avant envoi
  * ✅ Envoi message avec photoData (source: 'imported')
  * ✅ SessionInfoPanel (slide-in)
- * 🔍 v2.18h : Logs lifecycle (mount/unmount) + componentId tracking
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import LinkedContent from '../LinkedContent.jsx';
@@ -87,19 +86,8 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   const messagesContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const messageRefs = useRef({});  // ⭐ v2.9s : Refs pour messages individuels
-  const lastSessionIdRef = useRef(null);  // ⭐ v2.18b : Track dernière session pour détecter changement
-  const markedSessionsRef = useRef(new Set());  // ⭐ v2.18b : NÉCESSAIRE pour éviter notify() en boucle
-  const componentIdRef = useRef(`ChatPage-${Date.now()}`);  // ⭐ v2.18h : ID unique pour tracer lifecycle
-
-  // ⭐ v2.18h : DEBUG LIFECYCLE - Tracer montage/démontage du composant
-  useEffect(() => {
-    const id = componentIdRef.current;
-    console.log(`🟢 MOUNT ChatPage [${id}] - Session: ${app.currentChatSession?.id}`);
-
-    return () => {
-      console.log(`🔴 UNMOUNT ChatPage [${id}] - Session: ${app.currentChatSession?.id}`);
-    };
-  }, []);  // Tableau vide = mount/unmount seulement
+  const lastSessionIdRef = useRef(null);  // ⭐ v2.18j : Track dernière session pour détecter changement
+  const markedSessionsRef = useRef(new Set());  // ⭐ v2.18j : Éviter notify() en boucle
 
   // Scroll vers dernier message
   useEffect(() => {
@@ -108,58 +96,35 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
     }
   }, [app.currentChatSession?.notes, targetMessageId]);
 
-  // ⭐ v2.9s : Détecter et scroller vers message cible depuis cross-refs modal
+  // ⭐ v2.9s : Scroller vers message cible depuis cross-refs modal
   useEffect(() => {
     const messageId = navigationContext?.returnContext?.targetMessageId;
-
-    // ⭐ v2.18a FIX BOUCLE : Ne rien faire si pas de targetMessageId
     if (!messageId) return;
 
-    console.log('🎯 Detection targetMessageId:', messageId);
-
     setTargetMessageId(messageId);
-    console.log('✅ targetMessageId set:', messageId);
 
     // Scroller vers le message après un court délai (attendre render)
     setTimeout(() => {
       const messageElement = messageRefs.current[messageId];
       if (messageElement) {
-        console.log('📜 Scroll vers message:', messageId);
         messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else {
-        console.warn('⚠️ Message element non trouvé:', messageId);
       }
     }, 300);
 
-    // Retirer l'encadrement après 10 secondes (augmenté pour visibilité)
+    // Retirer l'encadrement après 10 secondes
     setTimeout(() => {
-      console.log('⏱️ Retrait cadre noir');
       setTargetMessageId(null);
     }, 10000);
   }, [navigationContext?.returnContext?.targetMessageId, app.currentChatSession?.id]);
 
-// ⭐ v2.18c : Nettoyer états locaux lors changement de session SEULEMENT
+// ⭐ v2.18j : Nettoyer états locaux lors changement de session
 useEffect(() => {
-  const componentId = componentIdRef.current;
   const currentSessionId = app.currentChatSession?.id;
-
   if (!currentSessionId) return;
 
-  // ⭐ Ne traiter QUE si session vraiment changée
   const hasSessionChanged = lastSessionIdRef.current !== currentSessionId;
 
-  // 🔍 DEBUG : Comprendre pourquoi ça se déclenche
-  console.log(`🔍 [${componentId}] DEBUG useEffect nettoyage:`, {
-    lastRef: lastSessionIdRef.current,
-    currentId: currentSessionId,
-    hasChanged: hasSessionChanged,
-    appSessionObject: app.currentChatSession,
-    timestamp: new Date().toISOString()
-  });
-
   if (hasSessionChanged) {
-    console.log(`🧹 [${componentId}] ChatPage: Session changée, nettoyage des attachements`);
-
     // Nettoyer états locaux
     setPendingLink(null);
     setAttachedPhoto(null);
@@ -167,10 +132,9 @@ useEffect(() => {
     setEditingMessage(null);
     setAttachmentMenuOpen(false);
 
-    // Mettre à jour ref
     lastSessionIdRef.current = currentSessionId;
   }
-}, [app.currentChatSession?.id]); // ⚠️ Dépend UNIQUEMENT de l'ID session
+}, [app.currentChatSession?.id]);
 
 // ⭐ v2.18c : Marquage session séparé (se déclenche UNE FOIS au mount)
 useEffect(() => {
@@ -207,16 +171,10 @@ useEffect(() => {
 
   // Détecter photo attachée ou lien depuis Memories
   useEffect(() => {
-    // ⭐ v2.18 FIX BOUCLE : Ne rien faire si pendingAttachment ET pendingLink sont déjà null
+    // ⭐ v2.18j : Ne rien faire si rien à traiter
     if (!navigationContext?.pendingAttachment && !navigationContext?.pendingLink) {
-      return; // Éviter boucle infinie : rien à traiter
+      return;
     }
-
-    console.log('🔍 DEBUG navigationContext:', {
-      pendingAttachment: navigationContext?.pendingAttachment,
-      pendingLink: navigationContext?.pendingLink,
-      previousPage: navigationContext?.previousPage
-    });
 
     let hasCleared = false;
 
@@ -410,14 +368,11 @@ useEffect(() => {
   };
 
   const handleInsertMemoryPhoto = async () => {
-    const componentId = componentIdRef.current;
-    console.log(`🎬 [${componentId}] START handleInsertMemoryPhoto`);
-    logger.info('📷✨ Insert photo souvenir - Ouverture file picker');
+    logger.info('📷✨ Insert photo souvenir');
     setAttachmentMenuOpen(false);
 
     try {
       // 1. Ouvrir le file picker
-      console.log(`📁 [${componentId}] Ouverture file picker...`);
       const files = await openFilePicker(false);
       const file = files[0];
 
@@ -428,40 +383,27 @@ useEffect(() => {
 
       logger.info(`📸 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
 
-      // ⭐ v2.9m : Importer processImageLocally au lieu de processAndUploadImage
+      // 2. Traitement LOCAL (compression + thumbnail)
       const { processImageLocally } = await import('../../utils/imageCompression.js');
 
-      // 2. Spinner court : Traitement LOCAL uniquement (pas d'upload)
-      console.log(`⏳ [${componentId}] AVANT setLoadingOperation(true)`);
       dataManager.setLoadingOperation(
         true,
         'Préparation de l\'image...',
         'Compression et génération du thumbnail',
         'spin'
       );
-      console.log(`⏳ [${componentId}] APRÈS setLoadingOperation(true)`);
 
-      // 3. Traiter l'image LOCALEMENT (en mémoire, pas d'upload Drive)
-      console.log(`🖼️ [${componentId}] Traitement image...`);
       const processedData = await processImageLocally(file, app.currentUser.id);
-      console.log(`✅ [${componentId}] Image traitée !`);
+      logger.success('✅ Image traitée en mémoire');
 
-      logger.success('✅ Image traitée en mémoire:', processedData);
-
-      // 4. Désactiver le spinner
-      console.log(`⏳ [${componentId}] AVANT setLoadingOperation(false)`);
       dataManager.setLoadingOperation(false);
-      console.log(`⏳ [${componentId}] APRÈS setLoadingOperation(false)`);
 
-      // 5. Ouvrir le modal de conversion IMMÉDIATEMENT avec les données locales
-      // ⭐ v2.9m : photoData = null (pas encore uploadée), processedData en mémoire
-      console.log(`🪟 [${componentId}] AVANT setPhotoToMemoryModal`);
+      // 3. Ouvrir modal de conversion avec données en mémoire
       setPhotoToMemoryModal({
         isOpen: true,
         photoData: null,  // Pas encore uploadée sur Drive
         processedData     // Données en mémoire (Blobs + ObjectURLs)
       });
-      console.log(`🪟 [${componentId}] APRÈS setPhotoToMemoryModal - Modal devrait s'ouvrir !`);
 
     } catch (error) {
       logger.error('❌ Erreur traitement photo souvenir:', error);
@@ -1134,8 +1076,6 @@ const handleDeletePhotoWithDrive = async () => {
  * NE CHANGE PAS de page, reste dans Chat
  */
 const handleOpenPhotoLocal = (linkedContent) => {
-  console.log('🔍 Ouverture photo locale:', linkedContent);
-  
   // 1. Trouver le moment parent de la photo
   const parentMoment = findParentMoment(linkedContent.id);
   
