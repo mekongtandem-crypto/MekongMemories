@@ -519,26 +519,14 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
     isFlatMode: !state.contentFilters.structure,
 
     // États "tous dépliés" (pour boutons TopBar)
-    // ⭐ v2.19d : FIX - Compter seulement les moments visibles (filtrés) + Debug
+    // ⭐ v2.19e : FIX - Compter seulement les moments visibles + IDs dédupliqués
     allMomentsExpanded: (allMomentIds) => {
       if (!allMomentIds || allMomentIds.length === 0) return false;
       // Compter seulement les moments expanded qui sont aussi dans allMomentIds
-      const expandedMomentsList = [...state.expanded.moments];
-      const visibleExpandedCount = expandedMomentsList.filter(id =>
+      const visibleExpandedCount = [...state.expanded.moments].filter(id =>
         allMomentIds.includes(id)
       ).length;
-      const result = visibleExpandedCount === allMomentIds.length;
-
-      console.log('🔍 allMomentsExpanded:', {
-        allMomentIds: allMomentIds.slice(0, 3),
-        totalMoments: allMomentIds.length,
-        expandedAll: expandedMomentsList.slice(0, 3),
-        expandedAllSize: state.expanded.moments.size,
-        visibleExpandedCount,
-        result
-      });
-
-      return result;
+      return visibleExpandedCount === allMomentIds.length;
     },
 
     allPostsExpanded: (totalCount) =>
