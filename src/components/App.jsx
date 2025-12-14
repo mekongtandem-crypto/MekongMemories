@@ -459,12 +459,14 @@ export default function App() {
   // → MemoriesDisplayProvider reçoit nouvelle prop → démonte/remonte
   // → ChatPage enfant se démonte/remonte → refs réinitialisés à null → boucle nettoyage !
   // ⚠️ IMPORTANT : Doit être AVANT le return conditionnel pour respecter règles des hooks !
+  // ⭐ v2.18i : Utilise masterIndexVersion au lieu de masterIndex?.moments pour stabilité
+  // masterIndexVersion s'incrémente SEULEMENT lors modifications réelles du masterIndex
   const momentsData = useMemo(() => {
     if (app.currentPage === 'memories') {
       return enrichMomentsWithData(app.masterIndex?.moments);
     }
     return null;
-  }, [app.currentPage, app.masterIndex?.moments]);
+  }, [app.currentPage, app.masterIndexVersion]);
 
   // ============================================
   // 6. CONDITIONAL RENDERS (StartupPage)

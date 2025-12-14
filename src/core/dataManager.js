@@ -44,6 +44,7 @@ class DataManager {
       isInitialized: false,
       isLoading: true,
       masterIndex: null,
+      masterIndexVersion: 0,  // ⭐ v2.18i : Version incrémentée SEULEMENT lors modification réelle
       sessions: [],
       currentChatSession: null,
       currentUser: null,
@@ -174,11 +175,12 @@ class DataManager {
 
       // 7. Mettre à jour état
       this.updateState({
-        masterIndex, 
-        sessions, 
+        masterIndex,
+        masterIndexVersion: (this.appState.masterIndexVersion || 0) + 1,  // ⭐ v2.18i : Incrémenter version
+        sessions,
         currentUser: cachedUser || null,
-        isLoading: false, 
-        isInitialized: true, 
+        isLoading: false,
+        isInitialized: true,
         error: null
       });
       
@@ -850,9 +852,12 @@ class DataManager {
       if (masterIndexData) {
         await this.stateManager.set('master_index_v3', masterIndexData);
         await this.stateManager.set('master_index_loaded_at', new Date().toISOString());
-        
-        this.updateState({ masterIndex: masterIndexData });
-        
+
+        this.updateState({
+          masterIndex: masterIndexData,
+          masterIndexVersion: (this.appState.masterIndexVersion || 0) + 1  // ⭐ v2.18i
+        });
+
         logger.success('MasterIndex rechargé');
         return { success: true };
       } else {
@@ -902,7 +907,10 @@ class DataManager {
   saveMasterIndex = async (updatedMasterIndex) => {
     try {
       await this.driveSync.saveFile('mekong_master_index_v3_moments.json', updatedMasterIndex);
-      this.updateState({ masterIndex: updatedMasterIndex });
+      this.updateState({
+        masterIndex: updatedMasterIndex,
+        masterIndexVersion: (this.appState.masterIndexVersion || 0) + 1  // ⭐ v2.18i
+      });
       logger.success('MasterIndex sauvegardé');
       return { success: true };
     } catch (error) {
