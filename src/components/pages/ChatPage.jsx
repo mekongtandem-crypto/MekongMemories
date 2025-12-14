@@ -135,6 +135,15 @@ useEffect(() => {
   // ⭐ Ne traiter QUE si session vraiment changée
   const hasSessionChanged = lastSessionIdRef.current !== currentSessionId;
 
+  // 🔍 DEBUG : Comprendre pourquoi ça se déclenche
+  console.log('🔍 DEBUG useEffect nettoyage:', {
+    lastRef: lastSessionIdRef.current,
+    currentId: currentSessionId,
+    hasChanged: hasSessionChanged,
+    appSessionObject: app.currentChatSession,
+    timestamp: new Date().toISOString()
+  });
+
   if (hasSessionChanged) {
     console.log('🧹 ChatPage: Session changée, nettoyage des attachements');
 
