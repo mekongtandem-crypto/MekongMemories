@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mémoire du Mékong
 
-> **Version:** 2.18 "Préservation Données Utilisateur" | **Last Updated:** December 13, 2025
+> **Version:** 2.18a "Préservation Données + Fix Boucle" | **Last Updated:** December 14, 2025
 > **Purpose:** Comprehensive guide for development teams and AI assistants working on this codebase
 
 ---
@@ -9,8 +9,8 @@
 
 **Mémoire du Mékong** is a Progressive Web App that transforms a travel diary into an interactive, conversation-based memory exploration platform. Users can discuss and organize travel experiences through themed "sessions" (chats), explore a timeline of "moments" (thematic units), and manage photos and Mastodon posts.
 
-**Current Version:** 2.18 - Préservation Données Utilisateur
-**Release Date:** December 13, 2025
+**Current Version:** 2.18a - Préservation Données Utilisateur + Fix Boucle ChatPage
+**Release Date:** December 14, 2025
 **Total LOC:** ~9,500 lines
 **Language:** JavaScript (ES6+), no TypeScript
 **Code Language:** French comments/documentation with English variable names
@@ -72,6 +72,38 @@
 ---
 
 ## 📝 Recent Changelog
+
+### Version 2.18a (December 14, 2025) - FIX CRITIQUE Boucle Infinie ChatPage ✅
+
+**🐛 Bug Critical : Boucle infinie lors affichage causeries**
+- Freeze complet de l'interface lors ouverture session
+- Logs répétitifs en boucle : "🎯 Detection targetMessageId", "🧹 ChatPage: Session changée", etc.
+
+**Cause identifiée :**
+- `useEffect` ligne 160-201 ChatPage.jsx surveillait `navigationContext?.pendingAttachment` et `navigationContext?.pendingLink`
+- Appelait `onClearAttachment()` qui modifiait `navigationContext` dans App.jsx via `setNavigationContext()`
+- Modification créait nouvelle référence objet → React considère dépendance changée
+- `useEffect` se redéclenchait même après mise à null → **boucle infinie**
+
+**Solution implémentée :**
+```javascript
+// ChatPage.jsx ligne 162-164
+if (!navigationContext?.pendingAttachment && !navigationContext?.pendingLink) {
+  return; // Éviter boucle infinie : rien à traiter
+}
+```
+
+**Détails techniques :**
+- Garde ajoutée en début de `useEffect` (ligne 160-201)
+- Retour immédiat si les deux valeurs sont déjà `null`
+- Évite appels inutiles à `onClearAttachment()`
+- Plus de re-déclenchement en cascade ✅
+
+**Fichiers modifiés :**
+- `src/components/pages/ChatPage.jsx` (v3.0e → v3.0f)
+- `src/config/version.js` (2.18 → 2.18a)
+
+---
 
 ### Version 2.18 (December 13, 2025) - PRÉSERVATION Données Utilisateur ✅
 
