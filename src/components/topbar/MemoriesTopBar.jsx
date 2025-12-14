@@ -92,8 +92,6 @@ export default function MemoriesTopBar({
         {/* Random moment */}
         <button
           onClick={() => {
-            console.log('🎲 [MemoriesTopBar] Bouton dés cliqué !');
-            console.log('🎲 [MemoriesTopBar] jumpToRandomMoment:', jumpToRandomMoment);
             if (jumpToRandomMoment) {
               jumpToRandomMoment();
             } else {
