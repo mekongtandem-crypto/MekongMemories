@@ -524,9 +524,16 @@ export default function App() {
   // ============================================
 
   // ⭐ v2.14 : Préparer momentsData pour MemoriesDisplayProvider
-  const momentsData = app.currentPage === 'memories'
-    ? enrichMomentsWithData(app.masterIndex?.moments)
-    : null;
+  // ⭐ v2.18e : CRITICAL FIX - useMemo pour éviter re-création à chaque render
+  // Sans useMemo, enrichMomentsWithData() crée un nouveau tableau à chaque notify()
+  // → MemoriesDisplayProvider reçoit nouvelle prop → démonte/remonte
+  // → ChatPage enfant se démonte/remonte → refs réinitialisés à null → boucle nettoyage !
+  const momentsData = React.useMemo(() => {
+    if (app.currentPage === 'memories') {
+      return enrichMomentsWithData(app.masterIndex?.moments);
+    }
+    return null;
+  }, [app.currentPage, app.masterIndex?.moments]);
 
   // ⭐ v2.14 : Wrapper conditionnel pour Provider
   const ContentWrapper = ({ children }) => {
