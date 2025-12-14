@@ -1,8 +1,8 @@
 /**
- * MemoriesTopBar.jsx v2.19b - Fix ReferenceError
+ * MemoriesTopBar.jsx v2.19c - Fix bouton DM
  * TopBar spécifique à la page Memories
  *
- * ✅ v2.19b : Fix allMomentIds déstructuration
+ * ✅ v2.19c : Fix bouton DM - compte seulement moments visibles (filtrés)
  * ✅ v2.19a : Bouton DT reflète postPhotosOnlyMode en mode AM=0 AT=0
  * ✅ Nomenclature: Structure / Textes / Images
  *
@@ -75,8 +75,8 @@ export default function MemoriesTopBar({
     // actions.setMomentFilter(filter);
   };
 
-  // ⭐ v2.19a : FIX - Utiliser allMomentIds.length pour cohérence avec expandAll
-  const momentsAllExpanded = computed.allMomentsExpanded(allMomentIds?.length || 0);
+  // ⭐ v2.19c : FIX - Passer array allMomentIds (pas length) pour filtrage correct
+  const momentsAllExpanded = computed.allMomentsExpanded(allMomentIds || []);
   const postsAllExpanded = computed.allPostsExpanded(totalPostsCount);
   // ✅ FIX: Utiliser allPhotoGridIds.length au lieu de momentsWithPhotosCount
   const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds?.length || 0);

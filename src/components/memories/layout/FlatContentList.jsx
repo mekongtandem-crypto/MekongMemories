@@ -1,11 +1,11 @@
 /**
- * FlatContentList.jsx v2.15h - Mode "en vrac" avec gestion DP
+ * FlatContentList.jsx v2.19c - Mode "en vrac" avec mode photos spécial
  * Affiche le contenu de tous les moments sans leurs en-têtes
  *
  * Utilisé quand le toggle ✨ Moments est désactivé
  * Affiche posts et photos selon les filtres actifs (📷🗒️🖼️)
  *
- * ⭐ v2.15h : Gestion volets PhotoDeMoment selon DP (déplié/replié)
+ * ⭐ v2.19c : Mode spécial AM=0 AT=0 - DT=0 cache TOUS les posts
  */
 
 import React, { memo, useState } from 'react';
@@ -60,6 +60,12 @@ export const FlatContentList = memo(({
     // Ajouter les posts (données uniquement) - AVEC filtrage selon visibilité
     if (moment.posts && moment.posts.length > 0) {
       moment.posts.forEach((post, index) => {
+        // ⭐ v2.19c : Mode spécial AM=0 AT=0 → DT contrôle affichage COMPLET des posts
+        const isSpecialMode = !state.contentFilters.structure && !state.contentFilters.textes;
+        if (isSpecialMode && !state.postPhotosOnlyMode) {
+          return; // Skip TOUS les posts si DT=0 en mode spécial
+        }
+
         // ⭐ v2.11 : Vérifier si le post a du contenu visible selon filtres (3 boutons)
         const hasText = post.content?.trim();
         const hasPhotos = post.photos?.length > 0;
