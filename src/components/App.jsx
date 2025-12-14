@@ -7,7 +7,7 @@
 // IMPORTS
 // ============================================
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { APP_VERSION, APP_NAME, PHASE, BUILD_DATE } from '../config/version.js';
 import { useAppState } from '../hooks/useAppState.js';
 import { ThemeProvider } from './ThemeContext.jsx';
@@ -528,7 +528,7 @@ export default function App() {
   // Sans useMemo, enrichMomentsWithData() crée un nouveau tableau à chaque notify()
   // → MemoriesDisplayProvider reçoit nouvelle prop → démonte/remonte
   // → ChatPage enfant se démonte/remonte → refs réinitialisés à null → boucle nettoyage !
-  const momentsData = React.useMemo(() => {
+  const momentsData = useMemo(() => {
     if (app.currentPage === 'memories') {
       return enrichMomentsWithData(app.masterIndex?.moments);
     }
