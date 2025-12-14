@@ -1,5 +1,5 @@
 /**
- * ChatPage.jsx v3.0f - Fix boucle infinie useEffect navigationContext
+ * ChatPage.jsx v3.0g - Fix complet boucle infinie (4 corrections)
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
@@ -86,6 +86,8 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   const messagesContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const messageRefs = useRef({});  // ⭐ v2.9s : Refs pour messages individuels
+  const markedSessionsRef = useRef(new Set());  // ⭐ v2.18a : Track sessions déjà marquées
+  const lastSessionIdRef = useRef(null);  // ⭐ v2.18a : Track dernière session pour détecter changement
 
   // Scroll vers dernier message
   useEffect(() => {
@@ -97,44 +99,58 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   // ⭐ v2.9s : Détecter et scroller vers message cible depuis cross-refs modal
   useEffect(() => {
     const messageId = navigationContext?.returnContext?.targetMessageId;
+
+    // ⭐ v2.18a FIX BOUCLE : Ne rien faire si pas de targetMessageId
+    if (!messageId) return;
+
     console.log('🎯 Detection targetMessageId:', messageId);
 
-    if (messageId) {
-      setTargetMessageId(messageId);
-      console.log('✅ targetMessageId set:', messageId);
+    setTargetMessageId(messageId);
+    console.log('✅ targetMessageId set:', messageId);
 
-      // Scroller vers le message après un court délai (attendre render)
-      setTimeout(() => {
-        const messageElement = messageRefs.current[messageId];
-        if (messageElement) {
-          console.log('📜 Scroll vers message:', messageId);
-          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-          console.warn('⚠️ Message element non trouvé:', messageId);
-        }
-      }, 300);
+    // Scroller vers le message après un court délai (attendre render)
+    setTimeout(() => {
+      const messageElement = messageRefs.current[messageId];
+      if (messageElement) {
+        console.log('📜 Scroll vers message:', messageId);
+        messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        console.warn('⚠️ Message element non trouvé:', messageId);
+      }
+    }, 300);
 
-      // Retirer l'encadrement après 10 secondes (augmenté pour visibilité)
-      setTimeout(() => {
-        console.log('⏱️ Retrait cadre noir');
-        setTargetMessageId(null);
-      }, 10000);
-    }
+    // Retirer l'encadrement après 10 secondes (augmenté pour visibilité)
+    setTimeout(() => {
+      console.log('⏱️ Retrait cadre noir');
+      setTargetMessageId(null);
+    }, 10000);
   }, [navigationContext?.returnContext?.targetMessageId, app.currentChatSession?.id]);
 
 // ⭐ NOUVEAU : Nettoyer liens/photos en changeant de session
 useEffect(() => {
-  // Chaque fois qu'on change de chat, nettoyer l'état local
-    console.log('🧹 ChatPage: Session changée, nettoyage des attachements');
-  setPendingLink(null);
-  setAttachedPhoto(null);
-  setNewMessage('');
-  setEditingMessage(null);
-  setAttachmentMenuOpen(false); // ⭐ v3.0a : Fermer le menu aussi
+  // ⭐ v2.18a FIX BOUCLE : Ne traiter QUE si on a vraiment changé de session
+  const currentSessionId = app.currentChatSession?.id;
 
-  // ⭐ v2.9x : Marquer session comme ouverte pour tracking new/unread
-  if (app.currentChatSession?.id && app.currentUser?.id) {
-    const sessionId = app.currentChatSession.id;
+  if (!currentSessionId) return;
+
+  // ⭐ v2.18a FIX BOUCLE : Ne nettoyer QUE si session vraiment changée
+  const hasSessionChanged = lastSessionIdRef.current !== currentSessionId;
+
+  if (hasSessionChanged) {
+    // Chaque fois qu'on change de chat, nettoyer l'état local
+    console.log('🧹 ChatPage: Session changée, nettoyage des attachements');
+    setPendingLink(null);
+    setAttachedPhoto(null);
+    setNewMessage('');
+    setEditingMessage(null);
+    setAttachmentMenuOpen(false); // ⭐ v3.0a : Fermer le menu aussi
+
+    // Mettre à jour lastSessionId
+    lastSessionIdRef.current = currentSessionId;
+  }
+
+  // ⭐ v2.18a FIX BOUCLE : Marquer comme ouverte SEULEMENT si pas déjà fait
+  if (app.currentUser?.id && !markedSessionsRef.current.has(currentSessionId)) {
     const userId = app.currentUser.id;
     const storageKey = `mekong_sessionReadStatus_${userId}`;
 
@@ -142,14 +158,17 @@ useEffect(() => {
     const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
 
     // Mettre à jour tracking pour cette session
-    allTracking[sessionId] = {
+    allTracking[currentSessionId] = {
       hasBeenOpened: true,
       lastOpenedAt: new Date().toISOString()
     };
 
     // Sauvegarder
     localStorage.setItem(storageKey, JSON.stringify(allTracking));
-    console.log(`✅ v2.9x: Session ${sessionId} marquée comme ouverte`);
+    console.log(`✅ v2.9x: Session ${currentSessionId} marquée comme ouverte`);
+
+    // Ajouter au Set pour ne plus re-traiter
+    markedSessionsRef.current.add(currentSessionId);
 
     // Notifier les composants pour refresh badges (SessionsTopBar, Navigation)
     dataManager.notify();
@@ -1176,7 +1195,8 @@ const findPhotoMomentId = (photoData, masterIndex) => {
         p.google_drive_id === photoId || p.filename === photoId
       );
       if (foundInDay) {
-        console.log(`📍 Photo trouvée dans moment ${moment.id} (dayPhotos)`);
+        // ⭐ v2.18a : Log commenté pour éviter spam en boucle
+        // console.log(`📍 Photo trouvée dans moment ${moment.id} (dayPhotos)`);
         return moment.id;
       }
     }
@@ -1189,7 +1209,8 @@ const findPhotoMomentId = (photoData, masterIndex) => {
             p.google_drive_id === photoId || p.filename === photoId
           );
           if (foundInPost) {
-            console.log(`📍 Photo trouvée dans moment ${moment.id} (post photos)`);
+            // ⭐ v2.18a : Log commenté pour éviter spam en boucle
+            // console.log(`📍 Photo trouvée dans moment ${moment.id} (post photos)`);
             return moment.id;
           }
         }
@@ -1345,7 +1366,8 @@ const findParentMoment = (photoFilename) => {
   // RENDER
   // ========================================
 
-// ⭐ DEBUG linkedContent
+// ⭐ v2.18a : DEBUG linkedContent - Commenté pour éviter spam en boucle
+/*
 useEffect(() => {
   if (app.currentChatSession?.notes) {
     const messagesWithLinks = app.currentChatSession.notes.filter(m => m.linkedContent);
@@ -1359,6 +1381,7 @@ useEffect(() => {
     }
   }
 }, [app.currentChatSession?.notes]);
+*/
 
 
 
@@ -2003,7 +2026,8 @@ function PhotoMessage({ photo, onPhotoClick }) {
   const isImported = photo.source === 'imported';
   const hasAssociation = photo.momentId;  // Photo associée à un souvenir
 
-  // 🔍 Debug: Log pour vérifier les valeurs
+  // ⭐ v2.18a : Debug commenté pour éviter spam en boucle
+  /*
   console.log('📸 PhotoMessage - Debug bordure:', {
     filename: photo.filename,
     source: photo.source,
@@ -2011,6 +2035,7 @@ function PhotoMessage({ photo, onPhotoClick }) {
     isImported,
     hasAssociation
   });
+  */
 
   // Déterminer la bordure appropriée
   let borderClass = '';

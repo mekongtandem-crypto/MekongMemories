@@ -77,31 +77,77 @@
 
 **🐛 Bug Critical : Boucle infinie lors affichage causeries**
 - Freeze complet de l'interface lors ouverture session
-- Logs répétitifs en boucle : "🎯 Detection targetMessageId", "🧹 ChatPage: Session changée", etc.
+- Logs répétitifs en boucle créant cascade de re-renders
 
-**Cause identifiée :**
-- `useEffect` ligne 160-201 ChatPage.jsx surveillait `navigationContext?.pendingAttachment` et `navigationContext?.pendingLink`
-- Appelait `onClearAttachment()` qui modifiait `navigationContext` dans App.jsx via `setNavigationContext()`
-- Modification créait nouvelle référence objet → React considère dépendance changée
-- `useEffect` se redéclenchait même après mise à null → **boucle infinie**
+**Causes identifiées (4 sources) :**
 
-**Solution implémentée :**
+1. **useEffect navigationContext (ligne 178-201)** :
+   - Appelait `onClearAttachment()` même si valeurs déjà `null`
+   - `setNavigationContext()` créait nouvelle référence → re-déclenchement
+
+2. **useEffect targetMessageId (ligne 99-126)** :
+   - Loggait à chaque re-render même si `messageId` undefined
+   - Se déclenchait en cascade après `dataManager.notify()`
+
+3. **useEffect session tracking (ligne 130-176)** :
+   - Nettoyait états (setPendingLink, etc.) à chaque re-render
+   - Appelait `dataManager.notify()` répétitivement
+
+4. **Logs dans render** :
+   - `findPhotoMomentId()` appelée ligne 1561 pendant render → log spam
+   - `PhotoMessage` composant loggait debug à chaque render
+   - `useEffect` debug linkedContent se déclenchait à chaque changement
+
+**Solutions implémentées :**
+
+**1. Garde navigationContext :**
 ```javascript
-// ChatPage.jsx ligne 162-164
+// ChatPage.jsx ligne 180-182
 if (!navigationContext?.pendingAttachment && !navigationContext?.pendingLink) {
-  return; // Éviter boucle infinie : rien à traiter
+  return; // Éviter boucle : rien à traiter
 }
 ```
 
-**Détails techniques :**
-- Garde ajoutée en début de `useEffect` (ligne 160-201)
-- Retour immédiat si les deux valeurs sont déjà `null`
-- Évite appels inutiles à `onClearAttachment()`
-- Plus de re-déclenchement en cascade ✅
+**2. Garde targetMessageId :**
+```javascript
+// Ligne 103
+if (!messageId) return; // Ne traiter que si messageId défini
+```
+
+**3. Guards session tracking avec useRef :**
+```javascript
+// Ligne 89-90 : Nouveaux refs
+const markedSessionsRef = useRef(new Set());
+const lastSessionIdRef = useRef(null);
+
+// Ligne 137-150 : Ne nettoyer QUE si session vraiment changée
+const hasSessionChanged = lastSessionIdRef.current !== currentSessionId;
+if (hasSessionChanged) {
+  // Nettoyage...
+  lastSessionIdRef.current = currentSessionId;
+}
+
+// Ligne 153 : Marquer SEULEMENT si pas déjà fait
+if (!markedSessionsRef.current.has(currentSessionId)) {
+  // Tracking...
+  markedSessionsRef.current.add(currentSessionId);
+  dataManager.notify(); // Appelé UNE SEULE FOIS par session
+}
+```
+
+**4. Logs debug commentés :**
+- `findPhotoMomentId()` lignes 1189, 1204
+- `PhotoMessage` lignes 2021-2029
+- `useEffect` linkedContent lignes 1361-1375
 
 **Fichiers modifiés :**
-- `src/components/pages/ChatPage.jsx` (v3.0e → v3.0f)
+- `src/components/pages/ChatPage.jsx` (v3.0e → v3.0g)
 - `src/config/version.js` (2.18 → 2.18a)
+
+**Résultat :**
+- Plus de logs en boucle ✅
+- Plus de freeze interface ✅
+- Causeries s'ouvrent normalement ✅
 
 ---
 
