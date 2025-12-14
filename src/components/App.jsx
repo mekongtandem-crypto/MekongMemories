@@ -57,6 +57,23 @@ class ErrorBoundary extends React.Component {
 }
 
 // ============================================
+// CONTENT WRAPPER (HORS de App pour éviter recréation)
+// ============================================
+
+// ⭐ v2.18j : ContentWrapper DOIT être défini EN DEHORS d'App !
+// Sinon : Nouveau composant créé à chaque render → React démonte/remonte enfants !
+const ContentWrapper = ({ children, currentPage, momentsData }) => {
+  if (currentPage === 'memories' && momentsData) {
+    return (
+      <MemoriesDisplayProvider momentsData={momentsData}>
+        {children}
+      </MemoriesDisplayProvider>
+    );
+  }
+  return <>{children}</>;
+};
+
+// ============================================
 // COMPOSANT PRINCIPAL
 // ============================================
 
@@ -543,22 +560,13 @@ export default function App() {
   // ============================================
 
   // ⭐ v2.14 : Wrapper conditionnel pour Provider
-  // momentsData calculé plus haut (ligne 462) pour respecter règles des hooks
-  const ContentWrapper = ({ children }) => {
-    if (app.currentPage === 'memories' && momentsData) {
-      return (
-        <MemoriesDisplayProvider momentsData={momentsData}>
-          {children}
-        </MemoriesDisplayProvider>
-      );
-    }
-    return <>{children}</>;
-  };
+  // ⭐ v2.18j : ContentWrapper défini HORS de App (ligne 65) pour éviter recréation !
+  // momentsData calculé plus haut (ligne 464) pour respecter règles des hooks
 
   return (
     <ThemeProvider>
       <ErrorBoundary>
-        <ContentWrapper>
+        <ContentWrapper currentPage={app.currentPage} momentsData={momentsData}>
           <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col transition-colors duration-200">
 
             {/* TopBar fixe */}
