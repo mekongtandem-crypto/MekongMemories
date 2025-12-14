@@ -1,14 +1,13 @@
 /**
- * MomentHeader.jsx v8.0 - SIMPLIFICATION
+ * MomentHeader.jsx v2.19 - Ouverture avec règles globales
  * En-tête du moment avec :
  * - Titre et sous-titre (jours)
  * - Chevron pour ouvrir/fermer
  * - Compteurs posts/photos (cliquables)
  * - Badges droite (thèmes, sessions, lien)
  *
- * ⭐ v2.17 : SIMPLIFICATION - Ouverture moment
- * - État par défaut = filtres globaux AT/AP
- * - Plus de règle auto spéciale
+ * ⭐ v2.19 : Ouverture moment applique filtres globaux AT/AP
+ * - Pas de localDisplay override au démarrage
  */
 
 import React, { memo, useCallback } from 'react';
@@ -157,14 +156,19 @@ export const MomentHeader = memo(({
     onToggleDeploiement(contentType);
   }, [isSelected, onOpenWith, onToggleDeploiement, onToggleAffichage, localDisplay, moment.id, hasExpandedPosts, hasExpandedPhotos]);
   
-  // ⭐ v2.17 : SIMPLIFICATION - Ouvrir avec états locaux (respect overrides)
+  // ⭐ v2.19 : Ouvrir avec filtres GLOBAUX AT/AP (pas overrides locaux)
   const handleChevronClick = useCallback(() => {
     if (!isSelected) {
-      onOpenWith(localDisplay);  // ✅ États locaux (qui tiennent compte des overrides)
+      // Utiliser filtres globaux du Context, pas localDisplay
+      const globalDisplay = {
+        showPosts: state.contentFilters.textes,
+        showDayPhotos: state.contentFilters.images
+      };
+      onOpenWith(globalDisplay);
     } else {
       onSelect(moment);
     }
-  }, [isSelected, onOpenWith, onSelect, moment, localDisplay]);
+  }, [isSelected, onOpenWith, onSelect, moment, state.contentFilters]);
 
   const handleShowSessions = useCallback((e) => {
     e.stopPropagation();

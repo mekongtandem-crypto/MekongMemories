@@ -1,8 +1,8 @@
 /**
- * MemoriesPage.jsx v2.14 - Refactoring Context + Reducer
- * ✅ MemoriesDisplayProvider intégré
- * ✅ Persistance localStorage automatique
- * ⏳ Migration progressive vers useMemoriesDisplay()
+ * MemoriesPage.jsx v2.19 - Correctifs affichage
+ * ✅ Fix toggle moment (ne replie plus tous les autres)
+ * ✅ Ouverture moment avec règles globales AT/AP
+ * ⭐ Migration progressive vers useMemoriesDisplay()
  */
 
 // ========================================
@@ -891,12 +891,13 @@ const handleSelectMoment = useCallback((moment, forceOpen = false) => {
     return;
   }
 
+  // ⭐ v2.19 : FIX - Si moment déjà ouvert, le fermer sans toucher aux autres
   if (displayMode === 'focus') {
-    if (isAlreadySelected && state.expanded.moments.size === 1) {
-      // Fermer le seul moment ouvert
+    if (isAlreadySelected) {
+      // Moment déjà ouvert → le fermer (peu importe combien d'autres sont ouverts)
       actions.toggleExpanded('moments', moment.id);
     } else {
-      // Fermer tous et ouvrir celui-ci
+      // Moment fermé → fermer tous les autres et ouvrir celui-ci
       actions.collapseAll('moments');
       actions.toggleExpanded('moments', moment.id);
     }

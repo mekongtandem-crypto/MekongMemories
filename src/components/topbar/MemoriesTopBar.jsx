@@ -1,11 +1,10 @@
 /**
- * MemoriesTopBar.jsx v2.14 - Migration Context + Reducer
+ * MemoriesTopBar.jsx v2.19 - Fix bouton DT mode photos
  * TopBar spécifique à la page Memories
  *
- * ✅ v2.14 : Architecture Context (zero polling)
+ * ✅ v2.19 : Bouton DT reflète postPhotosOnlyMode en mode AM=0 AT=0
  * ✅ Nomenclature: Structure / Textes / Images
  * ✅ Boutons déplier discrets (flèches)
- * ✅ Transitions 150ms
  *
  * Layout :
  * - Gauche : 🔍 Recherche | 🏷️ Thèmes
@@ -238,13 +237,13 @@ export default function MemoriesTopBar({
               <FileText className="w-4 h-4" />
             </button>
 
-            {/* ⭐ v2.17c : Bouton Dépliement - Gère PhotoDePost si AM=0 ET AT=0 */}
+            {/* ⭐ v2.19 : Bouton Dépliement - Gère PhotoDePost si AM=0 ET AT=0 */}
             <button
               onClick={() => {
                 const isVracMode = !state.contentFilters.structure;  // AM=0
                 const textesOff = !state.contentFilters.textes;      // AT=0
 
-                // ⭐ v2.17c : CAS SPÉCIAL - Mode Vrac (AM=0) + Textes OFF (AT=0)
+                // ⭐ v2.19 : CAS SPÉCIAL - Mode Vrac (AM=0) + Textes OFF (AT=0)
                 // → DT gère l'affichage des PhotoDePost
                 if (isVracMode && textesOff) {
                   actions.togglePostPhotosOnly();
@@ -276,11 +275,11 @@ export default function MemoriesTopBar({
                   : (postsAllExpanded ? "Replier tous les textes" : "Déplier tous les textes (active AT si nécessaire)")
               }
             >
-              {postsAllExpanded ? (
-                <ChevronDown className="w-3 h-3" />
-              ) : (
-                <ChevronRight className="w-3 h-3" />
-              )}
+              {/* ⭐ v2.19 : Chevron reflète postPhotosOnlyMode en mode spécial AM=0 AT=0 */}
+              {(!state.contentFilters.structure && !state.contentFilters.textes)
+                ? (state.postPhotosOnlyMode ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />)
+                : (postsAllExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />)
+              }
             </button>
           </div>
 
