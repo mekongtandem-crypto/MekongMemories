@@ -1,5 +1,5 @@
 /**
- * ChatPage.jsx v3.0j - Séparation useEffect avec dépendances distinctes
+ * ChatPage.jsx v3.0k - Debug lifecycle mount/unmount (v2.18h)
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
@@ -13,6 +13,7 @@
  * ✅ Preview photo importée avant envoi
  * ✅ Envoi message avec photoData (source: 'imported')
  * ✅ SessionInfoPanel (slide-in)
+ * 🔍 v2.18h : Logs lifecycle (mount/unmount) + componentId tracking
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import LinkedContent from '../LinkedContent.jsx';
@@ -88,6 +89,17 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   const messageRefs = useRef({});  // ⭐ v2.9s : Refs pour messages individuels
   const lastSessionIdRef = useRef(null);  // ⭐ v2.18b : Track dernière session pour détecter changement
   const markedSessionsRef = useRef(new Set());  // ⭐ v2.18b : NÉCESSAIRE pour éviter notify() en boucle
+  const componentIdRef = useRef(`ChatPage-${Date.now()}`);  // ⭐ v2.18h : ID unique pour tracer lifecycle
+
+  // ⭐ v2.18h : DEBUG LIFECYCLE - Tracer montage/démontage du composant
+  useEffect(() => {
+    const id = componentIdRef.current;
+    console.log(`🟢 MOUNT ChatPage [${id}] - Session: ${app.currentChatSession?.id}`);
+
+    return () => {
+      console.log(`🔴 UNMOUNT ChatPage [${id}] - Session: ${app.currentChatSession?.id}`);
+    };
+  }, []);  // Tableau vide = mount/unmount seulement
 
   // Scroll vers dernier message
   useEffect(() => {
@@ -128,6 +140,7 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
 
 // ⭐ v2.18c : Nettoyer états locaux lors changement de session SEULEMENT
 useEffect(() => {
+  const componentId = componentIdRef.current;
   const currentSessionId = app.currentChatSession?.id;
 
   if (!currentSessionId) return;
@@ -136,7 +149,7 @@ useEffect(() => {
   const hasSessionChanged = lastSessionIdRef.current !== currentSessionId;
 
   // 🔍 DEBUG : Comprendre pourquoi ça se déclenche
-  console.log('🔍 DEBUG useEffect nettoyage:', {
+  console.log(`🔍 [${componentId}] DEBUG useEffect nettoyage:`, {
     lastRef: lastSessionIdRef.current,
     currentId: currentSessionId,
     hasChanged: hasSessionChanged,
@@ -145,7 +158,7 @@ useEffect(() => {
   });
 
   if (hasSessionChanged) {
-    console.log('🧹 ChatPage: Session changée, nettoyage des attachements');
+    console.log(`🧹 [${componentId}] ChatPage: Session changée, nettoyage des attachements`);
 
     // Nettoyer états locaux
     setPendingLink(null);
@@ -397,11 +410,14 @@ useEffect(() => {
   };
 
   const handleInsertMemoryPhoto = async () => {
+    const componentId = componentIdRef.current;
+    console.log(`🎬 [${componentId}] START handleInsertMemoryPhoto`);
     logger.info('📷✨ Insert photo souvenir - Ouverture file picker');
     setAttachmentMenuOpen(false);
 
     try {
       // 1. Ouvrir le file picker
+      console.log(`📁 [${componentId}] Ouverture file picker...`);
       const files = await openFilePicker(false);
       const file = files[0];
 
@@ -416,28 +432,36 @@ useEffect(() => {
       const { processImageLocally } = await import('../../utils/imageCompression.js');
 
       // 2. Spinner court : Traitement LOCAL uniquement (pas d'upload)
+      console.log(`⏳ [${componentId}] AVANT setLoadingOperation(true)`);
       dataManager.setLoadingOperation(
         true,
         'Préparation de l\'image...',
         'Compression et génération du thumbnail',
         'spin'
       );
+      console.log(`⏳ [${componentId}] APRÈS setLoadingOperation(true)`);
 
       // 3. Traiter l'image LOCALEMENT (en mémoire, pas d'upload Drive)
+      console.log(`🖼️ [${componentId}] Traitement image...`);
       const processedData = await processImageLocally(file, app.currentUser.id);
+      console.log(`✅ [${componentId}] Image traitée !`);
 
       logger.success('✅ Image traitée en mémoire:', processedData);
 
       // 4. Désactiver le spinner
+      console.log(`⏳ [${componentId}] AVANT setLoadingOperation(false)`);
       dataManager.setLoadingOperation(false);
+      console.log(`⏳ [${componentId}] APRÈS setLoadingOperation(false)`);
 
       // 5. Ouvrir le modal de conversion IMMÉDIATEMENT avec les données locales
       // ⭐ v2.9m : photoData = null (pas encore uploadée), processedData en mémoire
+      console.log(`🪟 [${componentId}] AVANT setPhotoToMemoryModal`);
       setPhotoToMemoryModal({
         isOpen: true,
         photoData: null,  // Pas encore uploadée sur Drive
         processedData     // Données en mémoire (Blobs + ObjectURLs)
       });
+      console.log(`🪟 [${componentId}] APRÈS setPhotoToMemoryModal - Modal devrait s'ouvrir !`);
 
     } catch (error) {
       logger.error('❌ Erreur traitement photo souvenir:', error);
