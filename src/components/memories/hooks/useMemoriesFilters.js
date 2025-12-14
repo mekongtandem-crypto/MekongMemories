@@ -310,8 +310,9 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       });
     });
 
-    // ⭐ v2.15 : DÉDUPLIQUER les IDs pour éviter comptage erroné
-    // (certains posts peuvent avoir des IDs dupliqués dans les données)
+    // ⭐ v2.19e : DÉDUPLIQUER les IDs pour éviter comptage erroné
+    // (certains moments/posts peuvent avoir des IDs dupliqués dans les données)
+    const uniqueMomentIds = [...new Set(allMomentIds)];  // ⭐ v2.19e : FIX bouton DM
     const uniquePostIds = [...new Set(allPostIds)];
     const uniquePhotoGridIds = [...new Set(allPhotoGridIds)];
 
@@ -320,7 +321,7 @@ export function useMemoriesFilters(momentsData, sessions = []) {
       totalPostsCount: uniquePostIds.length,  // ✅ Compter seulement les IDs uniques
       momentsWithPhotosCount: sortedMoments.filter(m => m.dayPhotos?.length > 0).length,
       // ⭐ Ajout des IDs pour expandAll/collapseAll
-      allMomentIds,
+      allMomentIds: uniqueMomentIds,  // ⭐ v2.19e : FIX - Tableau dédupliqué
       allPostIds: uniquePostIds,  // ✅ Tableau dédupliqué
       allPhotoGridIds: uniquePhotoGridIds  // ✅ Tableau dédupliqué
     };
