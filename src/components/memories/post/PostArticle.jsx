@@ -1,17 +1,14 @@
 /**
- * PostArticle.jsx v8.0 - SIMPLIFICATION MAJEURE
+ * PostArticle.jsx v2.19d - Bordure bleue pour posts ouverts
  * Article Mastodon complet
  *
- * ⭐ v2.17 : SIMPLIFICATION - Suppression états locaux redondants
- * - Plus de useState/useEffect pour synchroniser avec Context
- * - Calculs directs depuis Context (source unique de vérité)
- * - Code réduit de ~40 lignes
+ * ⭐ v2.19d : Bordure bleue claire quand post ouvert/sélectionné
+ * ⭐ v2.17 : SIMPLIFICATION - Calculs directs depuis Context
  *
  * ⭐ Filtres d'affichage :
  * - 🗒️ Textes (AT) : Affiche texte
  * - 📸 Images (AP) : Affiche photos
- * - Les deux : Affiche tout
- * - Aucun : Masque complètement le post
+ * - Mode spécial AM=0 AT=0 : DT contrôle photos de posts
  *
  * Structure :
  * - Header (titre, toggle photos, badges)
@@ -186,11 +183,13 @@ export const PostArticle = memo(({
 
       {/* ⭐ v2.11 : Mode normal avec cadre (header et/ou texte) */}
       {!photosOnlyMode && (
-        /* ⭐ v2.11 : Avec texte, afficher le cadre normal */
-        <div className={`border rounded-lg overflow-hidden ${
-          isPhotoNote
-            ? 'border-amber-200 dark:border-amber-700'
-            : 'border-gray-200 dark:border-gray-700'
+        /* ⭐ v2.19d : Bordure bleue claire si post ouvert */
+        <div className={`border-2 rounded-lg overflow-hidden transition-colors ${
+          isPostExpanded
+            ? 'border-blue-300 dark:border-blue-600'  // Post ouvert → bordure bleue claire
+            : isPhotoNote
+              ? 'border-amber-200 dark:border-amber-700'
+              : 'border-gray-200 dark:border-gray-700'
         }`}>
 
         {/* ⭐ v2.11 : Header visible si filtre posts actif (cliquable comme volet) */}
