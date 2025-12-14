@@ -1,5 +1,5 @@
 /**
- * MemoriesDisplayContext.jsx v2.19c - Fix allMomentsExpanded
+ * MemoriesDisplayContext.jsx v2.19d - Debug logs allMomentsExpanded
  *
  * Architecture centralisée pour gérer TOUT l'affichage de MemoriesPage:
  * - Filtres de contenu (Structure/Textes/Images)
@@ -7,10 +7,10 @@
  * - Filtres contextuels (recherche, thème, etc.)
  * - Tri (chronologique, aléatoire, richesse)
  *
+ * ✅ v2.19d : Logs debug pour diagnostiquer bouton DM
  * ✅ v2.19c : allMomentsExpanded compte seulement moments visibles
  * ✅ v2.19a : isElementVisible post_photos mode spécial AM=0 AT=0
- * ✅ Zero polling (reactivity native React)
- * ✅ Single source of truth
+ * ✅ Zero polling + Single source of truth
  */
 
 import React, { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -519,14 +519,26 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
     isFlatMode: !state.contentFilters.structure,
 
     // États "tous dépliés" (pour boutons TopBar)
-    // ⭐ v2.19c : FIX - Compter seulement les moments visibles (filtrés)
+    // ⭐ v2.19d : FIX - Compter seulement les moments visibles (filtrés) + Debug
     allMomentsExpanded: (allMomentIds) => {
       if (!allMomentIds || allMomentIds.length === 0) return false;
       // Compter seulement les moments expanded qui sont aussi dans allMomentIds
-      const visibleExpandedCount = [...state.expanded.moments].filter(id =>
+      const expandedMomentsList = [...state.expanded.moments];
+      const visibleExpandedCount = expandedMomentsList.filter(id =>
         allMomentIds.includes(id)
       ).length;
-      return visibleExpandedCount === allMomentIds.length;
+      const result = visibleExpandedCount === allMomentIds.length;
+
+      console.log('🔍 allMomentsExpanded:', {
+        allMomentIds: allMomentIds.slice(0, 3),
+        totalMoments: allMomentIds.length,
+        expandedAll: expandedMomentsList.slice(0, 3),
+        expandedAllSize: state.expanded.moments.size,
+        visibleExpandedCount,
+        result
+      });
+
+      return result;
     },
 
     allPostsExpanded: (totalCount) =>
