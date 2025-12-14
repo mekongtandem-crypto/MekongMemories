@@ -1,5 +1,5 @@
 /**
- * ChatPage.jsx v3.0h - Simplification fix boucle (useEffect séparés)
+ * ChatPage.jsx v3.0i - Fix final boucle (useEffect fusionnés)
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
@@ -126,59 +126,55 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
     }, 10000);
   }, [navigationContext?.returnContext?.targetMessageId, app.currentChatSession?.id]);
 
-// ⭐ v2.18a : Nettoyer états locaux lors changement de session
-useEffect(() => {
-  const currentSessionId = app.currentChatSession?.id;
-  if (!currentSessionId) return;
-
-  // ⭐ v2.18a : Ne nettoyer QUE si session vraiment changée
-  const hasSessionChanged = lastSessionIdRef.current !== currentSessionId;
-
-  if (hasSessionChanged) {
-    console.log('🧹 ChatPage: Session changée, nettoyage des attachements');
-    setPendingLink(null);
-    setAttachedPhoto(null);
-    setNewMessage('');
-    setEditingMessage(null);
-    setAttachmentMenuOpen(false);
-    lastSessionIdRef.current = currentSessionId;
-  }
-}, [app.currentChatSession?.id]);
-
-// ⭐ v2.18b : Marquage session séparé avec double protection
+// ⭐ v2.18b : Nettoyer états + marquer session lors du changement (FUSIONNÉ)
 useEffect(() => {
   const currentSessionId = app.currentChatSession?.id;
   const userId = app.currentUser?.id;
 
   if (!currentSessionId || !userId) return;
 
-  // ⭐ DOUBLE PROTECTION pour éviter boucle :
-  // 1. Vérifier si déjà marquée DANS CE COMPOSANT (évite notify() multiple)
-  if (markedSessionsRef.current.has(currentSessionId)) return;
+  // ⭐ Ne traiter QUE si session vraiment changée
+  const hasSessionChanged = lastSessionIdRef.current !== currentSessionId;
 
-  // 2. Vérifier localStorage (persistance entre sessions)
-  const storageKey = `mekong_sessionReadStatus_${userId}`;
-  const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+  if (hasSessionChanged) {
+    console.log('🧹 ChatPage: Session changée, nettoyage des attachements');
 
-  if (!allTracking[currentSessionId]?.hasBeenOpened) {
-    // Marquer dans localStorage
-    allTracking[currentSessionId] = {
-      hasBeenOpened: true,
-      lastOpenedAt: new Date().toISOString()
-    };
-    localStorage.setItem(storageKey, JSON.stringify(allTracking));
-    console.log(`✅ v2.9x: Session ${currentSessionId} marquée comme ouverte`);
+    // 1. Nettoyer états locaux
+    setPendingLink(null);
+    setAttachedPhoto(null);
+    setNewMessage('');
+    setEditingMessage(null);
+    setAttachmentMenuOpen(false);
 
-    // Marquer dans le ref AVANT notify pour éviter re-déclenchement
-    markedSessionsRef.current.add(currentSessionId);
+    // 2. Mettre à jour ref
+    lastSessionIdRef.current = currentSessionId;
 
-    // Notifier UNE SEULE FOIS
-    dataManager.notify();
-  } else {
-    // Déjà dans localStorage, juste marquer dans le ref
-    markedSessionsRef.current.add(currentSessionId);
+    // 3. Marquer session comme ouverte (si pas déjà fait)
+    if (!markedSessionsRef.current.has(currentSessionId)) {
+      const storageKey = `mekong_sessionReadStatus_${userId}`;
+      const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+      if (!allTracking[currentSessionId]?.hasBeenOpened) {
+        allTracking[currentSessionId] = {
+          hasBeenOpened: true,
+          lastOpenedAt: new Date().toISOString()
+        };
+        localStorage.setItem(storageKey, JSON.stringify(allTracking));
+        console.log(`✅ v2.9x: Session ${currentSessionId} marquée comme ouverte`);
+
+        // Marquer dans ref AVANT notify
+        markedSessionsRef.current.add(currentSessionId);
+
+        // Notifier UNE SEULE FOIS
+        dataManager.notify();
+      } else {
+        // Déjà dans localStorage, juste marquer dans ref
+        markedSessionsRef.current.add(currentSessionId);
+      }
+    }
   }
 }, [app.currentChatSession?.id, app.currentUser?.id]);
+// ⚠️ NOTE : Un seul useEffect pour tout gérer, évite cascade de re-déclenchements
 
   // Détecter photo attachée ou lien depuis Memories
   useEffect(() => {
