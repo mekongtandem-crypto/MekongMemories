@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mémoire du Mékong
 
-> **Version:** 2.17 "Simplification Règles d'Affichage" | **Last Updated:** December 13, 2025
+> **Version:** 2.18 "Préservation Données Utilisateur" | **Last Updated:** December 13, 2025
 > **Purpose:** Comprehensive guide for development teams and AI assistants working on this codebase
 
 ---
@@ -9,11 +9,41 @@
 
 **Mémoire du Mékong** is a Progressive Web App that transforms a travel diary into an interactive, conversation-based memory exploration platform. Users can discuss and organize travel experiences through themed "sessions" (chats), explore a timeline of "moments" (thematic units), and manage photos and Mastodon posts.
 
-**Current Version:** 2.17 - Simplification Règles d'Affichage
+**Current Version:** 2.18 - Préservation Données Utilisateur
 **Release Date:** December 13, 2025
-**Total LOC:** ~9,360 lines (-40 grâce à simplification)
+**Total LOC:** ~9,500 lines
 **Language:** JavaScript (ES6+), no TypeScript
 **Code Language:** French comments/documentation with English variable names
+
+### ⚠️ TODO CRITIQUE - Régénération MasterIndex (v2.18+)
+
+**🔴 POINTS À VÉRIFIER AVANT PRODUCTION :**
+
+1. **Vérification récupération moments créés** ⚠️
+   - Tester que TOUS les moments importés (source='imported') sont bien préservés
+   - Vérifier que les IDs matchent correctement (double stratégie: ID exact + fallback jour)
+   - Logs à surveiller: "X moments importés + Y moments avec notes/photos préservés"
+
+2. **Scan répertoire photos importées** ⚠️
+   - Actuellement: Seules les métadonnées dans masterIndex sont préservées
+   - À implémenter: Scanner `Medias/Imported_Photos/` sur Google Drive
+   - Réconcilier photos orphelines (fichiers Drive sans entrée masterIndex)
+   - Réinjecter automatiquement dans moments appropriés
+
+3. **Tests de non-régression** ⚠️
+   - Créer 3 moments importés avec photos
+   - Ajouter 5 notes de photos dans moments existants
+   - Importer 10 photos standalone
+   - Régénérer → TOUT doit être préservé
+   - Compter: notes avant = notes après, photos avant = photos après
+
+4. **Gestion erreurs matching** ⚠️
+   - Que faire si moment ancien non trouvé dans nouvelle génération?
+   - Actuellement: Warning dans logs + contenus perdus ❌
+   - À implémenter: Créer "moments orphelins" pour contenus non matchés
+   - Ou: Demander à l'utilisateur de mapper manuellement
+
+**STATUS:** v2.18 déployée avec matching basique. Tests complets requis avant validation production.
 
 ### ⚠️ Version 2.9 - État Actuel (1/3 Complete)
 
@@ -42,6 +72,36 @@
 ---
 
 ## 📝 Recent Changelog
+
+### Version 2.18 (December 13, 2025) - PRÉSERVATION Données Utilisateur ✅
+
+**🎯 Objectif : Préserver TOUTES les données utilisateur lors de la régénération du MasterIndex**
+
+**✅ Infrastructure Préservation (MasterIndexGenerator v5.3):**
+- ✅ `loadUserAddedContent()` : Extraction moments importés + notes + photos
+- ✅ `mergeUserContentIntoMoments()` : Réinjection dans moments régénérés
+- ✅ Double stratégie matching : ID exact + fallback par dayStart/dayEnd
+- ✅ Logging détaillé : IDs, compteurs, warnings
+
+**✅ Données Préservées:**
+- ✅ Moments importés complets (source='imported')
+- ✅ Notes de photos (category='user_added') dans moments Mastodon
+- ✅ Photos importées (source='imported') dans dayPhotos[]
+- ✅ Thèmes assignés (déjà en v5.1)
+
+**✅ Progression Améliorée:**
+- 🔒 Sauvegarde données utilisateur... (7%)
+- ✅ X moments + Y moments avec notes/photos préservés (8%)
+- 🔄 Restauration notes et photos importées... (87%)
+- ✅ X moments importés ajoutés (89%)
+- Messages avec émojis visuels
+
+**⚠️ Points d'attention (TODO ci-dessus):**
+- Matching IDs peut échouer si format change
+- Photos orphelines sur Drive non scannées
+- Pas de gestion moments orphelins (contenus non matchés)
+
+---
 
 ### Version 2.17 (December 13, 2025) - SIMPLIFICATION Règles d'Affichage ✅
 
