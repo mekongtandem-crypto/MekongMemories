@@ -450,6 +450,23 @@ export default function App() {
   }, [handleNavigateToContentFromChat]);
 
   // ============================================
+  // 5.5. COMPUTED VALUES (useMemo) - AVANT return conditionnel
+  // ============================================
+
+  // ⭐ v2.14 : Préparer momentsData pour MemoriesDisplayProvider
+  // ⭐ v2.18e : CRITICAL FIX - useMemo pour éviter re-création à chaque render
+  // Sans useMemo, enrichMomentsWithData() crée un nouveau tableau à chaque notify()
+  // → MemoriesDisplayProvider reçoit nouvelle prop → démonte/remonte
+  // → ChatPage enfant se démonte/remonte → refs réinitialisés à null → boucle nettoyage !
+  // ⚠️ IMPORTANT : Doit être AVANT le return conditionnel pour respecter règles des hooks !
+  const momentsData = useMemo(() => {
+    if (app.currentPage === 'memories') {
+      return enrichMomentsWithData(app.masterIndex?.moments);
+    }
+    return null;
+  }, [app.currentPage, app.masterIndex?.moments]);
+
+  // ============================================
   // 6. CONDITIONAL RENDERS (StartupPage)
   // ============================================
   
@@ -523,19 +540,8 @@ export default function App() {
   // 8. RENDER PRINCIPAL
   // ============================================
 
-  // ⭐ v2.14 : Préparer momentsData pour MemoriesDisplayProvider
-  // ⭐ v2.18e : CRITICAL FIX - useMemo pour éviter re-création à chaque render
-  // Sans useMemo, enrichMomentsWithData() crée un nouveau tableau à chaque notify()
-  // → MemoriesDisplayProvider reçoit nouvelle prop → démonte/remonte
-  // → ChatPage enfant se démonte/remonte → refs réinitialisés à null → boucle nettoyage !
-  const momentsData = useMemo(() => {
-    if (app.currentPage === 'memories') {
-      return enrichMomentsWithData(app.masterIndex?.moments);
-    }
-    return null;
-  }, [app.currentPage, app.masterIndex?.moments]);
-
   // ⭐ v2.14 : Wrapper conditionnel pour Provider
+  // momentsData calculé plus haut (ligne 462) pour respecter règles des hooks
   const ContentWrapper = ({ children }) => {
     if (app.currentPage === 'memories' && momentsData) {
       return (
