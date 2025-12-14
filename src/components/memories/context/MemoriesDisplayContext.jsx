@@ -1,5 +1,5 @@
 /**
- * MemoriesDisplayContext.jsx v2.14 - Context + Reducer pour affichage
+ * MemoriesDisplayContext.jsx v2.19c - Fix allMomentsExpanded
  *
  * Architecture centralisée pour gérer TOUT l'affichage de MemoriesPage:
  * - Filtres de contenu (Structure/Textes/Images)
@@ -7,10 +7,10 @@
  * - Filtres contextuels (recherche, thème, etc.)
  * - Tri (chronologique, aléatoire, richesse)
  *
+ * ✅ v2.19c : allMomentsExpanded compte seulement moments visibles
+ * ✅ v2.19a : isElementVisible post_photos mode spécial AM=0 AT=0
  * ✅ Zero polling (reactivity native React)
- * ✅ Zero props drilling (useContext)
  * ✅ Single source of truth
- * ✅ Predictable updates (reducer pattern)
  */
 
 import React, { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -519,8 +519,15 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
     isFlatMode: !state.contentFilters.structure,
 
     // États "tous dépliés" (pour boutons TopBar)
-    allMomentsExpanded: (totalCount) =>
-      state.expanded.moments.size === totalCount && totalCount > 0,
+    // ⭐ v2.19c : FIX - Compter seulement les moments visibles (filtrés)
+    allMomentsExpanded: (allMomentIds) => {
+      if (!allMomentIds || allMomentIds.length === 0) return false;
+      // Compter seulement les moments expanded qui sont aussi dans allMomentIds
+      const visibleExpandedCount = [...state.expanded.moments].filter(id =>
+        allMomentIds.includes(id)
+      ).length;
+      return visibleExpandedCount === allMomentIds.length;
+    },
 
     allPostsExpanded: (totalCount) =>
       state.expanded.posts.size >= totalCount && totalCount > 0,
