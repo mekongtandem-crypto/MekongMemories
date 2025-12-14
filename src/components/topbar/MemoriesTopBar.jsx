@@ -1,10 +1,10 @@
 /**
- * MemoriesTopBar.jsx v2.19 - Fix bouton DT mode photos
+ * MemoriesTopBar.jsx v2.19b - Fix ReferenceError
  * TopBar spécifique à la page Memories
  *
- * ✅ v2.19 : Bouton DT reflète postPhotosOnlyMode en mode AM=0 AT=0
+ * ✅ v2.19b : Fix allMomentIds déstructuration
+ * ✅ v2.19a : Bouton DT reflète postPhotosOnlyMode en mode AM=0 AT=0
  * ✅ Nomenclature: Structure / Textes / Images
- * ✅ Boutons déplier discrets (flèches)
  *
  * Layout :
  * - Gauche : 🔍 Recherche | 🏷️ Thèmes
@@ -39,8 +39,8 @@ export default function MemoriesTopBar({
   // ⭐ v2.14 : Accès au Context (remplace polling + window.state)
   const { state, actions, computed } = useMemoriesDisplay();
 
-  // ⭐ v2.14h : Lire counts depuis Context (plus depuis ref!)
-  const { filteredMomentsCount, totalPostsCount, momentsWithPhotosCount, allPhotoGridIds } = state.counts;
+  // ⭐ v2.19b : FIX - Ajouter allMomentIds à la déstructuration
+  const { filteredMomentsCount, totalPostsCount, momentsWithPhotosCount, allPhotoGridIds, allMomentIds } = state.counts;
 
   // États UI locaux (menus)
   const [showMenu, setShowMenu] = useState(false);
