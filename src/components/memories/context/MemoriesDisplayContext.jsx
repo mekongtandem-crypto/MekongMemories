@@ -245,6 +245,10 @@ function displayReducer(state, action) {
           };
         }
       } else {
+        // ⭐ v2.19f : Sélection unique - Fermer tous les autres posts avant d'ouvrir
+        if (type === 'posts') {
+          newSet.clear();  // Un seul post ouvert à la fois
+        }
         newSet.add(id);
       }
 
@@ -529,8 +533,15 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
       return visibleExpandedCount === allMomentIds.length;
     },
 
-    allPostsExpanded: (totalCount) =>
-      state.expanded.posts.size >= totalCount && totalCount > 0,
+    // ⭐ v2.19f : FIX - Compter seulement les posts visibles (comme moments)
+    allPostsExpanded: (allPostIds) => {
+      if (!allPostIds || allPostIds.length === 0) return false;
+      // Compter seulement les posts expanded qui sont aussi dans allPostIds
+      const visibleExpandedCount = [...state.expanded.posts].filter(id =>
+        allPostIds.includes(id)
+      ).length;
+      return visibleExpandedCount === allPostIds.length;
+    },
 
     allPhotoGridsExpanded: (totalCount) =>
       state.expanded.photoGrids.size === totalCount && totalCount > 0,
