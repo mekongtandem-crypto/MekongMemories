@@ -1,7 +1,7 @@
 /**
  * Configuration version - MémoireDuMékong
  */
-export const APP_VERSION = "2.18i";
+export const APP_VERSION = "2.18j";
 export const APP_NAME = "Mémoire du Mékong";
 export const BUILD_DATE = "14 décembre 2025";
-export const PHASE = "Fix: v2.18i - masterIndexVersion pour stabiliser useMemo";
+export const PHASE = "Fix: v2.18j - ContentWrapper hors de App() (anti-pattern)";
