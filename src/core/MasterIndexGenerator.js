@@ -191,7 +191,11 @@ class MasterIndexGenerator {
   }
 
   /**
-   * ⭐ v2.18 FIX : Fusionne les contenus utilisateur dans les moments Mastodon régénérés
+   * ⭐ v2.18 FIX CRITIQUE : Fusionne les contenus utilisateur dans les moments Mastodon régénérés
+   *
+   * Stratégie de matching:
+   * 1. Match par ID exact (moment_X_Y)
+   * 2. Fallback: Match par dayStart/dayEnd si ID échoue
    *
    * @param {Array} unifiedMoments - Moments Mastodon fraîchement régénérés
    * @param {Map} userContentByMomentId - Contenus utilisateur groupés par momentId
@@ -203,47 +207,82 @@ class MasterIndexGenerator {
     }
 
     logger.info(`🔍 Fusion: ${userContentByMomentId.size} moments avec contenus à restaurer`);
-    logger.debug(`IDs moments à restaurer: ${Array.from(userContentByMomentId.keys()).join(', ')}`);
-    logger.debug(`IDs moments disponibles: ${unifiedMoments.map(m => m.id).slice(0, 5).join(', ')}...`);
 
     let mergedPosts = 0;
     let mergedPhotos = 0;
-    let matchedMoments = 0;
+    let matchedByID = 0;
+    let matchedByDay = 0;
 
-    for (const moment of unifiedMoments) {
-      const userContent = userContentByMomentId.get(moment.id);
+    // Créer index dayStart/dayEnd pour fallback
+    const momentsByDayRange = new Map();
+    unifiedMoments.forEach(moment => {
+      const key = `${moment.dayStart}_${moment.dayEnd}`;
+      momentsByDayRange.set(key, moment);
+    });
 
-      if (!userContent) continue;
+    // Parcourir les contenus utilisateur à restaurer
+    for (const [oldMomentId, userContent] of userContentByMomentId.entries()) {
 
-      matchedMoments++;
-      logger.debug(`✅ Match trouvé pour moment ${moment.id}`);
+      // Stratégie 1: Match par ID exact
+      let targetMoment = unifiedMoments.find(m => m.id === oldMomentId);
 
-      // 1. Réinjecter posts user_added (Notes de photos)
+      if (targetMoment) {
+        matchedByID++;
+        logger.debug(`✅ Match par ID: ${oldMomentId}`);
+      } else {
+        // Stratégie 2: Match par dayStart/dayEnd (fallback)
+        // Extraire dayStart/dayEnd de l'ancien ID si possible
+        const idMatch = oldMomentId.match(/moment_(\d+)_(\d+)/);
+        if (idMatch) {
+          const dayStart = parseInt(idMatch[1]);
+          const dayEnd = parseInt(idMatch[2]);
+          const key = `${dayStart}_${dayEnd}`;
+          targetMoment = momentsByDayRange.get(key);
+
+          if (targetMoment) {
+            matchedByDay++;
+            logger.info(`✅ Match par jour: ${oldMomentId} → ${targetMoment.id} (J${dayStart}-J${dayEnd})`);
+          }
+        }
+      }
+
+      if (!targetMoment) {
+        logger.warn(`❌ Aucun match trouvé pour ${oldMomentId}`);
+        continue;
+      }
+
+      // Réinjecter posts user_added (Notes de photos)
       if (userContent.userAddedPosts.length > 0) {
-        if (!moment.posts) {
-          moment.posts = [];
+        if (!targetMoment.posts) {
+          targetMoment.posts = [];
         }
-        moment.posts.push(...userContent.userAddedPosts);
+        targetMoment.posts.push(...userContent.userAddedPosts);
         mergedPosts += userContent.userAddedPosts.length;
-        logger.info(`📝 ${userContent.userAddedPosts.length} notes réintégrées dans ${moment.id}`);
+        logger.info(`📝 ${userContent.userAddedPosts.length} notes réintégrées dans ${targetMoment.id}`);
       }
 
-      // 2. Réinjecter photos imported (dans dayPhotos[])
+      // Réinjecter photos imported (dans dayPhotos[])
       if (userContent.importedPhotos.length > 0) {
-        if (!moment.dayPhotos) {
-          moment.dayPhotos = [];
+        if (!targetMoment.dayPhotos) {
+          targetMoment.dayPhotos = [];
         }
-        moment.dayPhotos.push(...userContent.importedPhotos);
+        targetMoment.dayPhotos.push(...userContent.importedPhotos);
         mergedPhotos += userContent.importedPhotos.length;
-        logger.info(`📸 ${userContent.importedPhotos.length} photos réintégrées dans ${moment.id}`);
+        logger.info(`📸 ${userContent.importedPhotos.length} photos réintégrées dans ${targetMoment.id}`);
       }
     }
 
-    if (matchedMoments < userContentByMomentId.size) {
-      logger.warn(`⚠️ ${userContentByMomentId.size - matchedMoments} moments avec contenus NON trouvés dans la nouvelle génération`);
+    const totalMatched = matchedByID + matchedByDay;
+    const totalExpected = userContentByMomentId.size;
+
+    if (totalMatched < totalExpected) {
+      logger.warn(`⚠️ ${totalExpected - totalMatched} moments avec contenus NON trouvés`);
     }
 
-    logger.success(`Fusion terminée: ${mergedPosts} notes + ${mergedPhotos} photos réintégrées (${matchedMoments}/${userContentByMomentId.size} moments matchés)`);
+    logger.success(
+      `Fusion terminée: ${mergedPosts} notes + ${mergedPhotos} photos réintégrées ` +
+      `(${matchedByID} par ID + ${matchedByDay} par jour = ${totalMatched}/${totalExpected} moments)`
+    );
   }
 
   // ========================================
