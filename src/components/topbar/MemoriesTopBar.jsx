@@ -75,8 +75,8 @@ export default function MemoriesTopBar({
     // actions.setMomentFilter(filter);
   };
 
-  // ⭐ v2.15w : Computed - États "tous dépliés" (CORRIGÉ pour photoGrids!)
-  const momentsAllExpanded = computed.allMomentsExpanded(filteredMomentsCount);
+  // ⭐ v2.19a : FIX - Utiliser allMomentIds.length pour cohérence avec expandAll
+  const momentsAllExpanded = computed.allMomentsExpanded(allMomentIds?.length || 0);
   const postsAllExpanded = computed.allPostsExpanded(totalPostsCount);
   // ✅ FIX: Utiliser allPhotoGridIds.length au lieu de momentsWithPhotosCount
   const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds?.length || 0);

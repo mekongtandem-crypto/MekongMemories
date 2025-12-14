@@ -544,7 +544,11 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
           return state.contentFilters.textes;
 
         case 'post_photos':
-          // ⭐ v2.14 : Photos posts visibles UNIQUEMENT si Images ON
+          // ⭐ v2.19a : Mode spécial AM=0 AT=0 → DT contrôle photos de posts
+          if (!state.contentFilters.structure && !state.contentFilters.textes) {
+            return state.postPhotosOnlyMode;  // DT contrôle en mode photos seulement
+          }
+          // Cas normal → AP contrôle
           return state.contentFilters.images;
 
         case 'day_photos':
