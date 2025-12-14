@@ -141,8 +141,6 @@ export default function App() {
    * Utilisé par les liens dans les messages
    */
   const handleNavigateToContentFromChat = useCallback((linkedContent) => {
-    console.log('🧭 Navigation Chat → Memories/Photo:', linkedContent);
-    
     // Sauvegarder position scroll Chat
     if (window.saveChatScrollPosition) {
       window.saveChatScrollPosition();
@@ -163,14 +161,8 @@ export default function App() {
    * Changement de page via BottomNavigation
    */
   const handlePageChange = useCallback((newPage) => {
-    console.log('📄 Changement page:', app.currentPage, '→', newPage);
-    console.log('🔍 navigationContext LOCAL:', navigationContext);
-    console.log('🔍 app.navigationContext:', app.navigationContext);
-    console.log('🔍 app.navigationContext.returnContext:', app.navigationContext?.returnContext);
-
     // Désactiver mode sélection si actif
     if (selectionMode.active) {
-      console.log('❌ Annulation mode sélection lors navigation manuelle');
       setSelectionMode({
         active: false,
         type: null,
@@ -180,20 +172,17 @@ export default function App() {
 
     // ⭐ v2.9 : Désactiver mode édition si actif
     if (editionMode.active) {
-      console.log('❌ Annulation mode édition lors navigation');
       setEditionMode({ active: false });
     }
 
     // ⭐ v2.9s : Si retour avec returnContext, ne pas écraser le navigationContext
     if (app.navigationContext?.returnContext) {
-      console.log('🔄 Retour avec returnContext détecté, préservation du contexte');
       app.updateCurrentPage(newPage);
       return;
     }
 
     // Navigation spéciale Chat → Memories (transmettre momentId)
     if (newPage === 'memories' && app.currentPage === 'chat' && app.currentChatSession?.gameId) {
-      console.log('🎯 Navigation Chat → Memories détectée, momentId:', app.currentChatSession.gameId);
 
       setNavigationContext({
         previousPage: 'chat',
@@ -217,8 +206,6 @@ export default function App() {
    * Navigation avec contexte (générique)
    */
   const handleNavigateWithContext = useCallback((targetPage, context = {}) => {
-    console.log('🧭 Navigation avec contexte:', targetPage, context);
-
     setNavigationContext({
       previousPage: app.currentPage,
       pendingAttachment: context.attachment || null,
@@ -234,9 +221,7 @@ export default function App() {
    */
   const handleNavigateBack = useCallback(() => {
     const previousPage = navigationContext.previousPage || 'sessions';
-    console.log('← Retour vers:', previousPage);
-    console.log('🔍 STACK TRACE:', new Error().stack);
-    
+
     setNavigationContext({
       previousPage: null,
       pendingAttachment: null,
@@ -252,8 +237,6 @@ export default function App() {
    * Utilisé par SessionListModal et SessionInfoPanel
    */
   const handleOpenSessionFromMemories = useCallback((session) => {
-    console.log('💬 Ouverture session depuis Memories:', session.id);
-    
     // Sauvegarder contexte pour retour
     setNavigationContext(prev => ({
       ...prev,
@@ -270,14 +253,10 @@ export default function App() {
    * Démarrer mode sélection (bouton 🔗 dans ChatPage)
    */
   const handleStartSelectionMode = useCallback((type, callback) => {
-    console.log('🔗 Démarrage mode sélection:', type);
-    
     // Récupérer gameId si vient d'une session
-    const gameId = (app.currentPage === 'chat' && app.currentChatSession?.gameId) 
-      ? app.currentChatSession.gameId 
+    const gameId = (app.currentPage === 'chat' && app.currentChatSession?.gameId)
+      ? app.currentChatSession.gameId
       : null;
-    
-    console.log('🎯 Auto-open moment:', gameId);
     
     setSelectionMode({
       active: true,
@@ -299,8 +278,6 @@ export default function App() {
    * Annuler mode sélection (bouton ❌ TopBar)
    */
   const handleCancelSelectionMode = useCallback(() => {
-    console.log('✖️ Annulation mode sélection');
-
     const previousPage = navigationContext.previousPage || 'chat';
 
     setSelectionMode({
@@ -323,15 +300,10 @@ export default function App() {
    * ⭐ v2.9 : Activer/désactiver mode édition
    */
   const handleToggleEditionMode = useCallback(() => {
-    setEditionMode(prev => {
-      const newState = !prev.active;
-      console.log(newState ? '📝 Activation mode édition' : '✖️ Désactivation mode édition');
-      return { active: newState };
-    });
+    setEditionMode(prev => ({ active: !prev.active }));
   }, []);
 
   const handleCancelEditionMode = useCallback(() => {
-    console.log('✖️ Annulation mode édition');
     setEditionMode({ active: false });
   }, []);
 
@@ -346,8 +318,6 @@ export default function App() {
    * Validation sélection contenu
    */
   const handleContentSelected = useCallback((contentData) => {
-    console.log('✅ Contenu sélectionné:', contentData);
-    
     const previousPage = navigationContext.previousPage || 'chat';
     
     setSelectionMode({
@@ -373,8 +343,6 @@ export default function App() {
    * Attacher contenu au chat (photo/moment)
    */
   const handleAttachToChat = useCallback((attachment) => {
-    console.log('📎 Attachement vers chat:', attachment);
-    
     setNavigationContext(prev => ({
       ...prev,
       pendingAttachment: attachment,
@@ -388,7 +356,6 @@ export default function App() {
    * Nettoyer attachement après utilisation
    */
   const handleClearAttachment = useCallback(() => {
-    console.log('🧹 Clear attachment et pendingLink');
     setNavigationContext(prev => ({
       ...prev,
       pendingAttachment: null,
@@ -402,13 +369,10 @@ export default function App() {
    * Jump vers moment aléatoire
    */
   const handleJumpToRandomMoment = useCallback(() => {
-    console.log('🎲 [App.jsx] handleJumpToRandomMoment appelé');
-    console.log('🎲 [App.jsx] memoriesPageRef.current:', memoriesPageRef.current);
     if (memoriesPageRef.current?.jumpToRandomMoment) {
-      console.log('🎲 [App.jsx] Appel de memoriesPageRef.current.jumpToRandomMoment()');
       memoriesPageRef.current.jumpToRandomMoment();
     } else {
-      console.error('❌ [App.jsx] memoriesPageRef.current.jumpToRandomMoment N\'EXISTE PAS !');
+      console.error('❌ memoriesPageRef.current.jumpToRandomMoment N\'EXISTE PAS !');
     }
   }, []);
 
@@ -429,14 +393,11 @@ export default function App() {
   // ⚠️ IMPORTANT : Ne pas effacer previousPage si navigation intentionnelle
   useEffect(() => {
     if (app.currentChatSession?.id) {
-      console.log('🧹 Changement session détecté');
-      
       // ⭐ PHASE 19D : Préserver previousPage s'il existe (navigation intentionnelle)
       setNavigationContext(prev => {
         const shouldPreservePreviousPage = prev.previousPage != null;
-        
+
         if (shouldPreservePreviousPage) {
-          console.log('✅ Préservation previousPage:', prev.previousPage);
           return {
             ...prev,
             pendingAttachment: null,  // Reset seulement les attachements
@@ -444,9 +405,8 @@ export default function App() {
             // previousPage et sessionMomentId sont préservés
           };
         }
-        
+
         // Si pas de previousPage, reset complet (navigation normale depuis Sessions)
-        console.log('🔄 Reset complet navigationContext');
         return {
           previousPage: null,
           pendingAttachment: null,
