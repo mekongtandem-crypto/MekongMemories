@@ -133,16 +133,7 @@ const MemoriesPageInner = React.forwardRef(({
   // ⭐ v2.19g : Calculer selectedMoments avec computed.isMomentExpanded (global + individuel)
   // IMPORTANT: Utiliser filteredMoments (pas momentsData) pour que les IDs matchent!
   const selectedMoments = useMemo(() => {
-    const result = filteredMoments.filter(m => computed.isMomentExpanded(m.id));
-    console.log('🔍 [MemoriesPage] selectedMoments recalcul:', {
-      globalExpansion: state.globalExpansion.moments,
-      expandedSize: state.expanded.moments.size,
-      filteredCount: filteredMoments.length,
-      selectedCount: result.length,
-      firstMoment: filteredMoments[0]?.id,
-      isFirstExpanded: computed.isMomentExpanded(filteredMoments[0]?.id)
-    });
-    return result;
+    return filteredMoments.filter(m => computed.isMomentExpanded(m.id));
   }, [filteredMoments, state.expanded.moments, state.globalExpansion.moments, computed]);
 
   // ⭐ v2.14 : Accès direct aux Sets du Context
@@ -889,20 +880,34 @@ const handleSelectSession = useCallback((session) => {
 
 // ⭐ v2.14 : Handler pour sélectionner un moment (via Context)
 const handleSelectMoment = useCallback((moment, forceOpen = false) => {
-  const isAlreadySelected = state.expanded.moments.has(moment.id);
+  // ⭐ v2.19g : Utiliser computed pour détecter si moment ouvert (global + individuel)
+  const isAlreadyExpanded = computed.isMomentExpanded(moment.id);
 
   // ⭐ v2.16e : Si forceOpen, toujours ouvrir (pour bouton dés)
   if (forceOpen) {
-    // Fermer tous les autres moments
+    // Désactiver global, fermer tous, ouvrir celui-ci
     actions.collapseAll('moments');
-    // Après collapseAll, le moment est fermé → toggle l'ouvre
     actions.toggleExpanded('moments', moment.id);
     return;
   }
 
-  // ⭐ v2.19 : FIX - Si moment déjà ouvert, le fermer sans toucher aux autres
+  // ⭐ v2.19g : Si globalExpansion actif, basculer vers mode individuel
+  if (state.globalExpansion.moments) {
+    // Désactiver déploiement global
+    actions.collapseAll('moments');  // Met globalExpansion.moments = false
+
+    // Ajouter TOUS les moments sauf celui cliqué dans expanded (mode individuel)
+    filteredMoments.forEach(m => {
+      if (m.id !== moment.id) {
+        actions.toggleExpanded('moments', m.id);  // Ouvrir individuellement
+      }
+    });
+    return;
+  }
+
+  // ⭐ v2.19 : Mode individuel - FIX - Si moment déjà ouvert, le fermer sans toucher aux autres
   if (displayMode === 'focus') {
-    if (isAlreadySelected) {
+    if (isAlreadyExpanded) {
       // Moment déjà ouvert → le fermer (peu importe combien d'autres sont ouverts)
       actions.toggleExpanded('moments', moment.id);
     } else {
@@ -914,7 +919,7 @@ const handleSelectMoment = useCallback((moment, forceOpen = false) => {
     // Mode multiple: toggle individuel
     actions.toggleExpanded('moments', moment.id);
   }
-}, [displayMode, state.expanded.moments, actions]);
+}, [displayMode, state.globalExpansion.moments, computed, filteredMoments, actions]);
 
 // ⭐ v2.14 : Handler pour déplier tous les moments (via Context)
 const handleExpandAllMoments = useCallback(() => {
