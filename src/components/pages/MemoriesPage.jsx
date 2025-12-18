@@ -133,7 +133,16 @@ const MemoriesPageInner = React.forwardRef(({
   // ⭐ v2.19g : Calculer selectedMoments avec computed.isMomentExpanded (global + individuel)
   // IMPORTANT: Utiliser filteredMoments (pas momentsData) pour que les IDs matchent!
   const selectedMoments = useMemo(() => {
-    return filteredMoments.filter(m => computed.isMomentExpanded(m.id));
+    const result = filteredMoments.filter(m => computed.isMomentExpanded(m.id));
+    console.log('🔍 [MemoriesPage] selectedMoments recalcul:', {
+      globalExpansion: state.globalExpansion.moments,
+      expandedSize: state.expanded.moments.size,
+      filteredCount: filteredMoments.length,
+      selectedCount: result.length,
+      firstMoment: filteredMoments[0]?.id,
+      isFirstExpanded: computed.isMomentExpanded(filteredMoments[0]?.id)
+    });
+    return result;
   }, [filteredMoments, state.expanded.moments, state.globalExpansion.moments, computed]);
 
   // ⭐ v2.14 : Accès direct aux Sets du Context
