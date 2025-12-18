@@ -60,7 +60,8 @@ export const PostArticle = memo(({
 
   // ⭐ v2.17 : États calculés directement depuis Context (plus d'états locaux !)
   const postKey = generatePostKey(post);
-  const isPostExpanded = computed.isPostExpanded(postKey);
+  const isPostExpanded = computed.isPostExpanded(postKey);  // Contenu visible
+  const isPostSelected = computed.isPostSelected(postKey);  // ⭐ v2.19g : Cadre bleu (sélection)
   const photoGridId = `post_${post.id}`;
   const showThisPostPhotos = computed.isPhotoGridExpanded(photoGridId);
 
@@ -185,8 +186,8 @@ export const PostArticle = memo(({
       {!photosOnlyMode && (
         /* ⭐ v2.19d : Bordure bleue claire si post ouvert */
         <div className={`border-2 rounded-lg overflow-hidden transition-colors ${
-          isPostExpanded
-            ? 'border-blue-300 dark:border-blue-600'  // Post ouvert → bordure bleue claire
+          isPostSelected
+            ? 'border-blue-300 dark:border-blue-600'  // ⭐ v2.19g : Post SÉLECTIONNÉ → bordure bleue claire
             : isPhotoNote
               ? 'border-amber-200 dark:border-amber-700'
               : 'border-gray-200 dark:border-gray-700'

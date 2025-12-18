@@ -73,11 +73,20 @@ export const getInitialState = (momentsData = []) => {
     // ⭐ v2.17c : Mode spécial PhotoDePost (AM=0 ET AT=0)
     postPhotosOnlyMode: false,  // Si true, affiche SEULEMENT les photos de posts (pas les posts eux-mêmes)
 
-    // États expansion
+    // ⭐ v2.19g : NOUVEAU - Déploiement GLOBAL (via boutons DM/DT/DP)
+    // Ne contient QUE l'état des boutons globaux (pas les IDs individuels)
+    globalExpansion: {
+      moments: false,    // DM - Tous moments fermés par défaut
+      posts: true,       // DT - Tous posts dépliés par défaut
+      photoGrids: true   // DP - Toutes grilles dépliées par défaut
+    },
+
+    // ⭐ v2.19g : MODIFIÉ - Sélection INDIVIDUELLE (via clic direct)
+    // Contient SEULEMENT les éléments sélectionnés individuellement (cadre bleu)
     expanded: {
-      moments: new Set(),                    // Moments ouverts (accordion fermé par défaut)
-      posts: new Set(allPostIds),            // TOUS posts dépliés par défaut
-      photoGrids: new Set(allPhotoGridIds)   // TOUTES grilles dépliées par défaut
+      moments: new Set(),      // Moments sélectionnés individuellement
+      posts: new Set(),        // Posts sélectionnés individuellement (VIDÉ par défaut)
+      photoGrids: new Set()    // PhotoGrids sélectionnées individuellement (VIDÉ par défaut)
     },
 
     // ⭐ v2.14i : Counts ET IDs depuis filtrage
@@ -262,16 +271,20 @@ function displayReducer(state, action) {
     }
 
     case ACTIONS.EXPAND_ALL: {
-      const { type, ids } = action.payload; // ids: Array<string>
+      const { type } = action.payload;  // ⭐ v2.19g : Plus besoin de ids
 
-      const newSet = new Set(ids);
-      console.log('🔧 [Context] EXPAND_ALL:', type, 'IDs count:', ids?.length || 0, '→ Set size:', newSet.size);
+      console.log('🔧 [Context] EXPAND_ALL:', type);
 
+      // ⭐ v2.19g : Activer déploiement GLOBAL + Vider sélection INDIVIDUELLE
       return {
         ...state,
+        globalExpansion: {
+          ...state.globalExpansion,
+          [type]: true  // Déployer globalement
+        },
         expanded: {
           ...state.expanded,
-          [type]: newSet
+          [type]: new Set()  // Vider sélection individuelle
         }
       };
     }
@@ -281,11 +294,16 @@ function displayReducer(state, action) {
 
       console.log('🔧 [Context] COLLAPSE_ALL:', type);
 
+      // ⭐ v2.19g : Désactiver déploiement GLOBAL + Vider sélection INDIVIDUELLE
       return {
         ...state,
+        globalExpansion: {
+          ...state.globalExpansion,
+          [type]: false  // Replier globalement
+        },
         expanded: {
           ...state.expanded,
-          [type]: new Set()
+          [type]: new Set()  // Vider sélection individuelle
         }
       };
     }
@@ -522,34 +540,23 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
     isStructureMode: state.contentFilters.structure,
     isFlatMode: !state.contentFilters.structure,
 
-    // États "tous dépliés" (pour boutons TopBar)
-    // ⭐ v2.19e : FIX - Compter seulement les moments visibles + IDs dédupliqués
-    allMomentsExpanded: (allMomentIds) => {
-      if (!allMomentIds || allMomentIds.length === 0) return false;
-      // Compter seulement les moments expanded qui sont aussi dans allMomentIds
-      const visibleExpandedCount = [...state.expanded.moments].filter(id =>
-        allMomentIds.includes(id)
-      ).length;
-      return visibleExpandedCount === allMomentIds.length;
-    },
+    // ⭐ v2.19g : États "tous dépliés" (pour boutons TopBar)
+    // Retournent l'état du déploiement GLOBAL (pas des sélections individuelles)
+    allMomentsExpanded: () => state.globalExpansion.moments,
+    allPostsExpanded: () => state.globalExpansion.posts,
+    allPhotoGridsExpanded: () => state.globalExpansion.photoGrids,
 
-    // ⭐ v2.19f : FIX - Compter seulement les posts visibles (comme moments)
-    allPostsExpanded: (allPostIds) => {
-      if (!allPostIds || allPostIds.length === 0) return false;
-      // Compter seulement les posts expanded qui sont aussi dans allPostIds
-      const visibleExpandedCount = [...state.expanded.posts].filter(id =>
-        allPostIds.includes(id)
-      ).length;
-      return visibleExpandedCount === allPostIds.length;
-    },
+    // ⭐ v2.19g : Helpers expansion (contenu visible)
+    // Un élément est DÉPLIÉ si : globalExpansion OU sélection individuelle
+    isMomentExpanded: (id) => state.globalExpansion.moments || state.expanded.moments.has(id),
+    isPostExpanded: (id) => state.globalExpansion.posts || state.expanded.posts.has(id),
+    isPhotoGridExpanded: (id) => state.globalExpansion.photoGrids || state.expanded.photoGrids.has(id),
 
-    allPhotoGridsExpanded: (totalCount) =>
-      state.expanded.photoGrids.size === totalCount && totalCount > 0,
-
-    // Helpers expansion
-    isMomentExpanded: (id) => state.expanded.moments.has(id),
-    isPostExpanded: (id) => state.expanded.posts.has(id),
-    isPhotoGridExpanded: (id) => state.expanded.photoGrids.has(id),
+    // ⭐ v2.19g : NOUVEAU - Helpers sélection (cadre bleu)
+    // Un élément est SÉLECTIONNÉ si : SEULEMENT dans expanded (pas globalExpansion)
+    isMomentSelected: (id) => state.expanded.moments.has(id),
+    isPostSelected: (id) => state.expanded.posts.has(id),
+    isPhotoGridSelected: (id) => state.expanded.photoGrids.has(id),
 
     // Visibilité éléments (selon filtres) - v2.14 nomenclature
     isElementVisible: (elementType) => {
