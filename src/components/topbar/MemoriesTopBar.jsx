@@ -75,11 +75,10 @@ export default function MemoriesTopBar({
     // actions.setMomentFilter(filter);
   };
 
-  // ⭐ v2.19f : FIX - Passer arrays d'IDs pour synchronisation correcte
-  const momentsAllExpanded = computed.allMomentsExpanded(allMomentIds || []);
-  const postsAllExpanded = computed.allPostsExpanded(allPostIds || []);  // ⭐ v2.19f : FIX DT sync
-  // ✅ FIX: Utiliser allPhotoGridIds.length au lieu de momentsWithPhotosCount
-  const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds?.length || 0);
+  // ⭐ v2.19g : FIX - Utiliser globalExpansion (pas de paramètres)
+  const momentsAllExpanded = computed.allMomentsExpanded();
+  const postsAllExpanded = computed.allPostsExpanded();
+  const photosAllExpanded = computed.allPhotoGridsExpanded();
 
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-150">
@@ -183,11 +182,11 @@ export default function MemoriesTopBar({
             {/* ⭐ v2.14 : Bouton Dépliement - Collé + même couleur */}
             <button
               onClick={() => {
-                const momentIds = state.counts.allMomentIds;
+                // ⭐ v2.19g : Plus besoin de passer IDs
                 if (momentsAllExpanded) {
                   actions.collapseAll('moments');
                 } else {
-                  actions.expandAll('moments', momentIds);
+                  actions.expandAll('moments');
                 }
               }}
               disabled={!state.contentFilters.structure}
@@ -216,10 +215,9 @@ export default function MemoriesTopBar({
                 const wasOff = !state.contentFilters.textes;
                 actions.toggleContentFilter('textes');
 
-                // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
+                // ⭐ v2.19g : Si passage OFF → ON, activer aussi le dépliement global
                 if (wasOff) {
-                  const postIds = state.counts.allPostIds;
-                  actions.expandAll('posts', postIds);
+                  actions.expandAll('posts');
                 }
 
                 // ⭐ v2.17c : CASCADE - Si passage ON → OFF, replier tous les posts (DT→0)
@@ -255,12 +253,11 @@ export default function MemoriesTopBar({
                   actions.toggleContentFilter('textes');
                 }
 
-                // Toggle déploiement posts
+                // ⭐ v2.19g : Toggle déploiement global posts
                 if (postsAllExpanded) {
                   actions.collapseAll('posts');
                 } else {
-                  const postIds = state.counts.allPostIds;
-                  actions.expandAll('posts', postIds);
+                  actions.expandAll('posts');
                 }
               }}
               className={`p-0.5 rounded-b transition-colors duration-150 ${
@@ -291,10 +288,9 @@ export default function MemoriesTopBar({
                 const wasOff = !state.contentFilters.images;
                 actions.toggleContentFilter('images');
 
-                // ⭐ v2.14 : Si passage OFF → ON, activer aussi le dépliement
+                // ⭐ v2.19g : Si passage OFF → ON, activer aussi le dépliement global
                 if (wasOff) {
-                  const photoGridIds = state.counts.allPhotoGridIds;
-                  actions.expandAll('photoGrids', photoGridIds);
+                  actions.expandAll('photoGrids');
                 }
 
                 // ⭐ v2.15e : Si passage ON → OFF, replier toutes les grilles (DP→0)
@@ -320,11 +316,11 @@ export default function MemoriesTopBar({
                   actions.toggleContentFilter('images');
                 }
 
+                // ⭐ v2.19g : Toggle déploiement global photoGrids
                 if (photosAllExpanded) {
                   actions.collapseAll('photoGrids');
                 } else {
-                  const photoGridIds = state.counts.allPhotoGridIds;
-                  actions.expandAll('photoGrids', photoGridIds);
+                  actions.expandAll('photoGrids');
                 }
               }}
               className={`p-0.5 rounded-b transition-colors duration-150 ${
