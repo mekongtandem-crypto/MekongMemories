@@ -10,7 +10,8 @@ import MomentCard from '../moment/MomentCard.jsx';
 
 export const MomentsList = memo(({
   moments,
-  selectedMoments,
+  selectedMoments,       // ⭐ v2.19g : Sélection individuelle (cadre bleu)
+  expandedMoments,       // ⭐ v2.19g : Contenu visible (global + individuel)
   displayOptions,
   momentFilter,
   sessions,
@@ -47,7 +48,8 @@ export const MomentsList = memo(({
           <MomentCard
             key={moment.id}
             moment={moment}
-            isSelected={selectedMoments.some(m => m.id === moment.id)}
+            isSelected={selectedMoments.some(m => m.id === moment.id)}  // ⭐ v2.19g : Cadre bleu
+            isExpanded={expandedMoments.some(m => m.id === moment.id)}  // ⭐ v2.19g : Contenu visible
             isExplored={isExplored}
             matchesFilter={matchesFilter}
             displayOptions={displayOptions}
