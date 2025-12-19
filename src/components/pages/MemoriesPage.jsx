@@ -886,11 +886,8 @@ const handleSelectSession = useCallback((session) => {
   }
 }, [app, onOpenSessionFromMemories, closeSessionListModal]);
 
-// ⭐ v2.14 : Handler pour sélectionner un moment (via Context)
+// ⭐ v2.19g : Handler pour sélectionner un moment (via Context)
 const handleSelectMoment = useCallback((moment, forceOpen = false) => {
-  // ⭐ v2.19g : Utiliser computed pour détecter si moment ouvert (global + individuel)
-  const isAlreadyExpanded = computed.isMomentExpanded(moment.id);
-
   // ⭐ v2.16e : Si forceOpen, toujours ouvrir (pour bouton dés)
   if (forceOpen) {
     // Désactiver global, fermer tous, ouvrir celui-ci
@@ -899,35 +896,20 @@ const handleSelectMoment = useCallback((moment, forceOpen = false) => {
     return;
   }
 
-  // ⭐ v2.19g : Si globalExpansion actif, basculer vers mode individuel
-  if (state.globalExpansion.moments) {
-    // Désactiver déploiement global
-    actions.collapseAll('moments');  // Met globalExpansion.moments = false
-
-    // Ajouter TOUS les moments sauf celui cliqué dans expanded (mode individuel)
-    filteredMoments.forEach(m => {
-      if (m.id !== moment.id) {
-        actions.toggleExpanded('moments', m.id);  // Ouvrir individuellement
-      }
-    });
-    return;
-  }
-
-  // ⭐ v2.19 : Mode individuel - FIX - Si moment déjà ouvert, le fermer sans toucher aux autres
-  if (displayMode === 'focus') {
-    if (isAlreadyExpanded) {
-      // Moment déjà ouvert → le fermer (peu importe combien d'autres sont ouverts)
-      actions.toggleExpanded('moments', moment.id);
-    } else {
-      // Moment fermé → fermer tous les autres et ouvrir celui-ci
+  // ⭐ v2.19g : Logique simplifiée - toggleExpanded gère tout automatiquement
+  // - En mode global: Toggle crée/retire une exception
+  // - En mode individuel: Toggle ouvre/ferme en mode focus
+  if (displayMode === 'focus' && !state.globalExpansion.moments) {
+    // Mode focus + individuel: Fermer tous les autres avant d'ouvrir
+    const isAlreadyExpanded = computed.isMomentExpanded(moment.id);
+    if (!isAlreadyExpanded) {
       actions.collapseAll('moments');
-      actions.toggleExpanded('moments', moment.id);
     }
-  } else {
-    // Mode multiple: toggle individuel
-    actions.toggleExpanded('moments', moment.id);
   }
-}, [displayMode, state.globalExpansion.moments, computed, filteredMoments, actions]);
+
+  // Toggle (ouvre/ferme ou crée/retire exception selon le mode)
+  actions.toggleExpanded('moments', moment.id);
+}, [displayMode, state.globalExpansion.moments, computed, actions]);
 
 // ⭐ v2.14 : Handler pour déplier tous les moments (via Context)
 const handleExpandAllMoments = useCallback(() => {
