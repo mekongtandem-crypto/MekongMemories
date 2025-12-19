@@ -81,12 +81,21 @@ export const getInitialState = (momentsData = []) => {
       photoGrids: true   // DP - Toutes grilles dépliées par défaut
     },
 
-    // ⭐ v2.19g : MODIFIÉ - Sélection INDIVIDUELLE (via clic direct)
-    // Contient SEULEMENT les éléments sélectionnés individuellement (cadre bleu)
+    // ⭐ v2.19g : MODIFIÉ - États d'ouverture
+    // EN MODE INDIVIDUEL (global=false): Contient les moments/posts/grilles ouverts
+    // EN MODE GLOBAL (global=true): Contient les EXCEPTIONS (fermées malgré global)
     expanded: {
-      moments: new Set(),      // Moments sélectionnés individuellement
+      moments: new Set(),      // Mode individuel: ouverts | Mode global: exceptions fermées
       posts: new Set(),        // Posts sélectionnés individuellement (VIDÉ par défaut)
       photoGrids: new Set()    // PhotoGrids sélectionnées individuellement (VIDÉ par défaut)
+    },
+
+    // ⭐ v2.19g : NOUVEAU - Sélection visuelle (cadre bleu)
+    // Contient l'ID du dernier élément cliqué (un seul à la fois)
+    selected: {
+      moment: null,      // ID du moment sélectionné (cadre bleu)
+      post: null,        // ID du post sélectionné (cadre bleu)
+      photoGrid: null    // ID de la photoGrid sélectionnée (cadre bleu)
     },
 
     // ⭐ v2.14i : Counts ET IDs depuis filtrage
@@ -236,21 +245,30 @@ function displayReducer(state, action) {
       const { type, id } = action.payload; // type: 'moments' | 'posts' | 'photoGrids'
 
       const newSet = new Set(state.expanded[type]);
+      const newSelected = { ...state.selected };
 
+      // ⭐ v2.19g : Mettre à jour la sélection (cadre bleu)
+      if (type === 'moments') {
+        newSelected.moment = id;  // Toujours sélectionner le moment cliqué
+      } else if (type === 'posts') {
+        newSelected.post = id;
+      } else if (type === 'photoGrids') {
+        newSelected.photoGrid = id;
+      }
+
+      // ⭐ v2.19g : Toggle dans expanded (ouverture/exception)
       if (newSet.has(id)) {
         newSet.delete(id);
 
         // ⭐ Si c'est un moment qui se ferme, replier ses enfants (Q3: Reset volets)
         if (type === 'moments') {
-          // On retournera un état avec posts/photoGrids filtrés
-          // (voir RESET_MOMENT_CHILDREN pour la logique complète)
           return {
             ...state,
             expanded: {
               ...state.expanded,
               moments: newSet
-              // Posts et photoGrids seront nettoyés par RESET_MOMENT_CHILDREN
-            }
+            },
+            selected: newSelected
           };
         }
       } else {
@@ -266,7 +284,8 @@ function displayReducer(state, action) {
         expanded: {
           ...state.expanded,
           [type]: newSet
-        }
+        },
+        selected: newSelected
       };
     }
 
@@ -547,16 +566,25 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
     allPhotoGridsExpanded: () => state.globalExpansion.photoGrids,
 
     // ⭐ v2.19g : Helpers expansion (contenu visible)
-    // Un élément est DÉPLIÉ si : globalExpansion OU sélection individuelle
-    isMomentExpanded: (id) => state.globalExpansion.moments || state.expanded.moments.has(id),
+    // MODE GLOBAL: Ouvert SAUF si exception (dans expanded)
+    // MODE INDIVIDUEL: Ouvert SI dans expanded
+    isMomentExpanded: (id) => {
+      if (state.globalExpansion.moments) {
+        // Mode global : Tous ouverts SAUF exceptions
+        return !state.expanded.moments.has(id);
+      } else {
+        // Mode individuel : Ouverts SI dans set
+        return state.expanded.moments.has(id);
+      }
+    },
     isPostExpanded: (id) => state.globalExpansion.posts || state.expanded.posts.has(id),
     isPhotoGridExpanded: (id) => state.globalExpansion.photoGrids || state.expanded.photoGrids.has(id),
 
     // ⭐ v2.19g : NOUVEAU - Helpers sélection (cadre bleu)
-    // Un élément est SÉLECTIONNÉ si : SEULEMENT dans expanded (pas globalExpansion)
-    isMomentSelected: (id) => state.expanded.moments.has(id),
-    isPostSelected: (id) => state.expanded.posts.has(id),
-    isPhotoGridSelected: (id) => state.expanded.photoGrids.has(id),
+    // Retourne true si l'élément est le dernier cliqué (sélection visuelle)
+    isMomentSelected: (id) => state.selected.moment === id,
+    isPostSelected: (id) => state.selected.post === id,
+    isPhotoGridSelected: (id) => state.selected.photoGrid === id,
 
     // Visibilité éléments (selon filtres) - v2.14 nomenclature
     isElementVisible: (elementType) => {
