@@ -16,7 +16,8 @@ import { generatePostKey } from '../../../utils/themeUtils.js';  // ⭐ v2.17
 
 export const MomentCard = memo(forwardRef(({
   moment,
-  isSelected,
+  isSelected,     // ⭐ v2.19g : Sélection individuelle (cadre bleu)
+  isExpanded,     // ⭐ v2.19g : Contenu visible (global + individuel)
   isExplored,
   matchesFilter,
   displayOptions,
@@ -147,7 +148,8 @@ export const MomentCard = memo(forwardRef(({
         />
       </div>
       
-      {isSelected && (
+      {/* ⭐ v2.19g : Utiliser isExpanded (pas isSelected) pour afficher contenu */}
+      {isExpanded && (
         <MomentContent
           moment={moment}
           displayOptions={displayOptions}

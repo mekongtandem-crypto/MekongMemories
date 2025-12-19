@@ -130,11 +130,19 @@ const MemoriesPageInner = React.forwardRef(({
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
-  // ⭐ v2.19g : Calculer selectedMoments avec computed.isMomentExpanded (global + individuel)
-  // IMPORTANT: Utiliser filteredMoments (pas momentsData) pour que les IDs matchent!
-  const selectedMoments = useMemo(() => {
+  // ⭐ v2.19g : SÉPARATION déployé vs sélectionné
+
+  // 1. expandedMoments : Contenu VISIBLE (global OU individuel)
+  // Utilisé pour afficher <MomentContent />
+  const expandedMoments = useMemo(() => {
     return filteredMoments.filter(m => computed.isMomentExpanded(m.id));
   }, [filteredMoments, state.expanded.moments, state.globalExpansion.moments, computed]);
+
+  // 2. selectedMoments : Sélection INDIVIDUELLE uniquement
+  // Utilisé pour cadre bleu (pas de cadre si juste globalExpansion actif)
+  const selectedMoments = useMemo(() => {
+    return filteredMoments.filter(m => state.expanded.moments.has(m.id));
+  }, [filteredMoments, state.expanded.moments]);
 
   // ⭐ v2.14 : Accès direct aux Sets du Context
   const expandedPosts = state.expanded.posts;
@@ -1825,7 +1833,8 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
                 /* Mode structuré : Afficher les moments avec leurs en-têtes */
                 <MomentsList
                   moments={filteredMoments}
-                  selectedMoments={selectedMoments}
+                  selectedMoments={selectedMoments}     // ⭐ v2.19g : Cadre bleu
+                  expandedMoments={expandedMoments}     // ⭐ v2.19g : Contenu visible
                   displayOptions={displayOptions}
                   momentFilter={momentFilter}
                   sessions={app.sessions}
