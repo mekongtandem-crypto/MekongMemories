@@ -37,7 +37,7 @@ export const PhotoGridHeader = memo(({
       >
         <div className="flex items-center space-x-2">
           <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
-            {moment.dayPhotoCount} Photo{moment.dayPhotoCount > 1 ? 's' : ''} de "{moment.displayTitle}"
+            📸{moment.dayPhotoCount} {moment.displayTitle}
           </h4>
         </div>
 

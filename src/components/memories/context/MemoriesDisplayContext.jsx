@@ -577,8 +577,25 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
         return state.expanded.moments.has(id);
       }
     },
-    isPostExpanded: (id) => state.globalExpansion.posts || state.expanded.posts.has(id),
-    isPhotoGridExpanded: (id) => state.globalExpansion.photoGrids || state.expanded.photoGrids.has(id),
+    // ⭐ v2.21b3 : FIX - Même logique que moments (permet repli individuel en mode global)
+    isPostExpanded: (id) => {
+      if (state.globalExpansion.posts) {
+        // Mode global (DT=1) : Tous ouverts SAUF exceptions
+        return !state.expanded.posts.has(id);
+      } else {
+        // Mode individuel (DT=0) : Ouverts SI dans set
+        return state.expanded.posts.has(id);
+      }
+    },
+    isPhotoGridExpanded: (id) => {
+      if (state.globalExpansion.photoGrids) {
+        // Mode global (DP=1) : Tous ouverts SAUF exceptions
+        return !state.expanded.photoGrids.has(id);
+      } else {
+        // Mode individuel (DP=0) : Ouverts SI dans set
+        return state.expanded.photoGrids.has(id);
+      }
+    },
 
     // ⭐ v2.19g : NOUVEAU - Helpers sélection (cadre bleu)
     // Retourne true si l'élément est le dernier cliqué (sélection visuelle)
