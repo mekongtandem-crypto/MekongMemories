@@ -925,10 +925,15 @@ class DataManager {
   }
 
   /**
-   * Ajouter une photo importée au MasterIndex (v3.0e)
+   * Ajouter une photo importée au MasterIndex (v2.22 - Workflow 3 étapes)
    * @param {Object} photoData - Métadonnées photo (google_drive_id, filename, etc.)
-   * @param {Object} conversionData - { momentId, newMoment: { title, date, jnnn }, noteTitle, noteContent }
-   * @returns {Promise<Object>} { success, momentId, photoAdded }
+   * @param {Object} conversionData - { momentId, newMoment: { title, date, jnnn }, postId, noteTitle, noteContent }
+   *   - momentId: ID moment existant (ou null si newMoment)
+   *   - newMoment: Nouveau moment à créer { title, date, jnnn }
+   *   - postId: ID post existant où ajouter la photo (ou null pour créer nouvelle note)
+   *   - noteTitle: Titre de la note (si création nouvelle note ou update)
+   *   - noteContent: Contenu de la note (si création nouvelle note ou update)
+   * @returns {Promise<Object>} { success, momentId, photoAdded, contentId, contentType }
    */
   addImportedPhotoToMasterIndex = async (photoData, conversionData) => {
     try {
@@ -992,15 +997,41 @@ class DataManager {
         mime_type: photoData.type || 'image/jpeg'
       };
 
-      // 4. Déterminer si c'est une Note de photo (texte présent)
-      const isPhotoNote = conversionData.noteTitle || conversionData.noteContent;
-
+      // ⭐ v2.22 : Workflow 3 étapes - Gérer postId (ajout à post existant ou création nouvelle note)
       // ⭐ v2.8e : Garder contentId et contentType pour ContentLinks
       let contentId;
       let contentType;
 
-      // 4a. Si texte → créer un post avec photo (Note de photo)
-      if (isPhotoNote) {
+      // 4a. Si postId fourni → Ajouter photo à un post existant
+      if (conversionData.postId) {
+        const existingPost = targetMoment.posts?.find(p => p.id === conversionData.postId);
+
+        if (!existingPost) {
+          throw new Error(`Post ${conversionData.postId} introuvable dans le moment`);
+        }
+
+        // Ajouter la photo au post existant
+        if (!existingPost.photos) {
+          existingPost.photos = [];
+        }
+        existingPost.photos.push(photoForMasterIndex);
+
+        // ⭐ v2.22 : Mettre à jour titre/contenu si fournis
+        if (conversionData.noteTitle) {
+          existingPost.title = conversionData.noteTitle;
+        }
+        if (conversionData.noteContent) {
+          existingPost.content = conversionData.noteContent;
+        }
+
+        // ⭐ v2.8e : Pour ContentLinks
+        contentId = existingPost.id;
+        contentType = 'post';
+
+        logger.info(`✅ Photo ajoutée au post existant: ${existingPost.id}`);
+      }
+      // 4b. Si texte présent SANS postId → Créer nouvelle note de photo
+      else if (conversionData.noteTitle || conversionData.noteContent) {
         const newPost = {
           id: `post_imported_${Date.now()}`,
           type: 'post',
@@ -1025,7 +1056,7 @@ class DataManager {
 
         logger.info(`✅ Note de photo créée: ${newPost.id} (titre: "${conversionData.noteTitle || 'sans titre'}")`);
       }
-      // 4b. Sinon → ajouter photo standalone dans dayPhotos
+      // 4c. Sinon → ajouter photo standalone dans dayPhotos
       else {
         if (!targetMoment.dayPhotos) {
           targetMoment.dayPhotos = [];
