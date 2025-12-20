@@ -272,10 +272,9 @@ function displayReducer(state, action) {
           };
         }
       } else {
-        // ⭐ v2.19f : Sélection unique - Fermer tous les autres posts avant d'ouvrir
-        if (type === 'posts') {
-          newSet.clear();  // Un seul post ouvert à la fois
-        }
+        // ⭐ v2.21b4 : SUPPRIMÉ clear() - Permet plusieurs volets fermés simultanément
+        // En mode global, on peut fermer plusieurs posts/photoGrids individuellement
+        // Ils restent fermés (exceptions) jusqu'à ce qu'on les rouvre individuellement
         newSet.add(id);
       }
 

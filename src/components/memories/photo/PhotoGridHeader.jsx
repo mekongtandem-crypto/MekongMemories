@@ -1,13 +1,14 @@
 /**
- * PhotoGridHeader.jsx v2.19d - Couleur vert (comme bouton AP)
+ * PhotoGridHeader.jsx v2.21b4 - Chevron à gauche + Badge pastille
  * En-tête pour la section "Photos du moment"
  *
+ * ⭐ v2.21b4 : Chevron à l'extrême gauche (comme posts)
+ * ⭐ v2.21b4 : Badge pastille discret (📸25 en gris)
  * ⭐ v2.19d : Fond vert (comme bouton Images TopBar)
- * ⭐ v2.19 : Icône tag à droite
  *
  * Fonctionnalités :
  * - Toggle affichage photos
- * - Compteur photos
+ * - Compteur photos en pastille
  * - Bouton sélection bulk (tagging)
  * - Bouton lier (si mode sélection global)
  */
@@ -35,14 +36,26 @@ export const PhotoGridHeader = memo(({
         onClick={onToggle}
         className="w-full flex items-center justify-between p-2 hover:bg-green-100 dark:hover:bg-green-800/40 rounded-lg transition-colors group"
       >
-        <div className="flex items-center space-x-2">
-          <h4 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
-            📸{moment.dayPhotoCount} {moment.displayTitle}
+        {/* Gauche : Chevron + Badge pastille + Titre */}
+        <div className="flex items-center gap-x-2 flex-1 min-w-0">
+          {/* ⭐ v2.21b4 : Chevron à l'extrême gauche (comme posts) */}
+          <ChevronDown className={`w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0 transition-transform ${
+            isOpen ? 'rotate-180' : ''
+          }`} />
+
+          {/* ⭐ v2.21b4 : Badge pastille discret */}
+          <span className="px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded flex-shrink-0">
+            📸{moment.dayPhotoCount}
+          </span>
+
+          {/* Titre */}
+          <h4 className="font-medium text-gray-800 dark:text-gray-200 text-sm truncate flex-1">
+            {moment.displayTitle}
           </h4>
         </div>
 
         {/* Boutons à droite */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
           {/* Bouton lier (si mode sélection global) */}
           {selectionMode?.active && (
             <button
@@ -61,12 +74,7 @@ export const PhotoGridHeader = memo(({
             </button>
           )}
 
-          {/* ChevronDown */}
-          <ChevronDown className={`w-4 h-4 text-gray-600 dark:text-gray-400 transition-transform ${
-            isOpen ? 'rotate-180' : ''
-          }`} />
-
-          {/* ⭐ v2.19 : Bouton tag déplacé à droite (après chevron) */}
+          {/* ⭐ v2.19 : Bouton tag */}
           <button
             onClick={(e) => {
               e.stopPropagation();
