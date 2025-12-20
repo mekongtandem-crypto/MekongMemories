@@ -1155,6 +1155,8 @@ const navigationProcessedRef = useRef(null);
     // Lire les filtres actifs depuis le Context
     const { structure: AM, textes: AT, images: AP } = state.contentFilters;
 
+    console.log('🎲 [Random] Filtres actifs:', { AM, AT, AP });
+
     // Compter combien de filtres sont actifs
     const activeFilters = [AM, AT, AP].filter(Boolean).length;
 
@@ -1184,6 +1186,8 @@ const navigationProcessedRef = useRef(null);
         targetType = options[Math.floor(Math.random() * options.length)];
       }
     }
+
+    console.log('🎲 [Random] Type choisi:', targetType);
 
     // ⭐ Sélectionner et ouvrir élément selon type
     if (targetType === 'moment' && filteredMoments.length > 0) {
@@ -1273,6 +1277,7 @@ const navigationProcessedRef = useRef(null);
         }
       } else {
         // ⭐ v2.20 : Mode vrac - Collecter TOUTES les PhotoGrids visibles
+        console.log('🎲 [Random] Mode vrac - Collecte PhotoGrids...');
         const allPhotoGrids = [];
 
         filteredMoments.forEach(moment => {
@@ -1300,21 +1305,32 @@ const navigationProcessedRef = useRef(null);
           }
         });
 
+        console.log('🎲 [Random] PhotoGrids collectées:', allPhotoGrids.length, allPhotoGrids.slice(0, 3));
+
         if (allPhotoGrids.length > 0) {
           // Tirer une PhotoGrid aléatoire
           const randomIndex = Math.floor(Math.random() * allPhotoGrids.length);
           const randomGrid = allPhotoGrids[randomIndex];
+
+          console.log('🎲 [Random] PhotoGrid choisie:', randomGrid);
 
           // Sélectionner + ouvrir la PhotoGrid
           actions.toggleExpanded('photoGrids', randomGrid.id);
 
           // Scroll vers la PhotoGrid
           setTimeout(() => {
-            const photoGridElement = document.querySelector(`[data-photo-grid-id="${randomGrid.id}_${randomGrid.type}"]`);
+            const selector = `[data-photo-grid-id="${randomGrid.id}_${randomGrid.type}"]`;
+            console.log('🎲 [Random] Recherche élément:', selector);
+            const photoGridElement = document.querySelector(selector);
+            console.log('🎲 [Random] Élément trouvé:', photoGridElement);
             if (photoGridElement) {
               photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+              console.warn('⚠️ [Random] Élément PhotoGrid non trouvé !');
             }
           }, 200);
+        } else {
+          console.warn('⚠️ [Random] Aucune PhotoGrid trouvée !');
         }
       }
     }
