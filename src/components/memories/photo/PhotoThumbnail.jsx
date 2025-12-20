@@ -1,8 +1,8 @@
 /**
- * PhotoThumbnail.jsx v2.21 - Performance optimizations
+ * PhotoThumbnail.jsx v2.21a - Performance mobile-first
  * Thumbnail photo avec :
- * - Lazy loading optimisé (rootMargin 400px)
- * - Placeholder flou progressif (LQIP)
+ * - Lazy loading adaptatif (200px mobile, 400px desktop)
+ * - Placeholder flou DESKTOP ONLY (pas sur mobile)
  * - Badge sessions
  * - Mode sélection (checkbox)
  * - Mode lien (bouton lier)
@@ -12,6 +12,10 @@
 import React, { useState, useEffect, memo } from 'react';
 import { Camera, AlertCircle, ZoomIn, Link, Trash2 } from 'lucide-react';
 import { SessionBadgePhotoThumb } from '../shared/SessionBadges.jsx';
+
+// ⭐ v2.21a : Limitation chargements simultanés (anti-freeze mobile)
+let loadingCount = 0;
+const MAX_CONCURRENT_LOADS = 15;  // Mobile-safe
 
 export const PhotoThumbnail = memo(({
   photo,
@@ -27,12 +31,17 @@ export const PhotoThumbnail = memo(({
   editionMode
 }) => {
   const [imageUrl, setImageUrl] = useState(null);
-  const [blurPlaceholder, setBlurPlaceholder] = useState(null);  // ⭐ v2.21 : Placeholder flou
-  const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'loaded' | 'error'
+  const [blurPlaceholder, setBlurPlaceholder] = useState(null);
+  const [status, setStatus] = useState('idle');
   const [isInView, setIsInView] = useState(false);
   const imgContainerRef = React.useRef(null);
 
-  // ⭐ v2.21 : Intersection Observer optimisé (rootMargin 400px)
+  // ⭐ v2.21a : Détection device pour paramètres adaptatifs
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const rootMargin = isMobile ? '200px' : '400px';  // Mobile: moins agressif
+  const blurSize = isMobile ? 'w20' : 'w10';        // Mobile: image plus grande
+
+  // ⭐ v2.21a : Intersection Observer adaptatif selon device
   useEffect(() => {
     if (!imgContainerRef.current) return;
 
@@ -46,7 +55,7 @@ export const PhotoThumbnail = memo(({
         });
       },
       {
-        rootMargin: '400px',  // ⭐ v2.21 : 200px → 400px (scroll rapide)
+        rootMargin,  // ⭐ v2.21a : 200px mobile, 400px desktop
         threshold: 0.01
       }
     );
@@ -58,26 +67,33 @@ export const PhotoThumbnail = memo(({
         observer.unobserve(imgContainerRef.current);
       }
     };
-  }, []);
+  }, [rootMargin]);
 
-  // ⭐ v2.21 : Chargement progressif (placeholder flou → full quality)
+  // ⭐ v2.21a : Chargement avec limitation simultanée (anti-freeze)
   useEffect(() => {
     let mounted = true;
 
     const loadImage = async () => {
       if (!photo || !isInView) return;
+
+      // ⭐ v2.21a : Attendre si trop de chargements simultanés
+      while (loadingCount >= MAX_CONCURRENT_LOADS) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      loadingCount++;
       setStatus('loading');
 
       try {
-        // ⭐ v2.21 : Étape 1 - Charger placeholder flou (10x10px)
-        if (photo.google_drive_id) {
-          const tinyUrl = `https://drive.google.com/thumbnail?id=${photo.google_drive_id}&sz=w10`;
+        // ⭐ v2.21a : Placeholder flou DESKTOP ONLY
+        if (photo.google_drive_id && !isMobile) {
+          const tinyUrl = `https://drive.google.com/thumbnail?id=${photo.google_drive_id}&sz=${blurSize}`;
           if (mounted) {
             setBlurPlaceholder(tinyUrl);
           }
         }
 
-        // ⭐ v2.21 : Étape 2 - Charger image full quality
+        // Charger image full quality
         let url;
         if (photo.google_drive_id) {
           if (window.photoDataV2) {
@@ -99,6 +115,8 @@ export const PhotoThumbnail = memo(({
         if (mounted) {
           setStatus('error');
         }
+      } finally {
+        loadingCount--;  // ⭐ v2.21a : Libérer slot
       }
     };
 
@@ -107,7 +125,7 @@ export const PhotoThumbnail = memo(({
     return () => {
       mounted = false;
     };
-  }, [photo, isInView]);
+  }, [photo, isInView, isMobile, blurSize]);
 
   const handleClick = (e) => {
     e.stopPropagation();
