@@ -1150,36 +1150,29 @@ const navigationProcessedRef = useRef(null);
 
   // ⭐ v2.16a : useImperativeHandle avec dépendances pour accès aux valeurs à jour
   useImperativeHandle(ref, () => ({
-  // ⭐ v2.16a : Dés aléatoire intelligent selon filtres actifs (AM/AT/AP)
+  // ⭐ v2.20 : Souvenir aléatoire intelligent selon filtres actifs (AM/AT/AP)
   jumpToRandomMoment: () => {
-    // Lire les filtres actifs depuis le Context
     const { structure: AM, textes: AT, images: AP } = state.contentFilters;
 
-    console.log('🎲 [Random] Filtres actifs:', { AM, AT, AP });
-
-    // Compter combien de filtres sont actifs
+    // Compter filtres actifs
     const activeFilters = [AM, AT, AP].filter(Boolean).length;
-
     if (activeFilters === 0) {
-      console.warn('⚠️ Aucun filtre actif, impossible de choisir un élément aléatoire');
+      console.warn('⚠️ [Random] Aucun filtre actif');
       return;
     }
 
+    // Déterminer type cible selon filtres
     let targetType = null;
-
-    // ⭐ Logique de priorité
     if (activeFilters === 1) {
-      // Un seul filtre actif → utiliser ce type
+      // Un seul filtre → utiliser ce type
       if (AM) targetType = 'moment';
       else if (AT) targetType = 'post';
       else if (AP) targetType = 'photo';
     } else {
-      // Plusieurs filtres actifs
+      // Plusieurs filtres → AM prioritaire, sinon random entre AT/AP
       if (AM) {
-        // AM prioritaire si actif
         targetType = 'moment';
       } else {
-        // Sinon tirer au hasard entre AT et AP actifs
         const options = [];
         if (AT) options.push('post');
         if (AP) options.push('photo');
@@ -1187,114 +1180,100 @@ const navigationProcessedRef = useRef(null);
       }
     }
 
-    console.log('🎲 [Random] Type choisi:', targetType);
-
-    // ⭐ Sélectionner et ouvrir élément selon type
-    if (targetType === 'moment' && filteredMoments.length > 0) {
-      // Ouvrir moment aléatoire
-      const randomIndex = Math.floor(Math.random() * filteredMoments.length);
-      const randomMoment = filteredMoments[randomIndex];
-
-      // ⭐ v2.16t : Délai entre collapseAll et toggleExpanded
+    // Helper: Ouvrir moment et scroller
+    const openMomentAndScroll = (momentId, scrollDelay = 300) => {
       actions.collapseAll('moments');
-
-      // Attendre que collapseAll soit appliqué avant d'ouvrir
       setTimeout(() => {
-        actions.toggleExpanded('moments', randomMoment.id);
-        setCurrentDay(randomMoment.dayStart);
-
-        // Scroller après ouverture
+        actions.toggleExpanded('moments', momentId);
         setTimeout(() => {
-          const momentElement = document.getElementById(randomMoment.id);
-          if (momentElement) {
-            momentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const element = document.getElementById(momentId);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
-        }, 300);
+        }, scrollDelay);
       }, 50);
+    };
 
-    } else if (targetType === 'post') {
-      // Collecter tous les posts visibles
+    // ========================================
+    // RANDOM MOMENT
+    // ========================================
+    if (targetType === 'moment' && filteredMoments.length > 0) {
+      const randomMoment = filteredMoments[Math.floor(Math.random() * filteredMoments.length)];
+      openMomentAndScroll(randomMoment.id);
+      setCurrentDay(randomMoment.dayStart);
+    }
+
+    // ========================================
+    // RANDOM POST
+    // ========================================
+    else if (targetType === 'post') {
       const allPosts = [];
       filteredMoments.forEach(moment => {
-        if (moment.posts && moment.posts.length > 0) {
-          moment.posts.forEach(post => {
-            allPosts.push({ post, moment });
-          });
+        if (moment.posts?.length > 0) {
+          moment.posts.forEach(post => allPosts.push({ post, moment }));
         }
       });
 
       if (allPosts.length > 0) {
-        const randomIndex = Math.floor(Math.random() * allPosts.length);
-        const { post, moment } = allPosts[randomIndex];
+        const { post, moment } = allPosts[Math.floor(Math.random() * allPosts.length)];
 
-        // ⭐ v2.16q : Ouvrir moment directement
         actions.collapseAll('moments');
         actions.toggleExpanded('moments', moment.id);
+        actions.toggleExpanded('posts', generatePostKey(post));
 
-        // Déplier le post
-        const postKey = generatePostKey(post);
-        actions.toggleExpanded('posts', postKey);
-
-        // Scroll vers le post
         setTimeout(() => {
-          const postElement = document.querySelector(`[data-post-id="${post.id}"]`);
-          if (postElement) {
-            postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const element = document.querySelector(`[data-post-id="${post.id}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 200);
       }
+    }
 
-    } else if (targetType === 'photo') {
-      // ⭐ v2.20 : Random PhotoGrid
-      // EN MODE STRUCTURE (AM=1): Random moment avec photos
-      // EN MODE VRAC (AM=0): Random PhotoGrid parmi toutes les grilles visibles
+    // ========================================
+    // RANDOM PHOTOGRID
+    // ========================================
+    else if (targetType === 'photo') {
 
+      // Mode Structure (AM=1): Random moment avec photos
       if (AM) {
-        // ⭐ v2.16s : Mode structure - Tirer moment + ouvrir PhotoGrid
-        const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos && m.dayPhotos.length > 0);
-
+        const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos?.length > 0);
         if (momentsWithPhotos.length > 0) {
-          const randomIndex = Math.floor(Math.random() * momentsWithPhotos.length);
-          const randomMoment = momentsWithPhotos[randomIndex];
+          const randomMoment = momentsWithPhotos[Math.floor(Math.random() * momentsWithPhotos.length)];
 
-          // Ouvrir le moment
           actions.collapseAll('moments');
-          actions.toggleExpanded('moments', randomMoment.id);
-
-          // Déplier PhotoGrid
           setTimeout(() => {
-            actions.toggleExpanded('photoGrids', randomMoment.id);
-
-            // Scroller vers PhotoGrid
-            const gridId = `${randomMoment.id}_day`;
+            actions.toggleExpanded('moments', randomMoment.id);
             setTimeout(() => {
-              const photoGridElement = document.querySelector(`[data-photo-grid-id="${gridId}"]`);
-              if (photoGridElement) {
-                photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }, 200);
-          }, 150);
+              actions.toggleExpanded('photoGrids', randomMoment.id);
+              setTimeout(() => {
+                const element = document.querySelector(`[data-photo-grid-id="${randomMoment.id}_day"]`);
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }, 200);
+            }, 150);
+          }, 50);
         }
-      } else {
-        // ⭐ v2.20g : Mode vrac - Random PhotoGrid avec retry automatique
-        console.log('🎲 [Random] Mode vrac - Collecte PhotoGrids depuis filteredMoments...');
+      }
 
+      // Mode Vrac (AM=0): Random PhotoGrid avec retry automatique
+      else {
         const allPhotoGrids = [];
 
         filteredMoments.forEach(moment => {
-          // Day photos - Format FlatContentList
-          if (moment.dayPhotos && moment.dayPhotos.length > 0) {
+          // Day photos
+          if (moment.dayPhotos?.length > 0) {
             allPhotoGrids.push({
               id: `flat_moment_${moment.id}_day`,
               type: 'day',
               moment
             });
           }
-
           // Post photos
-          if (moment.posts && moment.posts.length > 0) {
+          if (moment.posts?.length > 0) {
             moment.posts.forEach(post => {
-              if (post.photos && post.photos.length > 0) {
+              if (post.photos?.length > 0) {
                 allPhotoGrids.push({
                   id: `post_${post.id}`,
                   type: 'post',
@@ -1306,44 +1285,29 @@ const navigationProcessedRef = useRef(null);
           }
         });
 
-        console.log('🎲 [Random] PhotoGrids disponibles:', allPhotoGrids.length);
-
         if (allPhotoGrids.length > 0) {
-          // ⭐ v2.20g : Fonction récursive avec retry automatique
+          // Retry automatique jusqu'à trouver élément dans DOM
           const tryRandomPhotoGrid = (attempt = 1, maxAttempts = 10) => {
             if (attempt > maxAttempts) {
               console.warn('⚠️ [Random] Abandon après', maxAttempts, 'tentatives');
               return;
             }
 
-            const randomIndex = Math.floor(Math.random() * allPhotoGrids.length);
-            const randomGrid = allPhotoGrids[randomIndex];
-
-            console.log(`🎲 [Random] Tentative ${attempt}/${maxAttempts} - PhotoGrid:`, randomGrid.id);
-
-            // OUVRIR la PhotoGrid choisie
+            const randomGrid = allPhotoGrids[Math.floor(Math.random() * allPhotoGrids.length)];
             actions.toggleExpanded('photoGrids', randomGrid.id);
 
-            // Attendre que le DOM se mette à jour
             setTimeout(() => {
-              const selector = `[data-photo-grid-id="${randomGrid.id}"]`;
-              const photoGridElement = document.querySelector(selector);
-
-              if (photoGridElement) {
-                console.log('🎲 [Random] ✅ Élément trouvé !');
-                photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              const element = document.querySelector(`[data-photo-grid-id="${randomGrid.id}"]`);
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
               } else {
-                console.log(`🎲 [Random] ❌ Élément non trouvé - Retry ${attempt + 1}...`);
-                // ⭐ v2.20g : Retry automatique
+                // Retry avec nouveau PhotoGrid
                 tryRandomPhotoGrid(attempt + 1, maxAttempts);
               }
             }, 300);
           };
 
-          // Lancer le premier essai
           tryRandomPhotoGrid();
-        } else {
-          console.warn('⚠️ [Random] Aucune PhotoGrid disponible !');
         }
       }
     }
