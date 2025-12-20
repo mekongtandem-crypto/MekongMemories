@@ -2,9 +2,8 @@
  * PhotoToMemoryModal.jsx v2.22c - Accordéon strict avec menus déroulants
  * 🎯 Design sobre : un volet ouvert à la fois
  * ✅ Volet 1 (purple) : ✨ Moment associé - menu déroulant + lien création
- * ✅ Volet 2 (bleu) : 📝 Post/note associé - menu déroulant + lien création
- * ✅ Volet 3 (amber) : 📄 Texte du post (uniquement si création nouvelle note)
- * ⭐ v2.22c : Accordéon strict + auto-ouverture volet suivant + checkmarks
+ * ✅ Volet 2/2bis (bleu) : 📝 Post/note - sélection OU création (transformation)
+ * ⭐ v2.22c : Accordéon strict + validation manuelle + responsive mobile
  */
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, ChevronRight, Check } from 'lucide-react';
@@ -19,7 +18,7 @@ export default function PhotoToMemoryModal({
   onConvert
 }) {
   // Volets ouverts/fermés (accordéon strict)
-  const [openPanel, setOpenPanel] = useState(1); // 1, 2, ou 3
+  const [openPanel, setOpenPanel] = useState(1); // 1 ou 2
 
   // Étape 1 : Moment
   const [selectedMomentId, setSelectedMomentId] = useState('');
@@ -27,14 +26,12 @@ export default function PhotoToMemoryModal({
   const [newMomentTitle, setNewMomentTitle] = useState('');
   const [newMomentDate, setNewMomentDate] = useState('');
   const [newMomentJnnn, setNewMomentJnnn] = useState('IMP');
-  const [moment1Validated, setMoment1Validated] = useState(false);
 
   // Étape 2 : Post/Note
   const [selectedPostId, setSelectedPostId] = useState('');
   const [isCreatingNewPost, setIsCreatingNewPost] = useState(false);
-  const [post2Validated, setPost2Validated] = useState(false);
 
-  // Étape 3 : Texte note
+  // Étape 2bis : Texte note (si création)
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
 
@@ -51,25 +48,19 @@ export default function PhotoToMemoryModal({
         defaultDate = fileDate.toISOString().split('T')[0];
       }
 
-      // Mémoriser dernier moment sélectionné
-      const lastMomentId = localStorage.getItem('mekong_lastSelectedMomentId') || '';
-      const momentExists = lastMomentId && moments.some(m => m.id === lastMomentId);
-
-      // Reset all
+      // Reset all - PAS de pré-sélection moment
       setOpenPanel(1);
-      setSelectedMomentId(momentExists ? lastMomentId : '');
+      setSelectedMomentId(''); // Toujours vide au départ
       setIsCreatingNewMoment(false);
       setNewMomentTitle('');
       setNewMomentDate(defaultDate);
       setNewMomentJnnn('IMP');
-      setMoment1Validated(false);
       setSelectedPostId('');
       setIsCreatingNewPost(false);
-      setPost2Validated(false);
       setNoteTitle('');
       setNoteContent('');
     }
-  }, [isOpen, photoData, file, moments]);
+  }, [isOpen, photoData, file]);
 
   if (!isOpen) return null;
 
@@ -85,17 +76,61 @@ export default function PhotoToMemoryModal({
       : '';
 
   const postSummary = isCreatingNewPost
-    ? '(nouvelle note)'
+    ? noteTitle || '(nouvelle note)'
     : selectedPostId
       ? momentPosts.find(p => p.id === selectedPostId)?.title || 'Post sélectionné'
       : '';
+
+  // Vérifier si on peut valider
+  const canValidate = () => {
+    // Moment validé ?
+    const momentOk = selectedMomentId || (isCreatingNewMoment && newMomentTitle.trim() && newMomentDate);
+    if (!momentOk) return false;
+
+    // Si volet 2 pas encore ouvert, on peut valider avec juste le moment
+    if (openPanel === 1) return true;
+
+    // Si volet 2 ouvert, il faut aussi un post
+    const postOk = selectedPostId || isCreatingNewPost;
+    return postOk;
+  };
 
   // Handlers
   const handleCancel = () => {
     onClose();
   };
 
-  const handleConfirm = () => {
+  const handleValidate = () => {
+    // Validation moment
+    if (!selectedMomentId && !isCreatingNewMoment) {
+      alert('Veuillez sélectionner un moment ou créer un nouveau moment');
+      return;
+    }
+
+    if (isCreatingNewMoment) {
+      if (!newMomentTitle.trim()) {
+        alert('Veuillez saisir un titre pour le nouveau moment');
+        return;
+      }
+      if (!newMomentDate) {
+        alert('Veuillez saisir une date pour le nouveau moment');
+        return;
+      }
+    }
+
+    // Si volet 1 ouvert, passer au volet 2
+    if (openPanel === 1) {
+      setOpenPanel(2);
+      return;
+    }
+
+    // Si volet 2 ouvert, valider post/note
+    if (!selectedPostId && !isCreatingNewPost) {
+      alert('Veuillez sélectionner un post/note ou créer une nouvelle note');
+      return;
+    }
+
+    // Confirmer et envoyer
     onConvert({
       momentId: isCreatingNewMoment ? null : selectedMomentId,
       newMoment: isCreatingNewMoment ? {
@@ -110,28 +145,13 @@ export default function PhotoToMemoryModal({
     onClose();
   };
 
-  // Sélection moment dans menu déroulant
-  const handleMomentSelect = (e) => {
-    const momentId = e.target.value;
-    setSelectedMomentId(momentId);
-
-    if (momentId) {
-      // Sauvegarder
-      localStorage.setItem('mekong_lastSelectedMomentId', momentId);
-
-      // Valider et ouvrir volet 2
-      setMoment1Validated(true);
-      setOpenPanel(2);
-    }
-  };
-
   // Toggle création moment
   const handleToggleCreateMoment = () => {
-    setIsCreatingNewMoment(!isCreatingNewMoment);
+    const newValue = !isCreatingNewMoment;
+    setIsCreatingNewMoment(newValue);
     setSelectedMomentId('');
-    setMoment1Validated(false);
 
-    if (!isCreatingNewMoment) {
+    if (newValue) {
       // Réinitialiser formulaire
       setNewMomentTitle('');
       let defaultDate = '';
@@ -147,45 +167,21 @@ export default function PhotoToMemoryModal({
     }
   };
 
-  // Valider création moment
-  const handleValidateNewMoment = () => {
-    if (!newMomentTitle.trim()) {
-      alert('Veuillez saisir un titre pour le nouveau moment');
-      return;
-    }
-    if (!newMomentDate) {
-      alert('Veuillez saisir une date pour le nouveau moment');
-      return;
-    }
-
-    setMoment1Validated(true);
-    setOpenPanel(2);
-  };
-
-  // Sélection post dans menu déroulant
-  const handlePostSelect = (e) => {
-    const postId = e.target.value;
-    setSelectedPostId(postId);
-
-    if (postId) {
-      setPost2Validated(true);
-      // Si post existant → confirmer directement
-      handleConfirm();
-    }
-  };
-
   // Toggle création post
   const handleToggleCreatePost = () => {
-    setIsCreatingNewPost(!isCreatingNewPost);
+    const newValue = !isCreatingNewPost;
+    setIsCreatingNewPost(newValue);
     setSelectedPostId('');
-    setPost2Validated(false);
 
-    if (!isCreatingNewPost) {
-      // Passer à création note → ouvrir volet 3
-      setPost2Validated(true);
-      setOpenPanel(3);
+    if (newValue) {
+      // Reset texte
+      setNoteTitle('');
+      setNoteContent('');
     }
   };
+
+  // Volet 1 validé ?
+  const isPanel1Validated = !!(selectedMomentId || (isCreatingNewMoment && newMomentTitle.trim() && newMomentDate));
 
   return (
     <div
@@ -218,7 +214,7 @@ export default function PhotoToMemoryModal({
 
           {/* ========== VOLET 1 : MOMENT ASSOCIÉ ========== */}
           <div className={`border rounded-lg transition-all ${
-            moment1Validated
+            isPanel1Validated
               ? 'border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10'
               : 'border-purple-200 dark:border-purple-700 bg-purple-50/30 dark:bg-purple-900/10'
           }`}>
@@ -228,17 +224,17 @@ export default function PhotoToMemoryModal({
               className="w-full flex items-center justify-between p-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-lg"
             >
               <div className="flex items-center space-x-2">
-                <span className={`text-lg ${moment1Validated ? 'text-green-600 dark:text-green-400' : 'text-purple-600 dark:text-purple-400'}`}>
+                <span className={`text-lg ${isPanel1Validated ? 'text-green-600 dark:text-green-400' : 'text-purple-600 dark:text-purple-400'}`}>
                   ✨
                 </span>
                 <h4 className={`font-medium ${
-                  moment1Validated
+                  isPanel1Validated
                     ? 'text-green-900 dark:text-green-100'
                     : 'text-purple-900 dark:text-purple-100'
                 }`}>
                   Moment associé
                 </h4>
-                {moment1Validated && momentSummary && (
+                {isPanel1Validated && momentSummary && (
                   <>
                     <span className="text-gray-400">:</span>
                     <span className="text-sm text-gray-600 dark:text-gray-400">{momentSummary}</span>
@@ -311,23 +307,14 @@ export default function PhotoToMemoryModal({
                         />
                       </div>
                     </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        onClick={handleValidateNewMoment}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
-                      >
-                        Valider
-                      </button>
-                    </div>
                   </div>
                 ) : (
                   // Mode sélection
-                  <div className="flex items-center gap-3">
+                  <div className="space-y-2">
                     <select
                       value={selectedMomentId}
-                      onChange={handleMomentSelect}
-                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                      onChange={(e) => setSelectedMomentId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                         bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
                         focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                     >
@@ -341,9 +328,9 @@ export default function PhotoToMemoryModal({
 
                     <button
                       onClick={handleToggleCreateMoment}
-                      className="px-4 py-2 text-sm text-purple-600 dark:text-purple-400 hover:underline whitespace-nowrap"
+                      className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
                     >
-                      Créer un nouveau moment
+                      + Créer un nouveau moment
                     </button>
                   </div>
                 )}
@@ -352,33 +339,22 @@ export default function PhotoToMemoryModal({
           </div>
 
           {/* ========== VOLET 2 : POST/NOTE ASSOCIÉ ========== */}
-          {moment1Validated && (
-            <div className={`border rounded-lg transition-all ${
-              post2Validated
-                ? 'border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10'
-                : 'border-blue-200 dark:border-blue-700 bg-blue-50/30 dark:bg-blue-900/10'
-            }`}>
+          {isPanel1Validated && (
+            <div className="border border-blue-200 dark:border-blue-700 rounded-lg bg-blue-50/30 dark:bg-blue-900/10">
               {/* Header */}
               <button
                 onClick={() => setOpenPanel(openPanel === 2 ? 0 : 2)}
                 className="w-full flex items-center justify-between p-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-lg"
               >
                 <div className="flex items-center space-x-2">
-                  <span className={`text-lg ${post2Validated ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                    📝
-                  </span>
-                  <h4 className={`font-medium ${
-                    post2Validated
-                      ? 'text-green-900 dark:text-green-100'
-                      : 'text-blue-900 dark:text-blue-100'
-                  }`}>
+                  <span className="text-lg text-blue-600 dark:text-blue-400">📝</span>
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100">
                     Post/note associé
                   </h4>
-                  {post2Validated && postSummary && (
+                  {(selectedPostId || isCreatingNewPost) && postSummary && (
                     <>
                       <span className="text-gray-400">:</span>
                       <span className="text-sm text-gray-600 dark:text-gray-400">{postSummary}</span>
-                      <Check className="w-4 h-4 text-green-600 dark:text-green-400 ml-1" />
                     </>
                   )}
                 </div>
@@ -390,100 +366,79 @@ export default function PhotoToMemoryModal({
               {/* Contenu */}
               {openPanel === 2 && (
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={selectedPostId}
-                      onChange={handlePostSelect}
-                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                        bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                        focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      disabled={momentPosts.length === 0}
-                    >
-                      <option value="">
-                        {momentPosts.length > 0 ? 'Sélectionner un post/note...' : 'Aucun post dans ce moment'}
-                      </option>
-                      {momentPosts.map(post => (
-                        <option key={post.id} value={post.id}>
-                          {post.title || 'Post sans titre'} ({post.category === 'user_added' ? 'Note' : 'Post Mastodon'})
+                  {isCreatingNewPost ? (
+                    // Mode création note (volet 2bis)
+                    <div className="space-y-3">
+                      <button
+                        onClick={handleToggleCreatePost}
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        ← Sélectionner un post existant
+                      </button>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Titre du post
+                        </label>
+                        <input
+                          type="text"
+                          value={noteTitle}
+                          onChange={(e) => setNoteTitle(e.target.value)}
+                          placeholder="Ex: Magnifique architecture"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                            focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Contenu du post (max 500 caractères)
+                        </label>
+                        <textarea
+                          value={noteContent}
+                          onChange={(e) => setNoteContent(e.target.value)}
+                          placeholder="Ajoutez une description détaillée..."
+                          rows="4"
+                          maxLength={500}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                            focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                        />
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {noteContent.length}/500 caractères
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    // Mode sélection post
+                    <div className="space-y-2">
+                      <select
+                        value={selectedPostId}
+                        onChange={(e) => setSelectedPostId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                          bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                          focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={momentPosts.length === 0}
+                      >
+                        <option value="">
+                          {momentPosts.length > 0 ? 'Sélectionner un post/note...' : 'Aucun post dans ce moment'}
                         </option>
-                      ))}
-                    </select>
+                        {momentPosts.map(post => (
+                          <option key={post.id} value={post.id}>
+                            {post.title || 'Post sans titre'} ({post.category === 'user_added' ? 'Note' : 'Post Mastodon'})
+                          </option>
+                        ))}
+                      </select>
 
-                    <button
-                      onClick={handleToggleCreatePost}
-                      className="px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
-                    >
-                      Créer une nouvelle note
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ========== VOLET 3 : TEXTE DU POST ========== */}
-          {post2Validated && isCreatingNewPost && (
-            <div className="border border-amber-200 dark:border-amber-700 rounded-lg bg-amber-50/30 dark:bg-amber-900/10">
-              {/* Header */}
-              <button
-                onClick={() => setOpenPanel(openPanel === 3 ? 0 : 3)}
-                className="w-full flex items-center justify-between p-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-lg"
-              >
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg text-amber-600 dark:text-amber-400">📄</span>
-                  <h4 className="font-medium text-amber-900 dark:text-amber-100">
-                    Texte du post
-                  </h4>
-                  {(noteTitle || noteContent) && (
-                    <>
-                      <span className="text-gray-400">:</span>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{noteTitle || 'Texte ajouté'}</span>
-                    </>
+                      <button
+                        onClick={handleToggleCreatePost}
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        + Créer une nouvelle note
+                      </button>
+                    </div>
                   )}
-                </div>
-                <ChevronRight className={`w-5 h-5 text-gray-500 transition-transform ${
-                  openPanel === 3 ? 'rotate-90' : ''
-                }`} />
-              </button>
-
-              {/* Contenu */}
-              {openPanel === 3 && (
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Titre du post
-                      </label>
-                      <input
-                        type="text"
-                        value={noteTitle}
-                        onChange={(e) => setNoteTitle(e.target.value)}
-                        placeholder="Ex: Magnifique architecture"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                          bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                          focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Contenu du post (max 500 caractères)
-                      </label>
-                      <textarea
-                        value={noteContent}
-                        onChange={(e) => setNoteContent(e.target.value)}
-                        placeholder="Ajoutez une description détaillée..."
-                        rows="4"
-                        maxLength={500}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                          bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                          focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
-                      />
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        {noteContent.length}/500 caractères
-                      </p>
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
@@ -491,7 +446,7 @@ export default function PhotoToMemoryModal({
 
         </div>
 
-        {/* Footer */}
+        {/* Footer - Toujours visible */}
         <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800">
           <button
             onClick={handleCancel}
@@ -500,15 +455,17 @@ export default function PhotoToMemoryModal({
             Annuler
           </button>
 
-          {/* Confirmer uniquement si création nouvelle note */}
-          {post2Validated && isCreatingNewPost && (
-            <button
-              onClick={handleConfirm}
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium shadow-md"
-            >
-              Confirmer
-            </button>
-          )}
+          <button
+            onClick={handleValidate}
+            disabled={!canValidate()}
+            className={`px-6 py-2 rounded-lg transition-colors font-medium shadow-md ${
+              canValidate()
+                ? 'bg-green-600 hover:bg-green-700 text-white'
+                : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            {openPanel === 1 ? 'Continuer' : 'Confirmer'}
+          </button>
         </div>
       </div>
     </div>
