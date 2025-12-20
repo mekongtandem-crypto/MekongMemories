@@ -1276,69 +1276,40 @@ const navigationProcessedRef = useRef(null);
           }, 150);
         }
       } else {
-        // ⭐ v2.20 : Mode vrac - Collecter TOUTES les PhotoGrids visibles
-        console.log('🎲 [Random] Mode vrac - Collecte PhotoGrids...');
-        const allPhotoGrids = [];
+        // ⭐ v2.20c : Mode vrac - Collecte PhotoGrids DEPUIS LE DOM
+        console.log('🎲 [Random] Mode vrac - Collecte PhotoGrids depuis DOM...');
 
-        filteredMoments.forEach(moment => {
-          // ⭐ v2.20b : Day photos - Format FlatContentList
-          if (moment.dayPhotos && moment.dayPhotos.length > 0) {
-            allPhotoGrids.push({
-              id: `flat_moment_${moment.id}_day`,  // ⭐ v2.20b : FIX - Format mode vrac
-              type: 'day',
-              moment
-            });
-          }
+        // ⭐ v2.20c : Collecter DIRECTEMENT depuis le DOM (pas depuis filteredMoments)
+        // Problème résolu: filteredMoments contient 342 grids, DOM n'en rend que 123
+        const allPhotoGridsInDom = document.querySelectorAll('[data-photo-grid-id]');
+        const gridIds = Array.from(allPhotoGridsInDom).map(el => el.getAttribute('data-photo-grid-id'));
 
-          // Post photos (PhotoGrids des posts)
-          if (moment.posts && moment.posts.length > 0) {
-            moment.posts.forEach(post => {
-              if (post.photos && post.photos.length > 0) {
-                allPhotoGrids.push({
-                  id: `post_${post.id}`,
-                  type: 'post',
-                  post,
-                  moment
-                });
-              }
-            });
-          }
-        });
+        console.log('🎲 [Random] PhotoGrids trouvées dans le DOM:', gridIds.length);
 
-        console.log('🎲 [Random] PhotoGrids collectées:', allPhotoGrids.length, allPhotoGrids.slice(0, 3));
+        if (gridIds.length > 0) {
+          // Tirer un ID aléatoire parmi ceux RENDUS dans le DOM
+          const randomIndex = Math.floor(Math.random() * gridIds.length);
+          const randomGridId = gridIds[randomIndex];
 
-        if (allPhotoGrids.length > 0) {
-          // Tirer une PhotoGrid aléatoire
-          const randomIndex = Math.floor(Math.random() * allPhotoGrids.length);
-          const randomGrid = allPhotoGrids[randomIndex];
-
-          console.log('🎲 [Random] PhotoGrid choisie:', randomGrid);
+          console.log('🎲 [Random] PhotoGrid choisie:', randomGridId);
 
           // Sélectionner + ouvrir la PhotoGrid
-          actions.toggleExpanded('photoGrids', randomGrid.id);
-          console.log('🎲 [Random] toggleExpanded appelé pour:', randomGrid.id);
+          actions.toggleExpanded('photoGrids', randomGridId);
+          console.log('🎲 [Random] toggleExpanded appelé pour:', randomGridId);
 
-          // Scroll vers la PhotoGrid (délai augmenté pour laisser le DOM se mettre à jour)
+          // Scroll vers la PhotoGrid (petit délai pour animation)
           setTimeout(() => {
-            // ⭐ v2.20b : Diagnostics - Lister TOUS les data-photo-grid-id dans le DOM
-            const allPhotoGridsInDom = document.querySelectorAll('[data-photo-grid-id]');
-            console.log('🔍 [Debug] PhotoGrids dans le DOM:', allPhotoGridsInDom.length);
-            const gridIds = Array.from(allPhotoGridsInDom).map(el => el.getAttribute('data-photo-grid-id'));
-            console.log('🔍 [Debug] IDs présents (10 premiers):', gridIds.slice(0, 10));
-            console.log('🔍 [Debug] ID cherché présent ?', gridIds.includes(randomGrid.id));
-
-            const selector = `[data-photo-grid-id="${randomGrid.id}"]`;
-            console.log('🎲 [Random] Recherche élément:', selector);
+            const selector = `[data-photo-grid-id="${randomGridId}"]`;
             const photoGridElement = document.querySelector(selector);
-            console.log('🎲 [Random] Élément trouvé:', photoGridElement);
+            console.log('🎲 [Random] Élément trouvé:', photoGridElement ? '✅ OUI' : '❌ NON');
             if (photoGridElement) {
               photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             } else {
               console.warn('⚠️ [Random] Élément PhotoGrid non trouvé !');
             }
-          }, 500);  // ⭐ v2.20b : Augmenté de 200ms à 500ms
+          }, 200);
         } else {
-          console.warn('⚠️ [Random] Aucune PhotoGrid trouvée !');
+          console.warn('⚠️ [Random] Aucune PhotoGrid trouvée dans le DOM !');
         }
       }
     }
