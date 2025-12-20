@@ -1,10 +1,10 @@
 /**
- * PhotoToMemoryModal.jsx v2.22 - Workflow 3 étapes (accordéon progressif)
+ * PhotoToMemoryModal.jsx v2.22b - Workflow 3 étapes (accordéon progressif)
  * 🎯 3 volets visibles simultanément qui s'ouvrent progressivement
  * ✅ Étape 1 : Associer à un moment (liste + créer nouveau)
  * ✅ Étape 2 : Associer à un post/note (liste du moment + créer note)
- * ✅ Étape 3 : Cadre note (titre + descriptif)
- * ⭐ v2.22 : Accordéon progressif avec vision globale
+ * ✅ Étape 3 : Cadre note (titre + descriptif) - UNIQUEMENT si création nouvelle note
+ * ⭐ v2.22b : Hauteur listes adaptée + double-clic validation + pas d'étape 3 si post existant
  */
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, Plus, FileText, Image as ImageIcon, ChevronDown, Check } from 'lucide-react';
@@ -87,6 +87,29 @@ export default function PhotoToMemoryModal({
     onClose();
   };
 
+  // Handler confirmation finale (étape 3 ou direct si post existant)
+  const handleConfirm = () => {
+    // Retourner les données au parent
+    onConvert({
+      // Étape 1 : Moment
+      momentId: isCreatingNewMoment ? null : selectedMomentId,
+      newMoment: isCreatingNewMoment ? {
+        title: newMomentTitle.trim(),
+        date: newMomentDate,
+        jnnn: newMomentJnnn.trim() || 'IMP'
+      } : null,
+
+      // Étape 2 : Post (null si création nouvelle note)
+      postId: isCreatingNewPost ? null : selectedPostId,
+
+      // Étape 3 : Texte note
+      noteTitle: noteTitle.trim() || null,
+      noteContent: noteContent.trim() || null
+    });
+
+    onClose();
+  };
+
   // Handler validation étape 1
   const handleValidateStep1 = () => {
     // Validation
@@ -126,30 +149,15 @@ export default function PhotoToMemoryModal({
 
     setStep2Validated(true);
     setStep2Open(false);
-    setStep3Open(true);
-  };
 
-  // Handler confirmation finale (étape 3)
-  const handleConfirm = () => {
-    // Retourner les données au parent
-    onConvert({
-      // Étape 1 : Moment
-      momentId: isCreatingNewMoment ? null : selectedMomentId,
-      newMoment: isCreatingNewMoment ? {
-        title: newMomentTitle.trim(),
-        date: newMomentDate,
-        jnnn: newMomentJnnn.trim() || 'IMP'
-      } : null,
-
-      // Étape 2 : Post (null si création nouvelle note)
-      postId: isCreatingNewPost ? null : selectedPostId,
-
-      // Étape 3 : Texte note
-      noteTitle: noteTitle.trim() || null,
-      noteContent: noteContent.trim() || null
-    });
-
-    onClose();
+    // ⭐ v2.22b : Si post existant sélectionné, confirmer directement (pas d'étape 3)
+    if (!isCreatingNewPost && selectedPostId) {
+      // Confirmer immédiatement
+      handleConfirm();
+    } else {
+      // Sinon, ouvrir étape 3 (création nouvelle note)
+      setStep3Open(true);
+    }
   };
 
   // Toggle création nouveau moment (étape 1)
@@ -339,11 +347,12 @@ export default function PhotoToMemoryModal({
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Moments existants ({moments.length})
                     </label>
-                    <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg">
+                    <div className="max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg">
                       {moments.map(moment => (
                         <button
                           key={moment.id}
                           onClick={() => setSelectedMomentId(moment.id)}
+                          onDoubleClick={handleValidateStep1}
                           className={`w-full text-left px-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0
                             hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors
                             ${selectedMomentId === moment.id ? 'bg-purple-100 dark:bg-purple-900/40' : 'bg-white dark:bg-gray-700'}`}
@@ -352,7 +361,10 @@ export default function PhotoToMemoryModal({
                             {moment.displayTitle || moment.title}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            {moment.date} • {moment.displaySubtitle || moment.jnnn}
+                            {moment.date}
+                            {(moment.displaySubtitle || moment.jnnn) && (
+                              <> • {moment.displaySubtitle || moment.jnnn}</>
+                            )}
                           </div>
                         </button>
                       ))}
@@ -452,11 +464,12 @@ export default function PhotoToMemoryModal({
                         Posts/Notes du moment ({momentPosts.length})
                       </label>
                       {momentPosts.length > 0 ? (
-                        <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg">
+                        <div className="max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg">
                           {momentPosts.map(post => (
                             <button
                               key={post.id}
                               onClick={() => setSelectedPostId(post.id)}
+                              onDoubleClick={handleValidateStep2}
                               className={`w-full text-left px-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0
                                 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors
                                 ${selectedPostId === post.id ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-white dark:bg-gray-700'}`}
@@ -465,8 +478,10 @@ export default function PhotoToMemoryModal({
                                 {post.title || 'Post sans titre'}
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                {post.category === 'user_added' ? '📝 Note' : '🗒️ Post Mastodon'} •
-                                {post.photos?.length > 0 ? ` ${post.photos.length} photo(s)` : ''}
+                                {post.category === 'user_added' ? '📝 Note' : '🗒️ Post Mastodon'}
+                                {post.photos?.length > 0 && (
+                                  <> • {post.photos.length} photo(s)</>
+                                )}
                               </div>
                             </button>
                           ))}
@@ -493,8 +508,8 @@ export default function PhotoToMemoryModal({
             </div>
           )}
 
-          {/* ========== ÉTAPE 3 : CADRE NOTE ========== */}
-          {step2Validated && (
+          {/* ========== ÉTAPE 3 : CADRE NOTE (uniquement si création nouvelle note) ========== */}
+          {step2Validated && isCreatingNewPost && (
             <div className="border border-amber-200 dark:border-amber-700 rounded-lg bg-amber-50/30 dark:bg-amber-900/10">
               {/* Header volet */}
               <button
@@ -573,7 +588,8 @@ export default function PhotoToMemoryModal({
             Annuler
           </button>
 
-          {step2Validated && (
+          {/* Bouton Confirmer uniquement si création nouvelle note (étape 3 visible) */}
+          {step2Validated && isCreatingNewPost && (
             <button
               onClick={handleConfirm}
               className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium shadow-md"
