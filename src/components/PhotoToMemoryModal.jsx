@@ -1,60 +1,68 @@
 /**
- * PhotoToMemoryModal.jsx v2.9j - Conversion photo → souvenir (2 sections)
- * ✅ Section 1 : Association moment (titre, date, jnnn)
- * ✅ Section 2 : Texte optionnel (titre + descriptif) → Note de photo
+ * PhotoToMemoryModal.jsx v2.22 - Workflow 3 étapes
+ * 🎯 Étape 1 : Associer à un moment (liste + créer nouveau)
+ * 🎯 Étape 2 : Associer à un post/note (liste du moment + créer note)
+ * 🎯 Étape 3 : Cadre note (titre + descriptif)
  * ✅ Support création nouveau moment
  * ✅ Support dark mode
- * ⭐ v2.9j : Support fichier brut (file) OU photoData (compatibilité)
+ * ⭐ v2.22 : Refonte complète en 3 étapes
  */
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Plus, FileText, Image as ImageIcon } from 'lucide-react';
+import { X, MapPin, Plus, FileText, Image as ImageIcon, ChevronRight, ChevronLeft } from 'lucide-react';
 
 export default function PhotoToMemoryModal({
   isOpen,
   photoData,
-  file,  // ⭐ v2.9j : Fichier brut avant traitement
+  file,  // Fichier brut avant traitement
+  processedData,  // Données image traitées localement
   onClose,
   moments = [],
   onConvert
 }) {
-  // Section 1 : Moment
+  // Navigation étapes
+  const [currentStep, setCurrentStep] = useState(1);  // 1, 2, ou 3
+
+  // Étape 1 : Moment
   const [selectedMomentId, setSelectedMomentId] = useState('');
+  const [isCreatingNewMoment, setIsCreatingNewMoment] = useState(false);
   const [newMomentTitle, setNewMomentTitle] = useState('');
   const [newMomentDate, setNewMomentDate] = useState('');
   const [newMomentJnnn, setNewMomentJnnn] = useState('IMP');
-  const [isCreatingNewMoment, setIsCreatingNewMoment] = useState(false);
 
-  // Section 2 : Texte (optionnel pour Note de photo)
+  // Étape 2 : Post/Note
+  const [selectedPostId, setSelectedPostId] = useState('');
+  const [isCreatingNewPost, setIsCreatingNewPost] = useState(false);
+
+  // Étape 3 : Texte note
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
 
   // Réinitialiser l'état à l'ouverture
   useEffect(() => {
     if (isOpen) {
-      // ⭐ v2.9j : Utiliser la date de création de la photo (photoData) ou du fichier (file)
+      // Date par défaut
       let defaultDate = '';
-
       if (photoData?.uploadedAt) {
-        // PhotoData : convertir ISO timestamp en format YYYY-MM-DD
         const uploadDate = new Date(photoData.uploadedAt);
         defaultDate = uploadDate.toISOString().split('T')[0];
       } else if (file) {
-        // File : utiliser lastModified ou date actuelle
         const fileDate = file.lastModified ? new Date(file.lastModified) : new Date();
         defaultDate = fileDate.toISOString().split('T')[0];
       }
 
-      // ⭐ v2.9w2 : Mémoriser dernier moment sélectionné
+      // Mémoriser dernier moment sélectionné
       const lastMomentId = localStorage.getItem('mekong_lastSelectedMomentId') || '';
-
-      // Vérifier que le moment existe toujours
       const momentExists = lastMomentId && moments.some(m => m.id === lastMomentId);
 
+      // Reset all
+      setCurrentStep(1);
       setSelectedMomentId(momentExists ? lastMomentId : '');
+      setIsCreatingNewMoment(false);
       setNewMomentTitle('');
       setNewMomentDate(defaultDate);
-      setNewMomentJnnn('IMP');  // ⭐ v2.8e : "IMP" au lieu de "undefined" (plus court)
-      setIsCreatingNewMoment(false);
+      setNewMomentJnnn('IMP');
+      setSelectedPostId('');
+      setIsCreatingNewPost(false);
       setNoteTitle('');
       setNoteContent('');
     }
@@ -62,12 +70,22 @@ export default function PhotoToMemoryModal({
 
   if (!isOpen) return null;
 
+  // Récupérer le moment sélectionné (pour étape 2)
+  const selectedMoment = selectedMomentId ? moments.find(m => m.id === selectedMomentId) : null;
+
+  // Handler annuler
   const handleCancel = () => {
     onClose();
   };
 
-  const handleConfirm = () => {
-    // Validation Section 1
+  // Handler retour étape précédente
+  const handleBack = () => {
+    setCurrentStep(prev => Math.max(1, prev - 1));
+  };
+
+  // Handler suivant (étape 1 → 2)
+  const handleNextToStep2 = () => {
+    // Validation étape 1
     if (!isCreatingNewMoment && !selectedMomentId) {
       alert('Veuillez sélectionner un moment ou créer un nouveau moment');
       return;
@@ -84,22 +102,41 @@ export default function PhotoToMemoryModal({
       }
     }
 
-    // ⭐ v2.9w2 : Sauvegarder le dernier moment sélectionné
+    // Sauvegarder dernier moment sélectionné
     if (!isCreatingNewMoment && selectedMomentId) {
       localStorage.setItem('mekong_lastSelectedMomentId', selectedMomentId);
     }
 
+    setCurrentStep(2);
+  };
+
+  // Handler suivant (étape 2 → 3)
+  const handleNextToStep3 = () => {
+    // Validation étape 2
+    if (!isCreatingNewPost && !selectedPostId) {
+      alert('Veuillez sélectionner un post/note ou créer une nouvelle note');
+      return;
+    }
+
+    setCurrentStep(3);
+  };
+
+  // Handler confirmation finale (étape 3)
+  const handleConfirm = () => {
     // Retourner les données au parent
     onConvert({
-      // Section 1 : Moment
+      // Étape 1 : Moment
       momentId: isCreatingNewMoment ? null : selectedMomentId,
       newMoment: isCreatingNewMoment ? {
         title: newMomentTitle.trim(),
         date: newMomentDate,
-        jnnn: newMomentJnnn.trim() || 'IMP'  // ⭐ v2.8e : "IMP" au lieu de "undefined"
+        jnnn: newMomentJnnn.trim() || 'IMP'
       } : null,
 
-      // Section 2 : Texte (Note de photo)
+      // Étape 2 : Post (null si création nouvelle note)
+      postId: isCreatingNewPost ? null : selectedPostId,
+
+      // Étape 3 : Texte note
       noteTitle: noteTitle.trim() || null,
       noteContent: noteContent.trim() || null
     });
@@ -107,14 +144,13 @@ export default function PhotoToMemoryModal({
     onClose();
   };
 
-  const toggleCreateMode = () => {
+  // Toggle création nouveau moment (étape 1)
+  const toggleCreateMoment = () => {
     setIsCreatingNewMoment(prev => !prev);
     setSelectedMomentId('');
 
-    // ⭐ v2.9j : Réinitialiser avec valeurs par défaut intelligentes
+    // Réinitialiser avec valeurs par défaut
     setNewMomentTitle('');
-
-    // Date par défaut = date photo (photoData) ou fichier (file) si disponible
     let defaultDate = '';
     if (photoData?.uploadedAt) {
       const uploadDate = new Date(photoData.uploadedAt);
@@ -124,13 +160,17 @@ export default function PhotoToMemoryModal({
       defaultDate = fileDate.toISOString().split('T')[0];
     }
     setNewMomentDate(defaultDate);
-
-    // Jnnn par défaut = "IMP"
     setNewMomentJnnn('IMP');
   };
 
-  // Déterminer si c'est une Note de photo (texte présent)
-  const isPhotoNote = noteTitle.trim() || noteContent.trim();
+  // Toggle création nouvelle note (étape 2)
+  const toggleCreatePost = () => {
+    setIsCreatingNewPost(prev => !prev);
+    setSelectedPostId('');
+  };
+
+  // Récupérer posts du moment sélectionné (pour étape 2)
+  const momentPosts = selectedMoment?.posts || [];
 
   return (
     <div
@@ -149,6 +189,9 @@ export default function PhotoToMemoryModal({
             <h3 className="font-semibold text-gray-900 dark:text-gray-100">
               📷 Créer un souvenir photo
             </h3>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              (Étape {currentStep}/3)
+            </span>
           </div>
           <button
             onClick={handleCancel}
@@ -161,7 +204,7 @@ export default function PhotoToMemoryModal({
         {/* Body */}
         <div className="p-6 space-y-6">
 
-          {/* ⭐ v2.9j : Afficher info fichier si mode File */}
+          {/* Info fichier */}
           {file && (
             <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <ImageIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
@@ -176,177 +219,284 @@ export default function PhotoToMemoryModal({
             </div>
           )}
 
-          {/* ========== SECTION 1 : ASSOCIER UN MOMENT ========== */}
-          <div className="border border-purple-200 dark:border-purple-700 rounded-lg p-4 bg-purple-50/30 dark:bg-purple-900/10">
-            <div className="flex items-center space-x-2 mb-4">
-              <MapPin className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              <h4 className="font-medium text-purple-900 dark:text-purple-100">
-                1. Associer à un moment *
-              </h4>
-            </div>
+          {/* ========== ÉTAPE 1 : ASSOCIER À UN MOMENT ========== */}
+          {currentStep === 1 && (
+            <div className="border border-purple-200 dark:border-purple-700 rounded-lg p-4 bg-purple-50/30 dark:bg-purple-900/10">
+              <div className="flex items-center space-x-2 mb-4">
+                <MapPin className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <h4 className="font-medium text-purple-900 dark:text-purple-100">
+                  Étape 1 : Associer à un moment *
+                </h4>
+              </div>
 
-            {/* Toggle Create/Select */}
-            <button
-              onClick={toggleCreateMode}
-              className="mb-3 text-sm text-purple-600 dark:text-purple-400 hover:underline flex items-center space-x-1"
-            >
-              <Plus className="w-4 h-4" />
-              <span>
-                {isCreatingNewMoment ? 'Sélectionner un moment existant' : 'Créer un nouveau moment'}
-              </span>
-            </button>
+              {/* Toggle Create/Select */}
+              <button
+                onClick={toggleCreateMoment}
+                className="mb-3 text-sm text-purple-600 dark:text-purple-400 hover:underline flex items-center space-x-1"
+              >
+                <Plus className="w-4 h-4" />
+                <span>
+                  {isCreatingNewMoment ? 'Sélectionner un moment existant' : 'Créer un nouveau moment'}
+                </span>
+              </button>
 
-            {isCreatingNewMoment ? (
-              // Création nouveau moment
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Titre du moment *
-                  </label>
-                  <input
-                    type="text"
-                    value={newMomentTitle}
-                    onChange={(e) => setNewMomentTitle(e.target.value)}
-                    placeholder="Ex: Temple Wat Xieng Thong"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                      bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                      focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    autoFocus
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
+              {isCreatingNewMoment ? (
+                // Création nouveau moment
+                <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={newMomentDate}
-                      onChange={(e) => setNewMomentDate(e.target.value)}
-                      className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
-                        bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                        focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Jour (Jnnn)
+                      Titre du moment *
                     </label>
                     <input
                       type="text"
-                      value={newMomentJnnn}
-                      onChange={(e) => setNewMomentJnnn(e.target.value.toUpperCase())}
-                      placeholder="J7, IMP..."
-                      maxLength={5}
-                      className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
+                      value={newMomentTitle}
+                      onChange={(e) => setNewMomentTitle(e.target.value)}
+                      placeholder="Ex: Temple Wat Xieng Thong"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                         bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                        focus:ring-2 focus:ring-purple-500 focus:border-purple-500 uppercase"
+                        focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      autoFocus
                     />
                   </div>
-                </div>
-              </div>
-            ) : (
-              // Sélection moment existant
-              <select
-                value={selectedMomentId}
-                onChange={(e) => setSelectedMomentId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                  bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                  focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              >
-                <option value="">-- Sélectionnez un moment --</option>
-                {moments.map(moment => (
-                  <option key={moment.id} value={moment.id}>
-                    {moment.date} - {moment.title}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
 
-          {/* ========== SECTION 2 : AJOUTER DU TEXTE (OPTIONNEL) ========== */}
-          <div className="border border-amber-200 dark:border-amber-700 rounded-lg p-4 bg-amber-50/30 dark:bg-amber-900/10">
-            <div className="flex items-center space-x-2 mb-4">
-              <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <h4 className="font-medium text-amber-900 dark:text-amber-100">
-                2. Ajouter du texte (optionnel)
-              </h4>
-            </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={newMomentDate}
+                        onChange={(e) => setNewMomentDate(e.target.value)}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
+                          bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                          focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                    </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Titre
-                </label>
-                <input
-                  type="text"
-                  value={noteTitle}
-                  onChange={(e) => setNoteTitle(e.target.value)}
-                  placeholder="Ex: Magnifique architecture"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                    bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                    focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Descriptif (max 500 caractères)
-                </label>
-                <textarea
-                  value={noteContent}
-                  onChange={(e) => setNoteContent(e.target.value)}
-                  placeholder="Ajoutez une description détaillée de cette photo..."
-                  rows="4"
-                  maxLength={500}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                    bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                    focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
-                />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {noteContent.length}/500 caractères
-                </p>
-              </div>
-            </div>
-
-            {/* Indicateur type de souvenir */}
-            <div className="mt-3 p-2 bg-white dark:bg-gray-700 rounded text-xs">
-              {isPhotoNote ? (
-                <div className="flex items-center space-x-2 text-amber-700 dark:text-amber-300">
-                  <span className="text-base">📷✍️</span>
-                  <span className="font-medium">
-                    Ce sera une <strong>Note de photo</strong> (photo avec texte)
-                  </span>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Jour (Jnnn)
+                      </label>
+                      <input
+                        type="text"
+                        value={newMomentJnnn}
+                        onChange={(e) => setNewMomentJnnn(e.target.value.toUpperCase())}
+                        placeholder="J7, IMP..."
+                        maxLength={5}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
+                          bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                          focus:ring-2 focus:ring-purple-500 focus:border-purple-500 uppercase"
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center space-x-2 text-purple-700 dark:text-purple-300">
-                  <span className="text-base">📷</span>
-                  <span className="font-medium">
-                    Ce sera une <strong>Photo simple</strong>
-                  </span>
+                // Liste moments existants
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Moments existants ({moments.length})
+                  </label>
+                  <div className="max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg">
+                    {moments.map(moment => (
+                      <button
+                        key={moment.id}
+                        onClick={() => setSelectedMomentId(moment.id)}
+                        className={`w-full text-left px-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0
+                          hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors
+                          ${selectedMomentId === moment.id ? 'bg-purple-100 dark:bg-purple-900/40' : 'bg-white dark:bg-gray-700'}`}
+                      >
+                        <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                          {moment.displayTitle || moment.title}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {moment.date} • {moment.displaySubtitle || moment.jnnn}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
-          </div>
+          )}
+
+          {/* ========== ÉTAPE 2 : ASSOCIER À UN POST/NOTE ========== */}
+          {currentStep === 2 && (
+            <div className="border border-blue-200 dark:border-blue-700 rounded-lg p-4 bg-blue-50/30 dark:bg-blue-900/10">
+              <div className="flex items-center space-x-2 mb-4">
+                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h4 className="font-medium text-blue-900 dark:text-blue-100">
+                  Étape 2 : Associer à un post/note du moment *
+                </h4>
+              </div>
+
+              {/* Info moment sélectionné */}
+              {selectedMoment && (
+                <div className="mb-3 p-2 bg-white dark:bg-gray-700 rounded text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">Moment sélectionné : </span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    {selectedMoment.displayTitle || selectedMoment.title}
+                  </span>
+                </div>
+              )}
+
+              {/* Toggle Create/Select */}
+              <button
+                onClick={toggleCreatePost}
+                className="mb-3 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
+              >
+                <Plus className="w-4 h-4" />
+                <span>
+                  {isCreatingNewPost ? 'Sélectionner un post/note existant' : 'Créer une nouvelle note'}
+                </span>
+              </button>
+
+              {isCreatingNewPost ? (
+                // Mode création note
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded">
+                  <p className="text-sm text-amber-900 dark:text-amber-100">
+                    ✍️ Une <strong>nouvelle note de photo</strong> sera créée à l'étape suivante.
+                  </p>
+                </div>
+              ) : (
+                // Liste posts/notes du moment
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Posts/Notes du moment ({momentPosts.length})
+                  </label>
+                  {momentPosts.length > 0 ? (
+                    <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg">
+                      {momentPosts.map(post => (
+                        <button
+                          key={post.id}
+                          onClick={() => setSelectedPostId(post.id)}
+                          className={`w-full text-left px-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0
+                            hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors
+                            ${selectedPostId === post.id ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-white dark:bg-gray-700'}`}
+                        >
+                          <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                            {post.title || 'Post sans titre'}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {post.category === 'user_added' ? '📝 Note' : '🗒️ Post Mastodon'} •
+                            {post.photos?.length > 0 ? ` ${post.photos.length} photo(s)` : ''}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 italic p-3 bg-gray-50 dark:bg-gray-700 rounded">
+                      Ce moment ne contient aucun post ou note. Créez une nouvelle note ci-dessus.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========== ÉTAPE 3 : CADRE NOTE ========== */}
+          {currentStep === 3 && (
+            <div className="border border-amber-200 dark:border-amber-700 rounded-lg p-4 bg-amber-50/30 dark:bg-amber-900/10">
+              <div className="flex items-center space-x-2 mb-4">
+                <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <h4 className="font-medium text-amber-900 dark:text-amber-100">
+                  Étape 3 : Ajouter du texte à la note
+                </h4>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Titre
+                  </label>
+                  <input
+                    type="text"
+                    value={noteTitle}
+                    onChange={(e) => setNoteTitle(e.target.value)}
+                    placeholder="Ex: Magnifique architecture"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                      bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                      focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Descriptif (max 500 caractères)
+                  </label>
+                  <textarea
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                    placeholder="Ajoutez une description détaillée de cette photo..."
+                    rows="4"
+                    maxLength={500}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                      bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                      focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {noteContent.length}/500 caractères
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800">
-          <button
-            onClick={handleCancel}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            Annuler
-          </button>
-          <button
-            onClick={handleConfirm}
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium shadow-md"
-          >
-            Confirmer
-          </button>
+        <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800">
+          {/* Gauche : Bouton Retour */}
+          <div>
+            {currentStep > 1 && (
+              <button
+                onClick={handleBack}
+                className="flex items-center space-x-1 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Retour</span>
+              </button>
+            )}
+          </div>
+
+          {/* Droite : Boutons Annuler / Suivant / Confirmer */}
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleCancel}
+              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              Annuler
+            </button>
+
+            {currentStep === 1 && (
+              <button
+                onClick={handleNextToStep2}
+                className="flex items-center space-x-1 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium shadow-md"
+              >
+                <span>Suivant</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {currentStep === 2 && (
+              <button
+                onClick={handleNextToStep3}
+                className="flex items-center space-x-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-md"
+              >
+                <span>Suivant</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {currentStep === 3 && (
+              <button
+                onClick={handleConfirm}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium shadow-md"
+              >
+                Confirmer
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
