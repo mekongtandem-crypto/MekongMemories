@@ -1316,10 +1316,18 @@ const navigationProcessedRef = useRef(null);
 
           // Sélectionner + ouvrir la PhotoGrid
           actions.toggleExpanded('photoGrids', randomGrid.id);
+          console.log('🎲 [Random] toggleExpanded appelé pour:', randomGrid.id);
 
-          // Scroll vers la PhotoGrid
+          // Scroll vers la PhotoGrid (délai augmenté pour laisser le DOM se mettre à jour)
           setTimeout(() => {
-            const selector = `[data-photo-grid-id="${randomGrid.id}"]`;  // ⭐ v2.20a : FIX - Ne PAS ajouter _type
+            // ⭐ v2.20b : Diagnostics - Lister TOUS les data-photo-grid-id dans le DOM
+            const allPhotoGridsInDom = document.querySelectorAll('[data-photo-grid-id]');
+            console.log('🔍 [Debug] PhotoGrids dans le DOM:', allPhotoGridsInDom.length);
+            const gridIds = Array.from(allPhotoGridsInDom).map(el => el.getAttribute('data-photo-grid-id'));
+            console.log('🔍 [Debug] IDs présents (10 premiers):', gridIds.slice(0, 10));
+            console.log('🔍 [Debug] ID cherché présent ?', gridIds.includes(randomGrid.id));
+
+            const selector = `[data-photo-grid-id="${randomGrid.id}"]`;
             console.log('🎲 [Random] Recherche élément:', selector);
             const photoGridElement = document.querySelector(selector);
             console.log('🎲 [Random] Élément trouvé:', photoGridElement);
@@ -1328,7 +1336,7 @@ const navigationProcessedRef = useRef(null);
             } else {
               console.warn('⚠️ [Random] Élément PhotoGrid non trouvé !');
             }
-          }, 200);
+          }, 500);  // ⭐ v2.20b : Augmenté de 200ms à 500ms
         } else {
           console.warn('⚠️ [Random] Aucune PhotoGrid trouvée !');
         }
