@@ -1,14 +1,13 @@
 /**
- * PhotoToMemoryModal.jsx v2.22 - Workflow 3 étapes
- * 🎯 Étape 1 : Associer à un moment (liste + créer nouveau)
- * 🎯 Étape 2 : Associer à un post/note (liste du moment + créer note)
- * 🎯 Étape 3 : Cadre note (titre + descriptif)
- * ✅ Support création nouveau moment
- * ✅ Support dark mode
- * ⭐ v2.22 : Refonte complète en 3 étapes
+ * PhotoToMemoryModal.jsx v2.22 - Workflow 3 étapes (accordéon progressif)
+ * 🎯 3 volets visibles simultanément qui s'ouvrent progressivement
+ * ✅ Étape 1 : Associer à un moment (liste + créer nouveau)
+ * ✅ Étape 2 : Associer à un post/note (liste du moment + créer note)
+ * ✅ Étape 3 : Cadre note (titre + descriptif)
+ * ⭐ v2.22 : Accordéon progressif avec vision globale
  */
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Plus, FileText, Image as ImageIcon, ChevronRight, ChevronLeft } from 'lucide-react';
+import { X, MapPin, Plus, FileText, Image as ImageIcon, ChevronDown, Check } from 'lucide-react';
 
 export default function PhotoToMemoryModal({
   isOpen,
@@ -19,8 +18,9 @@ export default function PhotoToMemoryModal({
   moments = [],
   onConvert
 }) {
-  // Navigation étapes
-  const [currentStep, setCurrentStep] = useState(1);  // 1, 2, ou 3
+  // État de validation des étapes (détermine quels volets sont accessibles)
+  const [step1Validated, setStep1Validated] = useState(false);
+  const [step2Validated, setStep2Validated] = useState(false);
 
   // Étape 1 : Moment
   const [selectedMomentId, setSelectedMomentId] = useState('');
@@ -36,6 +36,11 @@ export default function PhotoToMemoryModal({
   // Étape 3 : Texte note
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
+
+  // Volets ouverts/fermés
+  const [step1Open, setStep1Open] = useState(true);
+  const [step2Open, setStep2Open] = useState(false);
+  const [step3Open, setStep3Open] = useState(false);
 
   // Réinitialiser l'état à l'ouverture
   useEffect(() => {
@@ -55,7 +60,8 @@ export default function PhotoToMemoryModal({
       const momentExists = lastMomentId && moments.some(m => m.id === lastMomentId);
 
       // Reset all
-      setCurrentStep(1);
+      setStep1Validated(false);
+      setStep2Validated(false);
       setSelectedMomentId(momentExists ? lastMomentId : '');
       setIsCreatingNewMoment(false);
       setNewMomentTitle('');
@@ -65,6 +71,9 @@ export default function PhotoToMemoryModal({
       setIsCreatingNewPost(false);
       setNoteTitle('');
       setNoteContent('');
+      setStep1Open(true);
+      setStep2Open(false);
+      setStep3Open(false);
     }
   }, [isOpen, photoData, file, moments]);
 
@@ -78,14 +87,9 @@ export default function PhotoToMemoryModal({
     onClose();
   };
 
-  // Handler retour étape précédente
-  const handleBack = () => {
-    setCurrentStep(prev => Math.max(1, prev - 1));
-  };
-
-  // Handler suivant (étape 1 → 2)
-  const handleNextToStep2 = () => {
-    // Validation étape 1
+  // Handler validation étape 1
+  const handleValidateStep1 = () => {
+    // Validation
     if (!isCreatingNewMoment && !selectedMomentId) {
       alert('Veuillez sélectionner un moment ou créer un nouveau moment');
       return;
@@ -107,18 +111,22 @@ export default function PhotoToMemoryModal({
       localStorage.setItem('mekong_lastSelectedMomentId', selectedMomentId);
     }
 
-    setCurrentStep(2);
+    setStep1Validated(true);
+    setStep1Open(false);
+    setStep2Open(true);
   };
 
-  // Handler suivant (étape 2 → 3)
-  const handleNextToStep3 = () => {
-    // Validation étape 2
+  // Handler validation étape 2
+  const handleValidateStep2 = () => {
+    // Validation
     if (!isCreatingNewPost && !selectedPostId) {
       alert('Veuillez sélectionner un post/note ou créer une nouvelle note');
       return;
     }
 
-    setCurrentStep(3);
+    setStep2Validated(true);
+    setStep2Open(false);
+    setStep3Open(true);
   };
 
   // Handler confirmation finale (étape 3)
@@ -172,6 +180,13 @@ export default function PhotoToMemoryModal({
   // Récupérer posts du moment sélectionné (pour étape 2)
   const momentPosts = selectedMoment?.posts || [];
 
+  // Récupérer résumé moment pour étape 2 et 3
+  const momentSummary = isCreatingNewMoment
+    ? `Nouveau moment : ${newMomentTitle || '(sans titre)'}`
+    : selectedMoment
+      ? `${selectedMoment.displayTitle || selectedMoment.title}`
+      : '';
+
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center p-4"
@@ -189,9 +204,6 @@ export default function PhotoToMemoryModal({
             <h3 className="font-semibold text-gray-900 dark:text-gray-100">
               📷 Créer un souvenir photo
             </h3>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              (Étape {currentStep}/3)
-            </span>
           </div>
           <button
             onClick={handleCancel}
@@ -202,7 +214,7 @@ export default function PhotoToMemoryModal({
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-4">
 
           {/* Info fichier */}
           {file && (
@@ -220,283 +232,355 @@ export default function PhotoToMemoryModal({
           )}
 
           {/* ========== ÉTAPE 1 : ASSOCIER À UN MOMENT ========== */}
-          {currentStep === 1 && (
-            <div className="border border-purple-200 dark:border-purple-700 rounded-lg p-4 bg-purple-50/30 dark:bg-purple-900/10">
-              <div className="flex items-center space-x-2 mb-4">
-                <MapPin className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                <h4 className="font-medium text-purple-900 dark:text-purple-100">
-                  Étape 1 : Associer à un moment *
+          <div className={`border rounded-lg transition-all ${
+            step1Validated
+              ? 'border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10'
+              : 'border-purple-200 dark:border-purple-700 bg-purple-50/30 dark:bg-purple-900/10'
+          }`}>
+            {/* Header volet */}
+            <button
+              onClick={() => setStep1Open(!step1Open)}
+              className="w-full flex items-center justify-between p-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-lg"
+            >
+              <div className="flex items-center space-x-2">
+                {step1Validated ? (
+                  <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                ) : (
+                  <span className="w-6 h-6 rounded-full bg-purple-600 text-white text-sm font-bold flex items-center justify-center">
+                    1
+                  </span>
+                )}
+                <h4 className={`font-medium ${
+                  step1Validated
+                    ? 'text-green-900 dark:text-green-100'
+                    : 'text-purple-900 dark:text-purple-100'
+                }`}>
+                  Associer à un moment
                 </h4>
+                {step1Validated && (
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    • {momentSummary}
+                  </span>
+                )}
               </div>
+              <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${
+                step1Open ? 'rotate-180' : ''
+              }`} />
+            </button>
 
-              {/* Toggle Create/Select */}
-              <button
-                onClick={toggleCreateMoment}
-                className="mb-3 text-sm text-purple-600 dark:text-purple-400 hover:underline flex items-center space-x-1"
-              >
-                <Plus className="w-4 h-4" />
-                <span>
-                  {isCreatingNewMoment ? 'Sélectionner un moment existant' : 'Créer un nouveau moment'}
-                </span>
-              </button>
+            {/* Contenu volet */}
+            {step1Open && (
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                {/* Toggle Create/Select */}
+                <button
+                  onClick={toggleCreateMoment}
+                  className="mb-3 text-sm text-purple-600 dark:text-purple-400 hover:underline flex items-center space-x-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>
+                    {isCreatingNewMoment ? 'Sélectionner un moment existant' : 'Créer un nouveau moment'}
+                  </span>
+                </button>
 
-              {isCreatingNewMoment ? (
-                // Création nouveau moment
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Titre du moment *
-                    </label>
-                    <input
-                      type="text"
-                      value={newMomentTitle}
-                      onChange={(e) => setNewMomentTitle(e.target.value)}
-                      placeholder="Ex: Temple Wat Xieng Thong"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                        bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                        focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      autoFocus
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
+                {isCreatingNewMoment ? (
+                  // Création nouveau moment
+                  <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Date *
-                      </label>
-                      <input
-                        type="date"
-                        value={newMomentDate}
-                        onChange={(e) => setNewMomentDate(e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
-                          bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                          focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Jour (Jnnn)
+                        Titre du moment *
                       </label>
                       <input
                         type="text"
-                        value={newMomentJnnn}
-                        onChange={(e) => setNewMomentJnnn(e.target.value.toUpperCase())}
-                        placeholder="J7, IMP..."
-                        maxLength={5}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
+                        value={newMomentTitle}
+                        onChange={(e) => setNewMomentTitle(e.target.value)}
+                        placeholder="Ex: Temple Wat Xieng Thong"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                           bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                          focus:ring-2 focus:ring-purple-500 focus:border-purple-500 uppercase"
+                          focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        autoFocus
                       />
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Date *
+                        </label>
+                        <input
+                          type="date"
+                          value={newMomentDate}
+                          onChange={(e) => setNewMomentDate(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
+                            bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                            focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Jour (Jnnn)
+                        </label>
+                        <input
+                          type="text"
+                          value={newMomentJnnn}
+                          onChange={(e) => setNewMomentJnnn(e.target.value.toUpperCase())}
+                          placeholder="J7, IMP..."
+                          maxLength={5}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
+                            bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                            focus:ring-2 focus:ring-purple-500 focus:border-purple-500 uppercase"
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                // Liste moments existants
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Moments existants ({moments.length})
-                  </label>
-                  <div className="max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg">
-                    {moments.map(moment => (
-                      <button
-                        key={moment.id}
-                        onClick={() => setSelectedMomentId(moment.id)}
-                        className={`w-full text-left px-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0
-                          hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors
-                          ${selectedMomentId === moment.id ? 'bg-purple-100 dark:bg-purple-900/40' : 'bg-white dark:bg-gray-700'}`}
-                      >
-                        <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                          {moment.displayTitle || moment.title}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                          {moment.date} • {moment.displaySubtitle || moment.jnnn}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ========== ÉTAPE 2 : ASSOCIER À UN POST/NOTE ========== */}
-          {currentStep === 2 && (
-            <div className="border border-blue-200 dark:border-blue-700 rounded-lg p-4 bg-blue-50/30 dark:bg-blue-900/10">
-              <div className="flex items-center space-x-2 mb-4">
-                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <h4 className="font-medium text-blue-900 dark:text-blue-100">
-                  Étape 2 : Associer à un post/note du moment *
-                </h4>
-              </div>
-
-              {/* Info moment sélectionné */}
-              {selectedMoment && (
-                <div className="mb-3 p-2 bg-white dark:bg-gray-700 rounded text-sm">
-                  <span className="text-gray-500 dark:text-gray-400">Moment sélectionné : </span>
-                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                    {selectedMoment.displayTitle || selectedMoment.title}
-                  </span>
-                </div>
-              )}
-
-              {/* Toggle Create/Select */}
-              <button
-                onClick={toggleCreatePost}
-                className="mb-3 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
-              >
-                <Plus className="w-4 h-4" />
-                <span>
-                  {isCreatingNewPost ? 'Sélectionner un post/note existant' : 'Créer une nouvelle note'}
-                </span>
-              </button>
-
-              {isCreatingNewPost ? (
-                // Mode création note
-                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded">
-                  <p className="text-sm text-amber-900 dark:text-amber-100">
-                    ✍️ Une <strong>nouvelle note de photo</strong> sera créée à l'étape suivante.
-                  </p>
-                </div>
-              ) : (
-                // Liste posts/notes du moment
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Posts/Notes du moment ({momentPosts.length})
-                  </label>
-                  {momentPosts.length > 0 ? (
+                ) : (
+                  // Liste moments existants
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Moments existants ({moments.length})
+                    </label>
                     <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg">
-                      {momentPosts.map(post => (
+                      {moments.map(moment => (
                         <button
-                          key={post.id}
-                          onClick={() => setSelectedPostId(post.id)}
+                          key={moment.id}
+                          onClick={() => setSelectedMomentId(moment.id)}
                           className={`w-full text-left px-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0
-                            hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors
-                            ${selectedPostId === post.id ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-white dark:bg-gray-700'}`}
+                            hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors
+                            ${selectedMomentId === moment.id ? 'bg-purple-100 dark:bg-purple-900/40' : 'bg-white dark:bg-gray-700'}`}
                         >
                           <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                            {post.title || 'Post sans titre'}
+                            {moment.displayTitle || moment.title}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            {post.category === 'user_added' ? '📝 Note' : '🗒️ Post Mastodon'} •
-                            {post.photos?.length > 0 ? ` ${post.photos.length} photo(s)` : ''}
+                            {moment.date} • {moment.displaySubtitle || moment.jnnn}
                           </div>
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Bouton validation */}
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={handleValidateStep1}
+                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium shadow-md"
+                  >
+                    Valider et continuer
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ========== ÉTAPE 2 : ASSOCIER À UN POST/NOTE ========== */}
+          {step1Validated && (
+            <div className={`border rounded-lg transition-all ${
+              step2Validated
+                ? 'border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10'
+                : 'border-blue-200 dark:border-blue-700 bg-blue-50/30 dark:bg-blue-900/10'
+            }`}>
+              {/* Header volet */}
+              <button
+                onClick={() => setStep2Open(!step2Open)}
+                className="w-full flex items-center justify-between p-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-lg"
+              >
+                <div className="flex items-center space-x-2">
+                  {step2Validated ? (
+                    <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
                   ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 italic p-3 bg-gray-50 dark:bg-gray-700 rounded">
-                      Ce moment ne contient aucun post ou note. Créez une nouvelle note ci-dessus.
-                    </p>
+                    <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center">
+                      2
+                    </span>
                   )}
+                  <h4 className={`font-medium ${
+                    step2Validated
+                      ? 'text-green-900 dark:text-green-100'
+                      : 'text-blue-900 dark:text-blue-100'
+                  }`}>
+                    Associer à un post/note
+                  </h4>
+                  {step2Validated && selectedPostId && (
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      • {momentPosts.find(p => p.id === selectedPostId)?.title || 'Note sélectionnée'}
+                    </span>
+                  )}
+                  {step2Validated && isCreatingNewPost && (
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      • Nouvelle note
+                    </span>
+                  )}
+                </div>
+                <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${
+                  step2Open ? 'rotate-180' : ''
+                }`} />
+              </button>
+
+              {/* Contenu volet */}
+              {step2Open && (
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                  {/* Info moment sélectionné */}
+                  <div className="mb-3 p-2 bg-white dark:bg-gray-700 rounded text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Moment : </span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                      {momentSummary}
+                    </span>
+                  </div>
+
+                  {/* Toggle Create/Select */}
+                  <button
+                    onClick={toggleCreatePost}
+                    className="mb-3 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>
+                      {isCreatingNewPost ? 'Sélectionner un post/note existant' : 'Créer une nouvelle note'}
+                    </span>
+                  </button>
+
+                  {isCreatingNewPost ? (
+                    // Mode création note
+                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded">
+                      <p className="text-sm text-amber-900 dark:text-amber-100">
+                        ✍️ Une <strong>nouvelle note de photo</strong> sera créée à l'étape suivante.
+                      </p>
+                    </div>
+                  ) : (
+                    // Liste posts/notes du moment
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Posts/Notes du moment ({momentPosts.length})
+                      </label>
+                      {momentPosts.length > 0 ? (
+                        <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg">
+                          {momentPosts.map(post => (
+                            <button
+                              key={post.id}
+                              onClick={() => setSelectedPostId(post.id)}
+                              className={`w-full text-left px-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0
+                                hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors
+                                ${selectedPostId === post.id ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-white dark:bg-gray-700'}`}
+                            >
+                              <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                                {post.title || 'Post sans titre'}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                {post.category === 'user_added' ? '📝 Note' : '🗒️ Post Mastodon'} •
+                                {post.photos?.length > 0 ? ` ${post.photos.length} photo(s)` : ''}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 italic p-3 bg-gray-50 dark:bg-gray-700 rounded">
+                          Ce moment ne contient aucun post ou note. Créez une nouvelle note ci-dessus.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Bouton validation */}
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={handleValidateStep2}
+                      className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-md"
+                    >
+                      Valider et continuer
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           )}
 
           {/* ========== ÉTAPE 3 : CADRE NOTE ========== */}
-          {currentStep === 3 && (
-            <div className="border border-amber-200 dark:border-amber-700 rounded-lg p-4 bg-amber-50/30 dark:bg-amber-900/10">
-              <div className="flex items-center space-x-2 mb-4">
-                <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <h4 className="font-medium text-amber-900 dark:text-amber-100">
-                  Étape 3 : Ajouter du texte à la note
-                </h4>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Titre
-                  </label>
-                  <input
-                    type="text"
-                    value={noteTitle}
-                    onChange={(e) => setNoteTitle(e.target.value)}
-                    placeholder="Ex: Magnifique architecture"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                      bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                      focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                  />
+          {step2Validated && (
+            <div className="border border-amber-200 dark:border-amber-700 rounded-lg bg-amber-50/30 dark:bg-amber-900/10">
+              {/* Header volet */}
+              <button
+                onClick={() => setStep3Open(!step3Open)}
+                className="w-full flex items-center justify-between p-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-t-lg"
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="w-6 h-6 rounded-full bg-amber-600 text-white text-sm font-bold flex items-center justify-center">
+                    3
+                  </span>
+                  <h4 className="font-medium text-amber-900 dark:text-amber-100">
+                    Ajouter du texte à la note
+                  </h4>
+                  {(noteTitle || noteContent) && (
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      • {noteTitle || 'Texte ajouté'}
+                    </span>
+                  )}
                 </div>
+                <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${
+                  step3Open ? 'rotate-180' : ''
+                }`} />
+              </button>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Descriptif (max 500 caractères)
-                  </label>
-                  <textarea
-                    value={noteContent}
-                    onChange={(e) => setNoteContent(e.target.value)}
-                    placeholder="Ajoutez une description détaillée de cette photo..."
-                    rows="4"
-                    maxLength={500}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                      bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                      focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
-                  />
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {noteContent.length}/500 caractères
-                  </p>
+              {/* Contenu volet */}
+              {step3Open && (
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Titre
+                      </label>
+                      <input
+                        type="text"
+                        value={noteTitle}
+                        onChange={(e) => setNoteTitle(e.target.value)}
+                        placeholder="Ex: Magnifique architecture"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                          bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                          focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Descriptif (max 500 caractères)
+                      </label>
+                      <textarea
+                        value={noteContent}
+                        onChange={(e) => setNoteContent(e.target.value)}
+                        placeholder="Ajoutez une description détaillée de cette photo..."
+                        rows="4"
+                        maxLength={500}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                          bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                          focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
+                      />
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {noteContent.length}/500 caractères
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800">
-          {/* Gauche : Bouton Retour */}
-          <div>
-            {currentStep > 1 && (
-              <button
-                onClick={handleBack}
-                className="flex items-center space-x-1 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Retour</span>
-              </button>
-            )}
-          </div>
+        <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800">
+          <button
+            onClick={handleCancel}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          >
+            Annuler
+          </button>
 
-          {/* Droite : Boutons Annuler / Suivant / Confirmer */}
-          <div className="flex items-center space-x-3">
+          {step2Validated && (
             <button
-              onClick={handleCancel}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              onClick={handleConfirm}
+              className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium shadow-md"
             >
-              Annuler
+              Confirmer
             </button>
-
-            {currentStep === 1 && (
-              <button
-                onClick={handleNextToStep2}
-                className="flex items-center space-x-1 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium shadow-md"
-              >
-                <span>Suivant</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            )}
-
-            {currentStep === 2 && (
-              <button
-                onClick={handleNextToStep3}
-                className="flex items-center space-x-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-md"
-              >
-                <span>Suivant</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            )}
-
-            {currentStep === 3 && (
-              <button
-                onClick={handleConfirm}
-                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium shadow-md"
-              >
-                Confirmer
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
