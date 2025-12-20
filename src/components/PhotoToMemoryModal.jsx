@@ -313,7 +313,13 @@ export default function PhotoToMemoryModal({
                   <div className="space-y-2">
                     <select
                       value={selectedMomentId}
-                      onChange={(e) => setSelectedMomentId(e.target.value)}
+                      onChange={(e) => {
+                        setSelectedMomentId(e.target.value);
+                        // Auto-ouvrir volet 2 si moment sélectionné
+                        if (e.target.value) {
+                          setOpenPanel(2);
+                        }
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                         bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
                         focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
@@ -464,7 +470,7 @@ export default function PhotoToMemoryModal({
                 : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
             }`}
           >
-            {openPanel === 1 ? 'Continuer' : 'Confirmer'}
+            {openPanel === 1 ? 'Continuer' : 'Enregistrer'}
           </button>
         </div>
       </div>
