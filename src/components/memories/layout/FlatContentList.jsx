@@ -1,14 +1,15 @@
 /**
- * FlatContentList.jsx v2.19c - Mode "en vrac" avec mode photos spécial
+ * FlatContentList.jsx v2.20f - Synchronisation Context global
  * Affiche le contenu de tous les moments sans leurs en-têtes
  *
  * Utilisé quand le toggle ✨ Moments est désactivé
  * Affiche posts et photos selon les filtres actifs (📷🗒️🖼️)
  *
+ * ⭐ v2.20f : Utilise Context au lieu d'état local (fix Random PhotoGrid)
  * ⭐ v2.19c : Mode spécial AM=0 AT=0 - DT=0 cache TOUS les posts
  */
 
-import React, { memo, useState } from 'react';
+import React, { memo } from 'react';  // ⭐ v2.20f : Supprimé useState
 import PostArticle from '../post/PostArticle.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import PhotoGridHeader from '../photo/PhotoGridHeader.jsx';
@@ -37,20 +38,19 @@ export const FlatContentList = memo(({
 }) => {
 
   // ⭐ v2.15h : Accès Context pour détecter état global DP
-  const { state, computed } = useMemoriesDisplay();
+  const { state, computed, actions } = useMemoriesDisplay();  // ⭐ v2.20f : Ajout actions
   const allPhotoGridIds = state.counts.allPhotoGridIds || [];
   const photosAllExpanded = computed.allPhotoGridsExpanded(allPhotoGridIds.length);
 
   const shouldShowDayPhotos = isElementVisible?.('day_photos') ?? true;
 
-  // ⭐ v2.15h : État local pour gérer l'ouverture/fermeture des volets photos
-  const [openPhotoGrids, setOpenPhotoGrids] = useState({});
+  // ⭐ v2.20f : Supprimé état local openPhotoGrids (non synchronisé avec Context global)
+  // Utilisation de computed.isPhotoGridExpanded() à la place
 
   const handleToggleDayPhotos = (momentId) => {
-    setOpenPhotoGrids(prev => ({
-      ...prev,
-      [momentId]: !prev[momentId]
-    }));
+    // ⭐ v2.20f : Utiliser actions du Context au lieu d'état local
+    const gridId = `flat_moment_${momentId}_day`;
+    actions.toggleExpanded('photoGrids', gridId);
   };
 
   // ⭐ v2.11 : Collecter les données (pas le JSX prérendu)
@@ -128,7 +128,9 @@ export const FlatContentList = memo(({
           );
         } else if (item.type === 'photos') {
           const { moment } = item.data;
-          const isGridOpen = openPhotoGrids[moment.id] || false;
+          // ⭐ v2.20f : Utiliser Context au lieu d'état local
+          const gridId = `flat_moment_${moment.id}_day`;
+          const isGridOpen = computed.isPhotoGridExpanded(gridId);
 
           // ⭐ v2.15h : Mode Vrac + DP logic
           // DP=0 (replié) : Afficher volet + grille conditionnelle
