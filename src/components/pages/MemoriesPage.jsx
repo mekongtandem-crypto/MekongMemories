@@ -1276,7 +1276,7 @@ const navigationProcessedRef = useRef(null);
           }, 150);
         }
       } else {
-        // ⭐ v2.20e : Mode vrac - Random PhotoGrid (TOUJOURS depuis filteredMoments)
+        // ⭐ v2.20g : Mode vrac - Random PhotoGrid avec retry automatique
         console.log('🎲 [Random] Mode vrac - Collecte PhotoGrids depuis filteredMoments...');
 
         const allPhotoGrids = [];
@@ -1309,25 +1309,39 @@ const navigationProcessedRef = useRef(null);
         console.log('🎲 [Random] PhotoGrids disponibles:', allPhotoGrids.length);
 
         if (allPhotoGrids.length > 0) {
-          const randomIndex = Math.floor(Math.random() * allPhotoGrids.length);
-          const randomGrid = allPhotoGrids[randomIndex];
-
-          console.log('🎲 [Random] PhotoGrid choisie:', randomGrid.id);
-
-          // OUVRIR la PhotoGrid choisie (si fermée, elle s'ouvre; si ouverte, rien)
-          actions.toggleExpanded('photoGrids', randomGrid.id);
-
-          // Attendre que le DOM se mette à jour + scroll
-          setTimeout(() => {
-            const selector = `[data-photo-grid-id="${randomGrid.id}"]`;
-            const photoGridElement = document.querySelector(selector);
-            console.log('🎲 [Random] Élément trouvé:', photoGridElement ? '✅ OUI' : '❌ NON');
-            if (photoGridElement) {
-              photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else {
-              console.warn('⚠️ [Random] Élément PhotoGrid non trouvé après ouverture!');
+          // ⭐ v2.20g : Fonction récursive avec retry automatique
+          const tryRandomPhotoGrid = (attempt = 1, maxAttempts = 10) => {
+            if (attempt > maxAttempts) {
+              console.warn('⚠️ [Random] Abandon après', maxAttempts, 'tentatives');
+              return;
             }
-          }, 300);  // Délai pour attendre le rendu
+
+            const randomIndex = Math.floor(Math.random() * allPhotoGrids.length);
+            const randomGrid = allPhotoGrids[randomIndex];
+
+            console.log(`🎲 [Random] Tentative ${attempt}/${maxAttempts} - PhotoGrid:`, randomGrid.id);
+
+            // OUVRIR la PhotoGrid choisie
+            actions.toggleExpanded('photoGrids', randomGrid.id);
+
+            // Attendre que le DOM se mette à jour
+            setTimeout(() => {
+              const selector = `[data-photo-grid-id="${randomGrid.id}"]`;
+              const photoGridElement = document.querySelector(selector);
+
+              if (photoGridElement) {
+                console.log('🎲 [Random] ✅ Élément trouvé !');
+                photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } else {
+                console.log(`🎲 [Random] ❌ Élément non trouvé - Retry ${attempt + 1}...`);
+                // ⭐ v2.20g : Retry automatique
+                tryRandomPhotoGrid(attempt + 1, maxAttempts);
+              }
+            }, 300);
+          };
+
+          // Lancer le premier essai
+          tryRandomPhotoGrid();
         } else {
           console.warn('⚠️ [Random] Aucune PhotoGrid disponible !');
         }
