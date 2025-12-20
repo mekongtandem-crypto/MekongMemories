@@ -1,8 +1,9 @@
 /**
- * PhotoThumbnail.jsx v2.21b - Placeholder flou optimisé mobile
+ * PhotoThumbnail.jsx v2.21b2 - Placeholder flou w100 (visible)
  * Thumbnail photo avec :
  * - Lazy loading adaptatif (200px mobile, 400px desktop)
- * - Placeholder flou MOBILE + DESKTOP (w30 mobile, w20 desktop)
+ * - Placeholder flou w100 (Google Drive refuse w30/w20)
+ * - Blur réduit blur-lg (au lieu de blur-xl pour visibilité)
  * - Limitation 15 chargements simultanés (anti-freeze)
  * - Badge sessions
  * - Mode sélection (checkbox)
@@ -39,8 +40,11 @@ export const PhotoThumbnail = memo(({
 
   // ⭐ v2.21b : Détection device pour paramètres adaptatifs
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const rootMargin = isMobile ? '200px' : '400px';  // Mobile: moins agressif
-  const blurSize = isMobile ? 'w30' : 'w20';        // ⭐ v2.21b : Mobile w30 (visible), Desktop w20
+  const rootMargin = isMobile ? '200px' : '400px';
+  const blurSize = isMobile ? 'w100' : 'w100';  // ⭐ v2.21b : w100 pour tous (Google Drive refuse w30/w20)
+
+  // Debug placeholder
+  const debugPlaceholder = false;  // Mettre à true pour debug
 
   // ⭐ v2.21a : Intersection Observer adaptatif selon device
   useEffect(() => {
@@ -87,10 +91,12 @@ export const PhotoThumbnail = memo(({
 
       try {
         // ⭐ v2.21b : Placeholder flou MOBILE + DESKTOP (améliore perception vitesse)
-        // Mobile: w30 (~1-2KB, instantané même en 3G)
-        // Desktop: w20 (~800 bytes, ultra-rapide)
+        // w100 (~5-10KB) : assez petit pour être rapide, assez grand pour blur visible
         if (photo.google_drive_id) {
           const tinyUrl = `https://drive.google.com/thumbnail?id=${photo.google_drive_id}&sz=${blurSize}`;
+          if (debugPlaceholder) {
+            console.log('📸 [Placeholder] Chargement:', tinyUrl);
+          }
           if (mounted) {
             setBlurPlaceholder(tinyUrl);
           }
@@ -221,13 +227,20 @@ export const PhotoThumbnail = memo(({
         onShowSessions={onShowSessions}
       />
 
-      {/* ⭐ v2.21 : Placeholder flou progressif (LQIP) */}
+      {/* ⭐ v2.21b : Placeholder flou progressif (LQIP) */}
       {blurPlaceholder && status !== 'loaded' && status !== 'error' && (
         <img
           src={blurPlaceholder}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover blur-xl scale-110"
+          className="absolute inset-0 w-full h-full object-cover blur-lg scale-105"
+          onLoad={() => {
+            if (debugPlaceholder) console.log('📸 [Placeholder] Chargé ✅');
+          }}
+          onError={() => {
+            if (debugPlaceholder) console.log('📸 [Placeholder] Erreur ❌');
+            setBlurPlaceholder(null);  // Supprimer si erreur
+          }}
         />
       )}
 
