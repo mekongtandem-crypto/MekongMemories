@@ -1299,7 +1299,16 @@ const navigationProcessedRef = useRef(null);
             setTimeout(() => {
               const element = document.querySelector(`[data-photo-grid-id="${randomGrid.id}"]`);
               if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // ⭐ v2.21 : Précharger images AVANT scroll pour éviter saut visuel
+                const images = element.querySelectorAll('img[loading="lazy"]');
+                images.forEach(img => {
+                  img.loading = 'eager'; // Force chargement immédiat
+                });
+
+                // Petit délai pour laisser images commencer à charger
+                setTimeout(() => {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
               } else {
                 // Retry avec nouveau PhotoGrid
                 tryRandomPhotoGrid(attempt + 1, maxAttempts);

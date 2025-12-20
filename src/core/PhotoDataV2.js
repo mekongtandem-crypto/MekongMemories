@@ -1,7 +1,8 @@
 /**
- * PhotoDataV2.js v3.7 - OPTIMISÉ MOBILE + Support photos importées (v3.0)
+ * PhotoDataV2.js v2.21 - OPTIMISÉ MOBILE + Cache localStorage
  * ✅ FIX: Format lh3.googleusercontent.com en priorité pour mobile
  * ✅ PERFORMANCE: Moins de tests d'URL, résolution plus rapide
+ * ✅ CACHE: URLs persistées dans localStorage (24h TTL)
  * ✅ FALLBACKS: Autres formats en cas d'échec
  *
  * ⭐ v3.0 Extension :
@@ -19,11 +20,12 @@ class PhotoDataV2 {
     this.masterIndex = null;
     this.isLoaded = false;
     this.loadedAt = null;
-    this.urlCache = new Map();
-    this.debugMode = false; // Désactivé en production
+    this.urlCache = new Map();  // Cache en mémoire (session)
+    this.debugMode = false;
     this.deviceInfo = this.detectDevice();
-    
-    console.log(`📸 PhotoDataV2 v3.6 (Mobile Optimized): ${this.deviceInfo.type}`);
+    this.CACHE_DURATION = 24 * 60 * 60 * 1000; // ⭐ v2.21 : 24h cache localStorage
+
+    console.log(`📸 PhotoDataV2 v2.21 (Cache localStorage): ${this.deviceInfo.type}`);
     this.init();
   }
 
@@ -60,6 +62,40 @@ class PhotoDataV2 {
   logDebug(message, data = null) {
     if (this.debugMode) {
       console.log(`📸 PhotoDataV2 DEBUG: ${message}`, data || '');
+    }
+  }
+
+  // ⭐ v2.21 : Cache localStorage persistant avec TTL
+  getCachedUrl(cacheKey) {
+    try {
+      const storageKey = `mekong_photo_url_${cacheKey}`;
+      const cached = localStorage.getItem(storageKey);
+      if (!cached) return null;
+
+      const { url, timestamp } = JSON.parse(cached);
+      const age = Date.now() - timestamp;
+
+      if (age < this.CACHE_DURATION) {
+        return url; // Cache valide
+      } else {
+        // Cache expiré, supprimer
+        localStorage.removeItem(storageKey);
+        return null;
+      }
+    } catch (error) {
+      return null; // Erreur silencieuse
+    }
+  }
+
+  setCachedUrl(cacheKey, url) {
+    try {
+      const storageKey = `mekong_photo_url_${cacheKey}`;
+      localStorage.setItem(storageKey, JSON.stringify({
+        url,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      // localStorage plein ou erreur → ignorer silencieusement
     }
   }
 
@@ -100,43 +136,54 @@ class PhotoDataV2 {
     };
   }
 
-  // ✅ SOLUTION OPTIMISÉE: Format mobile en priorité
+  // ⭐ v2.21 : Résolution URL avec cache localStorage persistant
   async resolveImageUrl(photo, isThumbnail = false) {
     if (!photo) return this.getPlaceholderImageUrl();
 
     const size = isThumbnail ? 'w400' : 'w800';
-    const cacheKey = `${this.getPhotoCacheKey(photo)}_${size}_v36`;
-    
+    const cacheKey = `${this.getPhotoCacheKey(photo)}_${size}_v21`;
+
+    // ⭐ v2.21 : Étape 1 - Vérifier cache localStorage (persistant)
+    const cachedUrl = this.getCachedUrl(cacheKey);
+    if (cachedUrl) {
+      this.urlCache.set(cacheKey, cachedUrl); // Sync memory cache
+      return cachedUrl;
+    }
+
+    // ⭐ Étape 2 - Vérifier cache mémoire (session)
     if (this.urlCache.has(cacheKey)) {
       return this.urlCache.get(cacheKey);
     }
 
+    // ⭐ Étape 3 - Résoudre URL normalement
     let fileId = photo.google_drive_id;
     let filename = photo.filename;
 
     // Logique pour les photos de post (Mastodon)
     if (!fileId && photo.url) {
-        filename = photo.url.split('/').pop();
+      filename = photo.url.split('/').pop();
     }
 
+    let finalUrl;
     if (fileId) {
-      const finalUrl = this.buildOptimalUrl(fileId, size);
-      this.urlCache.set(cacheKey, finalUrl);
-      return finalUrl;
+      finalUrl = this.buildOptimalUrl(fileId, size);
     } else if (filename) {
-      // Recherche par nom de fichier
       this.logDebug(`🔍 Photo sans ID, recherche par nom: ${filename}`);
       const foundId = await this.fallbackImageSearch(filename);
       if (foundId) {
-        const finalUrl = this.buildOptimalUrl(foundId, size);
-        this.urlCache.set(cacheKey, finalUrl);
-        return finalUrl;
+        finalUrl = this.buildOptimalUrl(foundId, size);
+      } else {
+        finalUrl = this.getPlaceholderImageUrl();
       }
+    } else {
+      finalUrl = this.getPlaceholderImageUrl();
     }
 
-    const placeholderUrl = this.getPlaceholderImageUrl();
-    this.urlCache.set(cacheKey, placeholderUrl);
-    return placeholderUrl;
+    // ⭐ v2.21 : Étape 4 - Sauvegarder dans BOTH caches
+    this.urlCache.set(cacheKey, finalUrl);
+    this.setCachedUrl(cacheKey, finalUrl);
+
+    return finalUrl;
   }
 
   // ✅ NOUVEAU: Construction d'URL optimale selon le device
