@@ -1,8 +1,9 @@
 /**
- * PhotoThumbnail.jsx v2.21a - Performance mobile-first
+ * PhotoThumbnail.jsx v2.21b - Placeholder flou optimisé mobile
  * Thumbnail photo avec :
  * - Lazy loading adaptatif (200px mobile, 400px desktop)
- * - Placeholder flou DESKTOP ONLY (pas sur mobile)
+ * - Placeholder flou MOBILE + DESKTOP (w30 mobile, w20 desktop)
+ * - Limitation 15 chargements simultanés (anti-freeze)
  * - Badge sessions
  * - Mode sélection (checkbox)
  * - Mode lien (bouton lier)
@@ -36,10 +37,10 @@ export const PhotoThumbnail = memo(({
   const [isInView, setIsInView] = useState(false);
   const imgContainerRef = React.useRef(null);
 
-  // ⭐ v2.21a : Détection device pour paramètres adaptatifs
+  // ⭐ v2.21b : Détection device pour paramètres adaptatifs
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const rootMargin = isMobile ? '200px' : '400px';  // Mobile: moins agressif
-  const blurSize = isMobile ? 'w20' : 'w10';        // Mobile: image plus grande
+  const blurSize = isMobile ? 'w30' : 'w20';        // ⭐ v2.21b : Mobile w30 (visible), Desktop w20
 
   // ⭐ v2.21a : Intersection Observer adaptatif selon device
   useEffect(() => {
@@ -85,8 +86,10 @@ export const PhotoThumbnail = memo(({
       setStatus('loading');
 
       try {
-        // ⭐ v2.21a : Placeholder flou DESKTOP ONLY
-        if (photo.google_drive_id && !isMobile) {
+        // ⭐ v2.21b : Placeholder flou MOBILE + DESKTOP (améliore perception vitesse)
+        // Mobile: w30 (~1-2KB, instantané même en 3G)
+        // Desktop: w20 (~800 bytes, ultra-rapide)
+        if (photo.google_drive_id) {
           const tinyUrl = `https://drive.google.com/thumbnail?id=${photo.google_drive_id}&sz=${blurSize}`;
           if (mounted) {
             setBlurPlaceholder(tinyUrl);
