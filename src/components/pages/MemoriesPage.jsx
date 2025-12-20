@@ -1281,10 +1281,10 @@ const navigationProcessedRef = useRef(null);
         const allPhotoGrids = [];
 
         filteredMoments.forEach(moment => {
-          // Day photos (PhotoGrid du moment)
+          // ⭐ v2.20b : Day photos - Format FlatContentList
           if (moment.dayPhotos && moment.dayPhotos.length > 0) {
             allPhotoGrids.push({
-              id: moment.id,
+              id: `flat_moment_${moment.id}_day`,  // ⭐ v2.20b : FIX - Format mode vrac
               type: 'day',
               moment
             });
