@@ -1319,7 +1319,7 @@ const navigationProcessedRef = useRef(null);
 
           // Scroll vers la PhotoGrid
           setTimeout(() => {
-            const selector = `[data-photo-grid-id="${randomGrid.id}_${randomGrid.type}"]`;
+            const selector = `[data-photo-grid-id="${randomGrid.id}"]`;  // ⭐ v2.20a : FIX - Ne PAS ajouter _type
             console.log('🎲 [Random] Recherche élément:', selector);
             const photoGridElement = document.querySelector(selector);
             console.log('🎲 [Random] Élément trouvé:', photoGridElement);
