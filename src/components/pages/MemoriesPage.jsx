@@ -1241,30 +1241,81 @@ const navigationProcessedRef = useRef(null);
       }
 
     } else if (targetType === 'photo') {
-      // ⭐ v2.16s : SIMPLE - Tirer moment + ouvrir PhotoGrid
-      const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos && m.dayPhotos.length > 0);
+      // ⭐ v2.20 : Random PhotoGrid
+      // EN MODE STRUCTURE (AM=1): Random moment avec photos
+      // EN MODE VRAC (AM=0): Random PhotoGrid parmi toutes les grilles visibles
 
-      if (momentsWithPhotos.length > 0) {
-        const randomIndex = Math.floor(Math.random() * momentsWithPhotos.length);
-        const randomMoment = momentsWithPhotos[randomIndex];
+      if (AM) {
+        // ⭐ v2.16s : Mode structure - Tirer moment + ouvrir PhotoGrid
+        const momentsWithPhotos = filteredMoments.filter(m => m.dayPhotos && m.dayPhotos.length > 0);
 
-        // Ouvrir le moment
-        actions.collapseAll('moments');
-        actions.toggleExpanded('moments', randomMoment.id);
+        if (momentsWithPhotos.length > 0) {
+          const randomIndex = Math.floor(Math.random() * momentsWithPhotos.length);
+          const randomMoment = momentsWithPhotos[randomIndex];
 
-        // Déplier PhotoGrid
-        setTimeout(() => {
-          actions.toggleExpanded('photoGrids', randomMoment.id);
+          // Ouvrir le moment
+          actions.collapseAll('moments');
+          actions.toggleExpanded('moments', randomMoment.id);
 
-          // Scroller vers PhotoGrid
-          const gridId = `${randomMoment.id}_day`;
+          // Déplier PhotoGrid
           setTimeout(() => {
-            const photoGridElement = document.querySelector(`[data-photo-grid-id="${gridId}"]`);
+            actions.toggleExpanded('photoGrids', randomMoment.id);
+
+            // Scroller vers PhotoGrid
+            const gridId = `${randomMoment.id}_day`;
+            setTimeout(() => {
+              const photoGridElement = document.querySelector(`[data-photo-grid-id="${gridId}"]`);
+              if (photoGridElement) {
+                photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 200);
+          }, 150);
+        }
+      } else {
+        // ⭐ v2.20 : Mode vrac - Collecter TOUTES les PhotoGrids visibles
+        const allPhotoGrids = [];
+
+        filteredMoments.forEach(moment => {
+          // Day photos (PhotoGrid du moment)
+          if (moment.dayPhotos && moment.dayPhotos.length > 0) {
+            allPhotoGrids.push({
+              id: moment.id,
+              type: 'day',
+              moment
+            });
+          }
+
+          // Post photos (PhotoGrids des posts)
+          if (moment.posts && moment.posts.length > 0) {
+            moment.posts.forEach(post => {
+              if (post.photos && post.photos.length > 0) {
+                allPhotoGrids.push({
+                  id: `post_${post.id}`,
+                  type: 'post',
+                  post,
+                  moment
+                });
+              }
+            });
+          }
+        });
+
+        if (allPhotoGrids.length > 0) {
+          // Tirer une PhotoGrid aléatoire
+          const randomIndex = Math.floor(Math.random() * allPhotoGrids.length);
+          const randomGrid = allPhotoGrids[randomIndex];
+
+          // Sélectionner + ouvrir la PhotoGrid
+          actions.toggleExpanded('photoGrids', randomGrid.id);
+
+          // Scroll vers la PhotoGrid
+          setTimeout(() => {
+            const photoGridElement = document.querySelector(`[data-photo-grid-id="${randomGrid.id}_${randomGrid.type}"]`);
             if (photoGridElement) {
               photoGridElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
           }, 200);
-        }, 150);
+        }
       }
     }
   },
