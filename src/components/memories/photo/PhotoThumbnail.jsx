@@ -1,7 +1,8 @@
 /**
- * PhotoThumbnail.jsx v7.1 Dark mode
+ * PhotoThumbnail.jsx v2.21 - Performance optimizations
  * Thumbnail photo avec :
- * - Lazy loading
+ * - Lazy loading optimisé (rootMargin 400px)
+ * - Placeholder flou progressif (LQIP)
  * - Badge sessions
  * - Mode sélection (checkbox)
  * - Mode lien (bouton lier)
@@ -23,14 +24,15 @@ export const PhotoThumbnail = memo(({
   sessions,
   onShowSessions,
   onContentSelected,
-  editionMode  // ⭐ v2.9o : Recevoir editionMode
+  editionMode
 }) => {
   const [imageUrl, setImageUrl] = useState(null);
+  const [blurPlaceholder, setBlurPlaceholder] = useState(null);  // ⭐ v2.21 : Placeholder flou
   const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'loaded' | 'error'
-  const [isInView, setIsInView] = useState(false);  // ⭐ v2.11 : Lazy loading
+  const [isInView, setIsInView] = useState(false);
   const imgContainerRef = React.useRef(null);
 
-  // ⭐ v2.11 : Intersection Observer pour lazy loading
+  // ⭐ v2.21 : Intersection Observer optimisé (rootMargin 400px)
   useEffect(() => {
     if (!imgContainerRef.current) return;
 
@@ -44,7 +46,7 @@ export const PhotoThumbnail = memo(({
         });
       },
       {
-        rootMargin: '200px', // Charger 200px avant que l'image soit visible
+        rootMargin: '400px',  // ⭐ v2.21 : 200px → 400px (scroll rapide)
         threshold: 0.01
       }
     );
@@ -58,29 +60,34 @@ export const PhotoThumbnail = memo(({
     };
   }, []);
 
+  // ⭐ v2.21 : Chargement progressif (placeholder flou → full quality)
   useEffect(() => {
     let mounted = true;
 
     const loadImage = async () => {
-      if (!photo || !isInView) return;  // ⭐ v2.11 : Charger seulement si visible
-      // console.log('📸 Photo data:', photo); //log temporaire - commenté v2.9w6+
+      if (!photo || !isInView) return;
       setStatus('loading');
 
       try {
-        let url;
-        
+        // ⭐ v2.21 : Étape 1 - Charger placeholder flou (10x10px)
         if (photo.google_drive_id) {
-  // Photo Drive : utiliser PhotoDataV2 (prioritaire)
-  if (window.photoDataV2) {
-    url = await window.photoDataV2.resolveImageUrl(photo, true);
-  } else {
-    console.warn('PhotoDataV2 non disponible');
-    url = `https://drive.google.com/thumbnail?id=${photo.google_drive_id}&sz=w400`;
-  }
-} else if (photo.url && photo.url.startsWith('http')) {
-  // Photo Mastodon avec URL absolue (rare)
-  url = photo.url;
-}
+          const tinyUrl = `https://drive.google.com/thumbnail?id=${photo.google_drive_id}&sz=w10`;
+          if (mounted) {
+            setBlurPlaceholder(tinyUrl);
+          }
+        }
+
+        // ⭐ v2.21 : Étape 2 - Charger image full quality
+        let url;
+        if (photo.google_drive_id) {
+          if (window.photoDataV2) {
+            url = await window.photoDataV2.resolveImageUrl(photo, true);
+          } else {
+            url = `https://drive.google.com/thumbnail?id=${photo.google_drive_id}&sz=w400`;
+          }
+        } else if (photo.url && photo.url.startsWith('http')) {
+          url = photo.url;
+        }
 
         if (mounted && url) {
           setImageUrl(url);
@@ -100,7 +107,7 @@ export const PhotoThumbnail = memo(({
     return () => {
       mounted = false;
     };
-  }, [photo, isInView]);  // ⭐ v2.11 : Ajouter isInView dans les dépendances
+  }, [photo, isInView]);
 
   const handleClick = (e) => {
     e.stopPropagation();
@@ -193,28 +200,40 @@ export const PhotoThumbnail = memo(({
         onShowSessions={onShowSessions}
       />
 
-      {/* États de chargement */}
-      {status === 'loading' && (
-        <div className="w-full h-full animate-pulse flex items-center justify-center">
+      {/* ⭐ v2.21 : Placeholder flou progressif (LQIP) */}
+      {blurPlaceholder && status !== 'loaded' && status !== 'error' && (
+        <img
+          src={blurPlaceholder}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover blur-xl scale-110"
+        />
+      )}
+
+      {/* État loading (si pas de placeholder) */}
+      {status === 'loading' && !blurPlaceholder && (
+        <div className="absolute inset-0 w-full h-full animate-pulse flex items-center justify-center">
           <Camera className="w-6 h-6 text-gray-400 dark:text-gray-500" />
         </div>
       )}
-      
+
+      {/* État error */}
       {status === 'error' && (
-        <div className="w-full h-full bg-red-100 dark:bg-red-900 flex items-center justify-center" title="Erreur de chargement">
+        <div className="absolute inset-0 w-full h-full bg-red-100 dark:bg-red-900 flex items-center justify-center" title="Erreur de chargement">
           <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400" />
         </div>
       )}
-      
+
+      {/* ⭐ v2.21 : Image full quality par-dessus le placeholder */}
       {imageUrl && (
-        <img 
-          src={imageUrl} 
-          alt={photo?.filename || 'photo de voyage'} 
-          className={`w-full h-full object-cover transition-opacity duration-300 ${
+        <img
+          src={imageUrl}
+          alt={photo?.filename || 'photo de voyage'}
+          className={`relative w-full h-full object-cover transition-opacity duration-500 ${
             status === 'loaded' ? 'opacity-100' : 'opacity-0'
-          }`} 
-          onLoad={() => setStatus('loaded')} 
-          onError={() => setStatus('error')} 
+          }`}
+          onLoad={() => setStatus('loaded')}
+          onError={() => setStatus('error')}
         />
       )}
       
