@@ -379,16 +379,21 @@ class DataManager {
         });
         
       } else {
-        // Message système pour post/moment
-        const systemMessage = {
+        // ⭐ v2.21c : Message lien vers le souvenir au lieu de message système
+        const linkMessage = {
           id: `${baseTimestamp}-system`,
-          content: gameData.systemMessage || `💬 Session initiée.`,
+          content: `💬 Session initiée sur ce souvenir :`,
           author: 'duo',
           timestamp: now,
-          edited: false
+          edited: false,
+          linkedContent: {
+            type: originContent.type,
+            id: originContent.id,
+            title: originContent.title
+          }
         };
-        newSession.notes.push(systemMessage);
-        
+        newSession.notes.push(linkMessage);
+
         // Message utilisateur si texte fourni
         if (initialText && initialText.trim()) {
           const userMessage = {
@@ -400,10 +405,10 @@ class DataManager {
           };
           newSession.notes.push(userMessage);
         }
-        
-        logger.debug('Session créée', { 
-          momentId, 
-          originType: originContent.type 
+
+        logger.debug('Session créée avec lien initial', {
+          momentId,
+          originType: originContent.type
         });
       }
       

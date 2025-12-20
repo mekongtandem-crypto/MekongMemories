@@ -276,13 +276,15 @@ useEffect(() => {
 
   const handleOpenLinkPicker = () => {
     console.log('🔗 Ouverture sélecteur de liens');
-    
+
     if (!onStartSelectionMode) {
       console.error('❌ onStartSelectionMode non fourni !');
       return;
     }
-    
-    // ⭐ MODIFIÉ : Plus besoin de callback, passage via navigationContext
+
+    // ⭐ v2.21c : Le momentId associé est automatiquement récupéré depuis
+    // app.currentChatSession.gameId dans App.jsx et passé via navigationContext.sessionMomentId
+    // MemoriesPage scrolle automatiquement vers ce moment lors de l'ouverture
     onStartSelectionMode('link', null);
   };
 
