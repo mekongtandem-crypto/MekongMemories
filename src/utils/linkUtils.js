@@ -211,7 +211,7 @@ export function isYouTubeURL(url) {
 
 /**
  * Rendre HTML avec liens cliquables (pour dangerouslySetInnerHTML)
- * ⭐ v2.26b : Détection YouTube → badge "📺 YouTube"
+ * ⭐ DEPRECATED en faveur de renderHTMLContentWithYouTube
  * @param {string} html - HTML contenant potentiellement des URLs
  * @returns {string} HTML avec URLs transformées en <a> tags
  */
@@ -221,7 +221,6 @@ export function renderHTMLWithLinks(html) {
   }
 
   // Remplacer les URLs par des balises <a>
-  // Note: utilise une regex globale pour remplacer toutes les occurrences
   return html.replace(/(https?:\/\/[^\s<]+)|(www\.[^\s<]+)/g, (match) => {
     const href = match.match(/^www\./) ? `https://${match}` : match;
 
@@ -231,7 +230,85 @@ export function renderHTMLWithLinks(html) {
       return `<span class="inline-flex items-center space-x-1"><span class="bg-red-600 text-white px-1.5 py-0.5 rounded text-xs font-semibold">📺 YouTube</span><a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-150">${match}</a></span>`;
     }
 
-    // Lien normal (non-YouTube)
     return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-150">${match}</a>`;
+  });
+}
+
+/**
+ * Rendre HTML avec composants React (YouTube preview + liens)
+ * ⭐ v2.26c : Remplace dangerouslySetInnerHTML pour support YouTube interactif
+ * @param {string} html - HTML contenant texte, URLs, <br />
+ * @returns {Array} Tableau d'éléments React
+ */
+export function renderHTMLContentWithYouTube(html) {
+  if (!html || typeof html !== 'string') {
+    return null;
+  }
+
+  // Décoder les entités HTML
+  const decodeHTML = (str) => {
+    const txt = document.createElement('textarea');
+    txt.innerHTML = str;
+    return txt.value;
+  };
+
+  const decodedHTML = decodeHTML(html);
+
+  // Split par <br /> et <br> pour séparer les lignes
+  const lines = decodedHTML.split(/<br\s*\/?>/gi);
+
+  // Traiter chaque ligne
+  return lines.map((line, lineIndex) => {
+    if (!line.trim()) {
+      return React.createElement('br', { key: `br-${lineIndex}` });
+    }
+
+    // Split la ligne par URLs
+    const parts = line.split(URL_REGEX);
+
+    const lineContent = parts.map((part, partIndex) => {
+      // Vérifier si c'est une URL
+      if (part && (part.match(/^https?:\/\//) || part.match(/^www\./))) {
+        const href = part.match(/^www\./) ? `https://${part}` : part;
+
+        // ⭐ v2.26c : Détection YouTube → YouTubePreview complet
+        const youtubeId = extractYouTubeId(href);
+        if (youtubeId) {
+          return React.createElement(
+            YouTubePreview,
+            {
+              key: `youtube-${lineIndex}-${partIndex}`,
+              videoId: youtubeId,
+              url: href
+            }
+          );
+        }
+
+        // Lien normal
+        return React.createElement(
+          'a',
+          {
+            key: `link-${lineIndex}-${partIndex}`,
+            href: href,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            className: 'text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-150',
+            onClick: (e) => e.stopPropagation()
+          },
+          part
+        );
+      }
+
+      // Texte normal
+      return part;
+    });
+
+    // Wrapper chaque ligne dans un span avec key
+    return React.createElement(
+      'span',
+      { key: `line-${lineIndex}` },
+      ...lineContent,
+      lineIndex < lines.length - 1 ? React.createElement('br', { key: `break-${lineIndex}` }) : null
+    );
   });
 }

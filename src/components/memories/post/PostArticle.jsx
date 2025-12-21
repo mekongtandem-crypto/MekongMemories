@@ -22,7 +22,7 @@ import { SessionBadgePost } from '../shared/SessionBadges.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import { generatePostKey } from '../../../utils/themeUtils.js';
 import { useMemoriesDisplay } from '../context/MemoriesDisplayContext.jsx';  // ⭐ v2.14
-import { renderHTMLWithLinks } from '../../../utils/linkUtils.js';  // ⭐ v2.26a
+import { renderHTMLContentWithYouTube } from '../../../utils/linkUtils.js';  // ⭐ v2.26c
 
 export const PostArticle = memo(({
   post,
@@ -350,10 +350,9 @@ export const PostArticle = memo(({
           <>
             {/* Texte (si filtre textes actif) */}
             {shouldShowText && (
-              <div
-                className="prose prose-sm max-w-none bg-white dark:bg-gray-800 p-3 dark:text-gray-100"
-                dangerouslySetInnerHTML={{ __html: renderHTMLWithLinks(body) }}
-              />
+              <div className="prose prose-sm max-w-none bg-white dark:bg-gray-800 p-3 dark:text-gray-100">
+                {renderHTMLContentWithYouTube(body)}
+              </div>
             )}
 
             {/* ⭐ v2.15c : Photos si DP=déplié OU toggle ON */}
