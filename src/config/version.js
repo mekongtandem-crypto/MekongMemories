@@ -1,7 +1,7 @@
 /**
  * Configuration version - MémoireDuMékong
  */
-export const APP_VERSION = "2.24c";
+export const APP_VERSION = "2.24d";
 export const APP_NAME = "Mémoire du Mékong";
 export const BUILD_DATE = "21 décembre 2025";
-export const PHASE = "Feature: v2.24c - Messages timeline demandes consensus";
+export const PHASE = "Fix: v2.24d - Actualisation badge causeries bottom bar";
