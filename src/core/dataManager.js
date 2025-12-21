@@ -719,6 +719,7 @@ class DataManager {
   /**
    * Demander l'archivage d'une session (par User A)
    * Crée une demande qui doit être acceptée par l'autre user
+   * ⭐ v2.24c : Ajoute message système dans timeline
    */
   requestArchive = async (sessionId) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
@@ -728,13 +729,27 @@ class DataManager {
     }
 
     try {
+      const now = new Date().toISOString();
+
+      // ⭐ v2.24c : Créer message système de demande
+      const requestMessage = {
+        id: `${Date.now()}-archive-request`,
+        content: `🔔 ${this.appState.currentUser} a demandé l'archivage de cette session`,
+        author: 'duo',
+        timestamp: now,
+        edited: false,
+        metadata: { type: 'archive_request' }  // Pour identification lors du remplacement
+      };
+
       const updatedSession = {
         ...session,
         archiveRequest: {
           requestedBy: this.appState.currentUser,
-          requestedAt: new Date().toISOString(),
+          requestedAt: now,
           status: 'pending'
-        }
+        },
+        notes: [...(session.notes || []), requestMessage],  // ⭐ Ajouter message
+        updatedAt: now
       };
 
       await this.updateSession(updatedSession);
@@ -750,6 +765,7 @@ class DataManager {
   /**
    * Accepter une demande d'archivage (par User B)
    * Archive la session pour tous les users
+   * ⭐ v2.24c : Remplace message de demande par message de confirmation
    */
   acceptArchiveRequest = async (sessionId) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
@@ -759,15 +775,33 @@ class DataManager {
     }
 
     try {
-      // ⭐ v2.24 : Ajouter message système "Session archivée"
       const now = new Date().toISOString();
-      const archiveMessage = {
-        id: `${Date.now()}-archive`,
-        content: '✅ Session archivée',
-        author: 'duo',
-        timestamp: now,
-        edited: false
-      };
+
+      // ⭐ v2.24c : Trouver et remplacer le message de demande
+      let updatedNotes = [...(session.notes || [])];
+      const requestMessageIndex = updatedNotes.findIndex(
+        note => note.metadata?.type === 'archive_request'
+      );
+
+      if (requestMessageIndex !== -1) {
+        // Remplacer le message de demande par le message de confirmation
+        updatedNotes[requestMessageIndex] = {
+          id: `${Date.now()}-archive`,
+          content: '✅ Session archivée',
+          author: 'duo',
+          timestamp: now,
+          edited: false
+        };
+      } else {
+        // Fallback : ajouter le message si non trouvé
+        updatedNotes.push({
+          id: `${Date.now()}-archive`,
+          content: '✅ Session archivée',
+          author: 'duo',
+          timestamp: now,
+          edited: false
+        });
+      }
 
       const updatedSession = {
         ...session,
@@ -780,7 +814,7 @@ class DataManager {
           acceptedBy: this.appState.currentUser,
           acceptedAt: now
         },
-        notes: [...(session.notes || []), archiveMessage], // ⭐ v2.24 : Ajouter message
+        notes: updatedNotes,  // ⭐ v2.24c : Notes avec message remplacé
         updatedAt: now
       };
 
@@ -797,6 +831,7 @@ class DataManager {
   /**
    * Refuser une demande d'archivage (par User B)
    * Supprime la demande
+   * ⭐ v2.24c : Supprime aussi le message de demande dans timeline
    */
   rejectArchiveRequest = async (sessionId) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
@@ -806,9 +841,16 @@ class DataManager {
     }
 
     try {
+      // ⭐ v2.24c : Supprimer le message de demande dans timeline
+      const updatedNotes = (session.notes || []).filter(
+        note => note.metadata?.type !== 'archive_request'
+      );
+
       const updatedSession = {
         ...session,
-        archiveRequest: null // Supprime la demande
+        archiveRequest: null, // Supprime la demande
+        notes: updatedNotes,  // ⭐ Notes sans message de demande
+        updatedAt: new Date().toISOString()
       };
 
       await this.updateSession(updatedSession);
@@ -823,6 +865,7 @@ class DataManager {
 
   /**
    * Annuler une demande d'archivage (par User A qui a créé la demande)
+   * ⭐ v2.24c : Supprime aussi le message de demande dans timeline
    */
   cancelArchiveRequest = async (sessionId) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
@@ -838,9 +881,16 @@ class DataManager {
     }
 
     try {
+      // ⭐ v2.24c : Supprimer le message de demande dans timeline
+      const updatedNotes = (session.notes || []).filter(
+        note => note.metadata?.type !== 'archive_request'
+      );
+
       const updatedSession = {
         ...session,
-        archiveRequest: null
+        archiveRequest: null,
+        notes: updatedNotes,  // ⭐ Notes sans message de demande
+        updatedAt: new Date().toISOString()
       };
 
       await this.updateSession(updatedSession);
@@ -861,6 +911,7 @@ class DataManager {
    * Demander la suppression d'une session (par User A)
    * Crée une demande qui nécessite validation de User B
    * ⭐ v2.24 : Comme archivage, requiert consensus si plusieurs personnes ont participé
+   * ⭐ v2.24c : Ajoute message système dans timeline
    */
   requestDelete = async (sessionId) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
@@ -876,6 +927,16 @@ class DataManager {
     try {
       const now = new Date().toISOString();
 
+      // ⭐ v2.24c : Créer message système de demande
+      const requestMessage = {
+        id: `${Date.now()}-delete-request`,
+        content: `🗑️ ${this.appState.currentUser} a demandé la suppression de cette session`,
+        author: 'duo',
+        timestamp: now,
+        edited: false,
+        metadata: { type: 'delete_request' }  // Pour identification lors du remplacement
+      };
+
       const updatedSession = {
         ...session,
         deleteRequest: {
@@ -884,6 +945,7 @@ class DataManager {
           status: 'pending',
           requiresConsensus
         },
+        notes: [...(session.notes || []), requestMessage],  // ⭐ Ajouter message
         updatedAt: now
       };
 
@@ -900,7 +962,7 @@ class DataManager {
   /**
    * Accepter une demande de suppression (par User B)
    * Supprime définitivement la session
-   * ⭐ v2.24 : Ajoute message "Session supprimée" avant suppression
+   * ⭐ v2.24c : Remplace message de demande par message de confirmation
    */
   acceptDeleteRequest = async (sessionId) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
@@ -910,19 +972,37 @@ class DataManager {
     }
 
     try {
-      // ⭐ v2.24 : Ajouter message système "Session supprimée"
       const now = new Date().toISOString();
-      const deleteMessage = {
-        id: `${Date.now()}-delete`,
-        content: '🗑️ Session supprimée',
-        author: 'duo',
-        timestamp: now,
-        edited: false
-      };
+
+      // ⭐ v2.24c : Trouver et remplacer le message de demande
+      let updatedNotes = [...(session.notes || [])];
+      const requestMessageIndex = updatedNotes.findIndex(
+        note => note.metadata?.type === 'delete_request'
+      );
+
+      if (requestMessageIndex !== -1) {
+        // Remplacer le message de demande par le message de confirmation
+        updatedNotes[requestMessageIndex] = {
+          id: `${Date.now()}-delete`,
+          content: '🗑️ Session supprimée',
+          author: 'duo',
+          timestamp: now,
+          edited: false
+        };
+      } else {
+        // Fallback : ajouter le message si non trouvé
+        updatedNotes.push({
+          id: `${Date.now()}-delete`,
+          content: '🗑️ Session supprimée',
+          author: 'duo',
+          timestamp: now,
+          edited: false
+        });
+      }
 
       const updatedSession = {
         ...session,
-        notes: [...(session.notes || []), deleteMessage],
+        notes: updatedNotes,  // ⭐ v2.24c : Notes avec message remplacé
         deleteRequest: {
           ...session.deleteRequest,
           status: 'accepted',
@@ -950,6 +1030,7 @@ class DataManager {
   /**
    * Refuser une demande de suppression (par User B)
    * Supprime la demande
+   * ⭐ v2.24c : Supprime aussi le message de demande dans timeline
    */
   rejectDeleteRequest = async (sessionId) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
@@ -959,9 +1040,16 @@ class DataManager {
     }
 
     try {
+      // ⭐ v2.24c : Supprimer le message de demande dans timeline
+      const updatedNotes = (session.notes || []).filter(
+        note => note.metadata?.type !== 'delete_request'
+      );
+
       const updatedSession = {
         ...session,
-        deleteRequest: null // Supprime la demande
+        deleteRequest: null, // Supprime la demande
+        notes: updatedNotes,  // ⭐ Notes sans message de demande
+        updatedAt: new Date().toISOString()
       };
 
       await this.updateSession(updatedSession);
@@ -976,6 +1064,7 @@ class DataManager {
 
   /**
    * Annuler une demande de suppression (par User A qui a créé la demande)
+   * ⭐ v2.24c : Supprime aussi le message de demande dans timeline
    */
   cancelDeleteRequest = async (sessionId) => {
     const session = this.appState.sessions.find(s => s.id === sessionId);
@@ -991,9 +1080,16 @@ class DataManager {
     }
 
     try {
+      // ⭐ v2.24c : Supprimer le message de demande dans timeline
+      const updatedNotes = (session.notes || []).filter(
+        note => note.metadata?.type !== 'delete_request'
+      );
+
       const updatedSession = {
         ...session,
-        deleteRequest: null
+        deleteRequest: null,
+        notes: updatedNotes,  // ⭐ Notes sans message de demande
+        updatedAt: new Date().toISOString()
       };
 
       await this.updateSession(updatedSession);
