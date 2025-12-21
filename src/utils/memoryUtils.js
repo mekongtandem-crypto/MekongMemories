@@ -51,7 +51,10 @@ export function markMomentAsOpened(momentId, userId) {
  * @returns {boolean}
  */
 export function isMomentNew(moment, userId) {
-  if (!moment || !userId) return false;
+  if (!moment || !userId) {
+    console.log('🔍 v2.25 isMomentNew: moment ou userId manquant', { moment: !!moment, userId });
+    return false;
+  }
 
   // Si le moment a source='imported', il a été créé par un utilisateur
   // Vérifier qui l'a créé (via createdBy ou importedBy)
@@ -59,11 +62,28 @@ export function isMomentNew(moment, userId) {
                          moment.importedBy &&
                          moment.importedBy !== userId;
 
+  console.log('🔍 v2.25 isMomentNew:', {
+    momentId: moment.id,
+    momentTitle: moment.title,
+    source: moment.source,
+    importedBy: moment.importedBy,
+    currentUserId: userId,
+    createdByOther
+  });
+
   if (!createdByOther) return false;
 
   // Vérifier si jamais consulté
   const tracking = getMomentReadStatus(moment.id, userId);
-  return !tracking?.hasBeenOpened;
+  const isNew = !tracking?.hasBeenOpened;
+
+  console.log('🔍 v2.25 isMomentNew result:', {
+    momentId: moment.id,
+    tracking,
+    isNew
+  });
+
+  return isNew;
 }
 
 /**
