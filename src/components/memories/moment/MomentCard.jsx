@@ -121,9 +121,10 @@ export const MomentCard = memo(forwardRef(({
   };
 
   return (
-    <div 
-      ref={ref} 
+    <div
+      ref={ref}
       id={moment.id}
+      data-moment-id={moment.id}  // ⭐ v2.25 : Pour IntersectionObserver
       data-filtered={matchesFilter ? 'true' : 'false'}
       className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border transition-all duration-300 ${
         isSelected ? 'border-blue-400 dark:border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'

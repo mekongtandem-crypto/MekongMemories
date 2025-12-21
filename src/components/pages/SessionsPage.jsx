@@ -1,11 +1,12 @@
 /**
- * SessionsPage.jsx v7.2 - Phase 25 : Système lecture NEW/UNREAD
+ * SessionsPage.jsx v7.3 - v2.25 : Bandeau nouveaux souvenirs
  * ✅ NEW (🆕) vs UNREAD (👀) indépendants des groupes
  * ✅ Badge prioritaire unique (haut droite)
  * ✅ Backgrounds progressifs (NEW > UNREAD > READ)
  * ✅ Borders discrets
  * ✅ Menu contextuel "Marquer comme lu/non lu"
  * ✅ Nouveaux emojis groupes
+ * ✅ Bandeau notification nouveaux souvenirs (v2.25)
  */
 import { safeStorage } from '../../utils/storage.js';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -13,7 +14,7 @@ import { useAppState } from '../../hooks/useAppState.js';
 import { dataManager } from '../../core/dataManager.js';
 import { userManager } from '../../core/UserManager.js';
 import StatsModal from '../StatsModal.jsx';
-import { 
+import {
   enrichSessionWithStatus,
   sortSessions,
   formatRelativeTime,
@@ -21,13 +22,20 @@ import {
   SORT_OPTIONS,
   SESSION_STATUS
 } from '../../utils/sessionUtils.js';
+import { countNewMemories } from '../../utils/memoryUtils.js'; // ⭐ v2.25
 import {
   Clock, MoreVertical, Edit, Trash2,
-  Archive, ChevronDown, X, Eye, EyeOff, Check
+  Archive, ChevronDown, X, Eye, EyeOff, Check, Sparkles, ArrowRight
 } from 'lucide-react';
 
 export default function SessionsPage({ isSearchOpen, setIsSearchOpen }) {
   const app = useAppState();
+
+  // ⭐ v2.25 : Compter nouveaux souvenirs
+  const newMemoriesCount = useMemo(() => {
+    if (!app.masterIndex?.moments || !app.currentUser) return 0;
+    return countNewMemories(app.masterIndex.moments, app.currentUser.id);
+  }, [app.masterIndex, app.currentUser]);
 
   // États UI
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -467,6 +475,31 @@ export default function SessionsPage({ isSearchOpen, setIsSearchOpen }) {
               {searchFilteredSessions.length} résultat{searchFilteredSessions.length > 1 ? 's' : ''} trouvé{searchFilteredSessions.length > 1 ? 's' : ''}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ⭐ v2.25 : Bandeau nouveaux souvenirs */}
+      {newMemoriesCount > 0 && (
+        <div className="mb-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-2 border-purple-300 dark:border-purple-600 rounded-lg shadow-sm">
+          <button
+            onClick={() => app.navigateTo('memories')}
+            className="w-full flex items-center justify-between hover:opacity-80 transition-opacity"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <Sparkles className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                  {newMemoriesCount} nouveau{newMemoriesCount > 1 ? 'x' : ''} souvenir{newMemoriesCount > 1 ? 's' : ''}
+                </h3>
+                <p className="text-xs text-purple-700 dark:text-purple-300">
+                  Cliquez pour découvrir
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          </button>
         </div>
       )}
 

@@ -1,8 +1,10 @@
 /**
- * Navigation.jsx v5.2 - Phase 26 Dark mode
-* ✅ Bottom Bar dynamique avec navigation contextuelle
+ * Navigation.jsx v6.1 - v2.25 : Badge nouveaux souvenirs
+ * ✅ Bottom Bar dynamique avec navigation contextuelle
  * ✅ Bouton retour intelligent selon previousPage
- * 
+ * ✅ Badge nouveaux souvenirs (moments créés par autre user, non consultés)
+ * ✅ Badge actualisation temps réel sur changement de page
+ *
  * Logique :
  * - Chat venant de Memories → Retour vers Memories
  * - Memories venant de Chat → Retour vers Chat
@@ -11,16 +13,17 @@
 import React from 'react';
 import { Sparkles, MessageSquare, ArrowLeft, Gamepad2 } from 'lucide-react';
 import { enrichSessionWithStatus, SESSION_STATUS } from '../utils/sessionUtils.js';
+import { countNewMemories } from '../utils/memoryUtils.js';
 
 export function BottomNavigation({ currentPage, onPageChange, app, navigationContext }) {
   const urgentSessionsCount = React.useMemo(() => {
     if (!app.sessions || !app.currentUser) return 0;
-    
+
     // Récupérer tracking lecture
     const sessionReadStatus = JSON.parse(
       localStorage.getItem(`mekong_sessionReadStatus_${app.currentUser.id}`) || '{}'
     );
-    
+
     // ✨ Filter seulement archived (completed supprimé)
     const activeSessions = app.sessions.filter(s => !s.archived);
 
@@ -60,6 +63,13 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
     return notifiedCount + newCount + unreadCount;
   }, [app.sessions, app.currentUser, currentPage]); // ⭐ v2.24c : currentPage force recalcul au changement de page
 
+  // ⭐ v2.25 : Compter nouveaux souvenirs
+  const newMemoriesCount = React.useMemo(() => {
+    if (!app.masterIndex?.moments || !app.currentUser) return 0;
+
+    return countNewMemories(app.masterIndex.moments, app.currentUser.id);
+  }, [app.masterIndex, app.currentUser, currentPage]); // ⭐ Recalcul au changement de page
+
   // ⭐ PHASE 19D : Détection contexte de navigation
   const isInChat = currentPage === 'chat';
   const isInMemories = currentPage === 'memories';
@@ -77,16 +87,17 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
                            (isInMemories && previousPage === 'chat');
 
   const navItems = [
-    { 
-      id: 'sessions', 
-      icon: MessageSquare, 
-      label: 'Causeries', 
-      badge: urgentSessionsCount 
+    {
+      id: 'sessions',
+      icon: MessageSquare,
+      label: 'Causeries',
+      badge: urgentSessionsCount
     },
-    { 
-      id: 'memories', 
-      icon: Sparkles, 
-      label: 'Souvenirs' 
+    {
+      id: 'memories',
+      icon: Sparkles,
+      label: 'Souvenirs',
+      badge: newMemoriesCount  // ⭐ v2.25 : Badge nouveaux souvenirs
     }
   ];
 
