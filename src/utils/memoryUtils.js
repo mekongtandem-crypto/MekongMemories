@@ -46,6 +46,7 @@ export function markMomentAsOpened(momentId, userId) {
 
 /**
  * Vérifier si un moment est "nouveau" (créé par autre user, jamais consulté)
+ * OU contient des nouveaux contenus (notes/photos ajoutés par autre user)
  * @param {Object} moment - Moment à vérifier
  * @param {string} userId - ID de l'utilisateur courant
  * @returns {boolean}
@@ -56,34 +57,59 @@ export function isMomentNew(moment, userId) {
     return false;
   }
 
-  // Si le moment a source='imported', il a été créé par un utilisateur
-  // Vérifier qui l'a créé (via createdBy ou importedBy)
-  const createdByOther = moment.source === 'imported' &&
-                         moment.importedBy &&
-                         moment.importedBy !== userId;
+  // Récupérer le statut de lecture du moment
+  const tracking = getMomentReadStatus(moment.id, userId);
+  const lastOpenedAt = tracking?.lastOpenedAt ? new Date(tracking.lastOpenedAt) : null;
 
-  console.log('🔍 v2.25 isMomentNew:', {
+  // CAS 1 : Moment lui-même est nouveau (créé par autre user, jamais consulté)
+  const momentIsNew = moment.source === 'imported' &&
+                      moment.importedBy &&
+                      moment.importedBy !== userId &&
+                      !tracking?.hasBeenOpened;
+
+  console.log('🔍 v2.25 isMomentNew - Moment:', {
     momentId: moment.id,
     momentTitle: moment.title,
     source: moment.source,
     importedBy: moment.importedBy,
     currentUserId: userId,
-    createdByOther
+    momentIsNew
   });
 
-  if (!createdByOther) return false;
+  if (momentIsNew) return true;
 
-  // Vérifier si jamais consulté
-  const tracking = getMomentReadStatus(moment.id, userId);
-  const isNew = !tracking?.hasBeenOpened;
+  // CAS 2 : Moment existant mais contient des nouveaux contenus depuis dernière consultation
+  if (!lastOpenedAt) {
+    // Si jamais consulté et pas nouveau moment, alors pas de nouveau contenu détectable
+    return false;
+  }
 
-  console.log('🔍 v2.25 isMomentNew result:', {
+  // Vérifier les nouvelles notes (posts user_added créés par autre user)
+  const hasNewPosts = (moment.posts || []).some(post => {
+    if (post.category !== 'user_added' || post.source !== 'imported') return false;
+    if (post.uploadedBy === userId) return false; // Créé par moi
+
+    const postDate = new Date(post.date || post.createdAt || 0);
+    return postDate > lastOpenedAt;
+  });
+
+  // Vérifier les nouvelles photos (dayPhotos uploadées par autre user)
+  const hasNewPhotos = (moment.dayPhotos || []).some(photo => {
+    if (photo.source !== 'imported') return false;
+    if (photo.uploadedBy === userId) return false; // Uploadée par moi
+
+    const photoDate = new Date(photo.uploadedAt || photo.createdAt || 0);
+    return photoDate > lastOpenedAt;
+  });
+
+  console.log('🔍 v2.25 isMomentNew - Contenus:', {
     momentId: moment.id,
-    tracking,
-    isNew
+    hasNewPosts,
+    hasNewPhotos,
+    lastOpenedAt: lastOpenedAt.toISOString()
   });
 
-  return isNew;
+  return hasNewPosts || hasNewPhotos;
 }
 
 /**

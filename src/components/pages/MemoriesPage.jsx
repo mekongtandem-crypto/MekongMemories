@@ -195,17 +195,36 @@ const MemoriesPageInner = React.forwardRef(({
 
   // Handler pour scroller vers le premier nouveau souvenir
   const scrollToFirstNewMemory = useCallback(() => {
-    if (newMemories.length > 0 && firstNewMemoryRef.current) {
-      firstNewMemoryRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // Marquer comme vu après le scroll
+    if (newMemories.length > 0) {
+      const firstNewMoment = newMemories[0];
+
+      // 1. Ouvrir le moment (fermer tous les autres d'abord en mode focus)
+      if (displayMode === 'focus') {
+        actions.collapseAll('moments');
+      }
+
+      // S'assurer que le moment est ouvert (pas fermé)
+      const isAlreadyExpanded = computed.isMomentExpanded(firstNewMoment.id);
+      if (!isAlreadyExpanded) {
+        actions.toggleExpanded('moments', firstNewMoment.id);
+      }
+
+      // 2. Scroller vers le moment après un délai pour laisser le temps d'ouvrir
+      setTimeout(() => {
+        if (firstNewMemoryRef.current) {
+          firstNewMemoryRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+
+      // 3. Marquer comme vu après le scroll
       setTimeout(() => {
         if (app.currentUser) {
-          markMomentAsOpened(newMemories[0].id, app.currentUser.id);
+          markMomentAsOpened(firstNewMoment.id, app.currentUser.id);
           dataManager.notify(); // Refresh badge
         }
-      }, 1000);
+      }, 1500);
     }
-  }, [newMemories, app.currentUser]);
+  }, [newMemories, app.currentUser, displayMode, actions, computed]);
 
   // ⭐ v2.25 : Observer pour marquer souvenirs vus au scroll
   useEffect(() => {
