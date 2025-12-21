@@ -1731,7 +1731,7 @@ function LinkPhotoPreview({ photo }) {
               <Link className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
               <div>
                 <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                  🔗 Insérer un lien
+                  Insérer un lien
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   Vers un souvenir existant
@@ -1747,7 +1747,7 @@ function LinkPhotoPreview({ photo }) {
               <Camera className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
               <div>
                 <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                  📷 Photo rapide
+                  Photo rapide
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   Sans souvenir
@@ -1766,7 +1766,7 @@ function LinkPhotoPreview({ photo }) {
               </div>
               <div>
                 <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                  📸 Photo souvenir
+                  Photo souvenir
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   Et créer un nouveau souvenir
