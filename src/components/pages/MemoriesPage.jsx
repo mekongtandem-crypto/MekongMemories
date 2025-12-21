@@ -2153,7 +2153,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           isOpen={photoToMemoryModal.isOpen}
           photoData={photoToMemoryModal.photoData}
           file={photoToMemoryModal.file}
-          processedData={photoToMemoryModal.processedData}  {/* ⭐ v2.25c : Nouveau flow */}
+          processedData={photoToMemoryModal.processedData}
           onClose={() => setPhotoToMemoryModal({ isOpen: false, photoData: null, file: null, processedData: null })}
           moments={app.masterIndex?.moments || []}
           onConvert={handleConvertPhotoToMemory}
