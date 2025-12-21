@@ -752,7 +752,7 @@ function SessionRow({
       )}
 
       {/* ⭐ v2.24 : Badge ARCHIVE (demande en attente - bas gauche) */}
-      {!isEditing && session.archiveRequest && session.archiveRequest.requestedBy !== currentUser && (
+      {!isEditing && session.archiveRequest && session.archiveRequest.requestedBy !== currentUserId && (
         <div className="absolute -bottom-2 -left-2 flex items-center gap-1 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
           <span>📚</span>
           <span>Archive</span>
@@ -760,7 +760,7 @@ function SessionRow({
       )}
 
       {/* ⭐ v2.24 : Badge SUPPRIME (demande en attente - bas droite) */}
-      {!isEditing && session.deleteRequest && session.deleteRequest.requestedBy !== currentUser && (
+      {!isEditing && session.deleteRequest && session.deleteRequest.requestedBy !== currentUserId && (
         <div className="absolute -bottom-2 -right-2 flex items-center gap-1 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
           <span>🗑️</span>
           <span>Supprime</span>
