@@ -447,9 +447,10 @@ class MasterIndexGenerator {
   async getPhotosInFolder(folderId) {
     const files = await this.driveSync.listFiles({
       q: `'${folderId}' in parents and mimeType contains 'image/' and trashed=false`,
-      fields: 'files(id, name, mimeType, imageMediaMetadata(width, height))'
+      fields: 'files(id, name, mimeType, createdTime, imageMediaMetadata(width, height, time))'
     });
 
+    // ⭐ v2.23 : Trier les photos par date (EXIF time ou createdTime)
     return files
       .filter(file => !file.name.startsWith('.'))
       .map(file => ({
@@ -458,8 +459,17 @@ class MasterIndexGenerator {
         type: 'day_photo',
         mime_type: file.mimeType,
         width: file.imageMediaMetadata?.width,
-        height: file.imageMediaMetadata?.height
-      }));
+        height: file.imageMediaMetadata?.height,
+        // ⭐ v2.23 : Ajouter date pour tri
+        photoDate: file.imageMediaMetadata?.time || file.createdTime,
+        createdTime: file.createdTime
+      }))
+      .sort((a, b) => {
+        // Trier par date de photo (ou date de création si pas de métadonnées EXIF)
+        const dateA = new Date(a.photoDate || a.createdTime);
+        const dateB = new Date(b.photoDate || b.createdTime);
+        return dateA - dateB; // Ordre chronologique
+      });
   }
 
   // ========================================
