@@ -1,7 +1,8 @@
 /**
- * MemoriesPage.jsx v2.19 - Correctifs affichage
- * ✅ Fix toggle moment (ne replie plus tous les autres)
- * ✅ Ouverture moment avec règles globales AT/AP
+ * MemoriesPage.jsx v2.25 - Notification nouveaux souvenirs
+ * ✅ Bandeau nouveaux souvenirs avec scroll auto
+ * ✅ Marquage automatique souvenirs vus au scroll (IntersectionObserver)
+ * ✅ Badge count nouveaux souvenirs
  * ⭐ Migration progressive vers useMemoriesDisplay()
  */
 
@@ -40,15 +41,17 @@ import {
   AlertCircle, ChevronDown, X, Tag, Link,
   MessageCircle, MessageCirclePlus, MessageCircleMore, Edit2, Edit, Trash2
 } from 'lucide-react';
-import { 
-  sortThemes, 
-  generatePostKey, 
-  generatePhotoMomentKey, 
+import {
+  sortThemes,
+  generatePostKey,
+  generatePhotoMomentKey,
   generatePhotoMastodonKey,
   generateMomentKey,
   getMomentChildrenKeys,
   getPostChildrenKeys
 } from '../../utils/themeUtils.js';
+import { getNewMemories, markMomentAsOpened, createMomentVisibilityObserver } from '../../utils/memoryUtils.js';  // ⭐ v2.25
+import { Sparkles, ArrowDown } from 'lucide-react';  // ⭐ v2.25
 
 
 // ========================================
@@ -181,6 +184,48 @@ const MemoriesPageInner = React.forwardRef(({
     onConfirmMemoryOnly: null,  // "Laisser sur Drive"
     onConfirmWithDrive: null    // "Supprimer du Drive" (si plus de cross-refs)
   });
+
+  // ⭐ v2.25 : Nouveaux souvenirs
+  const newMemories = useMemo(() => {
+    if (!app.masterIndex?.moments || !app.currentUser) return [];
+    return getNewMemories(app.masterIndex.moments, app.currentUser.id);
+  }, [app.masterIndex, app.currentUser]);
+
+  const firstNewMemoryRef = useRef(null);
+
+  // Handler pour scroller vers le premier nouveau souvenir
+  const scrollToFirstNewMemory = useCallback(() => {
+    if (newMemories.length > 0 && firstNewMemoryRef.current) {
+      firstNewMemoryRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Marquer comme vu après le scroll
+      setTimeout(() => {
+        if (app.currentUser) {
+          markMomentAsOpened(newMemories[0].id, app.currentUser.id);
+          dataManager.notify(); // Refresh badge
+        }
+      }, 1000);
+    }
+  }, [newMemories, app.currentUser]);
+
+  // ⭐ v2.25 : Observer pour marquer souvenirs vus au scroll
+  useEffect(() => {
+    if (!app.currentUser) return;
+
+    const observer = createMomentVisibilityObserver(app.currentUser.id, (momentId) => {
+      console.log(`✅ v2.25: Moment ${momentId} vu au scroll`);
+      dataManager.notify(); // Refresh badges
+    });
+
+    // Observer tous les moments actuels
+    Object.values(momentRefs.current).forEach(element => {
+      if (element && element.dataset.momentId) {
+        observer.observe(element);
+      }
+    });
+
+    // Cleanup
+    return () => observer.disconnect();
+  }, [app.currentUser, filteredMoments]);
 
 
   // ========================================
@@ -1840,7 +1885,32 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           </div>
         </div>
       )}
-      
+
+      {/* ⭐ v2.25 : Bandeau nouveaux souvenirs */}
+      {newMemories.length > 0 && (
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-b-2 border-purple-300 dark:border-purple-600 px-4 py-3 shadow-sm">
+          <button
+            onClick={scrollToFirstNewMemory}
+            className="w-full flex items-center justify-between hover:opacity-80 transition-opacity"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <Sparkles className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                  {newMemories.length} nouveau{newMemories.length > 1 ? 'x' : ''} souvenir{newMemories.length > 1 ? 's' : ''}
+                </h3>
+                <p className="text-xs text-purple-700 dark:text-purple-300">
+                  Cliquez pour voir le premier
+                </p>
+              </div>
+            </div>
+            <ArrowDown className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          </button>
+        </div>
+      )}
+
       {/* Contenu principal */}
       <main
         ref={scrollContainerRef}
@@ -1891,6 +1961,8 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
                   onContentSelected={handleLongPressForSelection}
                   onCreateSessionFromContent={handleCreateSessionFromContent}
                   editionMode={editionMode}
+                  newMemories={newMemories}             // ⭐ v2.25 : Nouveaux souvenirs
+                  firstNewMemoryRef={firstNewMemoryRef} // ⭐ v2.25 : Ref pour scroll
                 />
               ) : (
                 /* Mode en vrac : Afficher le contenu sans en-têtes */
