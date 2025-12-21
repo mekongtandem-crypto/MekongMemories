@@ -137,35 +137,39 @@ useEffect(() => {
   }
 }, [app.currentChatSession?.id]);
 
-// ⭐ v2.18c : Marquage session séparé (se déclenche UNE FOIS au mount)
+// ⭐ v2.18c + v2.24b : Marquage session séparé (se déclenche UNE FOIS au mount)
 useEffect(() => {
   const currentSessionId = app.currentChatSession?.id;
   const userId = app.currentUser?.id;
 
   if (!currentSessionId || !userId) return;
 
-  // Marquer session SEULEMENT si pas déjà fait
+  // Marquer session SEULEMENT si pas déjà fait DANS CE RENDER
   if (!markedSessionsRef.current.has(currentSessionId)) {
     const storageKey = `mekong_sessionReadStatus_${userId}`;
     const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
 
-    if (!allTracking[currentSessionId]?.hasBeenOpened) {
-      allTracking[currentSessionId] = {
-        hasBeenOpened: true,
-        lastOpenedAt: new Date().toISOString()
-      };
-      localStorage.setItem(storageKey, JSON.stringify(allTracking));
-      console.log(`✅ v2.9x: Session ${currentSessionId} marquée comme ouverte`);
+    // ⭐ v2.24b : TOUJOURS mettre à jour lastOpenedAt (pour disparition badge "non lue")
+    const isFirstOpen = !allTracking[currentSessionId]?.hasBeenOpened;
 
-      // Marquer dans ref AVANT notify
-      markedSessionsRef.current.add(currentSessionId);
+    allTracking[currentSessionId] = {
+      hasBeenOpened: true,  // Toujours true après ouverture
+      lastOpenedAt: new Date().toISOString()  // ⭐ Mis à jour à CHAQUE ouverture
+    };
 
-      // Notifier UNE SEULE FOIS
-      dataManager.notify();
+    localStorage.setItem(storageKey, JSON.stringify(allTracking));
+
+    if (isFirstOpen) {
+      console.log(`✅ v2.24b: Session ${currentSessionId} marquée comme ouverte (première fois)`);
     } else {
-      // Déjà dans localStorage, juste marquer dans ref
-      markedSessionsRef.current.add(currentSessionId);
+      console.log(`✅ v2.24b: Session ${currentSessionId} lastOpenedAt mis à jour`);
     }
+
+    // Marquer dans ref AVANT notify
+    markedSessionsRef.current.add(currentSessionId);
+
+    // Notifier pour refresh badges
+    dataManager.notify();
   }
 }, [app.currentChatSession?.id, app.currentUser?.id]);
 // ⚠️ NOTE : Se déclenche quand app change, MAIS markedSessionsRef empêche re-exécution
