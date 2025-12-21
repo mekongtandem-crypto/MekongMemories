@@ -1224,6 +1224,8 @@ class DataManager {
           description: '',
           location: '',
           source: 'imported',  // ⭐ v2.9n2 : Marquer comme importé pour activer boutons édition
+          importedBy: this.appState.currentUser,  // ⭐ v2.25 : Pour tracking nouveaux souvenirs (ID user)
+          createdAt: new Date().toISOString(),  // ⭐ v2.25 : Date de création
           dayPhotos: [],
           posts: [],
           themes: []
