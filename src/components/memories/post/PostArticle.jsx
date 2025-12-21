@@ -22,6 +22,7 @@ import { SessionBadgePost } from '../shared/SessionBadges.jsx';
 import PhotoGrid from '../photo/PhotoGrid.jsx';
 import { generatePostKey } from '../../../utils/themeUtils.js';
 import { useMemoriesDisplay } from '../context/MemoriesDisplayContext.jsx';  // ⭐ v2.14
+import { renderHTMLWithLinks } from '../../../utils/linkUtils.js';  // ⭐ v2.26a
 
 export const PostArticle = memo(({
   post,
@@ -351,7 +352,7 @@ export const PostArticle = memo(({
             {shouldShowText && (
               <div
                 className="prose prose-sm max-w-none bg-white dark:bg-gray-800 p-3 dark:text-gray-100"
-                dangerouslySetInnerHTML={{ __html: body }}
+                dangerouslySetInnerHTML={{ __html: renderHTMLWithLinks(body) }}
               />
             )}
 

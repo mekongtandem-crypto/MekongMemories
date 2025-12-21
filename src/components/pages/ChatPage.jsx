@@ -30,6 +30,7 @@ import ArchiveRequestMessage from '../ArchiveRequestMessage.jsx';  // ⭐ v2.10 
 import DeleteRequestMessage from '../DeleteRequestMessage.jsx';  // ⭐ v2.24 : Message demande suppression
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';
 import { logger } from '../../utils/logger.js';
+import { renderContentWithLinks } from '../../utils/linkUtils.js';
 
 export default function ChatPage({ navigationContext, onClearAttachment, onStartSelectionMode }) {
   const app = useAppState();
@@ -1615,7 +1616,7 @@ function LinkPhotoPreview({ photo }) {
     {message.content && (
       <div className={shouldSeparateHoverZones ? "group relative" : ""}>
         <div className="text-sm whitespace-pre-wrap leading-relaxed">
-          {message.content}
+          {renderContentWithLinks(message.content)}
         </div>
 
         {/* Badge modifié */}
