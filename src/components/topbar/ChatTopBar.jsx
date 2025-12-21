@@ -409,26 +409,54 @@ export default function ChatTopBar({
               <span className="text-gray-900 dark:text-gray-100">Marquer comme non lue</span>
             </button>
 
-            {/* ⭐ v2.10 : Archivage par consensus */}
+            {/* ⭐ v2.10 + v2.24b : Archivage par consensus */}
             <button
               onClick={handleArchiveCurrentSession}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
+              disabled={
+                app.currentChatSession?.archiveRequest?.status === 'pending' &&
+                app.currentChatSession?.archiveRequest?.requestedBy !== app.currentUser?.id
+              }
+              className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 transition-colors duration-150 ${
+                app.currentChatSession?.archiveRequest?.status === 'pending' &&
+                app.currentChatSession?.archiveRequest?.requestedBy !== app.currentUser?.id
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
             >
               <Archive className="w-4 h-4 text-gray-600 dark:text-gray-400" />
               <span className="text-gray-900 dark:text-gray-100">
-                {app.currentChatSession?.archiveRequest?.requestedBy === app.currentUser?.id
+                {app.currentChatSession?.archiveRequest?.status === 'pending' &&
+                 app.currentChatSession?.archiveRequest?.requestedBy !== app.currentUser?.id
+                  ? 'Demande d\'archivage en cours...'
+                  : app.currentChatSession?.archiveRequest?.requestedBy === app.currentUser?.id
                   ? 'Annuler ma demande d\'archivage'
                   : 'Demander archivage'}
               </span>
             </button>
 
-            {/* Supprimer session */}
+            {/* ⭐ v2.24b : Supprimer session (grisé si demande en cours) */}
             <button
               onClick={handleDeleteCurrentSession}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center space-x-2 transition-colors duration-150"
+              disabled={
+                app.currentChatSession?.deleteRequest?.status === 'pending' &&
+                app.currentChatSession?.deleteRequest?.requestedBy !== app.currentUser?.id
+              }
+              className={`w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 flex items-center space-x-2 transition-colors duration-150 ${
+                app.currentChatSession?.deleteRequest?.status === 'pending' &&
+                app.currentChatSession?.deleteRequest?.requestedBy !== app.currentUser?.id
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:bg-red-50 dark:hover:bg-red-900/20'
+              }`}
             >
               <Trash2 className="w-4 h-4" />
-              <span>Supprimer la session</span>
+              <span>
+                {app.currentChatSession?.deleteRequest?.status === 'pending' &&
+                 app.currentChatSession?.deleteRequest?.requestedBy !== app.currentUser?.id
+                  ? 'Demande de suppression en cours...'
+                  : app.currentChatSession?.deleteRequest?.requestedBy === app.currentUser?.id
+                  ? 'Annuler ma demande de suppression'
+                  : 'Supprimer la session'}
+              </span>
             </button>
             
           </OverflowMenu>

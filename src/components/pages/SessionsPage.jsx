@@ -868,22 +868,42 @@ function SessionRow({
                   <span>Modifier</span>
                 </button>
 
+                {/* ⭐ v2.24b : Archiver (grisé si demande en cours) */}
                 <button
                   onClick={(e) => onArchive(e, session)}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2 transition-colors duration-150"
+                  disabled={session.archiveRequest?.status === 'pending'}
+                  className={`w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 flex items-center space-x-2 transition-colors duration-150 ${
+                    session.archiveRequest?.status === 'pending'
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
                 >
                   <Archive className="w-4 h-4" />
-                  <span>{session.archived ? 'Désarchiver' : 'Archiver'}</span>
+                  <span>
+                    {session.archiveRequest?.status === 'pending'
+                      ? 'Demande d\'archivage en cours...'
+                      : session.archived ? 'Désarchiver' : 'Archiver'}
+                  </span>
                 </button>
 
                 <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-                
+
+                {/* ⭐ v2.24b : Supprimer (grisé si demande en cours) */}
                 <button
                   onClick={(e) => onDelete(e, session.id, session.gameTitle)}
-                  className="w-full text-left px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center space-x-2 transition-colors duration-150"
+                  disabled={session.deleteRequest?.status === 'pending'}
+                  className={`w-full text-left px-4 py-2 text-red-600 dark:text-red-400 flex items-center space-x-2 transition-colors duration-150 ${
+                    session.deleteRequest?.status === 'pending'
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:bg-red-50 dark:hover:bg-red-900/20'
+                  }`}
                 >
                   <Trash2 className="w-4 h-4" />
-                  <span>Supprimer</span>
+                  <span>
+                    {session.deleteRequest?.status === 'pending'
+                      ? 'Demande de suppression en cours...'
+                      : 'Supprimer'}
+                  </span>
                 </button>
                 
               </div>
