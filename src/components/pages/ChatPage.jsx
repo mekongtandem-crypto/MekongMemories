@@ -27,6 +27,7 @@ import PhotoToMemoryModal from '../PhotoToMemoryModal.jsx';
 import CrossRefsWarningModal from '../CrossRefsWarningModal.jsx';  // ⭐ v2.9u : Modal 2 cross-refs
 import DeletePhotoChoiceModal from '../DeletePhotoChoiceModal.jsx';  // ⭐ v2.9u : Modal choix Drive
 import ArchiveRequestMessage from '../ArchiveRequestMessage.jsx';  // ⭐ v2.10 : Message demande archivage
+import DeleteRequestMessage from '../DeleteRequestMessage.jsx';  // ⭐ v2.24 : Message demande suppression
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';
 import { logger } from '../../utils/logger.js';
 
@@ -1657,11 +1658,22 @@ function LinkPhotoPreview({ photo }) {
           );
         })}
 
-        {/* ⭐ v2.10 : Message système demande archivage (visible seulement par l'autre user) */}
+        {/* ⭐ v2.10 + v2.24 : Message système demande archivage (visible seulement par l'autre user, si pending) */}
         {app.currentChatSession.archiveRequest &&
+         app.currentChatSession.archiveRequest.status === 'pending' &&
          app.currentChatSession.archiveRequest.requestedBy !== app.currentUser?.id && (
           <ArchiveRequestMessage
             archiveRequest={app.currentChatSession.archiveRequest}
+            sessionId={app.currentChatSession.id}
+          />
+        )}
+
+        {/* ⭐ v2.24 : Message système demande suppression (visible seulement par l'autre user, si pending) */}
+        {app.currentChatSession.deleteRequest &&
+         app.currentChatSession.deleteRequest.status === 'pending' &&
+         app.currentChatSession.deleteRequest.requestedBy !== app.currentUser?.id && (
+          <DeleteRequestMessage
+            deleteRequest={app.currentChatSession.deleteRequest}
             sessionId={app.currentChatSession.id}
           />
         )}
