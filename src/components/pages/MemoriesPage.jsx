@@ -153,10 +153,12 @@ const MemoriesPageInner = React.forwardRef(({
 
   // ⭐ v2.8f : Modal PhotoToMemoryModal
   // ⭐ v2.9j : Stocke soit photoData (old flow) soit file (new flow)
+  // ⭐ v2.25c : Ajout processedData pour nouveau flow (traitement local)
   const [photoToMemoryModal, setPhotoToMemoryModal] = useState({
     isOpen: false,
     photoData: null,
-    file: null  // ⭐ v2.9j : Fichier brut avant traitement
+    file: null,           // ⭐ v2.9j : Fichier brut avant traitement (ancien flow)
+    processedData: null   // ⭐ v2.25c : Données traitées localement (nouveau flow)
   });
 
   // ⭐ v2.9 : Modals édition
@@ -353,35 +355,87 @@ const handleCloseThemeModal = useCallback(() => {
   closeThemeModal();
 }, [closeThemeModal]);
 
-// ⭐ v2.9j : Handler pour ajouter photo souvenir (REFACTO: confirmation AVANT upload)
+// ⭐ v2.25c : Handler pour ajouter photo souvenir (REFACTO v2: traitement LOCAL avant modal)
 const handleAddPhotoSouvenir = useCallback(async () => {
   try {
-    logger.info('📷 Ouverture file picker pour photo souvenir');
-    const files = await openFilePicker(false);
+    logger.info('📷✨ Ajout photo souvenir depuis MemoriesPage');
 
-    // ⭐ v2.9j : Ouvrir modal DIRECTEMENT avec le fichier (pas encore traité)
+    // 1. Ouvrir le file picker
+    const files = await openFilePicker(false);
+    const file = files[0];
+
+    if (!file) {
+      logger.warn('Aucun fichier sélectionné');
+      return;
+    }
+
+    logger.info(`📸 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
+
+    // 2. Traitement LOCAL (compression + thumbnail)
+    const { processImageLocally } = await import('../../utils/imageCompression.js');
+
+    dataManager.setLoadingOperation(
+      true,
+      'Préparation de l\'image...',
+      'Compression et génération du thumbnail',
+      'spin'
+    );
+
+    const processedData = await processImageLocally(file, app.currentUser);
+    logger.success('✅ Image traitée en mémoire');
+
+    dataManager.setLoadingOperation(false);
+
+    // 3. Ouvrir modal de conversion avec données en mémoire
     setPhotoToMemoryModal({
       isOpen: true,
-      photoData: null,
-      file: files[0]  // Fichier brut
+      photoData: null,       // Pas encore uploadée sur Drive
+      file: null,
+      processedData          // ⭐ Données traitées localement (Blobs + ObjectURLs)
     });
+
   } catch (error) {
-    logger.error('❌ Erreur sélection photo:', error);
+    logger.error('❌ Erreur traitement photo souvenir:', error);
+
+    // Désactiver le spinner
+    dataManager.setLoadingOperation(false);
+
+    // Afficher message d'erreur
     if (error.message !== 'Sélection annulée') {
-      alert(`Erreur lors de la sélection de la photo:\n${error.message}`);
+      alert(`Erreur lors du traitement de la photo:\n${error.message}`);
     }
   }
-}, []);
+}, [app.currentUser]);
 
-// ⭐ v2.9j : Handler pour conversion photo → souvenir (REFACTO: traitement après confirmation)
+// ⭐ v2.25c : Handler pour conversion photo → souvenir (3 flux possibles)
 const handleConvertPhotoToMemory = useCallback(async (conversionData) => {
-  const { photoData, file } = photoToMemoryModal;
+  const { photoData, file, processedData } = photoToMemoryModal;
 
   try {
     let finalPhotoData = photoData;
 
-    // ⭐ v2.9j : Si on a un fichier brut, le traiter maintenant (UN SEUL spinner)
-    if (file) {
+    // ⭐ v2.25c : NOUVEAU FLUX - Données déjà traitées localement
+    if (processedData) {
+      logger.info('☁️ Upload de l\'image traitée localement vers Drive...');
+
+      // Importer uploadProcessedImage
+      const { uploadProcessedImage } = await import('../../utils/imageCompression.js');
+
+      // Spinner : Upload vers Drive
+      dataManager.setLoadingOperation(
+        true,
+        'Envoi vers le cloud...',
+        'Upload de l\'image vers Google Drive',
+        'spin'
+      );
+
+      // Upload vers Drive
+      finalPhotoData = await uploadProcessedImage(processedData, app.currentUser);
+
+      logger.success('✅ Upload terminé:', finalPhotoData);
+    }
+    // ⭐ v2.9j : ANCIEN FLUX - Fichier brut à traiter maintenant
+    else if (file) {
       // Étape 1: Conversion de l'image
       dataManager.setLoadingOperation(true, 'Traitement du souvenir...', 'Conversion de l\'image', 'monkey');
 
@@ -441,7 +495,7 @@ const handleConvertPhotoToMemory = useCallback(async (conversionData) => {
       dataManager.setLoadingOperation(true, 'Traitement du souvenir...', 'Création d\'un nouveau souvenir', 'monkey');
     }
 
-    setPhotoToMemoryModal({ isOpen: false, photoData: null, file: null });
+    setPhotoToMemoryModal({ isOpen: false, photoData: null, file: null, processedData: null });
     logger.success('🎉 Photo souvenir ajoutée depuis Memories');
 
     // Recharger le master index pour afficher la nouvelle photo
@@ -2099,7 +2153,8 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
           isOpen={photoToMemoryModal.isOpen}
           photoData={photoToMemoryModal.photoData}
           file={photoToMemoryModal.file}
-          onClose={() => setPhotoToMemoryModal({ isOpen: false, photoData: null, file: null })}
+          processedData={photoToMemoryModal.processedData}  {/* ⭐ v2.25c : Nouveau flow */}
+          onClose={() => setPhotoToMemoryModal({ isOpen: false, photoData: null, file: null, processedData: null })}
           moments={app.masterIndex?.moments || []}
           onConvert={handleConvertPhotoToMemory}
         />

@@ -365,8 +365,8 @@ export default function MemoriesTopBar({
           <button
             onClick={() => {
               setShowMenu(false);
-              // TODO: À connecter avec MemoriesPage
-              // window.memoriesPageActions?.addPhotoSouvenir?.();
+              // ⭐ v2.25c : Connecté avec MemoriesPage
+              window.memoriesPageActions?.addPhotoSouvenir?.();
             }}
             className="flex items-center space-x-3 w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
           >
