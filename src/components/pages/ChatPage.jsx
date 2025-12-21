@@ -489,12 +489,19 @@ useEffect(() => {
       // ✅ v3.0d : Appel de la méthode réelle d'ajout au masterIndex
       const result = await dataManager.addImportedPhotoToMasterIndex(finalPhotoData, conversionData);
 
-      // Désactiver le spinner
-      dataManager.setLoadingOperation(false);
-
       if (!result.success) {
+        // Désactiver le spinner en cas d'erreur
+        dataManager.setLoadingOperation(false);
         throw new Error(result.error || 'Échec de la conversion');
       }
+
+      // ⭐ v2.25d : Nouveau spinner pour préparation du message
+      dataManager.setLoadingOperation(
+        true,
+        'Préparation du message...',
+        'Insertion de la photo dans le chat',
+        'monkey'
+      );
 
       // ⭐ v2.8f : Créer lien(s) ContentLinks automatique (photo/note → session)
       if (app.currentChatSession && result.contentId && result.contentType && window.contentLinks) {
@@ -555,6 +562,9 @@ useEffect(() => {
         photoData: null,
         processedData: null
       });
+
+      // ⭐ v2.25d : Désactiver le spinner après insertion
+      dataManager.setLoadingOperation(false);
 
       logger.success('🎉 Conversion terminée avec succès !');
 
