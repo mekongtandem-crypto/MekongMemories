@@ -211,31 +211,47 @@ export function filterSessionsByStatus(sessions, statusFilter) {
 export function sortSessions(sessions, sortBy, currentUserId) {
   const sorted = [...sessions];
   
+  // ⭐ v2.24 : RÈGLES BADGES NEW/UNREAD
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // NEW (🆕 vert) :
+  //   - Affiché quand un AUTRE utilisateur a créé une nouvelle session
+  //   - Disparaît quand on RÉPOND dans la session (hasBeenOpened = true)
+  //   - Conditions : !hasBeenOpened AND session.user !== currentUserId
+  //
+  // UNREAD (👀 orange) :
+  //   - Affiché quand un AUTRE utilisateur a ajouté un nouveau message
+  //   - Disparaît quand on OUVRE le chat (lastOpenedAt mis à jour)
+  //   - Conditions : hasBeenOpened AND nouveau message depuis lastOpenedAt
+  //
+  // READ (pas de badge) :
+  //   - Session à jour, aucun nouveau message depuis dernière ouverture
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
   // ✅ Helper pour calculer priorité lecture (new > unread > read)
   const getReadPriority = (session) => {
     if (!currentUserId) return 0;
-    
+
     const storageKey = `mekong_sessionReadStatus_${currentUserId}`;
     const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
     const tracking = allTracking[session.id];
-    
+
     const lastMessage = session.notes?.[session.notes.length - 1];
     const lastMessageTime = lastMessage?.timestamp || session.createdAt;
     const lastMessageAuthor = lastMessage?.author || session.user;
-    
+
     // New = jamais ouvert + créé par quelqu'un d'autre
     if (!tracking?.hasBeenOpened && session.user !== currentUserId) {
       return 3; // Priorité haute
     }
-    
+
     // Unread = nouveau message depuis dernière ouverture
-    if (tracking?.hasBeenOpened && 
-        tracking.lastOpenedAt && 
+    if (tracking?.hasBeenOpened &&
+        tracking.lastOpenedAt &&
         new Date(lastMessageTime) > new Date(tracking.lastOpenedAt) &&
         lastMessageAuthor !== currentUserId) {
       return 2; // Priorité moyenne
     }
-    
+
     // Read = à jour
     return 1; // Priorité normale
   };

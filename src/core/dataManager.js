@@ -759,17 +759,29 @@ class DataManager {
     }
 
     try {
+      // ⭐ v2.24 : Ajouter message système "Session archivée"
+      const now = new Date().toISOString();
+      const archiveMessage = {
+        id: `${Date.now()}-archive`,
+        content: '✅ Session archivée',
+        author: 'duo',
+        timestamp: now,
+        edited: false
+      };
+
       const updatedSession = {
         ...session,
         archived: true,
-        archivedAt: new Date().toISOString(),
+        archivedAt: now,
         archivedBy: 'consensus', // Indique archivage par consensus
         archiveRequest: {
           ...session.archiveRequest,
           status: 'accepted',
           acceptedBy: this.appState.currentUser,
-          acceptedAt: new Date().toISOString()
-        }
+          acceptedAt: now
+        },
+        notes: [...(session.notes || []), archiveMessage], // ⭐ v2.24 : Ajouter message
+        updatedAt: now
       };
 
       await this.updateSession(updatedSession);
@@ -837,6 +849,159 @@ class DataManager {
       return { success: true };
     } catch (error) {
       logger.error('Erreur annulation demande', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ========================================
+  // SUPPRESSION PAR CONSENSUS (v2.24)
+  // ========================================
+
+  /**
+   * Demander la suppression d'une session (par User A)
+   * Crée une demande qui nécessite validation de User B
+   * ⭐ v2.24 : Comme archivage, requiert consensus si plusieurs personnes ont participé
+   */
+  requestDelete = async (sessionId) => {
+    const session = this.appState.sessions.find(s => s.id === sessionId);
+    if (!session) {
+      logger.error('Session introuvable', sessionId);
+      return { success: false, error: 'Session introuvable' };
+    }
+
+    // ⭐ v2.24 : Vérifier si plusieurs personnes ont parlé
+    const authors = new Set((session.notes || []).map(n => n.author).filter(a => a !== 'duo'));
+    const requiresConsensus = authors.size > 1;
+
+    try {
+      const now = new Date().toISOString();
+
+      const updatedSession = {
+        ...session,
+        deleteRequest: {
+          requestedBy: this.appState.currentUser,
+          requestedAt: now,
+          status: 'pending',
+          requiresConsensus
+        },
+        updatedAt: now
+      };
+
+      await this.updateSession(updatedSession);
+      logger.success('Demande suppression créée', { sessionId, requiresConsensus });
+
+      return { success: true, requiresConsensus };
+    } catch (error) {
+      logger.error('Erreur demande suppression', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Accepter une demande de suppression (par User B)
+   * Supprime définitivement la session
+   * ⭐ v2.24 : Ajoute message "Session supprimée" avant suppression
+   */
+  acceptDeleteRequest = async (sessionId) => {
+    const session = this.appState.sessions.find(s => s.id === sessionId);
+    if (!session || !session.deleteRequest) {
+      logger.error('Demande suppression introuvable', sessionId);
+      return { success: false, error: 'Demande introuvable' };
+    }
+
+    try {
+      // ⭐ v2.24 : Ajouter message système "Session supprimée"
+      const now = new Date().toISOString();
+      const deleteMessage = {
+        id: `${Date.now()}-delete`,
+        content: '🗑️ Session supprimée',
+        author: 'duo',
+        timestamp: now,
+        edited: false
+      };
+
+      const updatedSession = {
+        ...session,
+        notes: [...(session.notes || []), deleteMessage],
+        deleteRequest: {
+          ...session.deleteRequest,
+          status: 'accepted',
+          acceptedBy: this.appState.currentUser,
+          acceptedAt: now
+        },
+        updatedAt: now
+      };
+
+      // Sauvegarder avec message avant suppression
+      await this.updateSession(updatedSession);
+
+      // Puis supprimer définitivement
+      await this.deleteSession(sessionId);
+
+      logger.success('Session supprimée par consensus', { sessionId });
+
+      return { success: true, requester: session.deleteRequest.requestedBy };
+    } catch (error) {
+      logger.error('Erreur acceptation suppression', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Refuser une demande de suppression (par User B)
+   * Supprime la demande
+   */
+  rejectDeleteRequest = async (sessionId) => {
+    const session = this.appState.sessions.find(s => s.id === sessionId);
+    if (!session || !session.deleteRequest) {
+      logger.error('Demande suppression introuvable', sessionId);
+      return { success: false, error: 'Demande introuvable' };
+    }
+
+    try {
+      const updatedSession = {
+        ...session,
+        deleteRequest: null // Supprime la demande
+      };
+
+      await this.updateSession(updatedSession);
+      logger.success('Demande suppression refusée', { sessionId });
+
+      return { success: true, requester: session.deleteRequest.requestedBy };
+    } catch (error) {
+      logger.error('Erreur refus suppression', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Annuler une demande de suppression (par User A qui a créé la demande)
+   */
+  cancelDeleteRequest = async (sessionId) => {
+    const session = this.appState.sessions.find(s => s.id === sessionId);
+    if (!session || !session.deleteRequest) {
+      logger.error('Demande suppression introuvable', sessionId);
+      return { success: false, error: 'Demande introuvable' };
+    }
+
+    // Vérifier que c'est bien le demandeur qui annule
+    if (session.deleteRequest.requestedBy !== this.appState.currentUser) {
+      logger.error('Seul le demandeur peut annuler', sessionId);
+      return { success: false, error: 'Non autorisé' };
+    }
+
+    try {
+      const updatedSession = {
+        ...session,
+        deleteRequest: null
+      };
+
+      await this.updateSession(updatedSession);
+      logger.success('Demande suppression annulée', { sessionId });
+
+      return { success: true };
+    } catch (error) {
+      logger.error('Erreur annulation demande suppression', error);
       return { success: false, error: error.message };
     }
   }

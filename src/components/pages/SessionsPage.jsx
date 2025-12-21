@@ -708,6 +708,27 @@ function SessionRow({
           : 'border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-md cursor-pointer'
       }`}
     >
+      {/* ⭐ v2.24 : SYSTÈME DE BADGES - 4 positions distinctes
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          Position Haut-Gauche : 🔔 NOTIFIÉ (orange)
+            - Notification non répondue d'un autre user
+
+          Position Haut-Droite : 🆕 NOUVELLE (vert) | 👀 NON LUE (orange)
+            - NOUVELLE : Session créée par autre user, jamais ouverte
+                        (disparaît quand on répond)
+            - NON LUE : Nouveau message depuis dernière ouverture
+                        (disparaît quand on ouvre le chat)
+
+          Position Bas-Gauche : 📚 ARCHIVE (bleu)
+            - Demande d'archivage en attente de validation
+            - Affiché uniquement pour le user qui doit répondre
+
+          Position Bas-Droite : 🗑️ SUPPRIME (rouge)
+            - Demande de suppression en attente de validation
+            - Affiché uniquement pour le user qui doit répondre
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      */}
+
       {/* Badge 🔔 Notifié (haut gauche) */}
       {session.status === SESSION_STATUS.NOTIFIED && !isEditing && (
         <div className="absolute -top-2 -left-2 flex items-center bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
@@ -717,19 +738,35 @@ function SessionRow({
           </span>
         </div>
       )}
-      
+
       {/* ✅ Badge prioritaire NEW/UNREAD (haut droite) */}
       {!isEditing && readState !== 'read' && (
         <div className={`absolute -top-2 -right-2 flex items-center gap-1 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10 ${
-          readState === 'new' 
-            ? 'bg-green-600' 
+          readState === 'new'
+            ? 'bg-green-600'
             : 'bg-orange-600'
         }`}>
           <span>{readState === 'new' ? '🆕' : '👀'}</span>
           <span>{readState === 'new' ? 'Nouvelle' : 'Non lue'}</span>
         </div>
       )}
-      
+
+      {/* ⭐ v2.24 : Badge ARCHIVE (demande en attente - bas gauche) */}
+      {!isEditing && session.archiveRequest && session.archiveRequest.requestedBy !== currentUser && (
+        <div className="absolute -bottom-2 -left-2 flex items-center gap-1 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
+          <span>📚</span>
+          <span>Archive</span>
+        </div>
+      )}
+
+      {/* ⭐ v2.24 : Badge SUPPRIME (demande en attente - bas droite) */}
+      {!isEditing && session.deleteRequest && session.deleteRequest.requestedBy !== currentUser && (
+        <div className="absolute -bottom-2 -right-2 flex items-center gap-1 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
+          <span>🗑️</span>
+          <span>Supprime</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         
         {/* Titre */}
