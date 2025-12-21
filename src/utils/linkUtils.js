@@ -1,10 +1,12 @@
 /**
- * linkUtils.js v1.1 - Phase v2.26a : Liens cliquables
+ * linkUtils.js v1.2 - Phase v2.26b : YouTube Preview
  * ✅ Utilitaires pour système de liens ContentLinks
  * ✅ v2.26a : Détection et rendu URLs cliquables
+ * ✅ v2.26b : Preview YouTube avec thumbnail et embed
  */
 
 import React from 'react';
+import YouTubePreview from '../components/YouTubePreview.jsx';
 
 /**
  * Icône selon type de contenu
@@ -96,6 +98,7 @@ const URL_REGEX = /(https?:\/\/[^\s]+)|(www\.[^\s]+)/g;
 
 /**
  * Rendre du texte avec liens cliquables
+ * ⭐ v2.26b : Détection YouTube → YouTubePreview
  * @param {string} text - Texte contenant potentiellement des URLs
  * @returns {Array} Tableau d'éléments React (texte et liens)
  */
@@ -113,6 +116,20 @@ export function renderContentWithLinks(text) {
       // Construire l'URL complète (ajouter https:// si www.)
       const href = part.match(/^www\./) ? `https://${part}` : part;
 
+      // ⭐ v2.26b : Détecter YouTube et rendre preview
+      const youtubeId = extractYouTubeId(href);
+      if (youtubeId) {
+        return React.createElement(
+          YouTubePreview,
+          {
+            key: `youtube-${index}`,
+            videoId: youtubeId,
+            url: href
+          }
+        );
+      }
+
+      // Lien normal (non-YouTube)
       return React.createElement(
         'a',
         {
@@ -159,8 +176,42 @@ export function extractLinks(text) {
   return matches || [];
 }
 
+// ========================================
+// v2.26b : YOUTUBE PREVIEW
+// ========================================
+
+/**
+ * Regex pour détecter les URLs YouTube
+ * Supporte: youtube.com/watch?v=, youtu.be/, youtube.com/embed/
+ */
+const YOUTUBE_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+
+/**
+ * Extraire l'ID vidéo YouTube d'une URL
+ * @param {string} url - URL YouTube
+ * @returns {string|null} Video ID ou null si non trouvé
+ */
+export function extractYouTubeId(url) {
+  if (!url || typeof url !== 'string') {
+    return null;
+  }
+
+  const match = url.match(YOUTUBE_REGEX);
+  return match ? match[1] : null;
+}
+
+/**
+ * Vérifier si une URL est une URL YouTube
+ * @param {string} url - URL à vérifier
+ * @returns {boolean}
+ */
+export function isYouTubeURL(url) {
+  return extractYouTubeId(url) !== null;
+}
+
 /**
  * Rendre HTML avec liens cliquables (pour dangerouslySetInnerHTML)
+ * ⭐ v2.26b : Détection YouTube → badge "📺 YouTube"
  * @param {string} html - HTML contenant potentiellement des URLs
  * @returns {string} HTML avec URLs transformées en <a> tags
  */
@@ -173,6 +224,14 @@ export function renderHTMLWithLinks(html) {
   // Note: utilise une regex globale pour remplacer toutes les occurrences
   return html.replace(/(https?:\/\/[^\s<]+)|(www\.[^\s<]+)/g, (match) => {
     const href = match.match(/^www\./) ? `https://${match}` : match;
+
+    // ⭐ v2.26b : Détection YouTube → badge spécial
+    const youtubeId = extractYouTubeId(href);
+    if (youtubeId) {
+      return `<span class="inline-flex items-center space-x-1"><span class="bg-red-600 text-white px-1.5 py-0.5 rounded text-xs font-semibold">📺 YouTube</span><a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-150">${match}</a></span>`;
+    }
+
+    // Lien normal (non-YouTube)
     return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-150">${match}</a>`;
   });
 }
