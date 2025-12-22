@@ -229,11 +229,12 @@ const MemoriesPageInner = React.forwardRef(({
   }, [newMemories, app.currentUser, displayMode, actions, computed]);
 
   // ⭐ v2.25 : Observer pour marquer souvenirs vus au scroll
+  // ⭐ v2.26f : FIX boucle - dépendance masterIndex au lieu de filteredMoments
   useEffect(() => {
     if (!app.currentUser) return;
 
     const observer = createMomentVisibilityObserver(app.currentUser.id, (momentId) => {
-      console.log(`✅ v2.25: Moment ${momentId} vu au scroll`);
+      // console.log(`✅ v2.25: Moment ${momentId} vu au scroll`); // ⭐ v2.26f : Désactivé
       dataManager.notify(); // Refresh badges
     });
 
@@ -246,7 +247,7 @@ const MemoriesPageInner = React.forwardRef(({
 
     // Cleanup
     return () => observer.disconnect();
-  }, [app.currentUser, filteredMoments]);
+  }, [app.currentUser, app.masterIndex]);
 
 
   // ========================================
