@@ -41,7 +41,7 @@ export function markMomentAsOpened(momentId, userId) {
   };
 
   localStorage.setItem(storageKey, JSON.stringify(allTracking));
-  console.log(`✅ v2.25: Moment ${momentId} marqué comme consulté`);
+  // console.log(`✅ v2.25: Moment ${momentId} marqué comme consulté`); // ⭐ v2.26f : Désactivé pour éviter spam logs
 }
 
 /**
@@ -53,7 +53,7 @@ export function markMomentAsOpened(momentId, userId) {
  */
 export function isMomentNew(moment, userId) {
   if (!moment || !userId) {
-    console.log('🔍 v2.25 isMomentNew: moment ou userId manquant', { moment: !!moment, userId });
+    // console.log('🔍 v2.25 isMomentNew: moment ou userId manquant', { moment: !!moment, userId }); // ⭐ v2.26f : Désactivé
     return false;
   }
 
@@ -67,14 +67,14 @@ export function isMomentNew(moment, userId) {
                       moment.importedBy !== userId &&
                       !tracking?.hasBeenOpened;
 
-  console.log('🔍 v2.25 isMomentNew - Moment:', {
-    momentId: moment.id,
-    momentTitle: moment.title,
-    source: moment.source,
-    importedBy: moment.importedBy,
-    currentUserId: userId,
-    momentIsNew
-  });
+  // console.log('🔍 v2.25 isMomentNew - Moment:', { // ⭐ v2.26f : Désactivé
+  //   momentId: moment.id,
+  //   momentTitle: moment.title,
+  //   source: moment.source,
+  //   importedBy: moment.importedBy,
+  //   currentUserId: userId,
+  //   momentIsNew
+  // });
 
   if (momentIsNew) return true;
 
@@ -102,12 +102,12 @@ export function isMomentNew(moment, userId) {
     return photoDate > lastOpenedAt;
   });
 
-  console.log('🔍 v2.25 isMomentNew - Contenus:', {
-    momentId: moment.id,
-    hasNewPosts,
-    hasNewPhotos,
-    lastOpenedAt: lastOpenedAt.toISOString()
-  });
+  // console.log('🔍 v2.25 isMomentNew - Contenus:', { // ⭐ v2.26f : Désactivé
+  //   momentId: moment.id,
+  //   hasNewPosts,
+  //   hasNewPhotos,
+  //   lastOpenedAt: lastOpenedAt.toISOString()
+  // });
 
   return hasNewPosts || hasNewPhotos;
 }
@@ -160,19 +160,34 @@ export function createMomentVisibilityObserver(userId, onMomentSeen) {
     threshold: 0.5 // 50% du moment visible
   };
 
+  // ⭐ v2.26f : Set pour éviter de marquer plusieurs fois le même moment
+  const markedMoments = new Set();
+
   const callback = (entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const momentId = entry.target.dataset.momentId;
-        if (momentId) {
-          // Marquer comme vu après 1 seconde de visibilité
-          setTimeout(() => {
-            if (entry.isIntersecting) {
-              markMomentAsOpened(momentId, userId);
-              if (onMomentSeen) onMomentSeen(momentId);
-            }
-          }, 1000);
+        if (!momentId) return;
+
+        // ⭐ v2.26f : Skip si déjà marqué dans cette session observer
+        if (markedMoments.has(momentId)) return;
+
+        // ⭐ v2.26f : Vérifier localStorage avant de marquer
+        const tracking = getMomentReadStatus(momentId, userId);
+        if (tracking?.hasBeenOpened) {
+          // Déjà marqué dans localStorage, skip
+          markedMoments.add(momentId);
+          return;
         }
+
+        // Marquer comme vu après 1 seconde de visibilité
+        setTimeout(() => {
+          if (entry.isIntersecting && !markedMoments.has(momentId)) {
+            markedMoments.add(momentId);
+            markMomentAsOpened(momentId, userId);
+            if (onMomentSeen) onMomentSeen(momentId);
+          }
+        }, 1000);
       }
     });
   };
