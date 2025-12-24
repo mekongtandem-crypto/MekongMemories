@@ -309,13 +309,11 @@ export default function MemoriesTopBar({
               <Camera className="w-4 h-4" />
             </button>
 
-            {/* ⭐ v2.17a : Bouton Dépliement - Prerequisite automatique */}
+            {/* ⭐ v2.26f : Bouton Dépliement - SANS prerequisite automatique */}
             <button
               onClick={() => {
-                // ⭐ v2.17a : Si AP=0, activer d'abord (prerequisite automatique)
-                if (!state.contentFilters.images) {
-                  actions.toggleContentFilter('images');
-                }
+                // ⭐ v2.26f : SUPPRIMÉ prerequisite - DP indépendant de AP
+                // Permet d'avoir AP=0 ET DP=1 (affiche photos de post uniquement)
 
                 // ⭐ v2.19g : Toggle déploiement global photoGrids
                 if (photosAllExpanded) {
@@ -324,13 +322,8 @@ export default function MemoriesTopBar({
                   actions.expandAll('photoGrids');
                 }
               }}
-              className={`p-0.5 rounded-b transition-colors duration-150 ${
-                // ⭐ v2.17d : Griser si AP=0
-                !state.contentFilters.images
-                  ? 'opacity-50 bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
-                  : 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800'
-              }`}
-              title={photosAllExpanded ? "Replier toutes les grilles images" : "Déplier toutes les grilles images (active AP si nécessaire)"}
+              className={`p-0.5 rounded-b transition-colors duration-150 bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800`}
+              title={photosAllExpanded ? "Replier toutes les grilles images" : "Déplier toutes les grilles images"}
             >
               {photosAllExpanded ? (
                 <ChevronDown className="w-3 h-3" />
