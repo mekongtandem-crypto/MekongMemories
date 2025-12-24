@@ -550,7 +550,7 @@ const handleSelectSession = (session) => {
         {gallery.length > 1 && currentIndex > 0 && (
           <button
             onClick={() => navigate(-1)}
-            className="absolute left-0 inset-y-0 flex items-center pl-3 text-white opacity-40 hover:opacity-70 transition-opacity"
+            className="absolute left-0 top-1/4 bottom-1/4 flex items-center pl-3 text-white opacity-40 hover:opacity-70 transition-opacity"
             style={{ zIndex: 10001 }}
             title="Photo précédente (swipe droite)"
           >
@@ -563,7 +563,7 @@ const handleSelectSession = (session) => {
         {gallery.length > 1 && currentIndex < gallery.length - 1 && (
           <button
             onClick={() => navigate(1)}
-            className="absolute right-0 inset-y-0 flex items-center pr-3 text-white opacity-40 hover:opacity-70 transition-opacity"
+            className="absolute right-0 top-1/4 bottom-1/4 flex items-center pr-3 text-white opacity-40 hover:opacity-70 transition-opacity"
             style={{ zIndex: 10001 }}
             title="Photo suivante (swipe gauche)"
           >

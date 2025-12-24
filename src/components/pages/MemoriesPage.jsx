@@ -234,6 +234,10 @@ const MemoriesPageInner = React.forwardRef(({
       // Délai pour laisser le DOM se charger
       setTimeout(() => {
         scrollToFirstNewMemory();
+        // ⭐ v2.26h : Cleanup du flag après utilisation
+        dataManager.updateState({
+          navigationContext: null
+        });
       }, 300);
     }
   }, [navigationContext?.scrollToNewMemories, newMemories.length, scrollToFirstNewMemory]);
