@@ -105,6 +105,9 @@ export const PostArticle = memo(({
   const shouldShowText = hasText && (isVracMode ? (isElementVisible?.('post_text') ?? true) : localOverride);
   const shouldShowPhotos = hasPhotos && (isVracMode ? (isElementVisible?.('post_photos') ?? true) : localOverride);
 
+  // ⭐ v2.26f : Calculer si les photos sont effectivement affichées (pour état visuel bouton)
+  const arePhotosActuallyVisible = shouldShowPhotos && (photosAllExpanded || showThisPostPhotos);
+
   // 🔍 DEBUG v2.13 : Log pour diagnostiquer React #310
   if (!post.id) {
     console.warn('⚠️ [PostArticle] Post sans ID:', {
@@ -236,7 +239,7 @@ export const PostArticle = memo(({
                   className="p-0.5 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
                 >
                   <ImageIcon className={`w-4 h-4 transition-colors ${
-                    (imagesFilterActive && showThisPostPhotos)
+                    arePhotosActuallyVisible
                       ? 'text-blue-600 dark:text-blue-400'
                       : 'text-gray-400 dark:text-gray-500'
                   }`} />
@@ -266,7 +269,7 @@ export const PostArticle = memo(({
                   className="px-1 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded transition-colors"
                 >
                   <span className={`font-medium transition-colors ${
-                    (imagesFilterActive && showThisPostPhotos)
+                    arePhotosActuallyVisible
                       ? 'text-blue-600 dark:text-blue-400'
                       : 'text-gray-400 dark:text-gray-500'
                   }`}>{post.photos.length}</span>

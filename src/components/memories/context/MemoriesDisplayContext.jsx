@@ -617,6 +617,10 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
           if (!state.contentFilters.structure && !state.contentFilters.textes) {
             return state.postPhotosOnlyMode;  // DT contrôle en mode photos seulement
           }
+          // ⭐ v2.26f : NOUVEAU - Si AP=0 ET DP=1, afficher photos de post
+          if (!state.contentFilters.images && state.globalExpansion.photoGrids) {
+            return true;
+          }
           // Cas normal → AP contrôle
           return state.contentFilters.images;
 
