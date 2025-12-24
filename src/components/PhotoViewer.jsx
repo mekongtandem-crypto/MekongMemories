@@ -550,22 +550,26 @@ const handleSelectSession = (session) => {
         {gallery.length > 1 && currentIndex > 0 && (
           <button
             onClick={() => navigate(-1)}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-white opacity-40 hover:opacity-70 rounded-full p-2 transition-opacity"
+            className="absolute left-0 inset-y-0 flex items-center pl-3 text-white opacity-40 hover:opacity-70 transition-opacity"
             style={{ zIndex: 10001 }}
             title="Photo précédente (swipe droite)"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <div className="rounded-full p-2">
+              <ChevronLeft className="w-6 h-6" />
+            </div>
           </button>
         )}
 
         {gallery.length > 1 && currentIndex < gallery.length - 1 && (
           <button
             onClick={() => navigate(1)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-white opacity-40 hover:opacity-70 rounded-full p-2 transition-opacity"
+            className="absolute right-0 inset-y-0 flex items-center pr-3 text-white opacity-40 hover:opacity-70 transition-opacity"
             style={{ zIndex: 10001 }}
             title="Photo suivante (swipe gauche)"
           >
-            <ChevronRight className="w-6 h-6" />
+            <div className="rounded-full p-2">
+              <ChevronRight className="w-6 h-6" />
+            </div>
           </button>
         )}
 

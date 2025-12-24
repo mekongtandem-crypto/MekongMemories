@@ -7,7 +7,12 @@ export default {
   // ✅ Activation du dark mode via classe
   darkMode: 'class',
   theme: {
-    extend: {},
+    extend: {
+      // ⭐ v2.26g : Animation pulse lente pour nouveaux souvenirs
+      animation: {
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+    },
   },
   plugins: [],
 }
