@@ -228,6 +228,16 @@ const MemoriesPageInner = React.forwardRef(({
     }
   }, [newMemories, app.currentUser, displayMode, actions, computed]);
 
+  // ⭐ v2.26g : Scroll automatique depuis SessionsPage
+  useEffect(() => {
+    if (navigationContext?.scrollToNewMemories && newMemories.length > 0) {
+      // Délai pour laisser le DOM se charger
+      setTimeout(() => {
+        scrollToFirstNewMemory();
+      }, 300);
+    }
+  }, [navigationContext?.scrollToNewMemories, newMemories.length, scrollToFirstNewMemory]);
+
   // ⭐ v2.25 : Observer pour marquer souvenirs vus au scroll
   // ⭐ v2.26f : FIX boucle - dépendance masterIndex au lieu de filteredMoments
   useEffect(() => {

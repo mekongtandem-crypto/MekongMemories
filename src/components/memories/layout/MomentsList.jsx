@@ -46,8 +46,9 @@ export const MomentsList = memo(({
           (momentFilter === 'with_posts' && moment.posts?.length > 0) ||
           (momentFilter === 'with_photos' && moment.dayPhotoCount > 0);
 
-        // ⭐ v2.25 : Vérifier si c'est le premier nouveau souvenir
+        // ⭐ v2.25 : Vérifier si c'est un nouveau souvenir
         const isFirstNewMemory = newMemories && newMemories.length > 0 && moment.id === newMemories[0].id;
+        const isNewMemory = newMemories && newMemories.some(m => m.id === moment.id);
 
         return (
           <MomentCard
@@ -57,6 +58,7 @@ export const MomentsList = memo(({
             isExpanded={expandedMoments.some(m => m.id === moment.id)}  // ⭐ v2.19g : Contenu visible
             isExplored={isExplored}
             matchesFilter={matchesFilter}
+            isNewMemory={isNewMemory}  // ⭐ v2.26g : Cadre clignotant si nouveau
             displayOptions={displayOptions}
             isElementVisible={isElementVisible}
             onSelect={onMomentSelect}

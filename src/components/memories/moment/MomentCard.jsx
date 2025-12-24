@@ -38,7 +38,8 @@ export const MomentCard = memo(forwardRef(({
   sessions,
   onShowSessions,
   onCreateSessionFromContent,
-  editionMode  // ⭐ v2.9n3 : Recevoir editionMode
+  editionMode,     // ⭐ v2.9n3 : Recevoir editionMode
+  isNewMemory      // ⭐ v2.26g : Cadre clignotant si nouveau
 }, ref) => {
 
   // ⭐ v2.14 : Accès au Context (remplace polling)
@@ -127,7 +128,11 @@ export const MomentCard = memo(forwardRef(({
       data-moment-id={moment.id}  // ⭐ v2.25 : Pour IntersectionObserver
       data-filtered={matchesFilter ? 'true' : 'false'}
       className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border transition-all duration-300 ${
-        isSelected ? 'border-blue-400 dark:border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+        isNewMemory
+          ? 'border-purple-400 dark:border-purple-500 ring-4 ring-purple-200 dark:ring-purple-900 animate-pulse-slow'
+          : isSelected
+            ? 'border-blue-400 dark:border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
       }`}
     >
       <div className="px-3 pt-3 pb-0">

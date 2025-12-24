@@ -482,7 +482,7 @@ export default function SessionsPage({ isSearchOpen, setIsSearchOpen }) {
       {newMemoriesCount > 0 && (
         <div className="mb-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-2 border-purple-300 dark:border-purple-600 rounded-lg shadow-sm">
           <button
-            onClick={() => app.navigateTo('memories')}
+            onClick={() => app.navigateTo('memories', { scrollToNewMemories: true })}
             className="w-full flex items-center justify-between hover:opacity-80 transition-opacity"
           >
             <div className="flex items-center space-x-3">
