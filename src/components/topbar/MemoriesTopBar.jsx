@@ -293,10 +293,11 @@ export default function MemoriesTopBar({
                   actions.expandAll('photoGrids');
                 }
 
-                // ⭐ v2.15e : Si passage ON → OFF, replier toutes les grilles (DP→0)
-                if (!wasOff) {
-                  actions.collapseAll('photoGrids');
-                }
+                // ⭐ v2.26f : SUPPRIMÉ - Ne plus forcer DP→0 quand AP→0
+                // Permet d'afficher photos de post quand AP=0 ET DP=1
+                // if (!wasOff) {
+                //   actions.collapseAll('photoGrids');
+                // }
               }}
               className={`p-1.5 rounded-t transition-colors duration-150 ${
                 state.contentFilters.images
