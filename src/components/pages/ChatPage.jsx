@@ -1774,10 +1774,10 @@ function LinkPhotoPreview({ photo }) {
               <Camera className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
               <div>
                 <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                  Photo rapide
+                  Photo
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Sans souvenir
+                  Juste pour la causerie
                 </div>
               </div>
             </button>
@@ -1796,7 +1796,7 @@ function LinkPhotoPreview({ photo }) {
                   Photo souvenir
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Et créer un nouveau souvenir
+                  Pour créer un nouveau souvenir
                 </div>
               </div>
             </button>
