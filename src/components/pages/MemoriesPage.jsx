@@ -195,6 +195,38 @@ const MemoriesPageInner = React.forwardRef(({
 
   const firstNewMemoryRef = useRef(null);
 
+  // ⭐ v2.27 : Élément ciblé (sélection visuelle après navigation)
+  const [highlightedElement, setHighlightedElement] = useState(null);
+
+  // ⭐ v2.27 : Appliquer classe CSS highlight à l'élément ciblé
+  useEffect(() => {
+    if (!highlightedElement) return;
+
+    let selector;
+    switch (highlightedElement.type) {
+      case 'moment':
+        selector = `[data-moment-id="${highlightedElement.id}"]`;
+        break;
+      case 'post':
+        selector = `[data-post-id="${highlightedElement.id}"]`;
+        break;
+      case 'photo':
+        selector = `[data-photo-filename="${highlightedElement.id}"]`;
+        break;
+      default:
+        return;
+    }
+
+    const element = document.querySelector(selector);
+    if (element) {
+      element.classList.add('highlighted-element');
+
+      return () => {
+        element.classList.remove('highlighted-element');
+      };
+    }
+  }, [highlightedElement]);
+
   // Handler pour scroller vers le premier nouveau souvenir
   const scrollToFirstNewMemory = useCallback(() => {
     if (newMemories.length > 0) {
@@ -947,7 +979,7 @@ const handleLongPressForSelection = useCallback((element, type) => {
   if (!selectionMode?.active) return;
 
   let contentData;
-  
+
   switch(type) {
     case 'moment':
       contentData = {
@@ -956,7 +988,7 @@ const handleLongPressForSelection = useCallback((element, type) => {
         title: element.displayTitle || `Jour ${element.dayStart}${element.dayEnd > element.dayStart ? `-${element.dayEnd}` : ''}`
       };
       break;
-    
+
     case 'post':
       contentData = {
         type: 'post',
@@ -964,7 +996,7 @@ const handleLongPressForSelection = useCallback((element, type) => {
         title: element.content?.split('\n')[0] || 'Article sans titre'
       };
       break;
-    
+
     case 'photo':
       contentData = {
         type: 'photo',
@@ -978,11 +1010,21 @@ const handleLongPressForSelection = useCallback((element, type) => {
         photoType: element.type || 'day_photo'
       };
       break;
-    
+
+    case 'photoGrid':
+      // ⭐ v2.27 : Album photo (affichage textuel dans chat)
+      contentData = {
+        type: 'photoGrid',
+        id: element.id,
+        title: element.displayTitle || element.title,
+        photoCount: element.dayPhotoCount || element.dayPhotos?.length || 0
+      };
+      break;
+
     default:
       return;
   }
-  
+
   onContentSelected?.(contentData);
 }, [selectionMode, onContentSelected]);
 
@@ -1625,11 +1667,14 @@ const navigationProcessedRef = useRef(null);
     targetMoment = momentsData.find(m =>
         m.posts?.some(p => p.id === targetContent.id)
       );
-      
+
       if (targetMoment) {
         // ⭐ v2.14 : Ouvrir le moment via Context
         actions.collapseAll('moments');
         actions.toggleExpanded('moments', targetMoment.id);
+
+        // ⭐ v2.27 : Marquer élément pour highlight
+        setHighlightedElement({ type: 'post', id: targetContent.id });
 
         // Scroll vers post spécifique
 const postId = targetContent.id;
@@ -1637,6 +1682,8 @@ setTimeout(() => {
   const postElement = document.querySelector(`[data-post-id="${postId}"]`);
   if (postElement) {
     executeScrollToElement(postElement);
+    // Retirer highlight après 3 secondes
+    setTimeout(() => setHighlightedElement(null), 3000);
   }
 }, 300);
       }
@@ -1656,11 +1703,18 @@ setTimeout(() => {
         actions.collapseAll('moments');
         actions.toggleExpanded('moments', targetMoment.id);
 
+        // ⭐ v2.27 : Marquer élément pour highlight
+        setHighlightedElement({ type: 'moment', id: targetMoment.id });
+
         // Scroll vers moment
 const momentId = targetMoment.id;
 setTimeout(() => {
   const element = momentRefs.current[momentId];
-  if (element) executeScrollToElement(element);
+  if (element) {
+    executeScrollToElement(element);
+    // Retirer highlight après 3 secondes
+    setTimeout(() => setHighlightedElement(null), 3000);
+  }
 }, 300);
       }
       // ⭐ AJOUTER ICI
@@ -1686,17 +1740,22 @@ setTimeout(() => {
           actions.collapseAll('moments');
           actions.toggleExpanded('moments', moment.id);
 
+          // ⭐ v2.27 : Marquer élément pour highlight
+          setHighlightedElement({ type: 'photo', id: targetContent.id });
+
           // Construire galerie complète
           const gallery = [
             ...(moment.dayPhotos || []),
             ...(moment.postPhotos || [])
           ];
-          
+
           // Scroll vers le thumbnail de la photo (pas de PhotoViewer)
 			setTimeout(() => {
   			const photoElement = document.querySelector(`[data-photo-filename="${targetContent.id}"]`);
   			if (photoElement) {
     			executeScrollToElement(photoElement);
+    			// Retirer highlight après 3 secondes
+    			setTimeout(() => setHighlightedElement(null), 3000);
   			}
 			}, 300);
 
@@ -1718,20 +1777,25 @@ setTimeout(() => {
               actions.collapseAll('moments');
               actions.toggleExpanded('moments', moment.id);
 
+              // ⭐ v2.27 : Marquer élément pour highlight
+              setHighlightedElement({ type: 'photo', id: targetContent.id });
+
               // Construire galerie complète
               const gallery = [
                 ...(moment.dayPhotos || []),
                 ...(moment.postPhotos || [])
               ];
-              
+
               // Ouvrir PhotoViewer avec la photo ciblée
               setTimeout(() => {
   				const photoElement = document.querySelector(`[data-photo-filename="${targetContent.id}"]`);
   				if (photoElement) {
     				executeScrollToElement(photoElement);
+    				// Retirer highlight après 3 secondes
+    				setTimeout(() => setHighlightedElement(null), 3000);
   					}
 				}, 300);
-              
+
               break;
             }
           }
@@ -2051,6 +2115,7 @@ const themeStats = window.themeAssignments && availableThemes.length > 0
                   editionMode={editionMode}
                   newMemories={newMemories}             // ⭐ v2.25 : Nouveaux souvenirs
                   firstNewMemoryRef={firstNewMemoryRef} // ⭐ v2.25 : Ref pour scroll
+                  highlightedElement={highlightedElement} // ⭐ v2.27 : Élément à mettre en évidence
                 />
               ) : (
                 /* Mode en vrac : Afficher le contenu sans en-têtes */

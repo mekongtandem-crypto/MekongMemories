@@ -143,11 +143,8 @@ export const PhotoGridHeader = memo(({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                // Lier la première photo du moment comme représentant
-                const firstPhoto = moment.dayPhotos?.[0];
-                if (firstPhoto) {
-                  onContentSelected?.(firstPhoto, 'photo');
-                }
+                // ⭐ v2.27 : Lier l'album photo complet (type photoGrid)
+                onContentSelected?.(moment, 'photoGrid');
               }}
               className="p-1.5 bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-700 hover:bg-purple-400 dark:hover:bg-purple-800 rounded transition-colors"
               title="Lier cet album"

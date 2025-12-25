@@ -178,7 +178,7 @@ useEffect(() => {
   // Détecter photo attachée ou lien depuis Memories
   useEffect(() => {
     // ⭐ v2.18j : Ne rien faire si rien à traiter
-    if (!navigationContext?.pendingAttachment && !navigationContext?.pendingLink) {
+    if (!navigationContext?.pendingAttachment && !navigationContext?.pendingLink && !navigationContext?.messageDraft) {
       return;
     }
 
@@ -204,6 +204,12 @@ useEffect(() => {
     if (navigationContext?.pendingLink) {
       setPendingLink(navigationContext.pendingLink);
 
+      // ⭐ v2.27 : Restaurer draft message si présent
+      if (navigationContext?.messageDraft) {
+        console.log('📝 Restauration draft message:', navigationContext.messageDraft);
+        setNewMessage(navigationContext.messageDraft);
+      }
+
       // Nettoyer navigationContext pour éviter persistance entre sessions
       if (!hasCleared) {
         console.log('🧹 Clear navigationContext.pendingLink');
@@ -211,7 +217,7 @@ useEffect(() => {
         hasCleared = true;
       }
     }
-  }, [navigationContext?.pendingAttachment, navigationContext?.pendingLink]);
+  }, [navigationContext?.pendingAttachment, navigationContext?.pendingLink, navigationContext?.messageDraft]);
   
 
   // ⭐ MODIFIÉ : Focus amélioré avec ref
@@ -291,7 +297,9 @@ useEffect(() => {
     // ⭐ v2.21c : Le momentId associé est automatiquement récupéré depuis
     // app.currentChatSession.gameId dans App.jsx et passé via navigationContext.sessionMomentId
     // MemoriesPage scrolle automatiquement vers ce moment lors de l'ouverture
-    onStartSelectionMode('link', null);
+
+    // ⭐ v2.27 : Passer draft message pour le préserver
+    onStartSelectionMode('link', null, newMessage);
   };
 
   const handleClearPendingLink = () => {

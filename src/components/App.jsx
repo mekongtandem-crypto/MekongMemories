@@ -251,26 +251,28 @@ export default function App() {
   
   /**
    * Démarrer mode sélection (bouton 🔗 dans ChatPage)
+   * ⭐ v2.27 : Support messageDraft pour préserver contenu message
    */
-  const handleStartSelectionMode = useCallback((type, callback) => {
+  const handleStartSelectionMode = useCallback((type, callback, messageDraft = null) => {
     // Récupérer gameId si vient d'une session
     const gameId = (app.currentPage === 'chat' && app.currentChatSession?.gameId)
       ? app.currentChatSession.gameId
       : null;
-    
+
     setSelectionMode({
       active: true,
       type: type,
       callback: callback
     });
-    
+
     setNavigationContext({
       previousPage: app.currentPage,
       pendingAttachment: null,
       sessionMomentId: gameId,
-      pendingLink: null
+      pendingLink: null,
+      messageDraft: messageDraft  // ⭐ v2.27 : Sauvegarder draft message
     });
-    
+
     app.updateCurrentPage('memories');
   }, [app]);
 
