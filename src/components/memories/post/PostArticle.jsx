@@ -232,6 +232,13 @@ export const PostArticle = memo(({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+
+                    // ⭐ v2.26i : Si post fermé, l'ouvrir d'abord (rendre visible = ouvrir parent)
+                    if (!isPostExpanded) {
+                      const postKey = generatePostKey(post);
+                      actions.toggleExpanded('posts', postKey);
+                    }
+
                     const photoGridId = `post_${post.id}`;
                     actions.toggleExpanded('photoGrids', photoGridId);
                   }}
@@ -249,6 +256,13 @@ export const PostArticle = memo(({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+
+                    // ⭐ v2.26i : Si post fermé, l'ouvrir d'abord (déploiement = ouvrir parent)
+                    if (!isPostExpanded) {
+                      const postKey = generatePostKey(post);
+                      actions.toggleExpanded('posts', postKey);
+                    }
+
                     const photoGridId = `post_${post.id}`;
                     const wasOpen = showThisPostPhotos;
 
@@ -358,8 +372,8 @@ export const PostArticle = memo(({
               </div>
             )}
 
-            {/* ⭐ v2.15c : Photos si DP=déplié OU toggle ON */}
-            {shouldShowHeader && shouldShowPhotos && (photosAllExpanded || showThisPostPhotos) && (
+            {/* ⭐ v2.26i : Photos si toggle local ON (isPhotoGridExpanded gère déjà le mode global) */}
+            {shouldShowHeader && shouldShowPhotos && showThisPostPhotos && (
           <div className="p-2">
             <PhotoGrid
               photos={post.photos}
