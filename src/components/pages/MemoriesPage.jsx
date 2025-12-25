@@ -213,6 +213,10 @@ const MemoriesPageInner = React.forwardRef(({
       case 'photo':
         selector = `[data-photo-filename="${highlightedElement.id}"]`;
         break;
+      case 'photoGrid':
+        // ⭐ v2.27b : Highlight le header PhotoGrid
+        selector = `[data-moment-id="${highlightedElement.id}"] [data-photogrid-header]`;
+        break;
       default:
         return;
     }
@@ -1803,8 +1807,49 @@ setTimeout(() => {
         
         if (targetMoment) break;
       }
-      
+
       // ⭐ AJOUTER ICI
+      navigationProcessedRef.current = navKey;
+    }
+
+    // ========================================
+    // CAS 4 : LIEN VERS PHOTOGRID (Album photo) → ⭐ v2.27b
+    // ========================================
+    else if (targetContent?.type === 'photoGrid') {
+      // Trouver le moment (album) par ID
+      targetMoment = momentsData.find(m => m.id === targetContent.id);
+
+      if (targetMoment) {
+        // Ouvrir le moment
+        actions.collapseAll('moments');
+        actions.toggleExpanded('moments', targetMoment.id);
+
+        // ⭐ v2.27b : S'assurer que le volet photos est visible
+        // Ouvrir le photoGrid si pas déjà ouvert
+        const gridId = `moment_${targetMoment.id}_day`;
+        const isGridOpen = computed.isPhotoGridExpanded(gridId);
+        if (!isGridOpen) {
+          actions.toggleExpanded('photoGrids', gridId);
+        }
+
+        // ⭐ v2.27b : Marquer pour highlight
+        setHighlightedElement({ type: 'photoGrid', id: targetMoment.id });
+
+        // Scroll vers le header PhotoGrid
+        setTimeout(() => {
+          // Chercher le header PhotoGrid dans le moment
+          const momentElement = document.querySelector(`[data-moment-id="${targetMoment.id}"]`);
+          if (momentElement) {
+            const photoGridHeader = momentElement.querySelector('[data-photogrid-header]');
+            if (photoGridHeader) {
+              executeScrollToElement(photoGridHeader);
+              // Retirer highlight après 3 secondes
+              setTimeout(() => setHighlightedElement(null), 3000);
+            }
+          }
+        }, 400); // Attendre un peu plus pour que le photoGrid s'ouvre
+      }
+
       navigationProcessedRef.current = navKey;
     }
   }

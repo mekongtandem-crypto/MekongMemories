@@ -84,7 +84,10 @@ export const PhotoGridHeader = memo(({
   }, [sessionCount, moment, onShowSessions, onCreateSessionFromContent]);
 
   return (
-    <div className="mb-2 border border-green-200 dark:border-green-700 rounded-lg bg-green-50 dark:bg-green-900/30">
+    <div
+      className="mb-2 border border-green-200 dark:border-green-700 rounded-lg bg-green-50 dark:bg-green-900/30"
+      data-photogrid-header
+    >
       <button
         onClick={onToggle}
         className="w-full flex items-center justify-between p-2 hover:bg-green-100 dark:hover:bg-green-800/40 rounded-lg transition-colors group"

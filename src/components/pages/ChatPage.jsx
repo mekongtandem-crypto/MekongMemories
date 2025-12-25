@@ -184,6 +184,13 @@ useEffect(() => {
 
     let hasCleared = false;
 
+    // ⭐ v2.27b : Restaurer draft message INDÉPENDAMMENT du lien
+    // (pour gérer annulation ou retour sans sélection)
+    if (navigationContext?.messageDraft) {
+      console.log('📝 Restauration draft message:', navigationContext.messageDraft);
+      setNewMessage(navigationContext.messageDraft);
+    }
+
     // ✅ PHOTO : Toujours injecter (pas de condition previousPage)
     if (navigationContext?.pendingAttachment) {
       const { type, data } = navigationContext.pendingAttachment;
@@ -204,18 +211,18 @@ useEffect(() => {
     if (navigationContext?.pendingLink) {
       setPendingLink(navigationContext.pendingLink);
 
-      // ⭐ v2.27 : Restaurer draft message si présent
-      if (navigationContext?.messageDraft) {
-        console.log('📝 Restauration draft message:', navigationContext.messageDraft);
-        setNewMessage(navigationContext.messageDraft);
-      }
-
       // Nettoyer navigationContext pour éviter persistance entre sessions
       if (!hasCleared) {
         console.log('🧹 Clear navigationContext.pendingLink');
         onClearAttachment?.();
         hasCleared = true;
       }
+    }
+
+    // ⭐ v2.27b : Nettoyer AUSSI si seulement messageDraft (annulation)
+    if (!hasCleared && navigationContext?.messageDraft) {
+      console.log('🧹 Clear messageDraft après restauration');
+      onClearAttachment?.();
     }
   }, [navigationContext?.pendingAttachment, navigationContext?.pendingLink, navigationContext?.messageDraft]);
   

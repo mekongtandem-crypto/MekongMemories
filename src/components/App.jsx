@@ -356,12 +356,14 @@ export default function App() {
 
   /**
    * Nettoyer attachement après utilisation
+   * ⭐ v2.27b : Nettoyer aussi messageDraft
    */
   const handleClearAttachment = useCallback(() => {
     setNavigationContext(prev => ({
       ...prev,
       pendingAttachment: null,
-      pendingLink: null
+      pendingLink: null,
+      messageDraft: null  // ⭐ v2.27b : Effacer draft après restauration
     }));
   }, []);
 
