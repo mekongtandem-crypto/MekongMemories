@@ -1,24 +1,28 @@
 /**
- * LinkedContent.jsx v1.2 - Phase 19E
+ * LinkedContent.jsx v2.26j - Ajout photoGrid
  * Affichage enrichi des liens dans messages
+ * ⭐ v2.26j : Support album photo (photoGrid) avec affichage textuel
  * ⭐ NOUVEAU : Double action pour photos (🔍 Zoom + 📍 Localiser)
  */
 import React, { useState, useEffect } from 'react';
 import { MapPin, FileText, Image as ImageIcon, ChevronRight, ZoomIn, Navigation } from 'lucide-react';
 
 export default function LinkedContent({ linkedContent, onOpenLocal, onNavigate, masterIndex }) {
-  
+
   // Router selon type
   switch (linkedContent.type) {
     case 'photo':
       return <LinkedPhoto linkedContent={linkedContent} onOpenLocal={onOpenLocal} onNavigate={onNavigate} />;
-    
+
+    case 'photoGrid':
+      return <LinkedPhotoGrid linkedContent={linkedContent} onNavigate={onNavigate} masterIndex={masterIndex} />;
+
     case 'post':
       return <LinkedPost linkedContent={linkedContent} onNavigate={onNavigate} masterIndex={masterIndex} />;
-    
+
     case 'moment':
       return <LinkedMoment linkedContent={linkedContent} onNavigate={onNavigate} masterIndex={masterIndex} />;
-    
+
     default:
       return <DefaultLink linkedContent={linkedContent} onNavigate={onNavigate} />;
   }
@@ -147,6 +151,75 @@ function LinkedPhoto({ linkedContent, onOpenLocal, onNavigate }) {
           <span>Localiser</span>
         </button>
         
+      </div>
+    </div>
+  );
+}
+
+// ========================================
+// 📸 ALBUM PHOTO LIÉ (PhotoGrid - Affichage textuel)
+// ========================================
+
+function LinkedPhotoGrid({ linkedContent, onNavigate, masterIndex }) {
+  const [momentData, setMomentData] = useState(null);
+
+  useEffect(() => {
+    if (!masterIndex?.moments) return;
+
+    // Trouver le moment correspondant à l'album photo
+    const moment = masterIndex.moments.find(m => m.id === linkedContent.id);
+    if (moment) {
+      setMomentData(moment);
+    }
+  }, [linkedContent.id, masterIndex]);
+
+  const handleClick = () => {
+    if (onNavigate) onNavigate(linkedContent);
+  };
+
+  if (!momentData) {
+    return (
+      <div
+        onClick={handleClick}
+        className="mb-2 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg cursor-pointer hover:bg-green-100 dark:hover:bg-green-800/40 transition-colors"
+      >
+        <div className="flex items-center space-x-2">
+          <ImageIcon className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="font-medium text-green-700 dark:text-green-300 line-clamp-1">
+              📸 Album photo : {linkedContent.title}
+            </span>
+            <div className="text-xs text-green-500 dark:text-green-400 mt-1">Chargement...</div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-green-400 flex-shrink-0" />
+        </div>
+      </div>
+    );
+  }
+
+  const photoCount = momentData.dayPhotoCount || momentData.dayPhotos?.length || 0;
+  const momentTitle = momentData.displayTitle || momentData.title || linkedContent.title;
+
+  return (
+    <div
+      onClick={handleClick}
+      className="mb-2 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg cursor-pointer hover:bg-green-100 dark:hover:bg-green-800/40 transition-colors group"
+    >
+      <div className="flex items-start space-x-2">
+        <ImageIcon className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-green-900 dark:text-green-200 text-sm mb-1">
+            📸 Album photo : {momentTitle}
+          </div>
+
+          <div className="flex items-center space-x-1 text-xs text-green-700 dark:text-green-300">
+            <ImageIcon className="w-3 h-3" />
+            <span>{photoCount} photo{photoCount > 1 ? 's' : ''}</span>
+          </div>
+        </div>
+
+        <ChevronRight className="w-4 h-4 text-green-400 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     </div>
   );

@@ -156,6 +156,9 @@ export const MomentContent = memo(({
             onCancelSelection={onCancelSelection}
             selectionMode={selectionMode}
             onContentSelected={onContentSelected}
+            sessions={sessions}
+            onShowSessions={onShowSessions}
+            onCreateSessionFromContent={onCreateSessionFromContent}
           />
 
           {/* ⭐ v2.17d : Grille visible si déployée (texte local ON) */}

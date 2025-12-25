@@ -151,6 +151,9 @@ export const FlatContentList = memo(({
                   onCancelSelection={onCancelSelection}
                   selectionMode={selectionMode}
                   onContentSelected={onContentSelected}
+                  sessions={sessions}
+                  onShowSessions={onShowSessions}
+                  onCreateSessionFromContent={onCreateSessionFromContent}
                 />
               )}
 
