@@ -318,24 +318,26 @@ export default function App() {
 
   /**
    * Validation sélection contenu
+   * ⭐ v2.27b : Préserver messageDraft lors sélection
    */
   const handleContentSelected = useCallback((contentData) => {
     const previousPage = navigationContext.previousPage || 'chat';
-    
+
     setSelectionMode({
       active: false,
       type: null,
       callback: null
     });
-    
-    // Conserver previousPage pour validation ChatPage
-    setNavigationContext({
+
+    // ⭐ v2.27b : Utiliser spread pour préserver messageDraft
+    setNavigationContext(prev => ({
+      ...prev,
       previousPage: 'memories',
       pendingAttachment: null,
       sessionMomentId: null,
       pendingLink: contentData
-    });
-    
+    }));
+
     app.updateCurrentPage(previousPage);
   }, [navigationContext, app]);
 
