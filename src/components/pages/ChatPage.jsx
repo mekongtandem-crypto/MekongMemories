@@ -1,5 +1,5 @@
 /**
- * ChatPage.jsx v3.1 - Clean après fix ContentWrapper
+ * ChatPage.jsx v3.2 - UX Chat améliorée v2.28
  * ✅ Bouton [+] avec menu contextuel
  * ✅ Menu : 🔗 Lien souvenir, 📷 Photo rapide, 📷✨ Photo souvenir
  * ✅ Upload rapide : file picker + compression + Drive upload
@@ -13,6 +13,8 @@
  * ✅ Preview photo importée avant envoi
  * ✅ Envoi message avec photoData (source: 'imported')
  * ✅ SessionInfoPanel (slide-in)
+ * ⭐ v2.28 : Scroll intelligent vers premier message non lu (via lastOpenedAt)
+ * ⭐ v2.28 : Section input fixe en bas de page (toujours visible)
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import LinkedContent from '../LinkedContent.jsx';
@@ -91,12 +93,49 @@ export default function ChatPage({ navigationContext, onClearAttachment, onStart
   const lastSessionIdRef = useRef(null);  // ⭐ v2.18j : Track dernière session pour détecter changement
   const markedSessionsRef = useRef(new Set());  // ⭐ v2.18j : Éviter notify() en boucle
 
-  // Scroll vers dernier message
+  // ⭐ v2.28 : Scroll intelligent vers premier message non lu
   useEffect(() => {
-    if (messagesEndRef.current && !targetMessageId) {
+    if (!messagesEndRef.current || targetMessageId) return;
+
+    const currentSessionId = app.currentChatSession?.id;
+    const userId = app.currentUser?.id;
+    const messages = app.currentChatSession?.notes || [];
+
+    if (!currentSessionId || !userId || messages.length === 0) return;
+
+    // Récupérer lastOpenedAt depuis localStorage
+    const storageKey = `mekong_sessionReadStatus_${userId}`;
+    const tracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    const lastOpenedAt = tracking[currentSessionId]?.lastOpenedAt;
+
+    if (!lastOpenedAt) {
+      // Première ouverture → scroll vers le bas
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+
+    // Trouver le premier message non lu (timestamp > lastOpenedAt)
+    const lastOpenedDate = new Date(lastOpenedAt);
+    const firstUnreadMessage = messages.find(m =>
+      new Date(m.timestamp) > lastOpenedDate
+    );
+
+    if (firstUnreadMessage) {
+      // Scroll vers le premier message non lu
+      setTimeout(() => {
+        const messageElement = messageRefs.current[firstUnreadMessage.id];
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          // Fallback si ref pas trouvée
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    } else {
+      // Tous les messages sont lus → scroll vers le bas
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [app.currentChatSession?.notes, targetMessageId]);
+  }, [app.currentChatSession?.id, app.currentChatSession?.notes, app.currentUser?.id, targetMessageId]);
 
   // ⭐ v2.9s : Scroller vers message cible depuis cross-refs modal
   useEffect(() => {
@@ -1490,9 +1529,10 @@ function LinkPhotoPreview({ photo }) {
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-800">
 
       {/* Zone des messages */}
-      <div 
-      	ref={messagesContainerRef} 
-      	className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* ⭐ v2.28 : pb-40 pour espace input section fixe */}
+      <div
+      	ref={messagesContainerRef}
+      	className="flex-1 overflow-y-auto p-4 pb-40 space-y-3">
         
         {(!app.currentChatSession.notes || app.currentChatSession.notes.length === 0) && (
           <div className="text-center py-8">
@@ -1712,7 +1752,8 @@ function LinkPhotoPreview({ photo }) {
       </div>
 
       {/* Zone de saisie */}
-<div className="bg-white dark:bg-gray-800 border-t border-gray-200 p-4 flex-shrink-0">
+      {/* ⭐ v2.28 : Section input fixe en bas (fixed bottom-16 pour éviter navigation) */}
+<div className="fixed bottom-16 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 z-30">
   
   {/* ⭐ Preview lien (si présent) */}
 {pendingLink && (
