@@ -1677,8 +1677,11 @@ const navigationProcessedRef = useRef(null);
         actions.collapseAll('moments');
         actions.toggleExpanded('moments', targetMoment.id);
 
-        // ⭐ v2.27 : Marquer élément pour highlight
-        setHighlightedElement({ type: 'post', id: targetContent.id });
+        // ⭐ v2.28 : Highlight SEULEMENT si PAS en mode sélection
+        // (pas de highlight lors insertion lien/photo depuis chat)
+        if (!selectionMode?.active) {
+          setHighlightedElement({ type: 'post', id: targetContent.id });
+        }
 
         // Scroll vers post spécifique
 const postId = targetContent.id;
@@ -1687,7 +1690,9 @@ setTimeout(() => {
   if (postElement) {
     executeScrollToElement(postElement);
     // Retirer highlight après 3 secondes
-    setTimeout(() => setHighlightedElement(null), 3000);
+    if (!selectionMode?.active) {
+      setTimeout(() => setHighlightedElement(null), 3000);
+    }
   }
 }, 300);
       }
@@ -1707,8 +1712,11 @@ setTimeout(() => {
         actions.collapseAll('moments');
         actions.toggleExpanded('moments', targetMoment.id);
 
-        // ⭐ v2.27 : Marquer élément pour highlight
-        setHighlightedElement({ type: 'moment', id: targetMoment.id });
+        // ⭐ v2.28 : Highlight SEULEMENT si navigation depuis lien message
+        // (PAS en mode sélection, PAS si juste sessionMomentId auto-scroll)
+        if (!selectionMode?.active && targetContent?.type === 'moment') {
+          setHighlightedElement({ type: 'moment', id: targetMoment.id });
+        }
 
         // Scroll vers moment
 const momentId = targetMoment.id;
@@ -1717,7 +1725,9 @@ setTimeout(() => {
   if (element) {
     executeScrollToElement(element);
     // Retirer highlight après 3 secondes
-    setTimeout(() => setHighlightedElement(null), 3000);
+    if (!selectionMode?.active && targetContent?.type === 'moment') {
+      setTimeout(() => setHighlightedElement(null), 3000);
+    }
   }
 }, 300);
       }
@@ -1744,8 +1754,10 @@ setTimeout(() => {
           actions.collapseAll('moments');
           actions.toggleExpanded('moments', moment.id);
 
-          // ⭐ v2.27 : Marquer élément pour highlight
-          setHighlightedElement({ type: 'photo', id: targetContent.id });
+          // ⭐ v2.28 : Highlight SEULEMENT si PAS en mode sélection
+          if (!selectionMode?.active) {
+            setHighlightedElement({ type: 'photo', id: targetContent.id });
+          }
 
           // Construire galerie complète
           const gallery = [
@@ -1759,7 +1771,9 @@ setTimeout(() => {
   			if (photoElement) {
     			executeScrollToElement(photoElement);
     			// Retirer highlight après 3 secondes
-    			setTimeout(() => setHighlightedElement(null), 3000);
+    			if (!selectionMode?.active) {
+    			  setTimeout(() => setHighlightedElement(null), 3000);
+    			}
   			}
 			}, 300);
 
@@ -1781,8 +1795,10 @@ setTimeout(() => {
               actions.collapseAll('moments');
               actions.toggleExpanded('moments', moment.id);
 
-              // ⭐ v2.27 : Marquer élément pour highlight
-              setHighlightedElement({ type: 'photo', id: targetContent.id });
+              // ⭐ v2.28 : Highlight SEULEMENT si PAS en mode sélection
+              if (!selectionMode?.active) {
+                setHighlightedElement({ type: 'photo', id: targetContent.id });
+              }
 
               // Construire galerie complète
               const gallery = [
@@ -1796,7 +1812,9 @@ setTimeout(() => {
   				if (photoElement) {
     				executeScrollToElement(photoElement);
     				// Retirer highlight après 3 secondes
-    				setTimeout(() => setHighlightedElement(null), 3000);
+    				if (!selectionMode?.active) {
+    				  setTimeout(() => setHighlightedElement(null), 3000);
+    				}
   					}
 				}, 300);
 
@@ -1832,8 +1850,10 @@ setTimeout(() => {
           actions.toggleExpanded('photoGrids', gridId);
         }
 
-        // ⭐ v2.27b : Marquer pour highlight
-        setHighlightedElement({ type: 'photoGrid', id: targetMoment.id });
+        // ⭐ v2.28 : Highlight SEULEMENT si PAS en mode sélection
+        if (!selectionMode?.active) {
+          setHighlightedElement({ type: 'photoGrid', id: targetMoment.id });
+        }
 
         // Scroll vers le header PhotoGrid
         setTimeout(() => {
@@ -1844,7 +1864,9 @@ setTimeout(() => {
             if (photoGridHeader) {
               executeScrollToElement(photoGridHeader);
               // Retirer highlight après 3 secondes
-              setTimeout(() => setHighlightedElement(null), 3000);
+              if (!selectionMode?.active) {
+                setTimeout(() => setHighlightedElement(null), 3000);
+              }
             }
           }
         }, 400); // Attendre un peu plus pour que le photoGrid s'ouvre
