@@ -1,5 +1,5 @@
 /**
- * SessionsPage.jsx v7.3 - v2.25 : Bandeau nouveaux souvenirs
+ * SessionsPage.jsx v7.4 - v2.29 : Fix statut NEW/UNREAD
  * ✅ NEW (🆕) vs UNREAD (👀) indépendants des groupes
  * ✅ Badge prioritaire unique (haut droite)
  * ✅ Backgrounds progressifs (NEW > UNREAD > READ)
@@ -7,6 +7,7 @@
  * ✅ Menu contextuel "Marquer comme lu/non lu"
  * ✅ Nouveaux emojis groupes
  * ✅ Bandeau notification nouveaux souvenirs (v2.25)
+ * ⭐ v2.29 : Fix getReadState() - Lecture directe localStorage au lieu de state local
  */
 import { safeStorage } from '../../utils/storage.js';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -188,8 +189,13 @@ export default function SessionsPage({ isSearchOpen, setIsSearchOpen }) {
   }, [enrichedSessions, searchQuery]);
 
   // ✅ Calculer état lecture pour chaque session
+  // ⭐ v2.29 : FIX - Lire directement depuis localStorage pour éviter désync avec ChatPage
   const getReadState = (session) => {
-    const tracking = sessionReadStatus[session.id];
+    // ⭐ v2.29 : Lire tracking en temps réel depuis localStorage (pas depuis state)
+    const storageKey = `mekong_sessionReadStatus_${app.currentUser?.id}`;
+    const allTracking = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    const tracking = allTracking[session.id];
+
     const lastMessage = session.notes?.[session.notes.length - 1];
     const lastMessageTime = lastMessage?.timestamp || session.createdAt;
     const lastMessageAuthor = lastMessage?.author || session.user;
