@@ -1,5 +1,5 @@
 /**
- * MemoriesDisplayContext.jsx v2.31 - Navigation State Management
+ * MemoriesDisplayContext.jsx v2.31c - Restauration immédiate au montage
  *
  * Architecture centralisée pour gérer TOUT l'affichage de MemoriesPage:
  * - Filtres de contenu (Structure/Textes/Images)
@@ -7,6 +7,7 @@
  * - Filtres contextuels (recherche, thème, etc.)
  * - Tri (chronologique, aléatoire, richesse)
  *
+ * ⭐ v2.31c : Restauration DÈS getInitialState (évite double render)
  * ⭐ v2.31 : Auto-persistance état dans localStorage
  *            Restauration automatique au montage
  * ⭐ v2.30 : FIX isElementVisible - Logique simplifiée et cohérente
@@ -19,6 +20,7 @@
 
 import React, { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { generatePostKey } from '../../../utils/themeUtils.js';
+import { navigationStateManager } from '../../../core/NavigationStateManager.js';  // ⭐ v2.31c
 
 // ========================================
 // CONTEXT
@@ -37,8 +39,13 @@ const MemoriesDisplayContext = createContext(null);
  * - Déplier Images=ON (toutes grilles dépliées par défaut)
  * - Déplier Moments=OFF (accordion fermé)
  * - Tri chronologique par défaut
+ *
+ * ⭐ v2.31c : Restauration DÈS l'initialisation (évite double render)
  */
 export const getInitialState = (momentsData = []) => {
+  // ⭐ v2.31c : Lire état sauvegardé AVANT de créer defaults
+  const savedState = navigationStateManager.restorePageState('memories');
+
   // Collecter tous les IDs de posts et photoGrids pour déplier par défaut
   const allPostIds = [];
   const allPhotoGridIds = [];
@@ -66,7 +73,8 @@ export const getInitialState = (momentsData = []) => {
     }
   });
 
-  return {
+  // ⭐ v2.31c : Defaults (utilisés si pas d'état sauvegardé)
+  const defaults = {
     // ⭐ v2.14 : Filtres de contenu (nomenclature validée)
     contentFilters: {
       structure: true,  // ✨ En-têtes moments (ex "Moments")
@@ -126,6 +134,36 @@ export const getInitialState = (momentsData = []) => {
     lastFilterClickCount: 0,
     shakeFilter: null // Filtre à animer (shake) si tentative désactivation
   };
+
+  // ⭐ v2.31c : Merger avec état sauvegardé si disponible
+  if (savedState) {
+    // Restaurer filtres
+    if (savedState.contentFilters) {
+      defaults.contentFilters = savedState.contentFilters;
+    }
+    if (savedState.globalExpansion) {
+      defaults.globalExpansion = savedState.globalExpansion;
+    }
+    if (savedState.sortOrder) {
+      defaults.sortOrder = savedState.sortOrder;
+    }
+
+    // Restaurer expanded (convertir arrays → Sets)
+    if (savedState.expanded) {
+      defaults.expanded = {
+        moments: new Set(savedState.expanded.moments || []),
+        posts: new Set(savedState.expanded.posts || []),
+        photoGrids: new Set(savedState.expanded.photoGrids || [])
+      };
+    }
+
+    // ⭐ v2.31c : Restaurer selected (le cadre bleu)
+    if (savedState.selected) {
+      defaults.selected = savedState.selected;
+    }
+  }
+
+  return defaults;
 };
 
 // ========================================

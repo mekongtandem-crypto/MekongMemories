@@ -1,8 +1,9 @@
 /**
- * MemoriesPage.jsx v2.31b - Navigation State Unified
+ * MemoriesPage.jsx v2.31c - Restauration immédiate sans double render
  * ✅ Bandeau nouveaux souvenirs avec scroll auto
  * ✅ Marquage automatique souvenirs vus au scroll (IntersectionObserver)
  * ✅ Badge count nouveaux souvenirs
+ * ⭐ v2.31c : Restauration scroll seulement (Context restauré dans getInitialState)
  * ⭐ v2.31b : Navigation state unified - save/restore complet via NavigationStateManager
  * ⭐ Migration progressive vers useMemoriesDisplay()
  */
@@ -326,29 +327,13 @@ const MemoriesPageInner = React.forwardRef(({
     };
   }, [state.contentFilters, state.globalExpansion, state.expanded, state.selected, state.sortOrder, memoryScroll.saveScrollPosition]);
 
-  // ⭐ v2.31b : Restaurer état au montage
+  // ⭐ v2.31c : Restaurer SEULEMENT scroll au montage (Context restauré dans getInitialState)
   useEffect(() => {
     const savedState = navigationStateManager.restorePageState('memories');
 
-    if (savedState) {
-      logger.info('📍 Restauration état MemoriesPage:', savedState);
-
-      // Restaurer Context state
-      if (savedState.contentFilters || savedState.expanded || savedState.selected) {
-        actions.hydrateFromStorage({
-          contentFilters: savedState.contentFilters,
-          globalExpansion: savedState.globalExpansion,
-          expanded: savedState.expanded,
-          selected: savedState.selected,
-          sortOrder: savedState.sortOrder
-        });
-      }
-
-      // Restaurer scroll (Option B: priorité élément sélectionné)
-      if (savedState.scroll !== undefined && memoryScroll.restoreScrollPosition) {
-        const selectedMomentId = savedState.selected?.moment;
-        memoryScroll.restoreScrollPosition(savedState.scroll, selectedMomentId);
-      }
+    if (savedState?.scroll !== undefined && memoryScroll.restoreScrollPosition) {
+      const selectedMomentId = savedState.selected?.moment;
+      memoryScroll.restoreScrollPosition(savedState.scroll, selectedMomentId);
     }
   }, []); // Une seule fois au montage
 
