@@ -1,5 +1,5 @@
 /**
- * MemoriesDisplayContext.jsx v2.19d - Debug logs allMomentsExpanded
+ * MemoriesDisplayContext.jsx v2.30 - Fix logique isElementVisible
  *
  * Architecture centralisée pour gérer TOUT l'affichage de MemoriesPage:
  * - Filtres de contenu (Structure/Textes/Images)
@@ -7,6 +7,8 @@
  * - Filtres contextuels (recherche, thème, etc.)
  * - Tri (chronologique, aléatoire, richesse)
  *
+ * ⭐ v2.30 : FIX isElementVisible - Logique simplifiée et cohérente
+ *            Suppression condition bugguée AP=0 ET DP=1 (post_photos)
  * ✅ v2.19d : Logs debug pour diagnostiquer bouton DM
  * ✅ v2.19c : allMomentsExpanded compte seulement moments visibles
  * ✅ v2.19a : isElementVisible post_photos mode spécial AM=0 AT=0
@@ -613,16 +615,12 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
           return state.contentFilters.textes;
 
         case 'post_photos':
-          // ⭐ v2.19a : Mode spécial AM=0 AT=0 → DT contrôle photos de posts
-          if (!state.contentFilters.structure && !state.contentFilters.textes) {
-            return state.postPhotosOnlyMode;  // DT contrôle en mode photos seulement
-          }
-          // ⭐ v2.26f : NOUVEAU - Si AP=0 ET DP=1, afficher photos de post
-          if (!state.contentFilters.images && state.globalExpansion.photoGrids) {
-            return true;
-          }
-          // Cas normal → AP contrôle
-          return state.contentFilters.images;
+          // ⭐ v2.30 : FIX - Logique simplifiée et cohérente
+          // Photos de post visibles si :
+          // - Textes actif (posts visibles, donc leurs photos aussi)
+          // - OU Images actif (photos visibles)
+          // - OU mode PhotoDePost actif (mode spécial AM=0 ET AT=0)
+          return state.contentFilters.textes || state.contentFilters.images || state.postPhotosOnlyMode;
 
         case 'day_photos':
           return state.contentFilters.images;

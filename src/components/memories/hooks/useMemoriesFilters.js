@@ -1,8 +1,9 @@
 /**
- * useMemoriesFilters.js v7.1 - Filtres de contenu additifs
+ * useMemoriesFilters.js v7.2 - Fix source de vérité unique
  * Hook pour gérer le filtrage et le tri des moments
  *
  * Gère :
+ * - ⭐ v2.30 : Utilise computed.isElementVisible du Context (source unique)
  * - ⭐ v2.11 : Filtres de contenu additifs (✨📷🗒️🖼️)
  * - Filtres globaux TopBar (types, contexte)
  * - Recherche textuelle
@@ -24,7 +25,8 @@ export function useMemoriesFilters(momentsData, sessions = []) {
   // ⭐ v2.14 : FILTRES DEPUIS CONTEXT (plus de useState local)
   // ========================================
 
-  const { state, actions } = useMemoriesDisplay();
+  // ⭐ v2.30 : Récupérer aussi 'computed' pour utiliser isElementVisible du Context
+  const { state, actions, computed } = useMemoriesDisplay();
 
   // ⭐ v2.14 : Mapper nouvelles clés Context → anciennes clés pour compatibilité
   const contentFilters = {
@@ -46,44 +48,9 @@ export function useMemoriesFilters(momentsData, sessions = []) {
     }
   }, [actions]);
 
-  // Compteur de clics sur dernier filtre (pour message humoristique)
-  const lastFilterClickCount = useRef(0);
-  const lastFilterClickTimer = useRef(null);
-
-  // Déterminer si un élément est visible selon filtres
-  const isElementVisible = useCallback((elementType) => {
-    switch (elementType) {
-
-      case 'moment_header':
-        // ✨ En-têtes moments
-        return contentFilters.moments;
-
-      case 'moment_expandable':
-        // Moment expandable seulement si ✨ actif
-        return contentFilters.moments;
-
-      case 'post_header':
-        // 🗒️ Header du post (visible si posts actif)
-        return contentFilters.posts;
-
-      case 'post_text':
-        // 🗒️ Texte du post (visible si posts actif)
-        return contentFilters.posts;
-
-      case 'post_photos':
-        // ⭐ v2.17c : Photos de post visibles si :
-        // - 🗒️ posts OU 📸 photos (logique normale)
-        // - OU mode PhotoDePost actif (AM=0 ET AT=0, DT gère cet affichage)
-        return contentFilters.posts || contentFilters.photos || state.postPhotosOnlyMode;
-
-      case 'day_photos':
-        // 📸 Photos de moment (visible si photos actif)
-        return contentFilters.photos;
-
-      default:
-        return true;
-    }
-  }, [contentFilters, state.postPhotosOnlyMode]);
+  // ⭐ v2.30 : SUPPRIMÉ - Utiliser computed.isElementVisible du Context directement
+  // Plus de duplication de logique ! Source de vérité unique = Context
+  const isElementVisible = computed.isElementVisible;
 
   // Calculer stats visibles pour un moment selon filtres actifs
   const getVisibleStats = useCallback((moment) => {
