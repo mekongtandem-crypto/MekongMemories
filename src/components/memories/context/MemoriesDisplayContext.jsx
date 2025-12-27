@@ -1,5 +1,5 @@
 /**
- * MemoriesDisplayContext.jsx v2.30 - Fix logique isElementVisible
+ * MemoriesDisplayContext.jsx v2.31 - Navigation State Management
  *
  * Architecture centralisée pour gérer TOUT l'affichage de MemoriesPage:
  * - Filtres de contenu (Structure/Textes/Images)
@@ -7,6 +7,8 @@
  * - Filtres contextuels (recherche, thème, etc.)
  * - Tri (chronologique, aléatoire, richesse)
  *
+ * ⭐ v2.31 : Auto-persistance état dans localStorage
+ *            Restauration automatique au montage
  * ⭐ v2.30 : FIX isElementVisible - Logique simplifiée et cohérente
  *            Suppression condition bugguée AP=0 ET DP=1 (post_photos)
  * ✅ v2.19d : Logs debug pour diagnostiquer bouton DM
@@ -660,6 +662,36 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
       delete window.memoriesDisplayContext;
     };
   }, [state, actions, computed]);
+
+  // ⭐ v2.31 : Auto-persistance état dans localStorage
+  useEffect(() => {
+    const stateToSave = {
+      contentFilters: state.contentFilters,
+      globalExpansion: state.globalExpansion,
+      expanded: {
+        moments: Array.from(state.expanded.moments),
+        posts: Array.from(state.expanded.posts),
+        photoGrids: Array.from(state.expanded.photoGrids)
+      },
+      selected: state.selected,
+      sortOrder: state.sortOrder
+    };
+
+    localStorage.setItem('mekong_memories_display', JSON.stringify(stateToSave));
+  }, [state.contentFilters, state.globalExpansion, state.expanded, state.selected, state.sortOrder]);
+
+  // ⭐ v2.31 : Restaurer état au montage
+  useEffect(() => {
+    const saved = localStorage.getItem('mekong_memories_display');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        actions.hydrateFromStorage(parsed);
+      } catch (error) {
+        console.error('Error restoring memories display state:', error);
+      }
+    }
+  }, []); // Une seule fois au montage
 
   return (
     <MemoriesDisplayContext.Provider value={value}>
