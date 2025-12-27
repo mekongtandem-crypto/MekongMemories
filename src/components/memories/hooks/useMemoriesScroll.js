@@ -1,15 +1,17 @@
 /**
- * useMemoriesScroll.js v7.0
+ * useMemoriesScroll.js v7.1 - Navigation State Management
  * Hook pour gérer le scroll et la navigation dans MemoriesPage
- * 
+ *
  * Gère :
  * - Scroll automatique vers moment/post/photo
  * - Navigation depuis contexte externe (ChatPage, notification)
  * - Header sticky show/hide
  * - Refs vers éléments DOM
+ * ⭐ v2.31 : Sauvegarde/restauration scroll position
  */
 
 import { useRef, useCallback, useEffect } from 'react';
+import { navigationStateManager } from '../../../core/NavigationStateManager.js';
 
 export function useMemoriesScroll(navigationContext, onNavigateBack) {
   
@@ -104,32 +106,97 @@ export function useMemoriesScroll(navigationContext, onNavigateBack) {
   // ========================================
   // HEADER STICKY SHOW/HIDE
   // ========================================
-  
+
   // Note: Cette fonctionnalité est optionnelle
   // À implémenter si nécessaire pour masquer header au scroll
   const handleScroll = useCallback((e) => {
     // const currentScrollY = e.target.scrollTop;
     // Logique show/hide header si besoin
   }, []);
-  
+
+  // ========================================
+  // ⭐ v2.31 : SAVE/RESTORE SCROLL POSITION
+  // ========================================
+
+  /**
+   * Sauvegarder scroll position actuelle
+   * Appelée automatiquement lors de la navigation vers autre page
+   */
+  const saveScrollPosition = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const scrollPosition = scrollContainerRef.current.scrollTop;
+      return scrollPosition;
+    }
+    return 0;
+  }, []);
+
+  /**
+   * Restaurer scroll position
+   * Option B : Scroll vers élément sélectionné si existant, sinon position exacte
+   */
+  const restoreScrollPosition = useCallback((scrollPosition, selectedMomentId) => {
+    if (!scrollContainerRef.current) return;
+
+    // Option B : Priorité à l'élément sélectionné
+    if (selectedMomentId && momentRefs.current[selectedMomentId]) {
+      setTimeout(() => {
+        const element = momentRefs.current[selectedMomentId];
+        if (element) {
+          executeScrollToElement(element);
+        }
+      }, 150);
+    } else if (scrollPosition > 0) {
+      // Fallback : Position exacte
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: scrollPosition,
+          behavior: 'smooth'
+        });
+      }, 100);
+    }
+  }, [executeScrollToElement]);
+
+  // ⭐ v2.31 : Exposer fonction de sauvegarde sur window (pour NavigationStateManager)
+  useEffect(() => {
+    window.memoriesPageSaveState = () => ({
+      scroll: saveScrollPosition()
+    });
+
+    return () => {
+      delete window.memoriesPageSaveState;
+    };
+  }, [saveScrollPosition]);
+
+  // ⭐ v2.31 : Restaurer scroll au montage
+  useEffect(() => {
+    const savedState = navigationStateManager.restorePageState('memories');
+    if (savedState?.scroll) {
+      restoreScrollPosition(savedState.scroll, savedState.selected?.moment);
+    }
+  }, []); // Une seule fois au montage
+
   // ========================================
   // RETURN
   // ========================================
-  
+
   return {
     // Refs
     scrollContainerRef,
     momentRefs,
-    
+
     // Scroll functions
     scrollToMoment,
     scrollToTop,
     executeScrollToElement,
-    
+
     // Ref management
     registerMomentRef,
-    
+
     // Scroll handler
-    handleScroll
+    handleScroll,
+
+    // ⭐ v2.31 : Save/restore functions
+    saveScrollPosition,
+    restoreScrollPosition
   };
 }

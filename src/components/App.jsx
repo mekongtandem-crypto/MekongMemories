@@ -1,6 +1,7 @@
 /**
- * App.jsx v2.8 - Phase 24 : DarkMode
- * 
+ * App.jsx v2.9 - Navigation State Management
+ * ⭐ v2.31 : Intégration NavigationStateManager pour préservation état
+ * ✅ v2.8 : Phase 24 DarkMode
  */
 
 // ============================================
@@ -22,6 +23,8 @@ import LoadingSpinner from './LoadingSpinner.jsx';
 // ⭐ v2.14 : Context pour MemoriesPage
 import { MemoriesDisplayProvider } from './memories/context/MemoriesDisplayContext.jsx';
 import { enrichMomentsWithData } from './memories/layout/helpers.js';
+// ⭐ v2.31 : NavigationStateManager pour préservation d'état
+import { navigationStateManager } from '../core/NavigationStateManager.js';
 
 // ============================================
 // ERROR BOUNDARY
@@ -159,6 +162,7 @@ export default function App() {
 
   /**
    * Changement de page via BottomNavigation
+   * ⭐ v2.31 : Utilise NavigationStateManager pour préserver état
    */
   const handlePageChange = useCallback((newPage) => {
     // Désactiver mode sélection si actif
@@ -180,6 +184,9 @@ export default function App() {
       app.updateCurrentPage(newPage);
       return;
     }
+
+    // ⭐ v2.31 : Sauvegarder état page actuelle via NavigationStateManager
+    const context = navigationStateManager.navigateTo(app.currentPage, newPage, {});
 
     // Navigation spéciale Chat → Memories (transmettre momentId)
     if (newPage === 'memories' && app.currentPage === 'chat' && app.currentChatSession?.gameId) {
@@ -218,18 +225,28 @@ export default function App() {
 
   /**
    * Retour vers page précédente (bouton ← TopBar)
+   * ⭐ v2.31 : Utilise NavigationStateManager.goBack()
    */
   const handleNavigateBack = useCallback(() => {
-    const previousPage = navigationContext.previousPage || 'sessions';
+    // ⭐ v2.31 : Utiliser NavigationStateManager pour retour intelligent
+    const backInfo = navigationStateManager.goBack();
 
+    if (backInfo) {
+      // Restauration automatique de l'état par le composant de destination
+      app.updateCurrentPage(backInfo.page);
+    } else {
+      // Fallback si stack vide
+      const previousPage = navigationContext.previousPage || 'sessions';
+      app.updateCurrentPage(previousPage);
+    }
+
+    // Reset navigationContext local
     setNavigationContext({
       previousPage: null,
       pendingAttachment: null,
       sessionMomentId: null,
-      pendingLink: null  
+      pendingLink: null
     });
-    
-    app.updateCurrentPage(previousPage);
   }, [navigationContext, app]);
 
   /**
