@@ -1,5 +1,5 @@
 /**
- * useMemoriesScroll.js v7.1 - Navigation State Management
+ * useMemoriesScroll.js v7.2 - Navigation State Management
  * Hook pour gérer le scroll et la navigation dans MemoriesPage
  *
  * Gère :
@@ -7,11 +7,10 @@
  * - Navigation depuis contexte externe (ChatPage, notification)
  * - Header sticky show/hide
  * - Refs vers éléments DOM
- * ⭐ v2.31 : Sauvegarde/restauration scroll position
+ * ⭐ v2.31b : Save/restore déplacé vers MemoriesPage.jsx (accès Context complet)
  */
 
 import { useRef, useCallback, useEffect } from 'react';
-import { navigationStateManager } from '../../../core/NavigationStateManager.js';
 
 export function useMemoriesScroll(navigationContext, onNavigateBack) {
   
@@ -156,24 +155,8 @@ export function useMemoriesScroll(navigationContext, onNavigateBack) {
     }
   }, [executeScrollToElement]);
 
-  // ⭐ v2.31 : Exposer fonction de sauvegarde sur window (pour NavigationStateManager)
-  useEffect(() => {
-    window.memoriesPageSaveState = () => ({
-      scroll: saveScrollPosition()
-    });
-
-    return () => {
-      delete window.memoriesPageSaveState;
-    };
-  }, [saveScrollPosition]);
-
-  // ⭐ v2.31 : Restaurer scroll au montage
-  useEffect(() => {
-    const savedState = navigationStateManager.restorePageState('memories');
-    if (savedState?.scroll) {
-      restoreScrollPosition(savedState.scroll, savedState.selected?.moment);
-    }
-  }, []); // Une seule fois au montage
+  // ⭐ v2.31b : window.memoriesPageSaveState déplacé vers MemoriesPage.jsx
+  // (besoin accès complet Context state + scroll)
 
   // ========================================
   // RETURN
