@@ -1,8 +1,9 @@
 /**
- * MemoriesPage.jsx v2.25 - Notification nouveaux souvenirs
+ * MemoriesPage.jsx v2.31b - Navigation State Unified
  * ✅ Bandeau nouveaux souvenirs avec scroll auto
  * ✅ Marquage automatique souvenirs vus au scroll (IntersectionObserver)
  * ✅ Badge count nouveaux souvenirs
+ * ⭐ v2.31b : Navigation state unified - save/restore complet via NavigationStateManager
  * ⭐ Migration progressive vers useMemoriesDisplay()
  */
 
@@ -33,6 +34,7 @@ import ConfirmDeleteModal from '../ConfirmDeleteModal.jsx';  // ⭐ v2.9s - Moda
 import CrossRefsWarningModal from '../CrossRefsWarningModal.jsx';  // ⭐ v2.9s - Modal 2 "Photos utilisées ailleurs"
 import { openFilePicker, processAndUploadImage } from '../../utils/imageCompression.js';  // ⭐ v2.8f
 import { dataManager } from '../../core/dataManager.js';  // ⭐ v2.8f
+import { navigationStateManager } from '../../core/NavigationStateManager.js';  // ⭐ v2.31b
 import { logger } from '../../utils/logger.js';  // ⭐ v2.8f
 import { enrichMomentsWithData } from '../memories/layout/helpers.js';
 //import TimelineRuleV2 from '../TimelineRule.jsx';
@@ -298,6 +300,57 @@ const MemoriesPageInner = React.forwardRef(({
     // Cleanup
     return () => observer.disconnect();
   }, [app.currentUser, app.masterIndex]);
+
+  // ⭐ v2.31b : Gestion Navigation State (save/restore complet)
+  // Exposer fonction de sauvegarde sur window (pour NavigationStateManager)
+  useEffect(() => {
+    window.memoriesPageSaveState = () => {
+      const scrollPosition = memoryScroll.saveScrollPosition ? memoryScroll.saveScrollPosition() : 0;
+
+      return {
+        scroll: scrollPosition,
+        contentFilters: state.contentFilters,
+        globalExpansion: state.globalExpansion,
+        expanded: {
+          moments: Array.from(state.expanded.moments),
+          posts: Array.from(state.expanded.posts),
+          photoGrids: Array.from(state.expanded.photoGrids)
+        },
+        selected: state.selected,
+        sortOrder: state.sortOrder
+      };
+    };
+
+    return () => {
+      delete window.memoriesPageSaveState;
+    };
+  }, [state.contentFilters, state.globalExpansion, state.expanded, state.selected, state.sortOrder, memoryScroll.saveScrollPosition]);
+
+  // ⭐ v2.31b : Restaurer état au montage
+  useEffect(() => {
+    const savedState = navigationStateManager.restorePageState('memories');
+
+    if (savedState) {
+      logger.info('📍 Restauration état MemoriesPage:', savedState);
+
+      // Restaurer Context state
+      if (savedState.contentFilters || savedState.expanded || savedState.selected) {
+        actions.hydrateFromStorage({
+          contentFilters: savedState.contentFilters,
+          globalExpansion: savedState.globalExpansion,
+          expanded: savedState.expanded,
+          selected: savedState.selected,
+          sortOrder: savedState.sortOrder
+        });
+      }
+
+      // Restaurer scroll (Option B: priorité élément sélectionné)
+      if (savedState.scroll !== undefined && memoryScroll.restoreScrollPosition) {
+        const selectedMomentId = savedState.selected?.moment;
+        memoryScroll.restoreScrollPosition(savedState.scroll, selectedMomentId);
+      }
+    }
+  }, []); // Une seule fois au montage
 
 
   // ========================================

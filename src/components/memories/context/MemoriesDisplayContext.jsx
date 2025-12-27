@@ -663,35 +663,8 @@ export function MemoriesDisplayProvider({ children, momentsData = [] }) {
     };
   }, [state, actions, computed]);
 
-  // ⭐ v2.31 : Auto-persistance état dans localStorage
-  useEffect(() => {
-    const stateToSave = {
-      contentFilters: state.contentFilters,
-      globalExpansion: state.globalExpansion,
-      expanded: {
-        moments: Array.from(state.expanded.moments),
-        posts: Array.from(state.expanded.posts),
-        photoGrids: Array.from(state.expanded.photoGrids)
-      },
-      selected: state.selected,
-      sortOrder: state.sortOrder
-    };
-
-    localStorage.setItem('mekong_memories_display', JSON.stringify(stateToSave));
-  }, [state.contentFilters, state.globalExpansion, state.expanded, state.selected, state.sortOrder]);
-
-  // ⭐ v2.31 : Restaurer état au montage
-  useEffect(() => {
-    const saved = localStorage.getItem('mekong_memories_display');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        actions.hydrateFromStorage(parsed);
-      } catch (error) {
-        console.error('Error restoring memories display state:', error);
-      }
-    }
-  }, []); // Une seule fois au montage
+  // ⭐ v2.31b : Auto-save/restore déplacé vers MemoriesPage.jsx
+  // (via NavigationStateManager pour coordination avec scroll)
 
   return (
     <MemoriesDisplayContext.Provider value={value}>
