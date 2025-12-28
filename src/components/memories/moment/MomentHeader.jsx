@@ -1,11 +1,13 @@
 /**
- * MomentHeader.jsx v2.19 - Ouverture avec règles globales
+ * MomentHeader.jsx v2.32 - Boutons locaux ouvrent moment parent
  * En-tête du moment avec :
  * - Titre et sous-titre (jours)
  * - Chevron pour ouvrir/fermer
  * - Compteurs posts/photos (cliquables)
  * - Badges droite (thèmes, sessions, lien)
  *
+ * ⭐ v2.32 : Boutons locaux (icône/texte) ouvrent moment parent si fermé
+ *            Scroll amélioré vers volet ciblé (délai 200ms, block: 'start')
  * ⭐ v2.19 : Ouverture moment applique filtres globaux AT/AP
  * - Pas de localDisplay override au démarrage
  */
@@ -92,16 +94,22 @@ export const MomentHeader = memo(({
   
   // ⭐ v2.17 : Icône = AFFICHAGE du volet
   // RÈGLE : Affichage OFF → force Déploiement OFF (cascade)
+  // ⭐ v2.32 : Si moment fermé, ouvrir avec volet visible
   const handleToggleAffichageLocal = useCallback((e, contentType) => {
     e.stopPropagation();
 
+    const key = contentType === 'posts' ? 'showPosts' : 'showDayPhotos';
+    const currentValue = localDisplay[key];
+
     if (!isSelected) {
-      // Moment fermé → ouvrir avec états locaux ACTUELS
-      onOpenWith(localDisplay);
+      // ⭐ v2.32 : Moment fermé → ouvrir avec volet ACTIVÉ (pas l'état actuel)
+      const newLocalDisplay = { ...localDisplay, [key]: true };
+      onOpenWith(newLocalDisplay);
+      return; // Ne pas continuer le toggle car déjà appliqué
     }
 
-    const key = contentType === 'posts' ? 'showPosts' : 'showDayPhotos';
-    const newValue = !localDisplay[key];
+    // Moment ouvert → toggle affichage normalement
+    const newValue = !currentValue;
 
     // ⭐ CASCADE : Si on masque le volet → replier le contenu aussi (si déplié)
     if (!newValue) {
@@ -118,30 +126,37 @@ export const MomentHeader = memo(({
 
   // ⭐ v2.17 : Texte = DÉPLOIEMENT du contenu
   // RÈGLE : Déploiement ON → force Affichage ON (prerequisite)
+  // ⭐ v2.32 : Amélioration scroll vers volet ciblé
   const handleToggleDeploiementLocal = useCallback((e, contentType) => {
     e.stopPropagation();
 
+    // ⭐ v2.32 : Helper pour scroller vers le volet
+    const scrollToContent = () => {
+      setTimeout(() => {
+        // Sélecteur ciblé selon type
+        const targetSelector = contentType === 'posts'
+          ? '[data-post-id]'  // Premier post du moment
+          : `[data-photo-grid-id="${moment.id}"]`;  // PhotoGrid du moment
+
+        const element = document.querySelector(`#${moment.id} ${targetSelector}`);
+
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 200);  // ⭐ v2.32 : Délai augmenté à 200ms pour laisser render
+    };
+
     if (!isSelected) {
-      // Moment fermé → ouvrir avec états locaux ACTUELS
-      onOpenWith(localDisplay);
-      // Scroll après ouverture vers le contenu concerné
-      setTimeout(() => {
-        const targetSelector = contentType === 'posts' ? '[data-post-id]' : `[data-photo-grid-id="${moment.id}"]`;
-        const element = document.querySelector(`#${moment.id} ${targetSelector}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      }, 150);
-    } else {
-      // Moment ouvert → scroll seulement
-      setTimeout(() => {
-        const targetSelector = contentType === 'posts' ? '[data-post-id]' : `[data-photo-grid-id="${moment.id}"]`;
-        const element = document.querySelector(`#${moment.id} ${targetSelector}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      }, 150);
+      // ⭐ v2.32 : Moment fermé → ouvrir avec volet ACTIVÉ + scroll
+      const key = contentType === 'posts' ? 'showPosts' : 'showDayPhotos';
+      const newLocalDisplay = { ...localDisplay, [key]: true };
+      onOpenWith(newLocalDisplay);
+      scrollToContent();
+      return;  // Ne pas continuer car déploiement se fera automatiquement
     }
+
+    // Moment déjà ouvert → scroll vers le volet
+    scrollToContent();
 
     // ⭐ PREREQUISITE : Si on va déplier + volet masqué → afficher d'abord
     const isCurrentlyExpanded = contentType === 'posts' ? hasExpandedPosts : hasExpandedPhotos;
