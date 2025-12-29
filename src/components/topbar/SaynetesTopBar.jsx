@@ -28,7 +28,7 @@ export default function SaynetesTopBar({ onLaunchSaynete }) {
       <div className="flex items-center gap-2">
         <span className="text-xl">🎭</span>
         <span className="text-purple-600 dark:text-purple-400 font-semibold">
-          Saynètes
+          Jeux
         </span>
       </div>
 
@@ -42,11 +42,11 @@ export default function SaynetesTopBar({ onLaunchSaynete }) {
       {/* DROITE : Bouton + Menu */}
       <div className="flex items-center gap-2">
 
-        {/* Bouton Lancer Saynète */}
+        {/* Bouton Lancer Jeu */}
         <button
           onClick={onLaunchSaynete}
           className="p-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors duration-150"
-          title="Lancer une saynète"
+          title="Lancer un jeu"
         >
           <Plus className="w-5 h-5" />
         </button>
