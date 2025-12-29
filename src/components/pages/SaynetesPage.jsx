@@ -17,7 +17,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { saynetesManager } from '../../core/SaynetesManager.js';
-import { MessageCircle, Clock, ArrowRight } from 'lucide-react';
+import { MessageCircle, Clock, ArrowRight, Eye } from 'lucide-react';
 
 export default function SaynetesPage() {
 
@@ -62,37 +62,37 @@ export default function SaynetesPage() {
         <div className="text-center">
           <div className="text-6xl mb-3">🎭</div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Saynètes Ludiques
+            Jeux de Remémoration
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
-            Des jeux de remémoration pour faire remonter vos souvenirs
+            Des jeux ludiques pour faire remonter vos souvenirs
           </p>
         </div>
 
-        {/* Section : Catalogue par catégories */}
+        {/* Section : Liste des jeux */}
         <section>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
             <MessageCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            Catalogue ({allSaynetes.length} saynètes)
+            Catalogue ({allSaynetes.length} jeux)
           </h2>
 
-          <div className="space-y-4">
-            {Object.entries(catalog).map(([key, category]) => (
-              <CategorySection
-                key={key}
-                category={category}
-                onLaunchSaynete={handleLaunchSaynete}
+          <div className="space-y-3">
+            {allSaynetes.map(saynete => (
+              <GameCard
+                key={saynete.id}
+                saynete={saynete}
+                onLaunch={() => handleLaunchSaynete(saynete.id)}
               />
             ))}
           </div>
         </section>
 
-        {/* Section : Saynètes actives (Sessions en cours) */}
+        {/* Section : Jeux actifs (Sessions en cours) */}
         {activeSessions.length > 0 && (
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5 text-green-600 dark:text-green-400" />
-              Saynètes Actives ({activeSessions.length})
+              Jeux Actifs ({activeSessions.length})
             </h2>
 
             <div className="space-y-3">
@@ -118,7 +118,7 @@ export default function SaynetesPage() {
           <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
             <li className="flex items-start gap-2">
               <span className="font-semibold min-w-[20px]">1.</span>
-              <span>Choisissez une saynète dans le catalogue ci-dessus</span>
+              <span>Choisissez un jeu dans le catalogue ci-dessus</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="font-semibold min-w-[20px]">2.</span>
@@ -130,7 +130,7 @@ export default function SaynetesPage() {
             </li>
             <li className="flex items-start gap-2">
               <span className="font-semibold min-w-[20px]">4.</span>
-              <span>Les saynètes actives apparaissent dans Causeries avec badge 🎭</span>
+              <span>Les jeux actifs apparaissent dans Causeries avec badge 🎭</span>
             </li>
           </ul>
         </section>
@@ -175,55 +175,9 @@ export default function SaynetesPage() {
 }
 
 /**
- * Section de catégorie avec ses saynètes
+ * Carte de jeu du catalogue (sans regroupement par catégorie)
  */
-function CategorySection({ category, onLaunchSaynete }) {
-  const colorClasses = {
-    red: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-900 dark:text-red-100',
-    purple: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-100',
-    blue: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100',
-    green: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-900 dark:text-green-100'
-  };
-
-  const color = colorClasses[category.color] || colorClasses.purple;
-
-  return (
-    <div className={`rounded-lg p-4 border ${color}`}>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-2xl">{category.emoji}</span>
-        <h3 className="font-bold text-lg">{category.label}</h3>
-        <span className="text-xs opacity-75">({category.saynetes.length})</span>
-      </div>
-
-      <div className="space-y-2">
-        {category.saynetes.map(saynete => (
-          <SayneteCard
-            key={saynete.id}
-            saynete={saynete}
-            categoryColor={category.color}
-            onLaunch={() => onLaunchSaynete(saynete.id)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Carte de saynète du catalogue
- */
-function SayneteCard({ saynete, categoryColor, onLaunch }) {
-  const [isHovered, setIsHovered] = useState(false);
-
-  const buttonColors = {
-    red: 'bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600',
-    purple: 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600',
-    blue: 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600',
-    green: 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600'
-  };
-
-  const buttonColor = buttonColors[categoryColor] || buttonColors.purple;
-
+function GameCard({ saynete, onLaunch }) {
   // Seule "tu_te_souviens" est disponible pour le moment
   const isAvailable = saynete.id === 'tu_te_souviens';
 
@@ -234,8 +188,6 @@ function SayneteCard({ saynete, categoryColor, onLaunch }) {
           ? 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
           : 'border-gray-200 dark:border-gray-700 opacity-60'
       }`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
@@ -269,7 +221,7 @@ function SayneteCard({ saynete, categoryColor, onLaunch }) {
           disabled={!isAvailable}
           className={`px-4 py-2 text-white rounded-lg transition-colors duration-150 flex items-center gap-2 whitespace-nowrap ${
             isAvailable
-              ? buttonColor
+              ? 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600'
               : 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
           }`}
         >
@@ -384,18 +336,28 @@ function TuTeSouviensModal({ moments, currentUserId, onClose, onLaunch }) {
             </label>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {moments.map(moment => (
-                <button
+                <div
                   key={moment.id}
-                  onClick={() => setSelectedMomentId(moment.id)}
-                  className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                  className={`w-full p-3 rounded-lg border-2 transition-all ${
                     selectedMomentId === moment.id
                       ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                      : 'border-gray-200 dark:border-gray-700'
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <span className="text-xl">📍</span>
-                    <div className="flex-1 min-w-0">
+                    {/* Icône moment ✨ */}
+                    <button
+                      onClick={() => setSelectedMomentId(moment.id)}
+                      className="flex-shrink-0"
+                    >
+                      <span className="text-xl">✨</span>
+                    </button>
+
+                    {/* Contenu cliquable */}
+                    <button
+                      onClick={() => setSelectedMomentId(moment.id)}
+                      className="flex-1 min-w-0 text-left"
+                    >
                       <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
                         {moment.title}
                       </div>
@@ -403,12 +365,29 @@ function TuTeSouviensModal({ moments, currentUserId, onClose, onLaunch }) {
                         {moment.date ? new Date(moment.date).toLocaleDateString('fr-FR') : ''}
                         {moment.jnnn && ` • ${moment.jnnn}`}
                       </div>
-                    </div>
+                    </button>
+
+                    {/* Bouton "Voir ce moment" */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Navigation vers MemoriesPage avec contexte
+                        // TODO: Mémoriser position scroll et élément sélectionné
+                        onClose(); // Fermer modal
+                        // Naviguer vers page Souvenirs avec moment ciblé
+                      }}
+                      className="flex-shrink-0 p-2 text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                      title="Voir ce moment dans Souvenirs"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+
+                    {/* Checkmark si sélectionné */}
                     {selectedMomentId === moment.id && (
-                      <span className="text-red-500 text-xl">✓</span>
+                      <span className="text-red-500 text-xl flex-shrink-0">✓</span>
                     )}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </div>

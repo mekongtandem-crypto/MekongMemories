@@ -209,10 +209,10 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
                 ? 'text-purple-600 dark:text-purple-400 font-semibold'
                 : 'text-purple-500 dark:text-purple-500 hover:text-purple-600 dark:hover:text-purple-400'
             }`}
-            title="Saynètes ludiques"
+            title="Jeux de remémoration"
           >
             <span className="text-lg mb-1">🎭</span>
-            <span className="text-xs">Saynètes</span>
+            <span className="text-xs">Jeux</span>
           </button>
         )}
         
