@@ -11,7 +11,8 @@ import { userManager } from '../../core/UserManager.js';
 import { dataManager } from '../../core/dataManager.js';
 import { sortThemes } from '../../utils/themeUtils.js';
 import { THEME_COLORS, generateThemeId, countThemeContents } from '../../utils/themeUtils.js';
-import { RefreshCw, Database, Users, Info, ChevronDown, Cloud, CloudOff, Plus, Edit, Trash2, Tag, Sun, Moon } from 'lucide-react';
+import { RefreshCw, Database, Users, Info, ChevronDown, Cloud, CloudOff, Plus, Edit, Trash2, Tag, Sun, Moon, Brain } from 'lucide-react';
+import AnalysisPage from './AnalysisPage.jsx';
 
 // ✅ Liste réduite de suggestions (12 emojis)
 const SUGGESTED_EMOJIS = [
@@ -109,12 +110,16 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
 export default function SettingsPage() {
   const app = useAppState();
   const { isDark, toggleTheme } = useTheme();
-  
+
+  // ⭐ v3.0 : État pour afficher page d'analyse
+  const [showAnalysisPage, setShowAnalysisPage] = useState(false);
+
   const [openSections, setOpenSections] = useState({
     users: false,
     theme: false,
     stats: false,
     themes: false,
+    intelligence: false,  // ⭐ v3.0 : Nouvelle section
     connection: false,
     data: false
   });
@@ -431,6 +436,11 @@ const executeDeleteTheme = async () => {
   const isOnline = app.connection?.isOnline;
   const connectionEmail = 'mekongtandem@gmail.com';
   const currentUserStyle = userManager.getUserStyle(app.currentUser?.id);
+
+  // ⭐ v3.0 : Afficher page d'analyse si demandé
+  if (showAnalysisPage) {
+    return <AnalysisPage onBack={() => setShowAnalysisPage(false)} />;
+  }
 
   return (
     <div className="p-4 space-y-4 max-w-4xl mx-auto">
@@ -887,6 +897,45 @@ const executeDeleteTheme = async () => {
     </div>
   )}
 </section>
+
+      {/* ⭐ v3.0 : Section Intelligence du Voyage */}
+      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <button
+          onClick={() => toggleSection('intelligence')}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          <div className="flex items-center space-x-2">
+            <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Intelligence du Voyage</h2>
+          </div>
+          <ChevronDown className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${
+            openSections.intelligence ? 'rotate-180' : ''
+          }`} />
+        </button>
+
+        {openSections.intelligence && (
+          <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Analysez automatiquement vos souvenirs pour découvrir des thèmes récurrents, des émotions et des statistiques intéressantes.
+            </p>
+
+            <button
+              onClick={() => setShowAnalysisPage(true)}
+              className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2"
+            >
+              <Brain className="w-5 h-5" />
+              Analyser mes souvenirs
+            </button>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+              <p className="text-xs text-blue-800 dark:text-blue-200">
+                💡 <strong>Astuce :</strong> L'analyse détecte automatiquement les thèmes (nourriture, culture, nature...),
+                les émotions et les personnes mentionnées dans vos posts et messages.
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Section Statistiques */}
       <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">

@@ -11,6 +11,7 @@ import SessionsTopBar from './SessionsTopBar.jsx';
 import ChatTopBar from './ChatTopBar.jsx';
 import MemoriesTopBar from './MemoriesTopBar.jsx';
 import SettingsTopBar from './SettingsTopBar.jsx';
+import GamesTopBar from './GamesTopBar.jsx';
 
 export default function TopBar({ 
   currentPage, 
@@ -52,9 +53,12 @@ export default function TopBar({
         />
       );
     
+    case 'games':
+      return <GamesTopBar />;
+
     case 'settings':
       return <SettingsTopBar />;
-    
+
     default:
       return (
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-center">
