@@ -24,6 +24,8 @@ export default function SaynetesPage() {
   const app = useAppState();
   const [showLaunchModal, setShowLaunchModal] = useState(false);
   const [selectedSayneteId, setSelectedSayneteId] = useState(null);
+  const [restoredMomentId, setRestoredMomentId] = useState(null);
+  const [restoredQuestion, setRestoredQuestion] = useState('');
 
   // Catalogue des saynètes disponibles (depuis saynetesManager)
   const catalog = useMemo(() => saynetesManager.getCatalog(), []);
@@ -41,6 +43,20 @@ export default function SaynetesPage() {
     return app.masterIndex.moments.filter(m => m.title); // Moments avec titre
   }, [app.masterIndex]);
 
+  // ✅ Restauration contexte au retour depuis MemoriesPage
+  const navigationContext = app.navigationContext || {};
+  const returnContext = navigationContext.returnContext;
+
+  // Restaurer modal si retour avec contexte
+  React.useEffect(() => {
+    if (returnContext?.modalOpen && returnContext.selectedMomentId) {
+      setSelectedSayneteId('tu_te_souviens');
+      setRestoredMomentId(returnContext.selectedMomentId);
+      setRestoredQuestion(returnContext.question || '');
+      setShowLaunchModal(true);
+    }
+  }, [returnContext]);
+
   const handleLaunchSaynete = (sayneteId) => {
     console.log('🎭 Lancement saynète:', sayneteId);
     setSelectedSayneteId(sayneteId);
@@ -50,6 +66,8 @@ export default function SaynetesPage() {
   const handleCloseModal = () => {
     setShowLaunchModal(false);
     setSelectedSayneteId(null);
+    setRestoredMomentId(null);
+    setRestoredQuestion('');
   };
 
   return (
@@ -142,6 +160,8 @@ export default function SaynetesPage() {
         <TuTeSouviensModal
           moments={availableMoments}
           currentUserId={app.currentUser}
+          initialMomentId={restoredMomentId}
+          initialQuestion={restoredQuestion}
           onClose={handleCloseModal}
           onLaunch={async (momentId, question) => {
             // Créer gameContext
@@ -285,13 +305,29 @@ function ActiveSessionCard({ session, onClick }) {
 /**
  * Modal "Tu te souviens ?" - Sélection moment + question
  */
-function TuTeSouviensModal({ moments, currentUserId, onClose, onLaunch }) {
-  const [selectedMomentId, setSelectedMomentId] = useState(null);
-  const [question, setQuestion] = useState('');
+function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQuestion, onClose, onLaunch }) {
+  const app = useAppState();
+  const [selectedMomentId, setSelectedMomentId] = useState(initialMomentId || null);
+  const [question, setQuestion] = useState(initialQuestion || '');
   const [isLaunching, setIsLaunching] = useState(false);
 
   const selectedMoment = moments.find(m => m.id === selectedMomentId);
   const canLaunch = selectedMomentId && question.trim();
+
+  // Navigation vers moment dans MemoriesPage
+  const handleViewMoment = (momentId) => {
+    onClose(); // Fermer modal
+    app.navigateTo('memories', {
+      previousPage: 'saynetes',
+      targetMomentId: momentId,
+      scrollToMoment: true,
+      returnContext: {
+        selectedMomentId: selectedMomentId, // Moment sélectionné dans modal
+        question: question, // Question en cours de saisie
+        modalOpen: true // Réouvrir modal au retour
+      }
+    });
+  };
 
   const handleLaunch = async () => {
     if (!canLaunch) return;
@@ -371,10 +407,7 @@ function TuTeSouviensModal({ moments, currentUserId, onClose, onLaunch }) {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Navigation vers MemoriesPage avec contexte
-                        // TODO: Mémoriser position scroll et élément sélectionné
-                        onClose(); // Fermer modal
-                        // Naviguer vers page Souvenirs avec moment ciblé
+                        handleViewMoment(moment.id);
                       }}
                       className="flex-shrink-0 p-2 text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
                       title="Voir ce moment dans Souvenirs"
