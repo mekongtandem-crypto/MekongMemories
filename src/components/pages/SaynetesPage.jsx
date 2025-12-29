@@ -1,28 +1,30 @@
 /**
- * GamesPage.jsx v3.0 - Phase 3.0 : Page Jeux de Remémoration
- * 🎮 Page principale pour jeux asynchrones entre 2 users
- * ✅ Jeu #1 : Tu te souviens... ?
- * ✅ Jeu #3 : Top 3 Face à Face
- * ✅ Jeu #10 : Souvenir du Jour
+ * SaynetesPage.jsx v3.0 - Phase 3.0 : Page Saynètes de Remémoration
+ * 🎭 Catalogue de saynètes ludiques pour échanger sur les souvenirs
  *
- * Objectifs :
- * - Faire remonter des souvenirs oubliés
- * - Créer dynamique d'échange ping-pong
- * - Explorer Souvenirs de manière ludique
+ * Types de saynètes :
+ * - Défis 🎯 : Tu te souviens, Vrai ou Faux, Photo floue
+ * - Ateliers 🎨 : Top 3 Face à Face, Courbe Émotionnelle
+ * - Échanges 🎾 : Caption Battle, Double Vision, Story Duel
+ * - Rituel 📅 : Souvenir du Jour
+ *
+ * Architecture :
+ * - Lancer saynète → Crée session de chat avec gameContext
+ * - Saynètes actives visibles dans SessionsPage avec badge 🎭
  */
 
 import React, { useState } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { MessageCircle, Trophy, Clock } from 'lucide-react';
 
-export default function GamesPage() {
+export default function SaynetesPage() {
 
   const app = useAppState();
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showLaunchModal, setShowLaunchModal] = useState(false);
 
-  // TODO : Récupérer depuis GamesManager
-  const activeGames = [];
-  const completedGames = [];
+  // TODO : Liste des types de saynètes disponibles (catalogue)
+  const availableSaynetes = [];
+  const activeSessions = [];  // Sessions avec gameContext
 
   return (
     <div className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-auto transition-colors duration-200">
@@ -30,54 +32,54 @@ export default function GamesPage() {
       {/* Container principal */}
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
 
-        {/* Section : Jeux en cours */}
+        {/* Section : Saynètes disponibles (Catalogue) */}
         <section>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-green-600 dark:text-green-400" />
-            Jeux en cours
+            <MessageCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            Saynètes Disponibles
           </h2>
 
-          {activeGames.length === 0 ? (
+          {availableSaynetes.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center border border-gray-200 dark:border-gray-700">
-              <div className="text-6xl mb-4">🎮</div>
+              <div className="text-6xl mb-4">🎭</div>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Aucun jeu en cours
+                Catalogue de saynètes ludiques
               </p>
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => setShowLaunchModal(true)}
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-150"
               >
-                Créer un jeu
+                🎭 Lancer une saynète
               </button>
             </div>
           ) : (
             <div className="space-y-3">
-              {/* TODO : Liste des jeux actifs */}
-              {activeGames.map(game => (
-                <GameCard key={game.id} game={game} />
+              {/* TODO : Liste des types de saynètes */}
+              {availableSaynetes.map(saynete => (
+                <SayneteCard key={saynete.type} saynete={saynete} />
               ))}
             </div>
           )}
         </section>
 
-        {/* Section : Jeux complétés */}
-        {completedGames.length > 0 && (
+        {/* Section : Saynètes actives (Sessions en cours) */}
+        {activeSessions.length > 0 && (
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-              Jeux complétés
+              <Clock className="w-5 h-5 text-green-600 dark:text-green-400" />
+              Saynètes Actives
             </h2>
 
             <div className="space-y-3">
-              {completedGames.map(game => (
-                <GameCard key={game.id} game={game} completed />
+              {activeSessions.map(session => (
+                <SessionCard key={session.id} session={session} />
               ))}
             </div>
           </section>
         )}
 
-        {/* Guide rapide (si pas de jeux) */}
-        {activeGames.length === 0 && completedGames.length === 0 && (
+        {/* Guide rapide (si pas de saynètes) */}
+        {availableSaynetes.length === 0 && activeSessions.length === 0 && (
           <section className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
             <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">
               🎯 Comment ça marche ?
@@ -85,11 +87,11 @@ export default function GamesPage() {
             <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
               <li className="flex items-start gap-2">
                 <span className="font-semibold min-w-[20px]">1.</span>
-                <span>Créez un jeu en cliquant sur le bouton <strong>+</strong> en haut</span>
+                <span>Lancez une saynète en cliquant sur <strong>🎭 Lancer</strong></span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-semibold min-w-[20px]">2.</span>
-                <span>L'autre utilisateur reçoit une notification et répond</span>
+                <span>Une session de chat est créée avec le contexte de la saynète</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-semibold min-w-[20px]">3.</span>
@@ -101,22 +103,22 @@ export default function GamesPage() {
 
       </div>
 
-      {/* Modal Création Jeu (TODO) */}
-      {showCreateModal && (
+      {/* Modal Lancement Saynète (TODO) */}
+      {showLaunchModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Créer un jeu
+              🎭 Lancer une saynète
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Choisissez un type de jeu :
+              Choisissez un type de saynète :
             </p>
 
-            {/* Liste types de jeux */}
+            {/* Liste types de saynètes */}
             <div className="space-y-2 mb-6">
               <button className="w-full text-left p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-lg border-2 border-purple-200 dark:border-purple-800 transition-colors">
                 <div className="font-semibold text-purple-900 dark:text-purple-100">
-                  💬 Tu te souviens... ?
+                  🎯 Défi : Tu te souviens... ?
                 </div>
                 <div className="text-sm text-purple-700 dark:text-purple-300">
                   Posez une question sur un moment précis
@@ -125,7 +127,7 @@ export default function GamesPage() {
 
               <button className="w-full text-left p-4 bg-gray-100 dark:bg-gray-700 rounded-lg opacity-50 cursor-not-allowed">
                 <div className="font-semibold text-gray-700 dark:text-gray-300">
-                  🏆 Top 3 Face à Face
+                  🎨 Atelier : Top 3 Face à Face
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   Bientôt disponible
@@ -134,7 +136,7 @@ export default function GamesPage() {
 
               <button className="w-full text-left p-4 bg-gray-100 dark:bg-gray-700 rounded-lg opacity-50 cursor-not-allowed">
                 <div className="font-semibold text-gray-700 dark:text-gray-300">
-                  📅 Souvenir du Jour
+                  📅 Rituel : Souvenir du Jour
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   Bientôt disponible
@@ -143,7 +145,7 @@ export default function GamesPage() {
             </div>
 
             <button
-              onClick={() => setShowCreateModal(false)}
+              onClick={() => setShowLaunchModal(false)}
               className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors"
             >
               Annuler
@@ -157,9 +159,9 @@ export default function GamesPage() {
 }
 
 /**
- * Composant carte de jeu (placeholder)
+ * Composant carte de saynète (placeholder)
  */
-function GameCard({ game, completed = false }) {
+function SayneteCard({ saynete }) {
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-lg p-4 border-2 transition-colors ${
       completed

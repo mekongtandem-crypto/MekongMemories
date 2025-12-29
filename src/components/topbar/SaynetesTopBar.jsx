@@ -1,23 +1,22 @@
 /**
- * GamesTopBar.jsx v3.0 - Phase 3.0 : Page Jeux
- * 🎮 TopBar pour la page Jeux
- * ✅ Menu création nouveau jeu
- * ✅ Statistiques jeux actifs/complétés
+ * SaynetesTopBar.jsx v3.0 - Phase 3.0 : Page Saynètes
+ * 🎭 TopBar pour la page Saynètes
+ * ✅ Menu lancement saynète
+ * ✅ Statistiques saynètes actives
  */
 
 import React, { useState } from 'react';
 import { MoreVertical, Plus } from 'lucide-react';
 import { useAppState } from '../../hooks/useAppState.js';
 
-export default function GamesTopBar({ onCreateGame }) {
+export default function SaynetesTopBar({ onLaunchSaynete }) {
 
   const app = useAppState();
   const [showMenu, setShowMenu] = useState(false);
 
-  // TODO : Calculer stats depuis GamesManager
-  const gameStats = {
-    active: 0,
-    completed: 0
+  // TODO : Compter sessions avec gameContext
+  const sayneteStats = {
+    active: 0
   };
 
   return (
@@ -25,30 +24,27 @@ export default function GamesTopBar({ onCreateGame }) {
 
       {/* GAUCHE : Titre */}
       <div className="flex items-center gap-2">
-        <span className="text-xl">🎮</span>
-        <span className="text-amber-600 dark:text-amber-400 font-semibold">
-          Jeux
+        <span className="text-xl">🎭</span>
+        <span className="text-purple-600 dark:text-purple-400 font-semibold">
+          Saynètes
         </span>
       </div>
 
       {/* CENTRE : Stats */}
       <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-        <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
-          {gameStats.active} en cours
-        </span>
-        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
-          {gameStats.completed} complétés
+        <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
+          {sayneteStats.active} active{sayneteStats.active > 1 ? 's' : ''}
         </span>
       </div>
 
       {/* DROITE : Bouton + Menu */}
       <div className="flex items-center gap-2">
 
-        {/* Bouton Nouveau Jeu */}
+        {/* Bouton Lancer Saynète */}
         <button
-          onClick={onCreateGame}
+          onClick={onLaunchSaynete}
           className="p-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors duration-150"
-          title="Créer un nouveau jeu"
+          title="Lancer une saynète"
         >
           <Plus className="w-5 h-5" />
         </button>

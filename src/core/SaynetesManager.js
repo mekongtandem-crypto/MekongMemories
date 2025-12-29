@@ -1,28 +1,26 @@
 /**
- * GamesManager.js v3.0 - Phase 3.0 : Gestionnaire de Jeux
- * 🎮 Manager centralisé pour tous les jeux de remémoration
+ * SaynetesManager.js v3.0 - Phase 3.0 : Gestionnaire de Saynètes
+ * 🎭 Manager centralisé pour toutes les saynètes de remémoration
  *
  * Responsabilités :
- * - CRUD jeux (Create, Read, Update, Delete)
- * - Persistance Drive (games.json)
+ * - CRUD saynètes (Create, Read, Update, Delete)
+ * - Persistance Drive (saynetes.json)
  * - Index rapides (par user, status, type, moment)
  * - Notifications entre users
  *
- * Types de jeux supportés :
- * - tu_te_souviens : Questions ouvertes sur moments
- * - top3 : Classement comparatif
- * - souvenir_du_jour : Rituel quotidien
- * - double_vision : Comparaison photos
- * - courbe_emotionnelle : Graphique émotionnel
- * - timeline_puzzle : Réordonner moments
+ * Types de saynètes supportés :
+ * - Défis 🎯 : tu_te_souviens, vrai_faux, photo_floue
+ * - Ateliers 🎨 : top3, courbe_emotionnelle
+ * - Échanges 🎾 : caption_battle, double_vision, story_duel
+ * - Rituel 📅 : souvenir_du_jour
  */
 
 import { driveSync } from './DriveSync.js';
 import { logger } from '../utils/logger.js';
 
-const GAMES_FILE = 'games.json';
+const SAYNETES_FILE = 'saynetes.json';
 
-class GamesManager {
+class SaynetesManager {
   constructor() {
     this.games = new Map();               // gameId → game object
     this.userIndex = new Map();           // userId → Set<gameId>
@@ -44,13 +42,13 @@ class GamesManager {
    * Initialisation - Charger depuis Drive
    */
   async init() {
-    logger.info('🎮 GamesManager: Initialisation...');
+    logger.info('🎭 SaynetesManager: Initialisation...');
 
     try {
-      const data = await driveSync.loadFile(GAMES_FILE);
+      const data = await driveSync.loadFile(SAYNETES_FILE);
 
       if (data && data.games) {
-        logger.info(`✅ GamesManager: ${data.games.length} jeux chargés`);
+        logger.info(`✅ SaynetesManager: ${data.games.length} saynètes chargées`);
 
         // Rebuild indexes
         data.games.forEach(game => {
@@ -60,31 +58,31 @@ class GamesManager {
         this._updateStats();
         this.isLoaded = true;
       } else {
-        logger.info('ℹ️ GamesManager: Fichier inexistant, création structure vide');
+        logger.info('ℹ️ SaynetesManager: Fichier inexistant, création structure vide');
         await this._saveToFile();
         this.isLoaded = true;
       }
     } catch (error) {
-      logger.error('❌ Erreur init GamesManager:', error);
+      logger.error('❌ Erreur init SaynetesManager:', error);
 
       // Créer fichier vide si erreur
       try {
         await this._saveToFile();
         this.isLoaded = true;
-        logger.success('✅ GamesManager: Fichier créé (vide)');
+        logger.success('✅ SaynetesManager: Fichier créé (vide)');
       } catch (saveError) {
-        logger.error('❌ Impossible de créer le fichier games.json:', saveError);
+        logger.error('❌ Impossible de créer le fichier saynetes.json:', saveError);
         this.isLoaded = false;
       }
     }
   }
 
   /**
-   * Créer un nouveau jeu
-   * @param {string} type - Type de jeu
+   * Créer une nouvelle saynète
+   * @param {string} type - Type de saynète
    * @param {string} createdBy - User ID créateur
-   * @param {object} data - Données spécifiques au jeu
-   * @returns {Promise<object>} - Jeu créé
+   * @param {object} data - Données spécifiques à la saynète
+   * @returns {Promise<object>} - Saynète créée
    */
   async createGame(type, createdBy, data = {}) {
     const gameId = `game_${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -110,27 +108,27 @@ class GamesManager {
 
     // Sauvegarder
     await this._saveToFile();
-    logger.success('✅ Jeu créé:', gameId, type);
+    logger.success('✅ Saynète créée:', gameId, type);
 
     return game;
   }
 
   /**
-   * Récupérer un jeu par ID
+   * Récupérer une saynète par ID
    */
   getGame(gameId) {
     return this.games.get(gameId);
   }
 
   /**
-   * Récupérer tous les jeux
+   * Récupérer toutes les saynètes
    */
   getAllGames() {
     return Array.from(this.games.values());
   }
 
   /**
-   * Récupérer jeux d'un user (créés OU en attente de réponse)
+   * Récupérer saynètes d'un user (créées OU en attente de réponse)
    */
   getGamesForUser(userId) {
     const gameIds = this.userIndex.get(userId);
@@ -425,18 +423,18 @@ class GamesManager {
     };
 
     try {
-      await driveSync.saveFile(GAMES_FILE, data);
+      await driveSync.saveFile(SAYNETES_FILE, data);
     } catch (error) {
-      logger.error('❌ Erreur sauvegarde games.json:', error);
+      logger.error('❌ Erreur sauvegarde saynetes.json:', error);
       throw error;
     }
   }
 }
 
 // Singleton
-export const gamesManager = new GamesManager();
+export const saynetesManager = new SaynetesManager();
 
 // Exposer pour debug
 if (typeof window !== 'undefined') {
-  window.gamesManager = gamesManager;
+  window.saynetesManager = saynetesManager;
 }
