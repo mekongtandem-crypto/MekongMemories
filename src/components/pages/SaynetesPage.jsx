@@ -23,7 +23,7 @@ export default function SaynetesPage() {
 
   const app = useAppState();
   const [showLaunchModal, setShowLaunchModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedSayneteId, setSelectedSayneteId] = useState(null);
 
   // Catalogue des saynètes disponibles (depuis saynetesManager)
   const catalog = useMemo(() => saynetesManager.getCatalog(), []);
@@ -35,12 +35,21 @@ export default function SaynetesPage() {
     return app.sessions.filter(s => s.gameContext && !s.archived);
   }, [app.sessions]);
 
+  // Moments disponibles pour sélection
+  const availableMoments = useMemo(() => {
+    if (!app.masterIndex?.moments) return [];
+    return app.masterIndex.moments.filter(m => m.title); // Moments avec titre
+  }, [app.masterIndex]);
+
   const handleLaunchSaynete = (sayneteId) => {
     console.log('🎭 Lancement saynète:', sayneteId);
-    // TODO : Implémenter le lancement selon le type de saynète
-    // Pour "tu_te_souviens" → Modal sélection moment + question
-    // Pour autres → Flow spécifique
+    setSelectedSayneteId(sayneteId);
+    setShowLaunchModal(true);
+  };
+
+  const handleCloseModal = () => {
     setShowLaunchModal(false);
+    setSelectedSayneteId(null);
   };
 
   return (
@@ -127,6 +136,39 @@ export default function SaynetesPage() {
         </section>
 
       </div>
+
+      {/* Modal Lancement Saynète */}
+      {showLaunchModal && selectedSayneteId === 'tu_te_souviens' && (
+        <TuTeSouviensModal
+          moments={availableMoments}
+          currentUserId={app.currentUser}
+          onClose={handleCloseModal}
+          onLaunch={async (momentId, question) => {
+            // Créer gameContext
+            const gameContext = saynetesManager.createGameContext(
+              'tu_te_souviens',
+              app.currentUser,
+              momentId,
+              question
+            );
+
+            // Récupérer le moment sélectionné
+            const moment = availableMoments.find(m => m.id === momentId);
+
+            // Créer session avec gameContext
+            await app.createSession(
+              { id: momentId, title: moment.title },
+              question,
+              null, // pas de photo
+              gameContext
+            );
+
+            // Rediriger vers la session créée
+            app.navigateTo('sessions');
+            handleCloseModal();
+          }}
+        />
+      )}
 
     </div>
   );
@@ -285,5 +327,147 @@ function ActiveSessionCard({ session, onClick }) {
         Continuer la conversation →
       </div>
     </button>
+  );
+}
+
+/**
+ * Modal "Tu te souviens ?" - Sélection moment + question
+ */
+function TuTeSouviensModal({ moments, currentUserId, onClose, onLaunch }) {
+  const [selectedMomentId, setSelectedMomentId] = useState(null);
+  const [question, setQuestion] = useState('');
+  const [isLaunching, setIsLaunching] = useState(false);
+
+  const selectedMoment = moments.find(m => m.id === selectedMomentId);
+  const canLaunch = selectedMomentId && question.trim();
+
+  const handleLaunch = async () => {
+    if (!canLaunch) return;
+    setIsLaunching(true);
+    try {
+      await onLaunch(selectedMomentId, question.trim());
+    } catch (error) {
+      console.error('Erreur lancement saynète:', error);
+      setIsLaunching(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* En-tête */}
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-3xl">🤔</span>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Tu te souviens ?
+            </h2>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Choisissez un moment et posez une question pour lancer la saynète
+          </p>
+        </div>
+
+        {/* Contenu */}
+        <div className="p-6 space-y-6">
+
+          {/* Sélection moment */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              1. Choisissez un moment
+            </label>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {moments.map(moment => (
+                <button
+                  key={moment.id}
+                  onClick={() => setSelectedMomentId(moment.id)}
+                  className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                    selectedMomentId === moment.id
+                      ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl">📍</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {moment.title}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {moment.date ? new Date(moment.date).toLocaleDateString('fr-FR') : ''}
+                        {moment.jnnn && ` • ${moment.jnnn}`}
+                      </div>
+                    </div>
+                    {selectedMomentId === moment.id && (
+                      <span className="text-red-500 text-xl">✓</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Question */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              2. Posez votre question
+            </label>
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Ex: Te souviens-tu du nom du restaurant où nous avons mangé ?"
+              rows={4}
+              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-red-500 dark:focus:border-red-400 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-900/30 transition-colors resize-none"
+            />
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {question.length}/500 caractères
+            </div>
+          </div>
+
+          {/* Aperçu */}
+          {selectedMoment && question.trim() && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+              <div className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                📋 Aperçu
+              </div>
+              <div className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Moment :</strong> {selectedMoment.title}
+              </div>
+              <div className="text-sm text-blue-800 dark:text-blue-200 mt-1">
+                <strong>Question :</strong> {question}
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Actions */}
+        <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors font-medium"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleLaunch}
+            disabled={!canLaunch || isLaunching}
+            className={`flex-1 px-4 py-3 rounded-lg transition-colors font-medium ${
+              canLaunch && !isLaunching
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {isLaunching ? '🎭 Lancement...' : '🎭 Lancer la saynète'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
