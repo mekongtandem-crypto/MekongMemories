@@ -1,11 +1,11 @@
 /**
- * SaynetesTopBar.jsx v3.0 - Phase 3.0 : Page Saynètes
+ * SaynetesTopBar.jsx v3.0b - Phase 3.0 : TopBar Catalogue Saynètes
  * 🎭 TopBar pour la page Saynètes
  * ✅ Menu lancement saynète
- * ✅ Statistiques saynètes actives
+ * ✅ Statistiques saynètes actives (sessions avec gameContext)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MoreVertical, Plus } from 'lucide-react';
 import { useAppState } from '../../hooks/useAppState.js';
 
@@ -14,10 +14,12 @@ export default function SaynetesTopBar({ onLaunchSaynete }) {
   const app = useAppState();
   const [showMenu, setShowMenu] = useState(false);
 
-  // TODO : Compter sessions avec gameContext
-  const sayneteStats = {
-    active: 0
-  };
+  // ✅ Compter sessions avec gameContext (saynètes actives)
+  const sayneteStats = useMemo(() => {
+    if (!app.sessions) return { active: 0 };
+    const activeSaynetes = app.sessions.filter(s => s.gameContext && !s.archived);
+    return { active: activeSaynetes.length };
+  }, [app.sessions]);
 
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-12 flex items-center justify-between transition-colors duration-150">
