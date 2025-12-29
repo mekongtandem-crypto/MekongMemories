@@ -11,7 +11,7 @@
  * - Chat sans contexte → Retour vers Sessions
  */
 import React from 'react';
-import { Sparkles, MessageSquare, ArrowLeft, Gamepad2 } from 'lucide-react';
+import { Sparkles, MessageSquare, ArrowLeft, Drama } from 'lucide-react';
 import { enrichSessionWithStatus, SESSION_STATUS } from '../utils/sessionUtils.js';
 import { countNewMemories } from '../utils/memoryUtils.js';
 
@@ -191,7 +191,7 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
           );
         })}
 
-        {/* Bouton contextuel : Retour intelligent OU Jeux */}
+        {/* Bouton contextuel : Retour intelligent OU Saynètes */}
         {showReturnButton ? (
           <button
             onClick={handleReturn}
@@ -203,16 +203,16 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
           </button>
         ) : (
           <button
-            onClick={() => onPageChange('games')}
+            onClick={() => onPageChange('saynetes')}
             className={`flex flex-col items-center py-2 px-3 transition-colors ${
-              currentPage === 'games'
+              currentPage === 'saynetes'
                 ? 'text-purple-600 dark:text-purple-400 font-semibold'
                 : 'text-purple-500 dark:text-purple-500 hover:text-purple-600 dark:hover:text-purple-400'
             }`}
-            title="Jeux de remémoration"
+            title="Saynètes ludiques"
           >
-            <Gamepad2 className="w-5 h-5 mb-1" />
-            <span className="text-xs">Jeux</span>
+            <span className="text-lg mb-1">🎭</span>
+            <span className="text-xs">Saynètes</span>
           </button>
         )}
         

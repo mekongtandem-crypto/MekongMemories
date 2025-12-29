@@ -844,7 +844,15 @@ function SessionRow({
             </div>
           ) : (
             <>
-              <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{session.gameTitle}</div>
+              <div className="flex items-center gap-2">
+                <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{session.gameTitle}</div>
+                {/* ⭐ v3.0 : Badge Saynète si gameContext */}
+                {session.gameContext && (
+                  <span className="flex-shrink-0 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-semibold rounded-full">
+                    🎭 Saynète
+                  </span>
+                )}
+              </div>
               <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
                 <span className="flex items-center space-x-1">
                   <span className="text-sm">💬</span>

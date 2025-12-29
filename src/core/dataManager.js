@@ -275,13 +275,14 @@ class DataManager {
 
   /**
    * Créer une nouvelle session
-   * 
+   *
    * @param {Object} gameData - Données du moment/post/photo
    * @param {string} initialText - Texte initial (optionnel)
    * @param {Object} sourcePhoto - Photo source si session depuis photo
+   * @param {Object} gameContext - Contexte saynète si session lancée depuis Saynètes page (v3.0)
    * @returns {Promise<Object>} Session créée
    */
-  createSession = async (gameData, initialText = null, sourcePhoto = null) => {
+  createSession = async (gameData, initialText = null, sourcePhoto = null, gameContext = null) => {
     this.updateState({
       loadingOperation: {
         active: true,
@@ -290,15 +291,15 @@ class DataManager {
         variant: 'monkey'
       }
     });
-    
+
     try {
       const now = new Date().toISOString();
       const baseTimestamp = Date.now();
-      
+
       // ========================================
       // 1. DÉTERMINER ORIGINCONTENT
       // ========================================
-      
+
       let originContent = null;
       let momentId = null;
       
@@ -337,16 +338,17 @@ class DataManager {
       // ========================================
       
       const newSession = {
-        id: `sid_${baseTimestamp}`, 
+        id: `sid_${baseTimestamp}`,
         momentId: momentId,
         originContent: originContent,
         themeIds: [],
         gameId: momentId,  // Legacy
         gameTitle: gameData.title,
-        subtitle: `Conversation sur ${gameData.title}`, 
+        subtitle: `Conversation sur ${gameData.title}`,
         createdAt: now,
         user: this.appState.currentUser,
         notes: [],
+        ...(gameContext && { gameContext })  // ⭐ v3.0 : Ajout gameContext si présent
       };
       
       // ========================================
