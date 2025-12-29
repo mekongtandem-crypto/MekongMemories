@@ -19,6 +19,7 @@ import MemoriesPage from './pages/MemoriesPage.jsx';
 import SessionsPage from './pages/SessionsPage.jsx';
 import ChatPage from './pages/ChatPage.jsx';
 import StartupPage from './pages/StartupPage.jsx';
+import GamesPage from './pages/GamesPage.jsx';
 import LoadingSpinner from './LoadingSpinner.jsx';
 // ⭐ v2.14 : Context pour MemoriesPage
 import { MemoriesDisplayProvider } from './memories/context/MemoriesDisplayContext.jsx';
@@ -512,7 +513,7 @@ export default function App() {
             onCancelEditionMode={handleCancelEditionMode}
           />
         );
-      
+
       case 'sessions':
         return (
           <SessionsPage
@@ -520,7 +521,7 @@ export default function App() {
             setIsSearchOpen={setIsSearchOpen}
           />
         );
-      
+
       case 'chat':
         return (
           <ChatPage
@@ -529,10 +530,13 @@ export default function App() {
             onStartSelectionMode={handleStartSelectionMode}
           />
         );
-      
+
+      case 'games':
+        return <GamesPage />;
+
       case 'settings':
         return <SettingsPage />;
-      
+
       default:
         return <div>Page inconnue</div>;
     }

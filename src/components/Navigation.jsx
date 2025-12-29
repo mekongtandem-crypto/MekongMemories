@@ -193,7 +193,7 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
 
         {/* Bouton contextuel : Retour intelligent OU Jeux */}
         {showReturnButton ? (
-          <button 
+          <button
             onClick={handleReturn}
             className="flex flex-col items-center py-2 px-3 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
             title={`Retour vers ${getReturnLabel()}`}
@@ -202,9 +202,14 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
             <span className="text-xs">{getReturnLabel()}</span>
           </button>
         ) : (
-          <button 
-            disabled
-            className="flex flex-col items-center py-2 px-3 text-gray-400 dark:text-gray-600 opacity-40 cursor-not-allowed"
+          <button
+            onClick={() => onPageChange('games')}
+            className={`flex flex-col items-center py-2 px-3 transition-colors ${
+              currentPage === 'games'
+                ? 'text-purple-600 dark:text-purple-400 font-semibold'
+                : 'text-purple-500 dark:text-purple-500 hover:text-purple-600 dark:hover:text-purple-400'
+            }`}
+            title="Jeux de remémoration"
           >
             <Gamepad2 className="w-5 h-5 mb-1" />
             <span className="text-xs">Jeux</span>
