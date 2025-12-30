@@ -1,13 +1,13 @@
 /**
- * SaynetesPage.jsx v3.0b - Phase 3.0 : Catalogue de Saynètes
- * 🎭 Catalogue de saynètes ludiques pour échanger sur les souvenirs
+ * SaynetesPage.jsx v3.0c - Phase 3.0 : Catalogue de Jeux
+ * ⚔️ Catalogue de jeux ludiques pour échanger sur les souvenirs
  *
- * ARCHITECTURE v3.0b :
- * ✅ Affiche CATALOGUE de saynètes disponibles (depuis saynetesManager)
+ * ARCHITECTURE v3.0c :
+ * ✅ Affiche CATALOGUE de jeux disponibles (depuis saynetesManager)
  * ✅ Bouton "Lancer" → Ouvre modal pour créer session avec gameContext
- * ✅ Section "Actives" → Sessions avec gameContext (depuis app.sessions)
+ * ✅ Section "Actifs" → Sessions avec gameContext (depuis app.sessions)
  *
- * Types de saynètes :
+ * Types de jeux :
  * - Défis 🎯 : Tu te souviens, Vrai ou Faux, Photo floue
  * - Ateliers 🎨 : Top 3 Face à Face, Courbe Émotionnelle
  * - Échanges 🎾 : Caption Battle, Double Vision, Story Duel
@@ -17,7 +17,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { saynetesManager } from '../../core/SaynetesManager.js';
-import { MessageCircle, Clock, ArrowRight, Eye } from 'lucide-react';
+import { MessageCircle, Clock, ArrowRight, Eye, Swords } from 'lucide-react';
 
 export default function SaynetesPage() {
 
@@ -27,9 +27,9 @@ export default function SaynetesPage() {
   const [restoredMomentId, setRestoredMomentId] = useState(null);
   const [restoredQuestion, setRestoredQuestion] = useState('');
 
-  // Catalogue des saynètes disponibles (depuis saynetesManager)
+  // Catalogue des jeux disponibles (depuis saynetesManager)
   const catalog = useMemo(() => saynetesManager.getCatalog(), []);
-  const allSaynetes = useMemo(() => saynetesManager.getAllSaynetes(), []);
+  const allGames = useMemo(() => saynetesManager.getAllSaynetes(), []);
 
   // Sessions actives avec gameContext
   const activeSessions = useMemo(() => {
@@ -58,7 +58,7 @@ export default function SaynetesPage() {
   }, [returnContext]);
 
   const handleLaunchSaynete = (sayneteId) => {
-    console.log('🎭 Lancement saynète:', sayneteId);
+    console.log('⚔️ Lancement jeu:', sayneteId);
     setSelectedSayneteId(sayneteId);
     setShowLaunchModal(true);
   };
@@ -78,7 +78,7 @@ export default function SaynetesPage() {
 
         {/* En-tête */}
         <div className="text-center">
-          <div className="text-6xl mb-3">🎭</div>
+          <Swords className="w-16 h-16 mx-auto mb-3 text-purple-600 dark:text-purple-400" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             Jeux de Remémoration
           </h1>
@@ -91,11 +91,11 @@ export default function SaynetesPage() {
         <section>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
             <MessageCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            Catalogue ({allSaynetes.length} jeux)
+            Catalogue ({allGames.length} jeux)
           </h2>
 
           <div className="space-y-3">
-            {allSaynetes.map(saynete => (
+            {allGames.map(saynete => (
               <GameCard
                 key={saynete.id}
                 saynete={saynete}
@@ -148,7 +148,7 @@ export default function SaynetesPage() {
             </li>
             <li className="flex items-start gap-2">
               <span className="font-semibold min-w-[20px]">4.</span>
-              <span>Les jeux actifs apparaissent dans Causeries avec badge 🎭</span>
+              <span>Les jeux actifs apparaissent dans Causeries avec badge ⚔️ Jeu</span>
             </li>
           </ul>
         </section>
@@ -335,7 +335,7 @@ function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQue
     try {
       await onLaunch(selectedMomentId, question.trim());
     } catch (error) {
-      console.error('Erreur lancement saynète:', error);
+      console.error('Erreur lancement jeu:', error);
       setIsLaunching(false);
     }
   };
@@ -358,7 +358,7 @@ function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQue
             </h2>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Choisissez un moment et posez une question pour lancer la saynète
+            Choisissez un moment et posez une question pour lancer le jeu
           </p>
         </div>
 
@@ -476,7 +476,7 @@ function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQue
                 : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
             }`}
           >
-            {isLaunching ? '🎭 Lancement...' : '🎭 Lancer la saynète'}
+            {isLaunching ? 'Lancement...' : 'Lancer le jeu'}
           </button>
         </div>
       </div>
