@@ -11,7 +11,7 @@
  * - Chat sans contexte → Retour vers Sessions
  */
 import React from 'react';
-import { Sparkles, MessageSquare, ArrowLeft, Drama } from 'lucide-react';
+import { Sparkles, MessageSquare, ArrowLeft, Swords } from 'lucide-react';
 import { enrichSessionWithStatus, SESSION_STATUS } from '../utils/sessionUtils.js';
 import { countNewMemories } from '../utils/memoryUtils.js';
 
@@ -211,7 +211,7 @@ export function BottomNavigation({ currentPage, onPageChange, app, navigationCon
             }`}
             title="Jeux de remémoration"
           >
-            <span className="text-lg mb-1">🎭</span>
+            <Swords className={`w-5 h-5 mb-1 ${currentPage === 'saynetes' ? 'stroke-[2.5]' : 'stroke-[2]'}`} />
             <span className="text-xs">Jeux</span>
           </button>
         )}
