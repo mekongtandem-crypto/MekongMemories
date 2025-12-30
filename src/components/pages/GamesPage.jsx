@@ -316,7 +316,7 @@ function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQue
 
   // Navigation vers moment dans MemoriesPage
   const handleViewMoment = (momentId) => {
-    onClose(); // Fermer modal
+    // Navigation AVANT fermeture modal (important !)
     app.navigateTo('memories', {
       previousPage: 'saynetes',
       targetMomentId: momentId,
@@ -327,6 +327,8 @@ function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQue
         modalOpen: true // Réouvrir modal au retour
       }
     });
+    // Fermer modal APRÈS navigation
+    onClose();
   };
 
   const handleLaunch = async () => {
