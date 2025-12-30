@@ -1,12 +1,12 @@
 /**
- * SaynetesTopBar.jsx v3.0b - Phase 3.0 : TopBar Catalogue Saynètes
- * 🎭 TopBar pour la page Saynètes
- * ✅ Menu lancement saynète
- * ✅ Statistiques saynètes actives (sessions avec gameContext)
+ * SaynetesTopBar.jsx v3.0b - Phase 3.0 : TopBar Catalogue Jeux
+ * ⚔️ TopBar pour la page Jeux
+ * ✅ Menu lancement jeu
+ * ✅ Statistiques jeux actifs (sessions avec gameContext)
  */
 
 import React, { useState, useMemo } from 'react';
-import { MoreVertical, Plus } from 'lucide-react';
+import { MoreVertical, Plus, Swords } from 'lucide-react';
 import { useAppState } from '../../hooks/useAppState.js';
 
 export default function SaynetesTopBar({ onLaunchSaynete }) {
@@ -14,11 +14,11 @@ export default function SaynetesTopBar({ onLaunchSaynete }) {
   const app = useAppState();
   const [showMenu, setShowMenu] = useState(false);
 
-  // ✅ Compter sessions avec gameContext (saynètes actives)
-  const sayneteStats = useMemo(() => {
+  // ✅ Compter sessions avec gameContext (jeux actifs)
+  const gameStats = useMemo(() => {
     if (!app.sessions) return { active: 0 };
-    const activeSaynetes = app.sessions.filter(s => s.gameContext && !s.archived);
-    return { active: activeSaynetes.length };
+    const activeGames = app.sessions.filter(s => s.gameContext && !s.archived);
+    return { active: activeGames.length };
   }, [app.sessions]);
 
   return (
@@ -26,7 +26,7 @@ export default function SaynetesTopBar({ onLaunchSaynete }) {
 
       {/* GAUCHE : Titre */}
       <div className="flex items-center gap-2">
-        <span className="text-xl">🎭</span>
+        <Swords className="w-5 h-5 text-purple-600 dark:text-purple-400" />
         <span className="text-purple-600 dark:text-purple-400 font-semibold">
           Jeux
         </span>
@@ -35,7 +35,7 @@ export default function SaynetesTopBar({ onLaunchSaynete }) {
       {/* CENTRE : Stats */}
       <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
         <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
-          {sayneteStats.active} active{sayneteStats.active > 1 ? 's' : ''}
+          {gameStats.active} active{gameStats.active > 1 ? 's' : ''}
         </span>
       </div>
 

@@ -1,8 +1,9 @@
 /**
- * MemoriesPage.jsx v2.31c - Restauration immédiate sans double render
+ * MemoriesPage.jsx v3.0b - Navigation contextuelle Jeux ↔ Souvenirs
  * ✅ Bandeau nouveaux souvenirs avec scroll auto
  * ✅ Marquage automatique souvenirs vus au scroll (IntersectionObserver)
  * ✅ Badge count nouveaux souvenirs
+ * ✅ v3.0b : Scroll vers moment depuis SaynetesPage avec highlight visuel
  * ⭐ v2.31c : Restauration scroll seulement (Context restauré dans getInitialState)
  * ⭐ v2.31b : Navigation state unified - save/restore complet via NavigationStateManager
  * ⭐ Migration progressive vers useMemoriesDisplay()
@@ -280,6 +281,49 @@ const MemoriesPageInner = React.forwardRef(({
       }, 300);
     }
   }, [navigationContext?.scrollToNewMemories, newMemories.length, scrollToFirstNewMemory]);
+
+  // ⭐ v3.0b : Scroll vers moment spécifique depuis SaynetesPage
+  useEffect(() => {
+    if (navigationContext?.targetMomentId && navigationContext?.scrollToMoment) {
+      const targetMomentId = navigationContext.targetMomentId;
+
+      // Délai pour laisser le DOM se charger
+      setTimeout(() => {
+        // 1. Fermer tous les moments en mode focus (comme scrollToFirstNewMemory)
+        if (displayMode === 'focus') {
+          actions.collapseAll('moments');
+        }
+
+        // 2. Ouvrir le moment ciblé s'il est fermé
+        const isAlreadyExpanded = computed.isMomentExpanded(targetMomentId);
+        if (!isAlreadyExpanded) {
+          actions.toggleExpanded('moments', targetMomentId);
+        }
+
+        // 3. Scroller vers le moment après expansion
+        setTimeout(() => {
+          memoryScroll.scrollToMoment(targetMomentId);
+
+          // 4. Ajouter highlight visuel
+          setHighlightedElement({ type: 'moment', id: targetMomentId });
+
+          // 5. Retirer highlight après 2s
+          setTimeout(() => {
+            setHighlightedElement(null);
+          }, 2000);
+        }, 150);
+
+        // 6. Cleanup du navigationContext après utilisation
+        dataManager.updateState({
+          navigationContext: {
+            ...navigationContext,
+            targetMomentId: null,
+            scrollToMoment: false
+          }
+        });
+      }, 300);
+    }
+  }, [navigationContext?.targetMomentId, navigationContext?.scrollToMoment, displayMode, actions, computed, memoryScroll]);
 
   // ⭐ v2.25 : Observer pour marquer souvenirs vus au scroll
   // ⭐ v2.26f : FIX boucle - dépendance masterIndex au lieu de filteredMoments
