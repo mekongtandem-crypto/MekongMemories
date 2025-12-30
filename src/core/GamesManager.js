@@ -21,7 +21,7 @@
 
 import { logger } from '../utils/logger.js';
 
-class SaynetesManager {
+class GamesManager {
   constructor() {
     this.isLoaded = false;
 
@@ -33,7 +33,7 @@ class SaynetesManager {
    * Initialisation - Juste marquer comme chargé (pas de Drive)
    */
   async init() {
-    logger.info('⚔️ SaynetesManager: Catalogue de jeux initialisé');
+    logger.info('⚔️ GamesManager: Catalogue de jeux initialisé');
     this.isLoaded = true;
   }
 
@@ -236,9 +236,9 @@ class SaynetesManager {
 }
 
 // Singleton
-export const saynetesManager = new SaynetesManager();
+export const gamesManager = new GamesManager();
 
 // Exposer pour debug
 if (typeof window !== 'undefined') {
-  window.saynetesManager = saynetesManager;
+  window.gamesManager = gamesManager;
 }

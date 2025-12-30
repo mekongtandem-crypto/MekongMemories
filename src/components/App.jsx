@@ -19,7 +19,7 @@ import MemoriesPage from './pages/MemoriesPage.jsx';
 import SessionsPage from './pages/SessionsPage.jsx';
 import ChatPage from './pages/ChatPage.jsx';
 import StartupPage from './pages/StartupPage.jsx';
-import SaynetesPage from './pages/SaynetesPage.jsx';
+import GamesPage from './pages/GamesPage.jsx';
 import LoadingSpinner from './LoadingSpinner.jsx';
 // ⭐ v2.14 : Context pour MemoriesPage
 import { MemoriesDisplayProvider } from './memories/context/MemoriesDisplayContext.jsx';
@@ -532,7 +532,7 @@ export default function App() {
         );
 
       case 'saynetes':
-        return <SaynetesPage />;
+        return <GamesPage />;
 
       case 'settings':
         return <SettingsPage />;
