@@ -26,7 +26,7 @@ import {
 import { countNewMemories } from '../../utils/memoryUtils.js'; // ⭐ v2.25
 import {
   Clock, MoreVertical, Edit, Trash2,
-  Archive, ChevronDown, X, Eye, EyeOff, Check, Sparkles, ArrowRight
+  Archive, ChevronDown, X, Eye, EyeOff, Check, Sparkles, ArrowRight, Swords
 } from 'lucide-react';
 
 export default function SessionsPage({ isSearchOpen, setIsSearchOpen }) {
@@ -848,8 +848,9 @@ function SessionRow({
                 <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{session.gameTitle}</div>
                 {/* ⭐ v3.0 : Badge Jeu si gameContext */}
                 {session.gameContext && (
-                  <span className="flex-shrink-0 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-semibold rounded-full">
-                    🎭 Jeu
+                  <span className="flex-shrink-0 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-semibold rounded-full flex items-center gap-1">
+                    <Swords className="w-3 h-3" />
+                    Jeu
                   </span>
                 )}
               </div>

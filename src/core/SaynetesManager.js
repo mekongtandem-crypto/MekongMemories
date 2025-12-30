@@ -1,11 +1,11 @@
 /**
- * SaynetesManager.js v3.0b - Phase 3.0 : Catalogue de Saynètes
- * 🎭 Manager centralisé pour le catalogue des saynètes de remémoration
+ * SaynetesManager.js v3.0b - Phase 3.0 : Catalogue de Jeux
+ * ⚔️ Manager centralisé pour le catalogue des jeux de remémoration
  *
  * ARCHITECTURE v3.0b :
- * ✅ Saynètes = Catalogue de types de jeux disponibles (PAS de tracking)
- * ✅ Lancer saynète → Crée session avec gameContext
- * ✅ Sessions avec gameContext apparaissent dans SessionsPage avec badge 🎭
+ * ✅ Jeux = Catalogue de types de jeux disponibles (PAS de tracking)
+ * ✅ Lancer jeu → Crée session avec gameContext
+ * ✅ Sessions avec gameContext apparaissent dans SessionsPage avec badge ⚔️ Jeu
  *
  * Responsabilités :
  * - Fournir catalogue de saynètes disponibles
@@ -33,7 +33,7 @@ class SaynetesManager {
    * Initialisation - Juste marquer comme chargé (pas de Drive)
    */
   async init() {
-    logger.info('🎭 SaynetesManager: Catalogue initialisé');
+    logger.info('⚔️ SaynetesManager: Catalogue de jeux initialisé');
     this.isLoaded = true;
   }
 

@@ -274,7 +274,7 @@ function ActiveSessionCard({ session, onClick }) {
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-2xl">🎭</span>
+          <Swords className="w-6 h-6 text-purple-600 dark:text-purple-400" />
           <div>
             <div className="font-semibold text-gray-900 dark:text-gray-100">
               {gameContext.sayneteName || session.gameTitle}
