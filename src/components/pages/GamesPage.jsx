@@ -1,9 +1,9 @@
 /**
- * SaynetesPage.jsx v3.0c - Phase 3.0 : Catalogue de Jeux
+ * GamesPage.jsx v3.0c - Phase 3.0 : Catalogue de Jeux (anciennement SaynetesPage)
  * ⚔️ Catalogue de jeux ludiques pour échanger sur les souvenirs
  *
  * ARCHITECTURE v3.0c :
- * ✅ Affiche CATALOGUE de jeux disponibles (depuis saynetesManager)
+ * ✅ Affiche CATALOGUE de jeux disponibles (depuis gamesManager)
  * ✅ Bouton "Lancer" → Ouvre modal pour créer session avec gameContext
  * ✅ Section "Actifs" → Sessions avec gameContext (depuis app.sessions)
  *

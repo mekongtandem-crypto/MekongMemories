@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 import App from './components/App.jsx';
 import { themeAssignments } from './core/ThemeAssignments.js';
 import { contentLinks } from './core/ContentLinks.js';  // ⭐ AJOUT
-import { saynetesManager } from './core/SaynetesManager.js';  // ⭐ v3.0 : AJOUT
+import { gamesManager } from './core/GamesManager.js';  // ⭐ v3.0 : AJOUT
 import './index.css';
 
 // --- Import de TOUS les modules ---
@@ -33,7 +33,7 @@ dataManager.initializeDependencies({
   notificationManager,
   themeAssignments,
   contentLinks,  // ⭐ AJOUT
-  saynetesManager   // ⭐ v3.0 : AJOUT
+  gamesManager   // ⭐ v3.0 : AJOUT
 });
 
 masterIndexGenerator.initialize({
@@ -41,7 +41,7 @@ masterIndexGenerator.initialize({
   mastodonData,
 });
 
-// Init themeAssignments, contentLinks et saynetesManager au démarrage
+// Init themeAssignments, contentLinks et gamesManager au démarrage
 connectionManager.subscribe(async (connectionState) => {
   if (connectionState.isOnline) {
     if (!themeAssignments.isLoaded) {
@@ -50,8 +50,8 @@ connectionManager.subscribe(async (connectionState) => {
     if (!contentLinks.isLoaded) {  // ⭐ AJOUT
       await contentLinks.init();
     }
-    if (!saynetesManager.isLoaded) {  // ⭐ v3.0 : AJOUT
-      await saynetesManager.init();
+    if (!gamesManager.isLoaded) {  // ⭐ v3.0 : AJOUT
+      await gamesManager.init();
     }
   }
 });

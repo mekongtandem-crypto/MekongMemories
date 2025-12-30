@@ -1,5 +1,5 @@
 /**
- * SaynetesTopBar.jsx v3.0b - Phase 3.0 : TopBar Catalogue Jeux
+ * GamesTopBar.jsx v3.0c - Phase 3.0 : TopBar Catalogue Jeux (anciennement SaynetesTopBar)
  * ⚔️ TopBar pour la page Jeux
  * ✅ Menu lancement jeu
  * ✅ Statistiques jeux actifs (sessions avec gameContext)

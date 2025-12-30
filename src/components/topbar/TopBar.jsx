@@ -11,7 +11,7 @@ import SessionsTopBar from './SessionsTopBar.jsx';
 import ChatTopBar from './ChatTopBar.jsx';
 import MemoriesTopBar from './MemoriesTopBar.jsx';
 import SettingsTopBar from './SettingsTopBar.jsx';
-import SaynetesTopBar from './SaynetesTopBar.jsx';
+import GamesTopBar from './GamesTopBar.jsx';
 
 export default function TopBar({ 
   currentPage, 
@@ -54,7 +54,7 @@ export default function TopBar({
       );
     
     case 'saynetes':
-      return <SaynetesTopBar />;
+      return <GamesTopBar />;
 
     case 'settings':
       return <SettingsTopBar />;
