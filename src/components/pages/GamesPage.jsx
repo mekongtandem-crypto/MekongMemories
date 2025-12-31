@@ -16,10 +16,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
-import { saynetesManager } from '../../core/SaynetesManager.js';
+import { gamesManager } from '../../core/GamesManager.js';
 import { MessageCircle, Clock, ArrowRight, Eye, Swords } from 'lucide-react';
 
-export default function SaynetesPage() {
+export default function GamesPage() {
 
   const app = useAppState();
   const [showLaunchModal, setShowLaunchModal] = useState(false);
@@ -27,9 +27,9 @@ export default function SaynetesPage() {
   const [restoredMomentId, setRestoredMomentId] = useState(null);
   const [restoredQuestion, setRestoredQuestion] = useState('');
 
-  // Catalogue des jeux disponibles (depuis saynetesManager)
-  const catalog = useMemo(() => saynetesManager.getCatalog(), []);
-  const allGames = useMemo(() => saynetesManager.getAllSaynetes(), []);
+  // Catalogue des jeux disponibles (depuis gamesManager)
+  const catalog = useMemo(() => gamesManager.getCatalog(), []);
+  const allGames = useMemo(() => gamesManager.getAllSaynetes(), []);
 
   // Sessions actives avec gameContext
   const activeSessions = useMemo(() => {
@@ -165,7 +165,7 @@ export default function SaynetesPage() {
           onClose={handleCloseModal}
           onLaunch={async (momentId, question) => {
             // Créer gameContext
-            const gameContext = saynetesManager.createGameContext(
+            const gameContext = gamesManager.createGameContext(
               'tu_te_souviens',
               app.currentUser,
               momentId,
