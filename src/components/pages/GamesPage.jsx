@@ -53,8 +53,8 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
       const content = navigationContext.pendingLink;
       console.log('⚔️ Contenu sélectionné depuis MemoriesPage:', content);
 
-      // ⭐ v3.0g : Enrichir le contenu avec les propriétés attendues par SessionCreationModal
-      let enrichedContent = { ...content };
+      // ⭐ v3.0g HOTFIX : Enrichir le contenu avec TOUTES les propriétés nécessaires
+      let enrichedContent = { ...content }; // Préserver toutes propriétés originales
 
       // Enrichir selon le type
       if (content.type === 'moment') {
@@ -62,7 +62,7 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
         const fullMoment = app.masterIndex?.moments?.find(m => m.id === content.id);
         if (fullMoment) {
           enrichedContent = {
-            ...fullMoment,
+            ...fullMoment, // ✅ Prendre TOUT le moment
             displayTitle: fullMoment.title,
             displaySubtitle: fullMoment.date ? new Date(fullMoment.date).toLocaleDateString('fr-FR') : fullMoment.jnnn
           };
@@ -71,23 +71,50 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
           enrichedContent.displayTitle = content.title;
         }
       } else if (content.type === 'post') {
-        // Pour un post, on a déjà le titre qui est la première ligne du contenu
-        enrichedContent.content = content.title; // SessionCreationModal utilise source.content
-        enrichedContent.displayTitle = content.title;
+        // ✅ Pour un post, trouver le post complet dans masterIndex
+        let fullPost = null;
+        let parentMoment = null;
+
+        for (const moment of app.masterIndex?.moments || []) {
+          const post = moment.posts?.find(p => p.id === content.id);
+          if (post) {
+            fullPost = post;
+            parentMoment = moment;
+            break;
+          }
+        }
+
+        if (fullPost) {
+          enrichedContent = {
+            ...fullPost, // ✅ Prendre TOUT le post (id, content, dayNumber, etc.)
+            displayTitle: fullPost.content?.split('\n')[0] || content.title,
+            momentId: parentMoment?.id // ✅ Ajouter momentId parent
+          };
+        } else {
+          // Fallback
+          enrichedContent.content = content.title;
+          enrichedContent.displayTitle = content.title;
+        }
       } else if (content.type === 'photo') {
-        // Pour une photo, on a déjà filename
+        // ✅ Pour une photo, préserver TOUTES les propriétés déjà présentes
         enrichedContent.filename = content.id;
-        // Trouver le contextMoment (moment qui contient cette photo)
+
+        // Trouver le contextMoment complet
         const contextMoment = app.masterIndex?.moments?.find(m =>
           m.dayPhotos?.some(p => p.filename === content.id) ||
           m.posts?.some(post => post.photos?.some(p => p.filename === content.id))
         );
+
         if (contextMoment) {
           enrichedContent.contextMoment = {
-            displayTitle: contextMoment.title
+            ...contextMoment, // ✅ Tout le moment pour contextMoment
+            displayTitle: contextMoment.title,
+            displaySubtitle: contextMoment.date ? new Date(contextMoment.date).toLocaleDateString('fr-FR') : contextMoment.jnnn
           };
         }
       }
+
+      console.log('⚔️ Contenu enrichi:', enrichedContent);
 
       // Stocker le contenu enrichi et réouvrir le modal
       setSelectedContent(enrichedContent);
@@ -128,21 +155,74 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
       return;
     }
 
+    console.log('⚔️ Création session avec:', { selectedContent, options });
+
+    // ⭐ v3.0g HOTFIX : Adapter les paramètres selon le type de contenu
+    // Signature : createSession(gameData, initialText, sourcePhoto, gameContext)
+
+    let gameData, sourcePhoto, targetContentId;
+
+    if (selectedContent.type === 'moment') {
+      // Session depuis moment
+      gameData = {
+        id: selectedContent.id,
+        title: options.title, // ✅ Titre personnalisé par user
+        ...selectedContent
+      };
+      sourcePhoto = null;
+      targetContentId = selectedContent.id;
+
+    } else if (selectedContent.type === 'post') {
+      // Session depuis post
+      gameData = {
+        id: selectedContent.momentId || selectedContent.id, // ✅ ID du moment parent
+        title: options.title, // ✅ Titre personnalisé par user
+        systemMessage: 'article', // ✅ Trigger pour détecter post dans createSession
+        ...selectedContent
+      };
+      sourcePhoto = null;
+      targetContentId = selectedContent.id;
+
+    } else if (selectedContent.type === 'photo') {
+      // Session depuis photo - gameData = moment contexte, sourcePhoto = photo
+      const contextMoment = selectedContent.contextMoment || {};
+      gameData = {
+        id: contextMoment.id,
+        title: options.title, // ✅ Titre personnalisé par user
+        ...contextMoment
+      };
+      sourcePhoto = {
+        google_drive_id: selectedContent.google_drive_id,
+        filename: selectedContent.filename || selectedContent.id,
+        url: selectedContent.url,
+        width: selectedContent.width,
+        height: selectedContent.height,
+        mime_type: selectedContent.mime_type
+      };
+      targetContentId = selectedContent.google_drive_id || selectedContent.id;
+
+    } else {
+      console.error('❌ Type de contenu inconnu:', selectedContent.type);
+      return;
+    }
+
     // Créer gameContext
     const gameContext = gamesManager.createGameContext(
       selectedGameId,
       app.currentUser,
-      selectedContent.id,
+      targetContentId,
       options.title
     );
 
-    // Créer session avec gameContext
+    // ✅ CORRECT : createSession(gameData, initialText, sourcePhoto, gameContext)
     const sessionId = await app.createSession(
-      selectedContent,
-      options.title,
+      gameData,
       options.initialText || null,
+      sourcePhoto,
       gameContext
     );
+
+    console.log('⚔️ Session créée:', sessionId);
 
     // Ouvrir la session si demandé
     if (options.shouldOpen) {
