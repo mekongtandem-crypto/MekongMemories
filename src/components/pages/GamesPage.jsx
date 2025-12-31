@@ -1,24 +1,20 @@
 /**
- * GamesPage.jsx v3.0e - Phase 3.0 : Catalogue de Jeux + Sélection Moments
+ * GamesPage.jsx v3.0f - Phase 3.0 : Catalogue de Jeux SIMPLIFIÉ
  * ⚔️ Catalogue de jeux ludiques pour échanger sur les souvenirs
  *
- * ARCHITECTURE v3.0e :
- * ✅ Affiche CATALOGUE de jeux disponibles (depuis gamesManager)
- * ✅ Bouton "Lancer" → Ouvre modal pour créer session avec gameContext
- * ✅ Section "Actifs" → Sessions avec gameContext (depuis app.sessions)
- * ⭐ v3.0e : Système de sélection moments depuis MemoriesPage (réutilise pattern ChatPage)
+ * ARCHITECTURE v3.0f - WORKFLOW ULTRA-SIMPLIFIÉ :
+ * 1. Clic "Lancer jeu" → MemoriesPage en mode sélection
+ * 2. Sélectionner n'importe quel contenu (moment, post OU photo)
+ * 3. Modal simple : Titre pré-rempli + option modifier
+ * 4. "Lancer" → Session créée avec gameContext
+ *
+ * ⭐ PRINCIPE : Lancer jeu = Créer session liée à un contenu
  *
  * Types de jeux :
  * - Défis 🎯 : Tu te souviens, Vrai ou Faux, Photo floue
  * - Ateliers 🎨 : Top 3 Face à Face, Courbe Émotionnelle
  * - Échanges 🎾 : Caption Battle, Double Vision, Story Duel
  * - Rituel 📅 : Souvenir du Jour
- *
- * WORKFLOW SÉLECTION v3.0e :
- * 1. Modal "Tu te souviens ?" affiche 3 moments suggérés
- * 2. Bouton "Parcourir tous les moments" → MemoriesPage en mode sélection
- * 3. Utilisateur sélectionne moment → Retour modal avec moment sélectionné
- * 4. Validation → Création session avec gameContext
  */
 
 import React, { useState, useMemo } from 'react';
@@ -29,10 +25,11 @@ import { MessageCircle, Clock, ArrowRight, Swords } from 'lucide-react';
 export default function GamesPage({ navigationContext: propsNavigationContext, onStartSelectionMode }) {
 
   const app = useAppState();
+
+  // ⭐ v3.0f : États simplifiés pour sélection contenu
+  const [selectedGameId, setSelectedGameId] = useState(null);
+  const [selectedContent, setSelectedContent] = useState(null);
   const [showLaunchModal, setShowLaunchModal] = useState(false);
-  const [selectedSayneteId, setSelectedSayneteId] = useState(null);
-  const [restoredMomentId, setRestoredMomentId] = useState(null);
-  const [restoredQuestion, setRestoredQuestion] = useState('');
 
   // Catalogue des jeux disponibles (depuis gamesManager)
   const catalog = useMemo(() => gamesManager.getCatalog(), []);
@@ -44,63 +41,42 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
     return app.sessions.filter(s => s.gameContext && !s.archived);
   }, [app.sessions]);
 
-  // Moments disponibles pour sélection
-  const availableMoments = useMemo(() => {
-    if (!app.masterIndex?.moments) return [];
-    return app.masterIndex.moments.filter(m => m.title); // Moments avec titre
-  }, [app.masterIndex]);
-
-  // ✅ Restauration contexte au retour depuis MemoriesPage
+  // Navigation context
   const navigationContext = propsNavigationContext || app.navigationContext || {};
-  const returnContext = navigationContext.returnContext;
 
-  // Restaurer modal si retour avec contexte
+  // ⭐ v3.0f : Gérer retour sélection contenu depuis MemoriesPage
+
   React.useEffect(() => {
-    if (returnContext?.modalOpen && returnContext.selectedMomentId) {
-      setSelectedSayneteId('tu_te_souviens');
-      setRestoredMomentId(returnContext.selectedMomentId);
-      setRestoredQuestion(returnContext.question || '');
+    if (navigationContext.pendingLink) {
+      const content = navigationContext.pendingLink;
+      console.log('⚔️ Contenu sélectionné depuis MemoriesPage:', content);
+
+      // Stocker le contenu sélectionné et ouvrir modal simple
+      setSelectedContent(content);
       setShowLaunchModal(true);
-    }
-  }, [returnContext]);
-
-  // ⭐ v3.0e : Gérer retour sélection moment depuis MemoriesPage
-  React.useEffect(() => {
-    if (navigationContext.pendingLink?.type === 'moment') {
-      const selectedMoment = navigationContext.pendingLink;
-      console.log('⚔️ Moment sélectionné depuis MemoriesPage:', selectedMoment);
-
-      // Mettre à jour le moment sélectionné dans le modal
-      setRestoredMomentId(selectedMoment.id);
-      // Le modal doit rester ouvert si déjà ouvert, sinon ne pas ouvrir
-      // (on attend que l'utilisateur valide sa sélection dans le modal)
     }
   }, [navigationContext.pendingLink]);
 
+  // ⭐ v3.0f : Lancer jeu = Ouvrir MemoriesPage en mode sélection
   const handleLaunchSaynete = (sayneteId) => {
     console.log('⚔️ Lancement jeu:', sayneteId);
-    setSelectedSayneteId(sayneteId);
-    setShowLaunchModal(true);
-  };
 
-  const handleCloseModal = () => {
-    setShowLaunchModal(false);
-    setSelectedSayneteId(null);
-    setRestoredMomentId(null);
-    setRestoredQuestion('');
-  };
-
-  // ⭐ v3.0e : Ouvrir MemoriesPage en mode sélection pour parcourir moments
-  const handleBrowseMoments = () => {
     if (!onStartSelectionMode) {
       console.error('❌ onStartSelectionMode non fourni !');
       return;
     }
 
-    console.log('🔍 Ouverture MemoriesPage pour parcourir moments');
+    // Stocker l'ID du jeu en cours de lancement
+    setSelectedGameId(sayneteId);
 
-    // Lancer mode sélection de type 'moment'
-    onStartSelectionMode('moment', null);
+    // Lancer mode sélection - accepter TOUS types de contenu
+    onStartSelectionMode('all', null);
+  };
+
+  const handleCloseModal = () => {
+    setShowLaunchModal(false);
+    setSelectedGameId(null);
+    setSelectedContent(null);
   };
 
   return (
@@ -188,31 +164,26 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
 
       </div>
 
-      {/* Modal Lancement Saynète */}
-      {showLaunchModal && selectedSayneteId === 'tu_te_souviens' && (
-        <TuTeSouviensModal
-          moments={availableMoments}
+      {/* ⭐ v3.0f : Modal Lancement Jeu Simplifié */}
+      {showLaunchModal && selectedContent && (
+        <LaunchGameModal
+          gameId={selectedGameId}
+          selectedContent={selectedContent}
           currentUserId={app.currentUser}
-          initialMomentId={restoredMomentId}
-          initialQuestion={restoredQuestion}
           onClose={handleCloseModal}
-          onBrowseMoments={handleBrowseMoments}
-          onLaunch={async (momentId, question) => {
+          onLaunch={async (sessionTitle) => {
             // Créer gameContext
             const gameContext = gamesManager.createGameContext(
-              'tu_te_souviens',
+              selectedGameId,
               app.currentUser,
-              momentId,
-              question
+              selectedContent.id,
+              sessionTitle
             );
-
-            // Récupérer le moment sélectionné
-            const moment = availableMoments.find(m => m.id === momentId);
 
             // Créer session avec gameContext
             await app.createSession(
-              { id: momentId, title: moment.title },
-              question,
+              selectedContent,
+              sessionTitle,
               null, // pas de photo
               gameContext
             );
@@ -337,23 +308,38 @@ function ActiveSessionCard({ session, onClick }) {
 }
 
 /**
- * Modal "Tu te souviens ?" - Sélection moment + question
- * ⭐ v3.0e : Support parcourir moments depuis MemoriesPage
+ * Modal Simple de Lancement de Jeu (v3.0f)
+ * Affiche le contenu sélectionné + permet de modifier le titre de session
  */
-function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQuestion, onClose, onBrowseMoments, onLaunch }) {
-  const app = useAppState();
-  const [selectedMomentId, setSelectedMomentId] = useState(initialMomentId || null);
-  const [question, setQuestion] = useState(initialQuestion || '');
+function LaunchGameModal({ gameId, selectedContent, currentUserId, onClose, onLaunch }) {
+  const [sessionTitle, setSessionTitle] = useState(selectedContent.title || '');
   const [isLaunching, setIsLaunching] = useState(false);
 
-  const selectedMoment = moments.find(m => m.id === selectedMomentId);
-  const canLaunch = selectedMomentId && question.trim();
+  const canLaunch = sessionTitle.trim();
+
+  // Icône selon type de contenu
+  const getContentIcon = () => {
+    switch(selectedContent.type) {
+      case 'moment': return '✨';
+      case 'post': return '📝';
+      case 'photo': return '📸';
+      default: return '💭';
+    }
+  };
+
+  // Emoji jeu
+  const getGameEmoji = (gameId) => {
+    switch(gameId) {
+      case 'tu_te_souviens': return '🤔';
+      default: return '🎮';
+    }
+  };
 
   const handleLaunch = async () => {
     if (!canLaunch) return;
     setIsLaunching(true);
     try {
-      await onLaunch(selectedMomentId, question.trim());
+      await onLaunch(sessionTitle.trim());
     } catch (error) {
       console.error('Erreur lancement jeu:', error);
       setIsLaunching(false);
@@ -366,121 +352,57 @@ function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQue
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full"
         onClick={(e) => e.stopPropagation()}
       >
         {/* En-tête */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
+        <div className="border-b border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">🤔</span>
+            <span className="text-3xl">{getGameEmoji(gameId)}</span>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Tu te souviens ?
+              Lancer le jeu
             </h2>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Choisissez un moment et posez une question pour lancer le jeu
+            Créer une session de jeu pour ce contenu
           </p>
         </div>
 
         {/* Contenu */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-4">
 
-          {/* Sélection moment */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
-              1. Choisissez un moment
-            </label>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {moments.map(moment => (
-                <div
-                  key={moment.id}
-                  className={`w-full p-3 rounded-lg border-2 transition-all ${
-                    selectedMomentId === moment.id
-                      ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Icône moment ✨ */}
-                    <button
-                      onClick={() => setSelectedMomentId(moment.id)}
-                      className="flex-shrink-0"
-                    >
-                      <span className="text-xl">✨</span>
-                    </button>
-
-                    {/* Contenu cliquable */}
-                    <button
-                      onClick={() => setSelectedMomentId(moment.id)}
-                      className="flex-1 min-w-0 text-left"
-                    >
-                      <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {moment.title}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        {moment.date ? new Date(moment.date).toLocaleDateString('fr-FR') : ''}
-                        {moment.jnnn && ` • ${moment.jnnn}`}
-                      </div>
-                    </button>
-
-                    {/* Checkmark si sélectionné */}
-                    {selectedMomentId === moment.id && (
-                      <span className="text-red-500 text-xl flex-shrink-0">✓</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+          {/* Contenu sélectionné */}
+          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+            <div className="flex items-center gap-2 text-sm font-semibold text-purple-900 dark:text-purple-100 mb-2">
+              <span>{getContentIcon()}</span>
+              <span>Contenu sélectionné</span>
             </div>
-
-            {/* ⭐ v3.0e : Bouton parcourir tous les moments */}
-            <button
-              onClick={() => {
-                onBrowseMoments();
-                onClose();
-              }}
-              className="w-full mt-3 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2"
-            >
-              <span>🔍</span>
-              Parcourir tous les moments
-            </button>
+            <div className="text-sm text-purple-800 dark:text-purple-200">
+              {selectedContent.title}
+            </div>
           </div>
 
-          {/* Question */}
+          {/* Titre de session */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              2. Posez votre question
+              Titre de la session
             </label>
-            <textarea
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Ex: Te souviens-tu du nom du restaurant où nous avons mangé ?"
-              rows={4}
-              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-red-500 dark:focus:border-red-400 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-900/30 transition-colors resize-none"
+            <input
+              type="text"
+              value={sessionTitle}
+              onChange={(e) => setSessionTitle(e.target.value)}
+              placeholder="Ex: Tu te souviens de... ?"
+              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-purple-500 dark:focus:border-purple-400 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900/30 transition-colors"
             />
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {question.length}/500 caractères
+              Ce titre sera utilisé pour la session de chat
             </div>
           </div>
-
-          {/* Aperçu */}
-          {selectedMoment && question.trim() && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-              <div className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                📋 Aperçu
-              </div>
-              <div className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Moment :</strong> {selectedMoment.title}
-              </div>
-              <div className="text-sm text-blue-800 dark:text-blue-200 mt-1">
-                <strong>Question :</strong> {question}
-              </div>
-            </div>
-          )}
 
         </div>
 
         {/* Actions */}
-        <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6 flex gap-3">
+        <div className="border-t border-gray-200 dark:border-gray-700 p-6 flex gap-3">
           <button
             onClick={onClose}
             className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors font-medium"
@@ -492,7 +414,7 @@ function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQue
             disabled={!canLaunch || isLaunching}
             className={`flex-1 px-4 py-3 rounded-lg transition-colors font-medium ${
               canLaunch && !isLaunching
-                ? 'bg-red-600 hover:bg-red-700 text-white'
+                ? 'bg-purple-600 hover:bg-purple-700 text-white'
                 : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
             }`}
           >
