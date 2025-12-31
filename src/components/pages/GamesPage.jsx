@@ -84,16 +84,36 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
           }
         }
 
-        if (fullPost) {
+        if (fullPost && parentMoment) {
+          // ✅ Calculer dayNumber depuis le moment parent
+          let dayNumber = 'X'; // Fallback
+          if (parentMoment.jnnn && parentMoment.jnnn !== 'undefined') {
+            // Extraire le numéro depuis jnnn (ex: "J7" → "7")
+            dayNumber = parentMoment.jnnn.replace('J', '');
+          } else if (parentMoment.dayStart) {
+            // Sinon utiliser dayStart
+            dayNumber = parentMoment.dayStart.toString();
+          }
+
           enrichedContent = {
-            ...fullPost, // ✅ Prendre TOUT le post (id, content, dayNumber, etc.)
+            ...fullPost, // ✅ Prendre TOUT le post
+            content: fullPost.content || content.title, // ✅ GARANTIR content défini
             displayTitle: fullPost.content?.split('\n')[0] || content.title,
-            momentId: parentMoment?.id // ✅ Ajouter momentId parent
+            momentId: parentMoment.id, // ✅ ID moment parent
+            dayNumber: dayNumber // ✅ dayNumber calculé depuis moment
           };
+
+          console.log('⚔️ Post enrichi:', { id: enrichedContent.id, content: enrichedContent.content, dayNumber });
+
         } else {
-          // Fallback
-          enrichedContent.content = content.title;
-          enrichedContent.displayTitle = content.title;
+          // Fallback si post non trouvé
+          console.warn('⚠️ Post non trouvé dans masterIndex:', content.id);
+          enrichedContent = {
+            ...content, // Préserver propriétés originales
+            content: content.title, // ✅ GARANTIR content défini
+            displayTitle: content.title,
+            dayNumber: 'X' // Fallback
+          };
         }
       } else if (content.type === 'photo') {
         // ✅ Pour une photo, préserver TOUTES les propriétés déjà présentes
@@ -164,7 +184,8 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
 
       let gameData, sourcePhoto, targetContentId;
 
-      if (selectedContent.type === 'moment') {
+      // ⚠️ Gérer 'moment' ET 'post_moment' (moments ne contenant que des posts)
+      if (selectedContent.type === 'moment' || selectedContent.type === 'post_moment') {
         // Session depuis moment
         gameData = {
           id: selectedContent.id,
@@ -174,7 +195,7 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
         sourcePhoto = null;
         targetContentId = selectedContent.id;
 
-        console.log('⚔️ Type: Moment, gameData.id:', gameData.id);
+        console.log('⚔️ Type: Moment/PostMoment, gameData.id:', gameData.id);
 
       } else if (selectedContent.type === 'post') {
         // Session depuis post
@@ -243,12 +264,10 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
 
       console.log('⚔️ Session créée:', newSession);
 
-      // ✅ Extraire l'ID de la session (createSession retourne l'objet complet)
-      const sessionId = newSession.id;
-
       // Ouvrir la session si demandé
       if (options.shouldOpen) {
-        app.updateState({ currentChatSession: sessionId });
+        // ✅ Utiliser openChatSession au lieu de updateState
+        app.openChatSession(newSession);
         app.navigateTo('chat', { previousPage: 'saynetes' });
       }
 
