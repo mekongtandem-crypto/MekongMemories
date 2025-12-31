@@ -152,86 +152,113 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
   const handleCreateGameSession = async (options) => {
     if (!selectedContent) {
       console.error('❌ Pas de contenu sélectionné');
+      alert('Erreur : Aucun contenu sélectionné');
       return;
     }
 
     console.log('⚔️ Création session avec:', { selectedContent, options });
 
-    // ⭐ v3.0g HOTFIX : Adapter les paramètres selon le type de contenu
-    // Signature : createSession(gameData, initialText, sourcePhoto, gameContext)
+    try {
+      // ⭐ v3.0h : Adapter les paramètres selon le type de contenu
+      // Signature : createSession(gameData, initialText, sourcePhoto, gameContext)
 
-    let gameData, sourcePhoto, targetContentId;
+      let gameData, sourcePhoto, targetContentId;
 
-    if (selectedContent.type === 'moment') {
-      // Session depuis moment
-      gameData = {
-        id: selectedContent.id,
-        title: options.title, // ✅ Titre personnalisé par user
-        ...selectedContent
-      };
-      sourcePhoto = null;
-      targetContentId = selectedContent.id;
+      if (selectedContent.type === 'moment') {
+        // Session depuis moment
+        gameData = {
+          id: selectedContent.id,
+          title: options.title, // ✅ Titre personnalisé par user
+          ...selectedContent
+        };
+        sourcePhoto = null;
+        targetContentId = selectedContent.id;
 
-    } else if (selectedContent.type === 'post') {
-      // Session depuis post
-      gameData = {
-        id: selectedContent.momentId || selectedContent.id, // ✅ ID du moment parent
-        title: options.title, // ✅ Titre personnalisé par user
-        systemMessage: 'article', // ✅ Trigger pour détecter post dans createSession
-        ...selectedContent
-      };
-      sourcePhoto = null;
-      targetContentId = selectedContent.id;
+        console.log('⚔️ Type: Moment, gameData.id:', gameData.id);
 
-    } else if (selectedContent.type === 'photo') {
-      // Session depuis photo - gameData = moment contexte, sourcePhoto = photo
-      const contextMoment = selectedContent.contextMoment || {};
-      gameData = {
-        id: contextMoment.id,
-        title: options.title, // ✅ Titre personnalisé par user
-        ...contextMoment
-      };
-      sourcePhoto = {
-        google_drive_id: selectedContent.google_drive_id,
-        filename: selectedContent.filename || selectedContent.id,
-        url: selectedContent.url,
-        width: selectedContent.width,
-        height: selectedContent.height,
-        mime_type: selectedContent.mime_type
-      };
-      targetContentId = selectedContent.google_drive_id || selectedContent.id;
+      } else if (selectedContent.type === 'post') {
+        // Session depuis post
+        gameData = {
+          id: selectedContent.momentId || selectedContent.id, // ✅ ID du moment parent
+          title: options.title, // ✅ Titre personnalisé par user
+          systemMessage: 'article', // ✅ Trigger pour détecter post dans createSession
+          ...selectedContent
+        };
+        sourcePhoto = null;
+        targetContentId = selectedContent.id;
 
-    } else {
-      console.error('❌ Type de contenu inconnu:', selectedContent.type);
-      return;
+        console.log('⚔️ Type: Post, gameData.id:', gameData.id, 'momentId:', selectedContent.momentId);
+
+        // ⚠️ Vérification : Si pas d'ID moment, erreur
+        if (!gameData.id) {
+          throw new Error('Post sans momentId - impossible de créer session');
+        }
+
+      } else if (selectedContent.type === 'photo') {
+        // Session depuis photo - gameData = moment contexte, sourcePhoto = photo
+        const contextMoment = selectedContent.contextMoment || {};
+        gameData = {
+          id: contextMoment.id,
+          title: options.title, // ✅ Titre personnalisé par user
+          ...contextMoment
+        };
+        sourcePhoto = {
+          google_drive_id: selectedContent.google_drive_id,
+          filename: selectedContent.filename || selectedContent.id,
+          url: selectedContent.url,
+          width: selectedContent.width,
+          height: selectedContent.height,
+          mime_type: selectedContent.mime_type
+        };
+        targetContentId = selectedContent.google_drive_id || selectedContent.id;
+
+        console.log('⚔️ Type: Photo, gameData.id:', gameData.id, 'contextMoment:', contextMoment.id);
+
+        // ⚠️ Vérification : Si pas de contextMoment, erreur
+        if (!gameData.id) {
+          throw new Error('Photo sans contextMoment - impossible de créer session');
+        }
+
+      } else {
+        throw new Error(`Type de contenu inconnu: ${selectedContent.type}`);
+      }
+
+      // Créer gameContext
+      const gameContext = gamesManager.createGameContext(
+        selectedGameId,
+        app.currentUser,
+        targetContentId,
+        options.title
+      );
+
+      console.log('⚔️ gameContext créé:', gameContext);
+
+      // ✅ CORRECT : createSession(gameData, initialText, sourcePhoto, gameContext)
+      const newSession = await app.createSession(
+        gameData,
+        options.initialText || null,
+        sourcePhoto,
+        gameContext
+      );
+
+      console.log('⚔️ Session créée:', newSession);
+
+      // ✅ Extraire l'ID de la session (createSession retourne l'objet complet)
+      const sessionId = newSession.id;
+
+      // Ouvrir la session si demandé
+      if (options.shouldOpen) {
+        app.updateState({ currentChatSession: sessionId });
+        app.navigateTo('chat', { previousPage: 'saynetes' });
+      }
+
+      // Fermer modal
+      handleCloseGameModal();
+
+    } catch (error) {
+      console.error('❌ Erreur création session:', error);
+      alert(`Impossible de créer la session : ${error.message}`);
     }
-
-    // Créer gameContext
-    const gameContext = gamesManager.createGameContext(
-      selectedGameId,
-      app.currentUser,
-      targetContentId,
-      options.title
-    );
-
-    // ✅ CORRECT : createSession(gameData, initialText, sourcePhoto, gameContext)
-    const sessionId = await app.createSession(
-      gameData,
-      options.initialText || null,
-      sourcePhoto,
-      gameContext
-    );
-
-    console.log('⚔️ Session créée:', sessionId);
-
-    // Ouvrir la session si demandé
-    if (options.shouldOpen) {
-      app.updateState({ currentChatSession: sessionId });
-      app.navigateTo('chat', { previousPage: 'saynetes' });
-    }
-
-    // Fermer modal
-    handleCloseGameModal();
   };
 
   return (
