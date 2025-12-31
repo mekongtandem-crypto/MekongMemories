@@ -532,7 +532,12 @@ export default function App() {
         );
 
       case 'saynetes':
-        return <GamesPage />;
+        return (
+          <GamesPage
+            navigationContext={app.navigationContext || navigationContext}
+            onStartSelectionMode={handleStartSelectionMode}
+          />
+        );
 
       case 'settings':
         return <SettingsPage />;

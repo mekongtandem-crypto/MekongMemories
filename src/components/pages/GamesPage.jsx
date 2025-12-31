@@ -1,25 +1,32 @@
 /**
- * GamesPage.jsx v3.0c - Phase 3.0 : Catalogue de Jeux (anciennement SaynetesPage)
+ * GamesPage.jsx v3.0e - Phase 3.0 : Catalogue de Jeux + Sélection Moments
  * ⚔️ Catalogue de jeux ludiques pour échanger sur les souvenirs
  *
- * ARCHITECTURE v3.0c :
+ * ARCHITECTURE v3.0e :
  * ✅ Affiche CATALOGUE de jeux disponibles (depuis gamesManager)
  * ✅ Bouton "Lancer" → Ouvre modal pour créer session avec gameContext
  * ✅ Section "Actifs" → Sessions avec gameContext (depuis app.sessions)
+ * ⭐ v3.0e : Système de sélection moments depuis MemoriesPage (réutilise pattern ChatPage)
  *
  * Types de jeux :
  * - Défis 🎯 : Tu te souviens, Vrai ou Faux, Photo floue
  * - Ateliers 🎨 : Top 3 Face à Face, Courbe Émotionnelle
  * - Échanges 🎾 : Caption Battle, Double Vision, Story Duel
  * - Rituel 📅 : Souvenir du Jour
+ *
+ * WORKFLOW SÉLECTION v3.0e :
+ * 1. Modal "Tu te souviens ?" affiche 3 moments suggérés
+ * 2. Bouton "Parcourir tous les moments" → MemoriesPage en mode sélection
+ * 3. Utilisateur sélectionne moment → Retour modal avec moment sélectionné
+ * 4. Validation → Création session avec gameContext
  */
 
 import React, { useState, useMemo } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { gamesManager } from '../../core/GamesManager.js';
-import { MessageCircle, Clock, ArrowRight, Eye, Swords } from 'lucide-react';
+import { MessageCircle, Clock, ArrowRight, Swords } from 'lucide-react';
 
-export default function GamesPage() {
+export default function GamesPage({ navigationContext: propsNavigationContext, onStartSelectionMode }) {
 
   const app = useAppState();
   const [showLaunchModal, setShowLaunchModal] = useState(false);
@@ -44,7 +51,7 @@ export default function GamesPage() {
   }, [app.masterIndex]);
 
   // ✅ Restauration contexte au retour depuis MemoriesPage
-  const navigationContext = app.navigationContext || {};
+  const navigationContext = propsNavigationContext || app.navigationContext || {};
   const returnContext = navigationContext.returnContext;
 
   // Restaurer modal si retour avec contexte
@@ -57,6 +64,19 @@ export default function GamesPage() {
     }
   }, [returnContext]);
 
+  // ⭐ v3.0e : Gérer retour sélection moment depuis MemoriesPage
+  React.useEffect(() => {
+    if (navigationContext.pendingLink?.type === 'moment') {
+      const selectedMoment = navigationContext.pendingLink;
+      console.log('⚔️ Moment sélectionné depuis MemoriesPage:', selectedMoment);
+
+      // Mettre à jour le moment sélectionné dans le modal
+      setRestoredMomentId(selectedMoment.id);
+      // Le modal doit rester ouvert si déjà ouvert, sinon ne pas ouvrir
+      // (on attend que l'utilisateur valide sa sélection dans le modal)
+    }
+  }, [navigationContext.pendingLink]);
+
   const handleLaunchSaynete = (sayneteId) => {
     console.log('⚔️ Lancement jeu:', sayneteId);
     setSelectedSayneteId(sayneteId);
@@ -68,6 +88,19 @@ export default function GamesPage() {
     setSelectedSayneteId(null);
     setRestoredMomentId(null);
     setRestoredQuestion('');
+  };
+
+  // ⭐ v3.0e : Ouvrir MemoriesPage en mode sélection pour parcourir moments
+  const handleBrowseMoments = () => {
+    if (!onStartSelectionMode) {
+      console.error('❌ onStartSelectionMode non fourni !');
+      return;
+    }
+
+    console.log('🔍 Ouverture MemoriesPage pour parcourir moments');
+
+    // Lancer mode sélection de type 'moment'
+    onStartSelectionMode('moment', null);
   };
 
   return (
@@ -163,6 +196,7 @@ export default function GamesPage() {
           initialMomentId={restoredMomentId}
           initialQuestion={restoredQuestion}
           onClose={handleCloseModal}
+          onBrowseMoments={handleBrowseMoments}
           onLaunch={async (momentId, question) => {
             // Créer gameContext
             const gameContext = gamesManager.createGameContext(
@@ -304,8 +338,9 @@ function ActiveSessionCard({ session, onClick }) {
 
 /**
  * Modal "Tu te souviens ?" - Sélection moment + question
+ * ⭐ v3.0e : Support parcourir moments depuis MemoriesPage
  */
-function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQuestion, onClose, onLaunch }) {
+function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQuestion, onClose, onBrowseMoments, onLaunch }) {
   const app = useAppState();
   const [selectedMomentId, setSelectedMomentId] = useState(initialMomentId || null);
   const [question, setQuestion] = useState(initialQuestion || '');
@@ -313,23 +348,6 @@ function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQue
 
   const selectedMoment = moments.find(m => m.id === selectedMomentId);
   const canLaunch = selectedMomentId && question.trim();
-
-  // Navigation vers moment dans MemoriesPage
-  const handleViewMoment = (momentId) => {
-    // Navigation AVANT fermeture modal (important !)
-    app.navigateTo('memories', {
-      previousPage: 'saynetes',
-      targetMomentId: momentId,
-      scrollToMoment: true,
-      returnContext: {
-        selectedMomentId: selectedMomentId, // Moment sélectionné dans modal
-        question: question, // Question en cours de saisie
-        modalOpen: true // Réouvrir modal au retour
-      }
-    });
-    // Fermer modal APRÈS navigation
-    onClose();
-  };
 
   const handleLaunch = async () => {
     if (!canLaunch) return;
@@ -405,18 +423,6 @@ function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQue
                       </div>
                     </button>
 
-                    {/* Bouton "Voir ce moment" */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleViewMoment(moment.id);
-                      }}
-                      className="flex-shrink-0 p-2 text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
-                      title="Voir ce moment dans Souvenirs"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-
                     {/* Checkmark si sélectionné */}
                     {selectedMomentId === moment.id && (
                       <span className="text-red-500 text-xl flex-shrink-0">✓</span>
@@ -425,6 +431,18 @@ function TuTeSouviensModal({ moments, currentUserId, initialMomentId, initialQue
                 </div>
               ))}
             </div>
+
+            {/* ⭐ v3.0e : Bouton parcourir tous les moments */}
+            <button
+              onClick={() => {
+                onBrowseMoments();
+                onClose();
+              }}
+              className="w-full mt-3 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2"
+            >
+              <span>🔍</span>
+              Parcourir tous les moments
+            </button>
           </div>
 
           {/* Question */}
