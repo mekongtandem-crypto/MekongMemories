@@ -1,14 +1,16 @@
 /**
- * GamesPage.jsx v3.0f - Phase 3.0 : Catalogue de Jeux SIMPLIFIÉ
+ * GamesPage.jsx v3.0g - Phase 3.0 : Catalogue de Jeux avec SessionCreationModal
  * ⚔️ Catalogue de jeux ludiques pour échanger sur les souvenirs
  *
- * ARCHITECTURE v3.0f - WORKFLOW ULTRA-SIMPLIFIÉ :
- * 1. Clic "Lancer jeu" → MemoriesPage en mode sélection
- * 2. Sélectionner n'importe quel contenu (moment, post OU photo)
- * 3. Modal simple : Titre pré-rempli + option modifier
- * 4. "Lancer" → Session créée avec gameContext
+ * ARCHITECTURE v3.0g - WORKFLOW AVEC MODAL RÉUTILISÉ :
+ * 1. Clic "Lancer jeu" → Modal "Te souviens-tu ?" (☁️ Cloud icon)
+ * 2. Modal initial : Bouton "Sélectionner un souvenir"
+ * 3. Clic bouton → MemoriesPage en mode sélection (moment/post/photo)
+ * 4. Retour au modal SessionCreationModal avec contenu pré-sélectionné
+ * 5. Remplir titre + message optionnel + case "Ouvrir maintenant"
+ * 6. "Créer" → Session créée avec gameContext
  *
- * ⭐ PRINCIPE : Lancer jeu = Créer session liée à un contenu
+ * ⭐ PRINCIPE : Réutilisation de SessionCreationModal existant pour cohérence UX
  *
  * Types de jeux :
  * - Défis 🎯 : Tu te souviens, Vrai ou Faux, Photo floue
@@ -20,16 +22,17 @@
 import React, { useState, useMemo } from 'react';
 import { useAppState } from '../../hooks/useAppState.js';
 import { gamesManager } from '../../core/GamesManager.js';
-import { MessageCircle, Clock, ArrowRight, Swords } from 'lucide-react';
+import { MessageCircle, Clock, ArrowRight, Swords, Cloud } from 'lucide-react';
+import SessionCreationModal from '../SessionCreationModal.jsx';
 
 export default function GamesPage({ navigationContext: propsNavigationContext, onStartSelectionMode }) {
 
   const app = useAppState();
 
-  // ⭐ v3.0f : États simplifiés pour sélection contenu
+  // ⭐ v3.0g : États pour modal jeu (avec SessionCreationModal)
   const [selectedGameId, setSelectedGameId] = useState(null);
   const [selectedContent, setSelectedContent] = useState(null);
-  const [showLaunchModal, setShowLaunchModal] = useState(false);
+  const [showGameModal, setShowGameModal] = useState(false);
 
   // Catalogue des jeux disponibles (depuis gamesManager)
   const catalog = useMemo(() => gamesManager.getCatalog(), []);
@@ -44,39 +47,75 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
   // Navigation context
   const navigationContext = propsNavigationContext || app.navigationContext || {};
 
-  // ⭐ v3.0f : Gérer retour sélection contenu depuis MemoriesPage
-
+  // ⭐ v3.0g : Gérer retour sélection contenu depuis MemoriesPage
   React.useEffect(() => {
     if (navigationContext.pendingLink) {
       const content = navigationContext.pendingLink;
       console.log('⚔️ Contenu sélectionné depuis MemoriesPage:', content);
 
-      // Stocker le contenu sélectionné et ouvrir modal simple
+      // Stocker le contenu et réouvrir le modal
       setSelectedContent(content);
-      setShowLaunchModal(true);
+      setShowGameModal(true);
     }
   }, [navigationContext.pendingLink]);
 
-  // ⭐ v3.0f : Lancer jeu = Ouvrir MemoriesPage en mode sélection
+  // ⭐ v3.0g : Lancer jeu = Ouvrir modal directement
   const handleLaunchSaynete = (sayneteId) => {
     console.log('⚔️ Lancement jeu:', sayneteId);
+    setSelectedGameId(sayneteId);
+    setSelectedContent(null); // Pas de contenu pré-sélectionné
+    setShowGameModal(true);
+  };
 
+  const handleSelectContent = () => {
     if (!onStartSelectionMode) {
       console.error('❌ onStartSelectionMode non fourni !');
       return;
     }
 
-    // Stocker l'ID du jeu en cours de lancement
-    setSelectedGameId(sayneteId);
+    // Fermer modal temporairement
+    setShowGameModal(false);
 
     // Lancer mode sélection - accepter TOUS types de contenu
     onStartSelectionMode('all', null);
   };
 
-  const handleCloseModal = () => {
-    setShowLaunchModal(false);
+  const handleCloseGameModal = () => {
+    setShowGameModal(false);
     setSelectedGameId(null);
     setSelectedContent(null);
+  };
+
+  const handleCreateGameSession = async (options) => {
+    if (!selectedContent) {
+      console.error('❌ Pas de contenu sélectionné');
+      return;
+    }
+
+    // Créer gameContext
+    const gameContext = gamesManager.createGameContext(
+      selectedGameId,
+      app.currentUser,
+      selectedContent.id,
+      options.title
+    );
+
+    // Créer session avec gameContext
+    const sessionId = await app.createSession(
+      selectedContent,
+      options.title,
+      options.initialText || null,
+      gameContext
+    );
+
+    // Ouvrir la session si demandé
+    if (options.shouldOpen) {
+      app.updateState({ currentChatSession: sessionId });
+      app.navigateTo('chat', { previousPage: 'saynetes' });
+    }
+
+    // Fermer modal
+    handleCloseGameModal();
   };
 
   return (
@@ -164,35 +203,26 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
 
       </div>
 
-      {/* ⭐ v3.0f : Modal Lancement Jeu Simplifié */}
-      {showLaunchModal && selectedContent && (
-        <LaunchGameModal
-          gameId={selectedGameId}
-          selectedContent={selectedContent}
-          currentUserId={app.currentUser}
-          onClose={handleCloseModal}
-          onLaunch={async (sessionTitle) => {
-            // Créer gameContext
-            const gameContext = gamesManager.createGameContext(
-              selectedGameId,
-              app.currentUser,
-              selectedContent.id,
-              sessionTitle
-            );
-
-            // Créer session avec gameContext
-            await app.createSession(
-              selectedContent,
-              sessionTitle,
-              null, // pas de photo
-              gameContext
-            );
-
-            // Rediriger vers la session créée
-            app.navigateTo('sessions');
-            handleCloseModal();
-          }}
-        />
+      {/* ⭐ v3.0g : Modal Jeu avec SessionCreationModal */}
+      {showGameModal && (
+        selectedContent ? (
+          <SessionCreationModal
+            source={selectedContent}
+            contextMoment={selectedContent}
+            currentUser={app.currentUser}
+            onClose={handleCloseGameModal}
+            onConfirm={handleCreateGameSession}
+            gameMode={true}
+            gameId={selectedGameId}
+            onSelectContent={handleSelectContent}
+          />
+        ) : (
+          <GameContentSelectionModal
+            gameId={selectedGameId}
+            onClose={handleCloseGameModal}
+            onSelectContent={handleSelectContent}
+          />
+        )
       )}
 
     </div>
@@ -308,43 +338,21 @@ function ActiveSessionCard({ session, onClick }) {
 }
 
 /**
- * Modal Simple de Lancement de Jeu (v3.0f)
- * Affiche le contenu sélectionné + permet de modifier le titre de session
+ * Modal de Sélection de Contenu pour Jeu (v3.0g)
+ * Permet de sélectionner un contenu (moment/post/photo) pour créer une session jeu
  */
-function LaunchGameModal({ gameId, selectedContent, currentUserId, onClose, onLaunch }) {
-  const [sessionTitle, setSessionTitle] = useState(selectedContent.title || '');
-  const [isLaunching, setIsLaunching] = useState(false);
-
-  const canLaunch = sessionTitle.trim();
-
-  // Icône selon type de contenu
-  const getContentIcon = () => {
-    switch(selectedContent.type) {
-      case 'moment': return '✨';
-      case 'post': return '📝';
-      case 'photo': return '📸';
-      default: return '💭';
-    }
-  };
-
-  // Emoji jeu
-  const getGameEmoji = (gameId) => {
+function GameContentSelectionModal({ gameId, onClose, onSelectContent }) {
+  // Nom et emoji du jeu
+  const getGameInfo = () => {
     switch(gameId) {
-      case 'tu_te_souviens': return '🤔';
-      default: return '🎮';
+      case 'tu_te_souviens':
+        return { name: 'Te souviens-tu ?', emoji: <Cloud className="w-8 h-8" /> };
+      default:
+        return { name: 'Jeu', emoji: <Swords className="w-8 h-8" /> };
     }
   };
 
-  const handleLaunch = async () => {
-    if (!canLaunch) return;
-    setIsLaunching(true);
-    try {
-      await onLaunch(sessionTitle.trim());
-    } catch (error) {
-      console.error('Erreur lancement jeu:', error);
-      setIsLaunching(false);
-    }
-  };
+  const gameInfo = getGameInfo();
 
   return (
     <div
@@ -352,76 +360,52 @@ function LaunchGameModal({ gameId, selectedContent, currentUserId, onClose, onLa
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full"
+        className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full"
         onClick={(e) => e.stopPropagation()}
       >
         {/* En-tête */}
         <div className="border-b border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">{getGameEmoji(gameId)}</span>
+            <div className="text-purple-600 dark:text-purple-400">
+              {gameInfo.emoji}
+            </div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Lancer le jeu
+              {gameInfo.name}
             </h2>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Créer une session de jeu pour ce contenu
+            Créer une session de jeu
           </p>
         </div>
 
         {/* Contenu */}
         <div className="p-6 space-y-4">
+          <div className="text-center">
+            <p className="text-gray-700 dark:text-gray-300 mb-4">
+              Pour commencer, sélectionnez un souvenir (moment, post ou photo)
+            </p>
 
-          {/* Contenu sélectionné */}
-          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-            <div className="flex items-center gap-2 text-sm font-semibold text-purple-900 dark:text-purple-100 mb-2">
-              <span>{getContentIcon()}</span>
-              <span>Contenu sélectionné</span>
-            </div>
-            <div className="text-sm text-purple-800 dark:text-purple-200">
-              {selectedContent.title}
-            </div>
+            <button
+              onClick={onSelectContent}
+              className="w-full px-6 py-4 bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-900/50 text-purple-900 dark:text-purple-100 rounded-lg transition-colors font-medium flex items-center justify-center gap-3 border-2 border-purple-300 dark:border-purple-700"
+            >
+              <span className="text-2xl">✨</span>
+              <span>Sélectionner un souvenir</span>
+            </button>
           </div>
-
-          {/* Titre de session */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Titre de la session
-            </label>
-            <input
-              type="text"
-              value={sessionTitle}
-              onChange={(e) => setSessionTitle(e.target.value)}
-              placeholder="Ex: Tu te souviens de... ?"
-              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-purple-500 dark:focus:border-purple-400 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900/30 transition-colors"
-            />
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Ce titre sera utilisé pour la session de chat
-            </div>
-          </div>
-
         </div>
 
         {/* Actions */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-6 flex gap-3">
+        <div className="border-t border-gray-200 dark:border-gray-700 p-6">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors font-medium"
+            className="w-full px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors font-medium"
           >
             Annuler
-          </button>
-          <button
-            onClick={handleLaunch}
-            disabled={!canLaunch || isLaunching}
-            className={`flex-1 px-4 py-3 rounded-lg transition-colors font-medium ${
-              canLaunch && !isLaunching
-                ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isLaunching ? 'Lancement...' : 'Lancer le jeu'}
           </button>
         </div>
       </div>
     </div>
   );
 }
+
