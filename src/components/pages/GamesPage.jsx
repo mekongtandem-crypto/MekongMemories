@@ -84,16 +84,31 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
           }
         }
 
-        if (fullPost) {
+        if (fullPost && parentMoment) {
+          // ✅ Calculer dayNumber depuis le moment parent
+          let dayNumber = 'X'; // Fallback
+          if (parentMoment.jnnn && parentMoment.jnnn !== 'undefined') {
+            // Extraire le numéro depuis jnnn (ex: "J7" → "7")
+            dayNumber = parentMoment.jnnn.replace('J', '');
+          } else if (parentMoment.dayStart) {
+            // Sinon utiliser dayStart
+            dayNumber = parentMoment.dayStart.toString();
+          }
+
           enrichedContent = {
-            ...fullPost, // ✅ Prendre TOUT le post (id, content, dayNumber, etc.)
+            ...fullPost, // ✅ Prendre TOUT le post
             displayTitle: fullPost.content?.split('\n')[0] || content.title,
-            momentId: parentMoment?.id // ✅ Ajouter momentId parent
+            momentId: parentMoment.id, // ✅ ID moment parent
+            dayNumber: dayNumber // ✅ AJOUT : dayNumber calculé depuis moment
           };
         } else {
-          // Fallback
-          enrichedContent.content = content.title;
-          enrichedContent.displayTitle = content.title;
+          // Fallback si post non trouvé
+          enrichedContent = {
+            ...content, // Préserver propriétés originales
+            content: content.title,
+            displayTitle: content.title,
+            dayNumber: 'X' // Fallback
+          };
         }
       } else if (content.type === 'photo') {
         // ✅ Pour une photo, préserver TOUTES les propriétés déjà présentes
