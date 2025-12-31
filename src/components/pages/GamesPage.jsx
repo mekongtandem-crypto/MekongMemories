@@ -53,11 +53,47 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
       const content = navigationContext.pendingLink;
       console.log('⚔️ Contenu sélectionné depuis MemoriesPage:', content);
 
-      // Stocker le contenu et réouvrir le modal
-      setSelectedContent(content);
+      // ⭐ v3.0g : Enrichir le contenu avec les propriétés attendues par SessionCreationModal
+      let enrichedContent = { ...content };
+
+      // Enrichir selon le type
+      if (content.type === 'moment') {
+        // Trouver le moment complet dans masterIndex
+        const fullMoment = app.masterIndex?.moments?.find(m => m.id === content.id);
+        if (fullMoment) {
+          enrichedContent = {
+            ...fullMoment,
+            displayTitle: fullMoment.title,
+            displaySubtitle: fullMoment.date ? new Date(fullMoment.date).toLocaleDateString('fr-FR') : fullMoment.jnnn
+          };
+        } else {
+          // Fallback si moment non trouvé
+          enrichedContent.displayTitle = content.title;
+        }
+      } else if (content.type === 'post') {
+        // Pour un post, on a déjà le titre qui est la première ligne du contenu
+        enrichedContent.content = content.title; // SessionCreationModal utilise source.content
+        enrichedContent.displayTitle = content.title;
+      } else if (content.type === 'photo') {
+        // Pour une photo, on a déjà filename
+        enrichedContent.filename = content.id;
+        // Trouver le contextMoment (moment qui contient cette photo)
+        const contextMoment = app.masterIndex?.moments?.find(m =>
+          m.dayPhotos?.some(p => p.filename === content.id) ||
+          m.posts?.some(post => post.photos?.some(p => p.filename === content.id))
+        );
+        if (contextMoment) {
+          enrichedContent.contextMoment = {
+            displayTitle: contextMoment.title
+          };
+        }
+      }
+
+      // Stocker le contenu enrichi et réouvrir le modal
+      setSelectedContent(enrichedContent);
       setShowGameModal(true);
     }
-  }, [navigationContext.pendingLink]);
+  }, [navigationContext.pendingLink, app.masterIndex]);
 
   // ⭐ v3.0g : Lancer jeu = Ouvrir modal directement
   const handleLaunchSaynete = (sayneteId) => {
