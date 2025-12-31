@@ -8,14 +8,16 @@
  * ✅ Transitions 150ms
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { X, MessageCircle, Image, FileText, MapPin } from 'lucide-react';
+import { X, MessageCircle, Image, FileText, MapPin, Cloud } from 'lucide-react';
 
-export default function SessionCreationModal({ 
+export default function SessionCreationModal({
   source,
   contextMoment,
   currentUser,
   onClose,
-  onConfirm
+  onConfirm,
+  gameMode = false,
+  gameId = null
 }) {
   const [title, setTitle] = useState('');
   const [textContent, setTextContent] = useState('');
@@ -125,11 +127,20 @@ export default function SessionCreationModal({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-2">
-            <MessageCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Nouvelle session</h3>
+            {gameMode ? (
+              <>
+                <Cloud className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Te souviens-tu ?</h3>
+              </>
+            ) : (
+              <>
+                <MessageCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Nouvelle session</h3>
+              </>
+            )}
           </div>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors duration-150"
             title="Fermer (Echap)"
           >
