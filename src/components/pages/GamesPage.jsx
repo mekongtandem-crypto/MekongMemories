@@ -63,11 +63,13 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
         if (fullMoment) {
           enrichedContent = {
             ...fullMoment, // ✅ Prendre TOUT le moment
+            type: 'moment', // ✅ FORCER type 'moment' (même si fullMoment.type = 'post_moment')
             displayTitle: fullMoment.title,
             displaySubtitle: fullMoment.date ? new Date(fullMoment.date).toLocaleDateString('fr-FR') : fullMoment.jnnn
           };
         } else {
           // Fallback si moment non trouvé
+          enrichedContent.type = 'moment'; // ✅ GARANTIR type défini
           enrichedContent.displayTitle = content.title;
         }
       } else if (content.type === 'post') {
@@ -97,19 +99,21 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
 
           enrichedContent = {
             ...fullPost, // ✅ Prendre TOUT le post
+            type: 'post', // ✅ FORCER type 'post'
             content: fullPost.content || content.title, // ✅ GARANTIR content défini
             displayTitle: fullPost.content?.split('\n')[0] || content.title,
             momentId: parentMoment.id, // ✅ ID moment parent
             dayNumber: dayNumber // ✅ dayNumber calculé depuis moment
           };
 
-          console.log('⚔️ Post enrichi:', { id: enrichedContent.id, content: enrichedContent.content, dayNumber });
+          console.log('⚔️ Post enrichi:', { id: enrichedContent.id, type: enrichedContent.type, content: enrichedContent.content, dayNumber });
 
         } else {
           // Fallback si post non trouvé
           console.warn('⚠️ Post non trouvé dans masterIndex:', content.id);
           enrichedContent = {
             ...content, // Préserver propriétés originales
+            type: 'post', // ✅ GARANTIR type défini
             content: content.title, // ✅ GARANTIR content défini
             displayTitle: content.title,
             dayNumber: 'X' // Fallback
@@ -117,7 +121,11 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
         }
       } else if (content.type === 'photo') {
         // ✅ Pour une photo, préserver TOUTES les propriétés déjà présentes
-        enrichedContent.filename = content.id;
+        enrichedContent = {
+          ...content, // ✅ Copier toutes propriétés originales
+          type: 'photo', // ✅ GARANTIR type défini
+          filename: content.id
+        };
 
         // Trouver le contextMoment complet
         const contextMoment = app.masterIndex?.moments?.find(m =>
@@ -131,7 +139,16 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
             displayTitle: contextMoment.title,
             displaySubtitle: contextMoment.date ? new Date(contextMoment.date).toLocaleDateString('fr-FR') : contextMoment.jnnn
           };
+        } else {
+          // ⚠️ Fallback si contextMoment non trouvé
+          console.warn('⚠️ Photo sans contextMoment:', content.id);
+          enrichedContent.contextMoment = {
+            displayTitle: 'Photo importée',
+            displaySubtitle: ''
+          };
         }
+
+        console.log('⚔️ Photo enrichie:', { filename: enrichedContent.filename, contextMoment: enrichedContent.contextMoment?.displayTitle });
       }
 
       console.log('⚔️ Contenu enrichi:', enrichedContent);
@@ -266,9 +283,8 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
 
       // Ouvrir la session si demandé
       if (options.shouldOpen) {
-        // ✅ Utiliser openChatSession au lieu de updateState
-        app.openChatSession(newSession);
-        app.navigateTo('chat', { previousPage: 'saynetes' });
+        // ✅ Naviguer vers la session créée
+        app.navigateToSession(newSession.id, { previousPage: 'saynetes' });
       }
 
       // Fermer modal
