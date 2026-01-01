@@ -216,8 +216,20 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
 
       } else if (selectedContent.type === 'post') {
         // Session depuis post
+        console.log('🔍 DEBUG Post - selectedContent:', {
+          id: selectedContent.id,
+          momentId: selectedContent.momentId,
+          type: selectedContent.type,
+          content: selectedContent.content?.substring(0, 30)
+        });
+
+        const momentIdValue = selectedContent.momentId || selectedContent.id;
+
+        // ⚠️ Alert de diagnostic
+        alert(`DEBUG Post: momentId=${selectedContent.momentId}, id=${selectedContent.id}, final=${momentIdValue}`);
+
         gameData = {
-          id: selectedContent.momentId || selectedContent.id, // ✅ ID du moment parent
+          id: momentIdValue,
           title: options.title, // ✅ Titre personnalisé par user
           systemMessage: 'article', // ✅ Trigger pour détecter post dans createSession
           ...selectedContent
@@ -229,12 +241,24 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
 
         // ⚠️ Vérification : Si pas d'ID moment, erreur
         if (!gameData.id) {
+          alert(`ERREUR: Post sans momentId - id=${selectedContent.id}, momentId=${selectedContent.momentId}`);
           throw new Error('Post sans momentId - impossible de créer session');
         }
 
       } else if (selectedContent.type === 'photo') {
         // Session depuis photo - gameData = moment contexte, sourcePhoto = photo
+        console.log('🔍 DEBUG Photo - selectedContent:', {
+          id: selectedContent.id,
+          filename: selectedContent.filename,
+          google_drive_id: selectedContent.google_drive_id,
+          contextMoment_id: selectedContent.contextMoment?.id
+        });
+
         const contextMoment = selectedContent.contextMoment || {};
+
+        // ⚠️ Alert de diagnostic
+        alert(`DEBUG Photo: contextMoment.id=${contextMoment.id}, google_drive_id=${selectedContent.google_drive_id}`);
+
         gameData = {
           id: contextMoment.id,
           title: options.title, // ✅ Titre personnalisé par user
@@ -254,7 +278,14 @@ export default function GamesPage({ navigationContext: propsNavigationContext, o
 
         // ⚠️ Vérification : Si pas de contextMoment, erreur
         if (!gameData.id) {
+          alert(`ERREUR: Photo sans contextMoment - contextMoment.id=${contextMoment.id}`);
           throw new Error('Photo sans contextMoment - impossible de créer session');
+        }
+
+        // ⚠️ Vérification : Si pas de google_drive_id
+        if (!sourcePhoto.google_drive_id) {
+          alert(`ERREUR: Photo sans google_drive_id - filename=${selectedContent.filename}`);
+          throw new Error('Photo sans google_drive_id');
         }
 
       } else {
